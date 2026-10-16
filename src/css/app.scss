@@ -2023,6 +2023,15 @@ section.block > h3 {
 .ev-mplace:has(+ .ev-mplace){border-bottom:0;padding-bottom:4px}
 .ev-mplace.dim{opacity:.55}
 .ev-mplace__why{color:var(--ink-2);min-width:0;max-width:80ch}
+/* A model's load options other than the ones on its row (the adoption plan, E4): folded under
+   the row as audio.cpp's own UI folds a model's options, the persona page's knob grid inside.
+   The .ev-mplace indent and size; the line above gives up its rule. */
+.ev-model:has(+ .ev-mfold),.ev-mplace:has(+ .ev-mfold){border-bottom:0;padding-bottom:4px}
+.ev-mfold{padding:0 16px 10px 37px;font-size:12.5px;color:var(--ink-3);border-bottom:1px solid var(--line)}
+.ev-mfold>summary{cursor:pointer;color:var(--ink-2);width:max-content}
+.ev-mfold[open]>summary{margin-bottom:8px}
+.ev-mfold>.ev-mplace__why{margin:0 0 8px}
+.ev-mfold.dim{opacity:.55}
 .ev-danger{color:#b04a3e !important}
 .ev-costnote{display:flex;gap:10px;align-items:center;margin-bottom:14px;padding:10px 16px;border:1px solid #e2d2b0;background:#f5edda;border-radius:10px;font-size:12.5px;color:var(--ink-2)}
 .ev-prov{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:10px;overflow:hidden}

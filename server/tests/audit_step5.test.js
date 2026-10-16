@@ -316,12 +316,13 @@ test("kokoro_and_chatterbox_texts_count_what_is_offered", () => {
 // ─── 5h: runtime options ─────────────────────────────────────────────────────
 
 test("flash_attention_is_offered_only_on_8bit_qwen3", () => {
+  // Every load option the spec lists is offered since the adoption plan's E4 (was: these two
+  // alone); flash attention still only where audio.cpp accepts it, on Q8_0 weights.
   for (const r of discoverEngines().get("qwen3").module.VARIANTS) {
     const keys = runtimeOptions.offeredFor(r).map((o) => o.key);
-    if (r.id.endsWith("-q8")) expect(keys, r.id).toEqual(["qwen3_tts.perf_mode", "qwen3_tts.conv_weight_type"]);
-    else expect(keys, r.id).toEqual(["qwen3_tts.conv_weight_type"]);
+    expect(keys.includes("qwen3_tts.perf_mode"), r.id).toBe(r.id.endsWith("-q8"));
+    expect(keys, r.id).toContain("qwen3_tts.conv_weight_type");
   }
-  expect(runtimeOptions.offeredFor(row("kokoro", "kokoro-82m-q8"))).toEqual([]);
 });
 
 test("runtime_options_are_validated_and_defaults_dropped", () => {
@@ -332,7 +333,7 @@ test("runtime_options_are_validated_and_defaults_dropped", () => {
   });
   expect(runtimeOptions.validate(r, { "qwen3_tts.conv_weight_type": "f16" })).toEqual({});
   expect(() => runtimeOptions.validate(r, { "qwen3_tts.perf_mode": "turbo" })).toThrow(/must be one of/);
-  expect(() => runtimeOptions.validate(r, { "qwen3_tts.mem_saver": "true" })).toThrow(/no runtime option/);
+  expect(() => runtimeOptions.validate(r, { "qwen3_tts.not_an_option": "true" })).toThrow(/no runtime option/);
 });
 
 test("saved_runtime_options_ride_the_models_registration", () => {
@@ -356,10 +357,9 @@ test("the_model_row_reads_and_saves_its_runtime_options", async () => {
   expect(r.status).toBe(200);
   expect(r.json().reload).toBe(false);
   const v = (await c.get("/v1/engines/qwen3/models")).json().variants.find((x) => x.id === "qwen3-cv-1.7b-q8");
-  expect(Object.fromEntries(v.runtime_options.map((o) => [o.key, o.value]))).toEqual({
-    "qwen3_tts.perf_mode": "flash_attention",
-    "qwen3_tts.conv_weight_type": "f16",
-  });
+  const values = Object.fromEntries(v.runtime_options.map((o) => [o.key, o.value]));
+  expect(values["qwen3_tts.perf_mode"]).toBe("flash_attention");
+  expect(values["qwen3_tts.conv_weight_type"]).toBe("f16");
   let ov = (await c.get("/v1/settings")).json().engines.engine_overrides.qwen3;
   expect(ov.runtime_options).toEqual({ "qwen3-cv-1.7b-q8": { "qwen3_tts.perf_mode": "flash_attention" } });
   expect((await c.put(url, { json: { options: { "qwen3_tts.perf_mode": "x" } } })).status).toBe(400);

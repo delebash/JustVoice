@@ -48,6 +48,7 @@ import * as espeak from "./audiocpp/espeak.js";
 import * as japanese from "./audiocpp/japanese.js";
 import * as release from "./audiocpp/release.js";
 import * as runtime from "./audiocpp/runtime.js";
+import * as runtimeOptions from "./audiocpp/runtime_options.js";
 import * as slot from "./audiocpp/slot.js";
 import * as chatterboxManifest from "./chatterbox/manifest.js";
 import * as kittenManifest from "./kitten/manifest.js";
@@ -800,15 +801,32 @@ export class EngineManager {
     return split ? Math.min(cap, split) : cap;
   }
 
+  /** The load options this model loads with, as its price is kept under them: "" for the default
+   * set — whose prices were measured before the key existed, so they keep counting — else
+   * "key=value;…" (decided 2026-10-15, the adoption plan's §7 question 3: a price per load-option
+   * set, measured the first time each is used). */
+  loadOptionsKey(engineId, variant) {
+    try {
+      const row = EngineManager._variantRow(this.getManifest(engineId), variant);
+      return row?.audiocpp ? runtimeOptions.priceKeyFor(engineId, row) : "";
+    } catch {
+      return ""; // no state (bare tests): the default set
+    }
+  }
+
   /** What loading exactly this model on `device` takes, measured on this machine at the piece
-   * length it is given now: the largest `"peak"` reading of this variant, by the runtime
-   * build running now. 0 = never measured there. Placement and the memory check both ask this
-   * one function (audit §5 B1). */
+   * length and with the load options it is given now: the largest `"peak"` reading of this
+   * variant, by the runtime build running now. 0 = never measured there. Placement and the
+   * memory check both ask this one function (audit §5 B1). */
   _priceMb(kind, engineId, variant, device) {
     if (!device) return 0;
     try {
       const mk = hardware.currentMachineKey();
-      const want = { split_chars: String(this.effectiveSplit(engineId, variant)), runtime: self._runtimeBuild() };
+      const want = {
+        split_chars: String(this.effectiveSplit(engineId, variant)),
+        runtime: self._runtimeBuild(),
+        load_options: this.loadOptionsKey(engineId, variant),
+      };
       let best = 0;
       for (const row of stores.getModelMeasurementStore().list(EngineManager._measureId(kind, engineId, variant))) {
         const flags = Object.fromEntries((row.switches || []).map((f) => [f.flagName, f.flagValue]));
@@ -817,7 +835,8 @@ export class EngineManager {
           row.source === "peak" &&
           (row.backend || "") === device &&
           row.vramModelMb > 0 &&
-          Object.entries(want).every(([k, v]) => flags[k] === v)
+          // A row with no load-options flag is the default set's.
+          Object.entries(want).every(([k, v]) => (flags[k] ?? "") === v)
         ) {
           best = Math.max(best, pyInt(row.vramModelMb));
         }
@@ -1308,26 +1327,28 @@ export class EngineManager {
    * store, beside the card's `"peak"` rows — its slot process, read once the load is done and
    * again after its lines, raise-only (_slotRamMb, bumpSpeechRam), on either device (decided
    * 2026-10-12, TASKS "The download test's last findings" 4(b) and "The two-day review's fixes").
-   * Keeps the newest 5 per runtime build. Best-effort: persistence must never fail a load. */
+   * Keeps the newest 5 per runtime build and load-option set (the default set's rows carry no
+   * load-options flag). Best-effort: persistence must never fail a load. */
   _recordSpeechRam(m, kind, variant, mb, device) {
     try {
       const store = stores.getModelMeasurementStore();
       const modelId = EngineManager._measureId(kind, m.id, variant);
       const mk = hardware.currentMachineKey();
       const build = self._runtimeBuild();
+      const opts = this.loadOptionsKey(m.id, variant);
       store.record(modelId, {
         machineKey: mk,
         source: "ram_peak",
-        label: `speech memory (${device}, ${build})`,
+        label: `speech memory (${device}, ${build}${opts ? `, load options ${opts}` : ""})`,
         tokensPerSec: 0.0,
         vramTotalMb: 0,
         at: Math.trunc(Date.now()),
-        rows: [{ flagName: "runtime", flagValue: build }],
+        rows: [{ flagName: "runtime", flagValue: build }, ...(opts ? [{ flagName: "load_options", flagValue: opts }] : [])],
         kind: kind === "stt" ? "stt" : "tts",
         backend: device,
         ramModelMb: pyInt(mb),
       });
-      store.pruneLoadRows(modelId, mk, new Set(["runtime"]), 5, "ram_peak");
+      store.pruneLoadRows(modelId, mk, new Set(["runtime", "load_options"]), 5, "ram_peak");
     } catch (e) {
       log.debug(`speech memory persist failed for ${m.id}: ${msgOf(e)}`);
     }
@@ -1381,16 +1402,19 @@ export class EngineManager {
   }
 
   /** The system memory this model took at its last loads on `device` here, by the runtime build
-   * running now: the largest `"ram_peak"` reading (_recordSpeechRam). 0 = never recorded. */
+   * running now and with the load options it is given now: the largest `"ram_peak"` reading
+   * (_recordSpeechRam). 0 = never recorded. */
   _ramPriceMb(kind, engineId, variant, device) {
     if (!device) return 0;
     try {
       const mk = hardware.currentMachineKey();
       const build = self._runtimeBuild();
+      const opts = this.loadOptionsKey(engineId, variant);
       let best = 0;
       for (const row of stores.getModelMeasurementStore().list(EngineManager._measureId(kind, engineId, variant))) {
         const flags = Object.fromEntries((row.switches || []).map((f) => [f.flagName, f.flagValue]));
-        if (row.machineKey === mk && row.source === "ram_peak" && (row.backend || "") === device && flags.runtime === build) {
+        const sameOpts = (flags.load_options ?? "") === opts;
+        if (row.machineKey === mk && row.source === "ram_peak" && (row.backend || "") === device && flags.runtime === build && sameOpts) {
           best = Math.max(best, pyInt(row.ramModelMb || 0));
         }
       }
@@ -1479,7 +1503,8 @@ export class EngineManager {
   }
 
   /** Persist a measured peak as a `"peak"` row in the shared measurement store — what
-   * `_priceMb` reads on the next load. Keeps the newest 5 per length and runtime build. `how`
+   * `_priceMb` reads on the next load. Keeps the newest 5 per length, runtime build and
+   * load-option set (the default set's rows carry no load-options flag, as before the key). `how`
    * names a reading that isn't the slot's own process in the row's label. Best-effort:
    * persistence must never fail a load. */
   _recordSpeechLoad(m, kind, variant, mb, device, how = "") {
@@ -1489,22 +1514,24 @@ export class EngineManager {
       const mk = hardware.currentMachineKey();
       const split = String(this.effectiveSplit(m.id, variant));
       const build = self._runtimeBuild();
+      const opts = this.loadOptionsKey(m.id, variant);
       store.record(modelId, {
         machineKey: mk,
         source: "peak",
-        label: `speech peak (${device}, pieces of ${split} characters, ${build}${how ? `, ${how}` : ""})`,
+        label: `speech peak (${device}, pieces of ${split} characters, ${build}${opts ? `, load options ${opts}` : ""}${how ? `, ${how}` : ""})`,
         tokensPerSec: 0.0,
         vramTotalMb: 0,
         at: Math.trunc(Date.now()),
         rows: [
           { flagName: "split_chars", flagValue: split },
           { flagName: "runtime", flagValue: build },
+          ...(opts ? [{ flagName: "load_options", flagValue: opts }] : []),
         ],
         vramModelMb: pyInt(mb),
         kind: kind === "stt" ? "stt" : "tts",
         backend: device,
       });
-      store.pruneLoadRows(modelId, mk, new Set(["split_chars", "runtime"]), 5, "peak");
+      store.pruneLoadRows(modelId, mk, new Set(["split_chars", "runtime", "load_options"]), 5, "peak");
     } catch (e) {
       log.debug(`speech peak persist failed for ${m.id}: ${msgOf(e)}`);
     }

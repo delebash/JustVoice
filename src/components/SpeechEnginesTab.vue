@@ -50,6 +50,7 @@ import { setDefaultVariant as setEngineDefault } from "../services/engineDefault
 import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
 
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
+import DeliveryKnobs from "./DeliveryKnobs.vue";
 import { UiNumber, UiSelect, UiTable } from "@delebash/llm-ui";
 import { openEngineTerms } from "../services/engineTerms.js";
 import { COMMERCIAL_OPTIONS, COMMERCIAL_USE, SORTS, licClass, licTitle, memoryText, reading } from "../services/engineFacts.js";
@@ -402,18 +403,22 @@ async function tryCardAgain(e, v) {
   }
 }
 
-// The speech runtime's per-model options (audit 2026-10-04 §13.5): saved per model. The
-// runtime reads them at load, so the server unloads a loaded model whose options changed
-// and it is loaded again here, on the row's own bar.
+// A model's load options (audio.cpp's session options — every one its spec lists, the adoption
+// plan's E4): saved per model. The runtime reads them at load, so the server unloads a loaded
+// model whose options changed and it is loaded again here, on the row's own bar. `value` null
+// is back to the default.
 async function setRuntimeOption(e, v, key, value) {
-  const cur = Object.fromEntries((v.runtime_options || []).map((o) => [o.key, o.value]));
-  if (cur[key] === value) return;
+  const cur = Object.fromEntries((v.runtime_options || []).filter((o) => o.value != null).map((o) => [o.key, o.value]));
+  const next = { ...cur };
+  if (value === null || value === undefined || value === "") delete next[key];
+  else next[key] = String(value);
+  if (cur[key] === next[key]) return;
   try {
     const r = await api.request(
       `/v1/engines/${encodeURIComponent(e.id)}/models/${encodeURIComponent(v.id)}/runtime-options`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ options: { ...cur, [key]: value } }),
+        body: JSON.stringify({ options: next }),
       });
     delete variants[e.id];
     await refresh();
@@ -422,6 +427,36 @@ async function setRuntimeOption(e, v, key, value) {
     pushToast({ message: `Couldn't change ${v.name}'s options: ${err?.message || err}`, kind: "error" });
   }
 }
+
+// The load options JustVoice measured (Qwen3's Attention and Decoder weights) stay on the row as
+// they were; every other one is folded under "Load options", as audio.cpp's own UI folds a
+// model's options — on the persona page's knob grid (DeliveryKnobs), each a dropdown, a switch,
+// a number box or a text field as its spec types it.
+const rowOptions = (v) => (v.runtime_options || []).filter((o) => o.featured && o.type === "choice");
+const foldedOptions = (v) => (v.runtime_options || []).filter((o) => !(o.featured && o.type === "choice"));
+// A value as the control holds it: a switch's on/off, a number, else the text audio.cpp reads.
+function optionTyped(o, value) {
+  if (value === null || value === undefined) return null;
+  if (o.type === "switch") return value === "true";
+  if (o.type === "number") return Number(value);
+  return value;
+}
+const optionKnobs = (v) =>
+  foldedOptions(v).map((o) => ({
+    key: o.key,
+    label: o.label,
+    hint: o.hint,
+    type: o.type,
+    box: true,
+    min: o.min,
+    max: o.max,
+    step: 1,
+    choices: o.choices.map((c) => c.value),
+    neutral: optionTyped(o, o.default),
+  }));
+// What is set: the values other than the default (each with its ↺).
+const optionValues = (v) =>
+  Object.fromEntries(foldedOptions(v).filter((o) => o.value !== o.default).map((o) => [o.key, optionTyped(o, o.value)]));
 
 // Delete every downloaded model of one engine — the engine-level removal
 // now that there is no environment to uninstall (the runtime stays).
@@ -1107,11 +1142,12 @@ onBeforeUnmount(() => {
             <UiButton v-if="v.failed_on_card" intent="ghost" size="small" label="Try the card again"
               :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)" @click="tryCardAgain(e, v)" />
           </div>
-          <!-- The speech runtime's options for this model (audit 2026-10-04 §13.5): only
-               those whose effect was measured; read when the model loads. -->
-          <div v-if="v.runtime_options?.length" class="ev-mplace" :class="{ dim: osBlocked(e) }"
+          <!-- The model's load options (audit 2026-10-04 §13.5; every one its spec lists since
+               the adoption plan's E4): the ones JustVoice measured on the row, read when the
+               model loads. -->
+          <div v-if="rowOptions(v).length" class="ev-mplace" :class="{ dim: osBlocked(e) }"
             :data-variant-options="v.id">
-            <template v-for="o in v.runtime_options" :key="o.key">
+            <template v-for="o in rowOptions(v)" :key="o.key">
               {{ o.label }}
               <UiSelect :modelValue="o.value" width="id" size="small" :options="o.choices"
                 :title="o.hint"
@@ -1120,6 +1156,17 @@ onBeforeUnmount(() => {
             </template>
             <span class="ev-mplace__why">Read when the model loads — a change reloads it.</span>
           </div>
+          <!-- The rest folded, as audio.cpp's own UI folds a model's options (a <details>, as
+               the kit's ConfigColumn folds its samplers). -->
+          <details v-if="foldedOptions(v).length" class="ev-mfold" :class="{ dim: osBlocked(e) }"
+            :data-variant-load-options="v.id">
+            <summary>Load options ({{ foldedOptions(v).length }})</summary>
+            <p v-if="!rowOptions(v).length" class="ev-mplace__why">Read when the model loads — a change reloads it.</p>
+            <DeliveryKnobs :knobs="optionKnobs(v)" :values="optionValues(v)" :pauses="[]"
+              :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)"
+              @commit="(key, val) => setRuntimeOption(e, v, key, val)"
+              @reset="(key) => setRuntimeOption(e, v, key, null)" />
+          </details>
           </template>
 
           <!-- THE one download bar (kit DownloadBar over the kit task) — every
