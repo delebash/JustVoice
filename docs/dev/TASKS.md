@@ -392,7 +392,13 @@ OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the
         family whose notes say so (each kind has its own process, so nothing else goes with it);
         an F5 take after other lines differed from the same line in a fresh process (likely a
         graph reading memory it never wrote, now reused) — found and fixed in the fork, so the
-        same seed gives the same take.
+        same seed gives the same take. BUILT 2026-10-16: fork 8c9a6322 (f5_tts's GRN eps written
+        for both CFG halves — the unconditional half's was never written; F5's own code, no ggml
+        change; takes move slightly, eps 0 → 1e-6, the same words read back), JV fb4850e0 (Unload
+        stops the process for a family whose notes say `UNLOAD_STOPS_PROCESS`; F5). Through the
+        app: the same take at every position checked; after Unload the card back to where it was
+        before the load (368 → 4,005 → 361 MiB), the recogniser's process untouched, Kokoro still
+        unloads in place (RESEARCH §10.15 finding 4).
         For the user at the end: the topbar at 390 px (the page name gets 73 px, cut on every
         page; hide the status word "Operational", 104 px, and keep its dot?); Voices at 390 (the
         stacked filters leave the table about 105 px). Home (210 px) and Captures (106 px) scrolled
