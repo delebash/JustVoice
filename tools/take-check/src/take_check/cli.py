@@ -49,7 +49,8 @@ def score(args: argparse.Namespace) -> int:
     ensure_weights(cache / "utmosv2")
 
     print(f"take-check: {len(takes)} takes; VERSA (read-back, speaker, UTMOSv2, emo_vad) ...", flush=True)
-    versa, problems = run_versa(takes, out / "versa", cache, args.device == "cuda", env)
+    quality_seeds = {s.strip() for s in args.quality_seeds.split(",") if s.strip()} if args.quality_seeds else None
+    versa, problems = run_versa(takes, out / "versa", cache, args.device == "cuda", env, quality_seeds)
 
     print("take-check: emotion2vec+ large ...", flush=True)
     from take_check.emotion import score_emotion
@@ -122,6 +123,12 @@ def main() -> None:
     score_parser.add_argument("--manifest", required=True, help="path to manifest.json")
     score_parser.add_argument("--out", required=True, help="folder for scores.csv and summary.json")
     score_parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
+    score_parser.add_argument(
+        "--quality-seeds",
+        default="",
+        help="UTMOSv2 (the slowest score) only on takes with these seeds, e.g. 7 — a model's average "
+        "quality, not each take's (default: every take)",
+    )
     score_parser.add_argument(
         "--cache-dir", default=str(DEFAULT_CACHE), help="where models are downloaded (default: %(default)s)"
     )

@@ -57,72 +57,91 @@ def _error_rate(row: dict, unit: str) -> float | None:
 
 
 def run_versa(
-    takes: list[Take], work_dir: Path, cache_dir: Path, use_gpu: bool, env: dict[str, str]
+    takes: list[Take],
+    work_dir: Path,
+    cache_dir: Path,
+    use_gpu: bool,
+    env: dict[str, str],
+    quality_seeds: set[str] | None = None,
 ) -> tuple[dict[str, dict], list[str]]:
-    """Score every take with VERSA. Returns ({take id: scores}, [problems])."""
+    """Score every take with VERSA. Returns ({take id: scores}, [problems]).
+
+    One VERSA run per metric of versa_score.yaml, so each model has the card to itself: together
+    they filled an 8 GB card and spilled into system memory, 11 s a take (2026-10-16). UTMOSv2,
+    the slowest, scores only the takes whose seed is in `quality_seeds` when it is given — a
+    model's average quality, not each take's (RESEARCH §10.11: quality predictors agree with
+    people on averages only)."""
+    import yaml
+
     work_dir.mkdir(parents=True, exist_ok=True)
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     # VERSA keys are whitespace-free; the manifest's ids may not be.
     keys = {f"take{index:05d}": take for index, take in enumerate(takes)}
-    pred_scp = work_dir / "pred.scp"
-    gt_scp = work_dir / "gt.scp"
-    text_file = work_dir / "text"
-    pred_scp.write_text("".join(f"{k} {t.wav}\n" for k, t in keys.items()), encoding="utf-8")
-    gt_scp.write_text("".join(f"{k} {t.reference_wav}\n" for k, t in keys.items()), encoding="utf-8")
-    text_file.write_text(
-        "".join(f"{k} {' '.join(plain_quotes(t.text).split())}\n" for k, t in keys.items()), encoding="utf-8"
-    )
-    config = work_dir / "versa_score.yaml"
-    config.write_text(
-        resources.files("take_check").joinpath("versa_score.yaml").read_text(encoding="utf-8"),
-        encoding="utf-8",
-    )
-    output = work_dir / "versa_scores.jsonl"
-    log = work_dir / "versa.log"
-
-    command = [
-        sys.executable,
-        "-m",
-        "versa.bin.scorer",
-        "--score_config", str(config),
-        "--pred", str(pred_scp),
-        "--gt", str(gt_scp),
-        "--text", str(text_file),
-        "--output_file", str(output),
-        "--io", "soundfile",
-        "--cache_folder", str(cache_dir),
-    ]
-    if use_gpu:
-        command.append("--use_gpu")
-
+    metrics = yaml.safe_load(resources.files("take_check").joinpath("versa_score.yaml").read_text(encoding="utf-8"))
+    rows: dict[str, dict] = {key: {"key": key} for key in keys}
+    problems: list[str] = []
+    skipped: set[tuple[str, str]] = set()
     # Python's UTF-8 mode: VERSA opens the scp and text files with the locale's encoding.
     versa_env = {**env, "PYTHONUTF8": "1"}
-    with log.open("w", encoding="utf-8") as log_file:
-        result = subprocess.run(
-            command, cwd=cache_dir, env=versa_env, stdout=log_file, stderr=subprocess.STDOUT
+    for metric in metrics:
+        name = metric["name"] if metric["name"] != "pseudo_mos" else "utmosv2"
+        chosen = keys
+        if name == "utmosv2" and quality_seeds:
+            chosen = {k: t for k, t in keys.items() if str(t.seed) in quality_seeds}
+            skipped.update((k, name) for k in keys if k not in chosen)
+        if not chosen:
+            continue
+        run_dir = work_dir / name
+        run_dir.mkdir(parents=True, exist_ok=True)
+        pred_scp = run_dir / "pred.scp"
+        gt_scp = run_dir / "gt.scp"
+        text_file = run_dir / "text"
+        pred_scp.write_text("".join(f"{k} {t.wav}\n" for k, t in chosen.items()), encoding="utf-8")
+        gt_scp.write_text("".join(f"{k} {t.reference_wav}\n" for k, t in chosen.items()), encoding="utf-8")
+        text_file.write_text(
+            "".join(f"{k} {' '.join(plain_quotes(t.text).split())}\n" for k, t in chosen.items()), encoding="utf-8"
         )
-
-    problems: list[str] = []
-    if result.returncode != 0:
-        problems.append(f"versa-score exited with code {result.returncode}; see {log}")
-    rows: dict[str, dict] = {}
-    if output.is_file():
-        for line in output.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                row = json.loads(line)
-                rows[row["key"]] = row
+        config = run_dir / "versa_score.yaml"
+        config.write_text(yaml.safe_dump([metric], sort_keys=False), encoding="utf-8")
+        output = run_dir / "versa_scores.jsonl"
+        log = run_dir / "versa.log"
+        command = [
+            sys.executable,
+            "-m",
+            "versa.bin.scorer",
+            "--score_config", str(config),
+            "--pred", str(pred_scp),
+            "--gt", str(gt_scp),
+            "--text", str(text_file),
+            "--output_file", str(output),
+            "--io", "soundfile",
+            "--cache_folder", str(cache_dir),
+        ]
+        if use_gpu:
+            command.append("--use_gpu")
+        print(f"take-check:   VERSA {name} on {len(chosen)} takes ...", flush=True)
+        with log.open("w", encoding="utf-8") as log_file:
+            result = subprocess.run(
+                command, cwd=cache_dir, env=versa_env, stdout=log_file, stderr=subprocess.STDOUT
+            )
+        if result.returncode != 0:
+            problems.append(f"versa-score ({name}) exited with code {result.returncode}; see {log}")
+        if output.is_file():
+            for line in output.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    row = json.loads(line)
+                    rows.setdefault(row["key"], {"key": row["key"]}).update(row)
 
     scores: dict[str, dict] = {}
     for key, take in keys.items():
-        row = rows.get(key)
-        if row is None:
-            problems.append(f"{take.id}: VERSA wrote no result; see {log}")
-            scores[take.id] = {}
-            continue
+        row = rows[key]
         for metric, metric_keys in EXPECTED_KEYS.items():
+            short = "utmosv2" if metric.startswith("pseudo_mos") else metric
+            if (key, short) in skipped:
+                continue
             if any(row.get(k) is None for k in metric_keys):
-                problems.append(f"{take.id}: VERSA metric {metric} gave no value; see {log}")
+                problems.append(f"{take.id}: VERSA metric {metric} gave no value; see {work_dir / short / 'versa.log'}")
         scores[take.id] = {
             "wer": _error_rate(row, "wer"),
             "cer": _error_rate(row, "cer"),

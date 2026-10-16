@@ -106,6 +106,14 @@ large-v3; a full round wants the GPU.
   from whichever of its takes names one; two different emotions on one line is an error.
 - Other fields in an entry are ignored.
 
+## Speed
+
+VERSA runs once per metric, so each model has the card to itself: all four together filled an
+8 GB card and spilled into system memory, 11 s a take (2026-10-16). Then about 3 s a take for
+Whisper large-v3, 4 s for UTMOSv2, under 1 s for the rest. `--quality-seeds 7` scores UTMOSv2 on
+seed 7's takes only — a model's average quality, which is all a quality predictor tells reliably
+(RESEARCH §10.11); its column is empty on the other takes.
+
 ## Output
 
 `<out>/scores.csv`, one row per take:
