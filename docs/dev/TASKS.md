@@ -72,10 +72,11 @@ STATE:  FINDING — measured 2026-10-11 (slice 0, RESEARCH §10.6). A line's dir
         is ignored" (VoxCPM usage guide, checked 2026-10-11; RESEARCH §10.6, §10.8).
 WHY:    the one-click run's character voices are frozen VoxCPM2 clones with direction on lines.
 NOT:    —
-BUILT:  nothing — the slice 0 takes used a copy of the clip with no transcript.
-OPEN:   DECIDED 2026-10-11 ("your rec on all", answer 10 — "VoxCPM2: on lines with direction,
-        send the clip without its words"): `slot.js`'s voxcpm2 branch drops `reference_text` when
-        the line carries direction; the capability note and the manifest header say so.
+BUILT:  DECIDED 2026-10-11 ("your rec on all", answer 10 — "VoxCPM2: on lines with direction,
+        send the clip without its words"); built in df2b40ee (the engine list's slices 2–3):
+        `slot.js`'s voxcpm2 branch drops `reference_text` when the line carries direction.
+        (was: "BUILT: nothing" — corrected 2026-10-16.)
+OPEN:   whether it acts, on its clip alone — round 4 (docs/plans/2026-10-16-test-kit-and-round-4.md).
 GO:     given 2026-10-11 — built with the engine list's direction data.
 
 ### FINDING — `synthetic_keys.rs` empties the clipboard after a paste and hard-codes the macOS V

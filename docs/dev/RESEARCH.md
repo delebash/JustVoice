@@ -2962,6 +2962,9 @@ Pozotron, Orion QC, RW-Voice-EQ, SwanBench, ViSQOL, Hume, Gemini prices.
   the settings `speech_runtime.runaway_s_per_char` and `runaway_min_s` since 2026-10-13 (*code*,
   `manager._noteRunaway`, `runtime.runawaySPerChar`/`runawayMinS`). A per-voice bound would be
   tighter.
+- **The kit built on this, and round 4:** `docs/plans/2026-10-16-test-kit-and-round-4.md` — VERSA
+  for read-back, same speaker, quality and arousal/valence/dominance, emotion2vec+ for the emotion,
+  pyloudnorm for loud and soft, each score read on its own; NeMo's recipe installs on Linux only.
 - **Licence flags** (only if shipped in the app): non-commercial — NISQA weights, SpeechJudge-GRM,
   Vox-Profile, audeering, openSMILE, Audio Flamingo 3, ECAPA2, ctc-forced-aligner's default,
   AutoPCP; GPL/AGPL — Parselmouth, Allosaurus, BeaqleJS, whisper-timestamped.
