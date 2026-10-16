@@ -243,13 +243,16 @@ describe("the words on a row", () => {
 
   it("asks about a line several people say, given to one (the one-click plan's answer 7, 2026-10-16)", () => {
     const g = [
-      { check: "group", speaker: "june", other: "marius", lines: ["a"] },
-      { check: "group", speaker: "narrator", other: null, lines: ["b"] },
+      { check: "group", speaker: "june", group: ["june", "marius"], lines: ["a"] },
+      { check: "group", speaker: "narrator", group: [], lines: ["b"] },
+      { check: "group", speaker: "marius", group: ["june", "marius", "ada"], lines: ["c"] },
     ];
-    const names = (id) => ({ june: "June", marius: "Marius", narrator: "Narrator" })[id] ?? id;
+    const names = (id) => ({ june: "June", marius: "Marius", ada: "Ada", narrator: "Narrator" })[id] ?? id;
     expect(checkTag(line("a", "june", { flags: [0] }), g)).toEqual({ text: "Said together", intent: "accent2" });
     expect(checkQuestion(line("a", "june", { flags: [0] }), g, names)).toBe("Said together by June and Marius — given to June. Is that right?");
     expect(checkQuestion(line("b", "narrator", { flags: [1] }), g, names)).toBe("No one could be named — given to Narrator. Who says it?");
+    // The whole group, as the answer named it (2026-10-16).
+    expect(checkQuestion(line("c", "marius", { flags: [2] }), g, names)).toBe("Said together by June, Marius and Ada — given to Marius. Is that right?");
   });
 
   it("says where Analyze's second look found a speaker, and asks to check it (2026-10-05)", () => {

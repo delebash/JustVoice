@@ -27,6 +27,12 @@
   once with a new seed, and one that still fails is flagged on its line. For now it runs through
   the API (`POST /v1/scenes/{id}/check_takes`); Render doesn't show its findings yet. Its limits are
   settings, `take_check` ([Studio → Checking takes](studio.md#checking-takes))
+- **A removed speaker stays out; "Said together" names the whole group (2026-10-16)** — removing
+  a speaker now puts the names the scans gave them on the book's ignore list (the question says
+  *… won't be suggested again*), so Discover shows them as Ignored and Make the audiobook doesn't
+  add them back; the cast card's Clear all ignores no one. Script's "Said together" question names
+  everyone the AI said speaks the line ([Studio → Removing a
+  speaker](studio.md#removing-a-speaker))
 - **Lines several people say are marked even when Analyze named one; direction carries less
   (2026-10-16)** — a line Analyze gave to one of a group (*"Sh! sh!"* — the Hatter and the March
   Hare) is now asked about and marked **Said together** like a blank one, when the words beside

@@ -1605,6 +1605,8 @@ export const ScriptFlag = T.Object({
   lines: T.Array(T.String()),
   turns: opt(T.Integer(), 0),
   other: opt(nullable(T.String()), null),
+  // "group": everyone the answer said speaks the line, in its order; [] = no one could be named.
+  group: opt(T.Array(T.String()), []),
 });
 
 /** Script's chapter page: the lines, their marks and the speakers. */

@@ -2024,7 +2024,7 @@ export function router() {
         project_id: scene.project_id,
         narrator_id: narratorId,
         lines,
-        flag_groups: groups.map((g) => ({ check: g.check, speaker: g.speaker, lines: g.lines, turns: g.turns, other: g.other })),
+        flag_groups: groups.map((g) => ({ check: g.check, speaker: g.speaker, lines: g.lines, turns: g.turns, other: g.other, group: g.group })),
         speakers,
       }),
     );
@@ -2190,6 +2190,33 @@ export function router() {
     return c.json(construct(GroupLinesResponse, await giveGroupLines(h, scene, { settings: getState().settings.get() })));
   });
   return app;
+}
+
+/**
+ * A speaker removed from the book stays out (decided 2026-10-16, the one-click run's leftovers 8):
+ * every name a chapter's scan gave that is this speaker (`names.match` — their name or an Also
+ * called) goes on the project's ignore list, so neither Discover nor the run's merge offers them
+ * again. → the names added; none when no scan found them. In the caller's transaction.
+ */
+export function ignoreScannedNames(h, projectId, speaker) {
+  const project = projectById(h, projectId);
+  if (project === null) return [];
+  const person = [{ id: speaker.id, name: speaker.name, aliases: speakerAliases(speaker) }];
+  const current = projectIgnored(project);
+  const have = new Set(current.map((n) => names.norm(n)));
+  const added = [];
+  for (const scene of h.all(`select * from ${Scene} where project_id = ?`, [projectId], Scene)) {
+    const saved = dget(_sceneMeta(scene), "discover");
+    for (const c of isDict(saved) && Array.isArray(saved.candidates) ? saved.candidates : []) {
+      const name = isDict(c) ? strip(pyStrOf(c.name ?? "")) : "";
+      if (!name || have.has(names.norm(name)) || names.match(name, person) === null) continue;
+      current.push(name);
+      have.add(names.norm(name));
+      added.push(name);
+    }
+  }
+  if (added.length) _setIgnored(h, project, current);
+  return added;
 }
 
 /** `project.discover_ignored = json.dumps(names) if names else None`. */

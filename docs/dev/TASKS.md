@@ -331,6 +331,46 @@ OPEN:   the user's ears on round 4's page, then the character-voice engine (the 
         `--quality-seeds`, `--whisper-model`); slices 1–6 are merged (5 as 4923ab57).
 GO:     given 2026-10-16.
 
+### The one-click run's leftovers, rethought (decided 2026-10-16)
+STATE:  DECIDED 2026-10-16 — after the gemma acceptances (RESEARCH §10.24), the recs shown for the
+        user's look were "think on your rec again"-ed; shown: "1. Slice 5's card and its words — I
+        never looked at the card on a real run … New rec: I take screenshots of the card on this
+        finished run, at 1280 and 390 px beside the mock. I list every difference, then you look.
+        2. 'Said together' — the question names only one other person … New rec: name the whole
+        group: 'Said together by the Hatter, the March Hare and the Dormouse — given to the Hatter.
+        Is that right?' 3. The take check's thresholds — the two flagged lines are the two
+        shortest … New rec: you listen to those two takes first. If they sound right, lines under
+        4 words are judged by length only, not by read-back. The numbers otherwise stay. 4. The
+        token estimate — it leaves out the step for lines with no single speaker … New rec: add
+        the missing step, show the figure as an upper bound ('up to about $0.34'), and calibrate
+        it after the first frontier run. 5. The Whisper normaliser port — NOT STANDARD … New rec:
+        keep the port, and prove it matches the original by running both over the 273
+        transcripts and the book's lines. This item needs your word on it by name. 6. Discover's
+        page merging names its own way … New rec: the page shows the server's merge (the stored
+        answer from the 'Merge found names' step), and the renderer copy goes. It's a design
+        change, so I'd draw it in the mock first. 7. No button to redo a step — I'm withdrawing
+        this rec … New rec: no button until someone needs one. 8. A removed speaker comes back on
+        a re-run … New rec: removing a speaker a scan found also ignores that name. Studio already
+        asks before removing; the question would add 'and won't be suggested again'. You can still
+        un-ignore on Discover. 9. Script's own Analyze isn't held off while the run works … New
+        rec: Script's buttons for a chapter wait while the run works on that chapter." The user:
+        "your rec go" (after "listening page done").
+WHY:    the leftovers of slices 2–6 named for the user's look at the end of the acceptances.
+NOT:    5 (NOT STANDARD — waits for its word by name); a redo button (7); the character-voice
+        engine (round 4's result — its own rec, shown the same turn, waits for its own go).
+BUILT:  2 — the "group" flag carries the whole group (`ScriptFlag.group`); Script asks "Said
+        together by June, Marius and Ada — given to Marius. Is that right?". 8 — `DELETE
+        /v1/speakers/:id?ignore=1` puts every scanned name that is them (`names.match`: their name
+        and Also called) on the book's ignore list; Cast's ✕ and Discover's removals ask "…, and
+        ‹name› won't be suggested again." (several: "They won't be suggested again.") and send it.
+        Docs studio.md (Removing a speaker, Said together), whats-new.
+OPEN:   1 after the graphics card is free (JustWrite's Lab run); 3 waits on the user's ears;
+        4, 6 (mock first), 9. For the user: the cast card's Clear all ignores no one (a gap — a
+        start-over shouldn't empty the next run's cast); a line given to the ONE person the
+        answer named still asks "No one could be named — given to ‹X›. Who says it?" (words
+        needed).
+GO:     given 2026-10-16 ("your rec go") for 1–4 and 6–9.
+
 ### The run's last questions, answered (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — shown, each with its rec: "1. Slice 4's proof test is NOT STANDARD.
         It keeps what the seven engines sent audio.cpp in our own JSON file. It allows only the

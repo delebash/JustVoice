@@ -10,9 +10,10 @@
 // A "line" is one row of GET /v1/scenes/{id}/script: {id, speaker_id, source,
 // confidence, spoken, speakable, marker, flags: [group index], changed,
 // prev_speaker_id, metadata, …}. A "group" is one of its flag_groups:
-// {check, speaker, lines: [id], turns, other}.
+// {check, speaker, lines: [id], turns, other, group}.
 
 import { facetCounts, facetOptions } from "./facets.js";
+import { andList } from "./newPersonas.js";
 
 /** The PATCH fields a line is restored from — everything a change touches. */
 function snapshot(line) {
@@ -458,8 +459,9 @@ export function checkQuestion(line, groups, nameOf, chapterWord = "chapter") {
     case "nearby":
       return `Found in a nearby ${chapterWord.toLowerCase()} — is it ${who}?`;
     case "group":
-      return g.other
-        ? `Said together by ${who} and ${nameOf(g.other)} — given to ${who}. Is that right?`
+      // The whole group, as the answer named it (2026-10-16: "name the whole group").
+      return (g.group || []).length > 1
+        ? `Said together by ${andList(g.group.map(nameOf))} — given to ${who}. Is that right?`
         : `No one could be named — given to ${who}. Who says it?`;
     default:
       return "";

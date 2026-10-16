@@ -39,9 +39,10 @@
   listed below as well. A row In this book has Remove from book, and ticked
   rows a "Remove N selected"; removing deletes the speaker from the book and
   its lines go back to No speaker, so it asks first, naming each one's lines
-  ("yes ask first", 2026-09-29). The row then shows as New again. The
-  "The book's speakers" card's ✕ and Clear all (which keeps the Narrator) ask
-  the same way.
+  ("yes ask first", 2026-09-29). The names the scans gave them go on the
+  ignore list, so the row then shows as Ignored and a re-run doesn't add them
+  back (2026-10-16). The "The book's speakers" card's ✕ asks the same way; its
+  Clear all (which keeps the Narrator) asks too but ignores no one.
 
   A book with narration needs a narrator (decided 2026-10-05): while it has
   none, the first row of Speakers found is Narrator — reads everything outside
@@ -382,21 +383,26 @@ async function unignore(names) {
 // Remove speakers from the book — a row's Remove from cast, "Remove N
 // selected", the cast card's ✕ or its "Clear all" (which keeps the Narrator).
 // Their lines go back to No speaker, so it asks first, naming each one's lines
-// ("yes ask first", 2026-09-29). True when they were removed.
+// ("yes ask first", 2026-09-29). `ignore` (all but Clear all): the names the
+// scans gave them go on the ignore list, so they aren't suggested again
+// (2026-10-16). True when they were removed.
 const castBusy = ref(false);
-async function removeSpeakers(people) {
+async function removeSpeakers(people, { ignore = true } = {}) {
   if (!people.length || castBusy.value) return false;
   const lines = people.reduce((n, p) => n + (p.lines || 0), 0);
+  const one = people[0].name;
   const ok = await confirmDialog(people.length === 1
     ? {
-      title: `Remove ${people[0].name} from this book?`,
-      message: lines ? `${plural(lines, "line")} will have no speaker.` : "",
+      title: `Remove ${one} from this book?`,
+      message: ignore
+        ? (lines ? `${plural(lines, "line")} will have no speaker, and ${one} won't be suggested again.` : `${one} won't be suggested again.`)
+        : (lines ? `${plural(lines, "line")} will have no speaker.` : ""),
       confirmLabel: "Remove",
       danger: true,
     }
     : {
       title: `Remove ${people.length} speakers from this book?`,
-      message: `${people.map((p) => `${p.name} — ${plural(p.lines || 0, "line")}`).join(" · ")}.${lines ? ` ${plural(lines, "line")} will have no speaker.` : ""}`,
+      message: `${people.map((p) => `${p.name} — ${plural(p.lines || 0, "line")}`).join(" · ")}.${lines ? ` ${plural(lines, "line")} will have no speaker.` : ""}${ignore ? " They won't be suggested again." : ""}`,
       confirmLabel: `Remove ${people.length}`,
       danger: true,
     });
@@ -405,11 +411,12 @@ async function removeSpeakers(people) {
   let failed = 0;
   for (const p of people) {
     try {
-      await api.request(`/v1/speakers/${p.id}`, { method: "DELETE" });
+      const got = await api.request(`/v1/speakers/${p.id}${ignore ? "?ignore=1" : ""}`, { method: "DELETE" });
+      for (const n of got?.ignored || []) if (!ignored.value.includes(n)) ignored.value = [...ignored.value, n];
     } catch { failed += 1; }
   }
   castBusy.value = false;
-  emit("cast-changed", { moved: lines });
+  emit("cast-changed", { moved: lines, ignored: ignore });
   pushToast({
     message: failed
       ? `${people.length - failed} removed from this book; ${failed} failed.`
@@ -642,7 +649,7 @@ async function ignore(c) {
         <span class="jv-hint">{{ cast.length }}</span>
         <UiButton v-if="clearable.length" intent="ghost" size="small" label="Clear all" :disabled="castBusy"
           title="Remove everyone but the Narrator from this book — asks first; their lines go back to No speaker"
-          @click="removeSpeakers(clearable)" />
+          @click="removeSpeakers(clearable, { ignore: false })" />
       </div>
       <div class="jv-card__body">
         <template v-for="g in castGroups" :key="g.key">

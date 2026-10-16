@@ -363,6 +363,8 @@ async function loadSpeakers(projectId = selectedProjectId.value) {
 // follow.
 async function onCastChanged(e) {
   await loadSpeakers();
+  // A removed speaker's names went on the book's ignore list (2026-10-16): Discover reads it from the project.
+  if (e?.ignored) await projectsStore.reload();
   if (e?.moved) await loadScenesForProject(selectedProjectId.value);
   // A narrator added from Script or Discover: its pages re-read their lines.
   if (e?.moved) scriptVersion.value += 1;

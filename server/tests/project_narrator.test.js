@@ -107,7 +107,7 @@ test("a_removed_narrator_takes_its_speaker_off_the_narration", async () => {
   ).json().id;
   let r = await c.delete(`/v1/speakers/${narratorId}`);
   expect(r.status).toBe(200);
-  expect(r.json()).toEqual({ deleted: true, lines: 1 });
+  expect(r.json()).toEqual({ deleted: true, lines: 1, ignored: [] });
   expect(await narrator(c, pid)).toBeNull();
   expect(await speakerOf(c, sid, line)).toBeNull();
 

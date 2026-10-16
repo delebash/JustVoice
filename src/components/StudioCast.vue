@@ -356,19 +356,23 @@ async function addSpeaker() {
 }
 
 // Removing deletes the speaker from the book, so it asks first, naming the
-// lines: "Remove Nettle from this book? 22 lines will have no speaker."
+// lines: "Remove Nettle from this book? 22 lines will have no speaker, and
+// Nettle won't be suggested again." — the names the scans gave them go on the
+// book's ignore list, so a re-run doesn't add them back (2026-10-16).
 async function removeSpeaker(s) {
   const ok = await confirmDialog({
     title: `Remove ${s.name} from this book?`,
-    message: s.lines ? `${plural(s.lines, "line")} will have no speaker.` : "",
+    message: s.lines
+      ? `${plural(s.lines, "line")} will have no speaker, and ${s.name} won't be suggested again.`
+      : `${s.name} won't be suggested again.`,
     confirmLabel: "Remove",
     danger: true,
   });
   if (!ok) return;
   try {
-    await projectsService.removeSpeaker(s.id);
+    const got = await projectsService.removeSpeaker(s.id, { ignore: true });
     if (selectedId.value === s.id) selectedId.value = null;
-    emit("changed", { moved: s.lines });
+    emit("changed", { moved: s.lines, ignored: got?.ignored?.length || 0 });
     pushToast({ kind: "success", message: `${s.name} removed from this book.` });
   } catch (e) {
     pushToast({ kind: "error", message: `Remove failed: ${e?.message || e}` });

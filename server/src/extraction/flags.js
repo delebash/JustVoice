@@ -62,13 +62,15 @@ export class Line {
 export class FlagGroup {
   /** `check`: "run" | "only" | "disagree" | "nearby" | "group"; `speaker`: whose line(s) these
    * are; `lines`: the ids marked; `turns` (run): how many turns with no reply; `other`
-   * (disagree): who the model said; (group): another of the group. */
-  constructor(check, speaker, lines = [], { turns = 0, other = null } = {}) {
+   * (disagree): who the model said; `group` (group): everyone the answer said speaks it, in its
+   * order ([] = no one could be named). */
+  constructor(check, speaker, lines = [], { turns = 0, other = null, group = [] } = {}) {
     this.check = check;
     this.speaker = speaker;
     this.lines = lines;
     this.turns = turns;
     this.other = other;
+    this.group = group;
   }
 }
 
@@ -153,7 +155,7 @@ export function flagGroups(lines, castIds, { openParagraphs = null, marks = null
     const w = ln.speaker;
     // A line with no single speaker given to one — always to check (the one-click plan's answer
     // 7), and first, so it is the question Script asks of the line.
-    if (Array.isArray(ln.group) && w) groups.push(new FlagGroup("group", w, [ln.id], { other: ln.group.find((g) => g !== w) ?? null }));
+    if (Array.isArray(ln.group) && w) groups.push(new FlagGroup("group", w, [ln.id], { group: ln.group }));
     // The second look named the speaker from a nearby chapter — always worth a look (decided
     // 2026-10-05: its answers are "marked to check"). First, so it is the question Script asks
     // of the line (its first mark).

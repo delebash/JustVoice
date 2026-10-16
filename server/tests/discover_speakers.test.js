@@ -286,6 +286,31 @@ test("ignore_is_remembered_across_scans_and_can_be_undone", async () => {
   expect((await c.get(`/v1/projects/${pid}`)).json().discover_ignored).toEqual([]);
 });
 
+test("removing_a_speaker_a_scan_found_ignores_their_names_when_asked", async () => {
+  // The one-click run's leftovers 8 (2026-10-16): a speaker removed from the book stays out —
+  // the names the scans gave them go on the ignore list, so a re-run's merge doesn't add them back.
+  const c = await makeClient();
+  const [pid, sceneId] = await _importProject(c);
+  _stub([{ name: "Gudgeon" }, { name: "Old Gudgeon" }, { name: "Tom Harlan" }]);
+  await _discover(c, sceneId);
+  const add = async (name) => (await c.post(`/v1/projects/${pid}/speakers`, { json: { name } })).json();
+  const gudgeon = await add("Gudgeon");
+  // Add keeps a merged spelling as Also called.
+  expect((await c.patch(`/v1/speakers/${gudgeon.id}`, { json: { aliases: ["Old Gudgeon"] } })).status).toBe(200);
+  const tom = await add("Tom Harlan");
+  const nobody = await add("Wren");
+
+  let r = await c.delete(`/v1/speakers/${gudgeon.id}?ignore=1`);
+  expect(r.status, r.text).toBe(200);
+  // Every scanned name that is them — their name and their Also called (`names.match`).
+  expect(r.json().ignored).toEqual(["Gudgeon", "Old Gudgeon"]);
+  expect((await c.get(`/v1/projects/${pid}`)).json().discover_ignored).toEqual(["Gudgeon", "Old Gudgeon"]);
+  // Without ?ignore (Clear all), or a name no scan gave: the list stays as it was.
+  expect((await c.delete(`/v1/speakers/${tom.id}`)).json().ignored).toEqual([]);
+  expect((await c.delete(`/v1/speakers/${nobody.id}?ignore=1`)).json().ignored).toEqual([]);
+  expect((await c.get(`/v1/projects/${pid}`)).json().discover_ignored).toEqual(["Gudgeon", "Old Gudgeon"]);
+});
+
 test("analyze_gets_speaker_aliases", async () => {
   // "Also called" reaches attribution: anchors.js and the prompt read `aliases`.
   const c = await makeClient();

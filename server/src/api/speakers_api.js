@@ -31,7 +31,7 @@ import {
   speakerAliases,
   speakerLineCounts,
 } from "./_speaker_helpers.js";
-import { RunUsage } from "./extraction_api.js";
+import { ignoreScannedNames, RunUsage } from "./extraction_api.js";
 import { _dirtyUpdate } from "./projects_api.js";
 import { sentBody } from "./settings_api.js";
 
@@ -208,22 +208,26 @@ export function router() {
 
   /** Remove a speaker from the book. Their lines go back to no speaker and their saved fixes
    * forget them; the persona that played them stays in the library. (Studio asks first —
-   * decided 2026-09-29.) */
+   * decided 2026-09-29.) `?ignore=1`: the names the scans gave them go on the book's ignore list
+   * too, so neither Discover nor the run offers them again (decided 2026-10-16) — `ignored`. */
   app.delete("/v1/speakers/:speaker_id", (c) => {
     const h = session.getDb();
     const id = c.req.param("speaker_id");
     const s = speakerById(h, id);
     if (s === null) throw notFound(`speaker ${id}`);
+    const ignore = ["1", "true"].includes(c.req.query("ignore") ?? "");
     const sceneIds = h.all(`select id from ${Scene} where project_id = ?`, [s.project_id]).map((r) => r.id);
     let lines = 0;
+    let ignored = [];
     h.tx(() => {
       if (sceneIds.length) {
         lines = h.update(Block, { speaker_id: null }, `scene_id in (${sceneIds.map(() => "?").join(", ")}) and speaker_id = ?`, [...sceneIds, s.id]).changes;
       }
+      if (ignore) ignored = ignoreScannedNames(h, s.project_id, s);
       h.update(SpeakerCorrection, { speaker_id: null }, { speaker_id: s.id });
       h.delete(Speaker, { id: s.id });
     });
-    return c.json({ deleted: true, lines });
+    return c.json({ deleted: true, lines, ignored });
   });
 
   /** Cast's ✕ Clear cast: every speaker loses its persona. The speakers stay. */

@@ -81,8 +81,9 @@ export const projectsService = {
   updateSpeaker(speakerId, body) {
     return withApi().patch(`/v1/speakers/${speakerId}`, body);
   },
-  removeSpeaker(speakerId) {
-    return withApi().del(`/v1/speakers/${speakerId}`);
+  // `ignore`: the names the scans gave them go on the book's ignore list too (2026-10-16).
+  removeSpeaker(speakerId, { ignore = false } = {}) {
+    return withApi().del(`/v1/speakers/${speakerId}${ignore ? "?ignore=1" : ""}`);
   },
   uncastAll(projectId) {
     return withApi().post(`/v1/projects/${projectId}/speakers/uncast`, {});

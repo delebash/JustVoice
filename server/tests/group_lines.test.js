@@ -96,11 +96,11 @@ describe("the narration that says several speak a line", () => {
 describe("Script's mark", () => {
   const say = (i, who, { group = null, source = "llm" } = {}) => new Line({ id: `d${i}`, speaker: who, text: "“Line.”", spoken: true, source, paragraph: i, group });
 
-  test("every line given this way is marked, first, with another of the group", () => {
+  test("every line given this way is marked, first, with the whole group", () => {
     const groups = flagGroups([say(0, "hatter", { group: ["hatter", "hare"] }), say(1, "narrator", { group: [] }), say(2, "alice"), say(3, "alice")], new Set(["hatter", "hare", "alice", "narrator"]));
-    expect(groups.filter((g) => g.check === "group").map((g) => [g.speaker, g.lines, g.other])).toEqual([
-      ["hatter", ["d0"], "hare"],
-      ["narrator", ["d1"], null],
+    expect(groups.filter((g) => g.check === "group").map((g) => [g.speaker, g.lines, g.group])).toEqual([
+      ["hatter", ["d0"], ["hatter", "hare"]],
+      ["narrator", ["d1"], []],
     ]);
     // First of the line's marks — the question Script asks of it (the hatter's only line too).
     expect(groups.filter((g) => g.lines.includes("d0")).map((g) => g.check)).toEqual(["group", "only"]);
@@ -167,10 +167,10 @@ test("a group line goes to one of the group, an unclear one to the narrator, bot
   const group = line("Not again");
   expect(group).toMatchObject({ speaker_id: speakers.Renn, source: "llm", confidence: null });
   expect(group.metadata.group_line).toEqual({ group: [speakers["Mara Vance"], speakers.Renn], model: "gemma" });
-  expect(page.flag_groups[group.flags[0]]).toMatchObject({ check: "group", speaker: speakers.Renn, other: speakers["Mara Vance"] });
+  expect(page.flag_groups[group.flags[0]]).toMatchObject({ check: "group", speaker: speakers.Renn, group: [speakers["Mara Vance"], speakers.Renn] });
   const unclear = line("Who goes there");
   expect(unclear.speaker_id).toBe(speakers.Narrator);
-  expect(page.flag_groups[unclear.flags[0]]).toMatchObject({ check: "group", speaker: speakers.Narrator, other: null });
+  expect(page.flag_groups[unclear.flags[0]]).toMatchObject({ check: "group", speaker: speakers.Narrator, group: [] });
   // Both count as To check; nothing is left that can't render.
   expect(page.chapter.no_speaker).toBe(0);
   expect(page.chapter.to_check).toBeGreaterThanOrEqual(2);
@@ -240,7 +240,7 @@ test("a line Analyze named: asked when its narration says several speak it — m
   const together = line("Not again");
   expect(together).toMatchObject({ speaker_id: speakers.Renn, source: "llm" });
   expect(together.metadata.group_line).toEqual({ group: [speakers["Mara Vance"], speakers.Renn], model: "gemma" });
-  expect(page.flag_groups[together.flags[0]]).toMatchObject({ check: "group", speaker: speakers.Renn, other: speakers["Mara Vance"] });
+  expect(page.flag_groups[together.flags[0]]).toMatchObject({ check: "group", speaker: speakers.Renn, group: [speakers["Mara Vance"], speakers.Renn] });
   // One says it: kept as Analyze gave it, unmarked.
   const one = line("Sit down");
   expect(one.speaker_id).toBe(speakers["Mara Vance"]);

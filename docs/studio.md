@@ -332,14 +332,20 @@ anyone. The persona that played them stays in your library. Because lines
 change, every door asks first, naming who goes and how many lines each has:
 
 - one speaker — *Remove Cael Ferren from this book? 21 lines will have no
-  speaker.*
-- several (**Remove N selected**, **Clear all**) — *Remove 2 speakers from this book? Cael Ferren — 21 lines · Nettle — 22 lines. 43 lines will have no
-  speaker.*
+  speaker, and Cael Ferren won't be suggested again.*
+- several (**Remove N selected**) — *Remove 2 speakers from this book? Cael Ferren — 21 lines · Nettle — 22 lines. 43 lines will have no
+  speaker. They won't be suggested again.*
+- everyone (the cast card's **Clear all**, which keeps the Narrator) — the same
+  question without the last sentence.
 
-After a removal the row stays in **Speakers found** and shows as **New** again
-(or **In your library**, if a persona has that name), with **＋ Add** to bring
-them back. Their lines show in Script as **No speaker** and block the render
-until each has a speaker again.
+A removed speaker stays out (since 2026-10-16): every name the scans gave them —
+their name and their *Also called* — goes on the book's ignore list, so the row
+shows as **Ignored** in **Speakers found**, and [Make the
+audiobook](#make-the-audiobook) doesn't add them back when it runs again.
+**Undo** on the row takes the name off the list. **Clear all** ignores no one:
+its rows show as **New** again (or **In your library**, if a persona has that
+name), with **＋ Add** to bring them back. Either way their lines show in
+Script as **No speaker** and block the render until each has a speaker again.
 
 ## Script
 
@@ -623,7 +629,7 @@ it was built:
 | A speaker's **only line** in the chapter | **Only line** | *Harbek's only line in this chapter — is it theirs?* |
 | **The book and the AI disagree** — the book's words named one speaker, the AI said another | **Book and AI differ** | *The book says Nettle, the AI says Marius — whose line is it?* |
 | **Found in a nearby chapter** — the [second look](#the-second-look) named the speaker of a line Analyze had left blank | **From a nearby chapter** | *Found in a nearby chapter — is it Odeline Marran?* Its first question, ahead of any other mark on the line |
-| **Said together** — a line [no one person says](#lines-with-no-single-speaker) was given to one of the people who say it, or to the narrator when no one could be named (since 2026-10-16) | **Said together** | *Said together by Hatter and March Hare — given to Hatter. Is that right?* — or *No one could be named — given to Narrator. Who says it?* |
+| **Said together** — a line [no one person says](#lines-with-no-single-speaker) was given to one of the people who say it, or to the narrator when no one could be named (since 2026-10-16) | **Said together** | *Said together by Hatter and March Hare — given to Hatter. Is that right?* — every one of the group named (*Said together by Hatter, March Hare and Dormouse — …*) — or *No one could be named — given to Narrator. Who says it?* |
 
 A speech that runs over several paragraphs — each opens a quote, only the last
 closes it — counts as **one** turn, so a long account never looks like three.
@@ -1068,9 +1074,10 @@ Each speaker's card shows:
   another, a second amber line says so: **⚠ speaks Korean — the book is
   English**. Every line that speaker has is sent in the persona's language, so
   this is the place to catch a speaker cast with a Korean persona in an English book;
-- **✕** (on hover) removes the speaker from the book. It asks first — *Remove Harbek from this book? 22 lines will have no speaker.* — because their lines go
-  back to no speaker ([Removing a speaker](#removing-a-speaker)). The persona
-  that played them stays in your library.
+- **✕** (on hover) removes the speaker from the book. It asks first — *Remove Harbek from this book? 22 lines will have no speaker, and Harbek won't be suggested again.* — because their lines go
+  back to no speaker and the names the scans gave them are ignored from then on
+  ([Removing a speaker](#removing-a-speaker)). The persona that played them
+  stays in your library.
 
 A **game project** lists its speakers in a table instead (Speaker · Role ·
 Persona), since a game can have hundreds. Click a row to select it.
