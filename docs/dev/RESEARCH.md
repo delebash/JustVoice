@@ -86,8 +86,8 @@ audio.cpp model in the app, built from audio.cpp's own files (§1.5 is what thos
 [`2026-10-13-narrowings-review/`](../plans/2026-10-13-narrowings-review/README.md) — every choice
 the implementer made that the approved words didn't, checked adversarially ·
 [`2026-10-13-adopt-everything-audiocpp.md`](../plans/2026-10-13-adopt-everything-audiocpp.md) —
-every audio.cpp speech model offered, the seven hand-wired engines on the same path (for the
-user's word).
+every audio.cpp speech model offered, the seven engines described by our own files on the same
+path (decided 2026-10-15; slice 4 built 2026-10-16, §1.6).
 User-facing half: [`../engines.md`](../engines.md).
 
 Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-platform.md`](../plans/2026-08-17-engine-roster-and-platform.md) ·
@@ -511,6 +511,86 @@ All *code*, our checkout at `55b150f4`, read 2026-10-11 — `../audio.cpp/webui/
   step (none given = the browser's step of 1), `bool` a switch, `choice` a select, `text` a text
   input (`native/src/routes/+page.svelte:3040-3077`). JustVoice's number box and its folded load
   options follow it (the adoption plan's E2, E4). — *code, 2026-10-15*.
+
+### 1.6 The seven engines described by our own files, on audio.cpp's path (slice 4)
+
+The adoption plan's slice 4 (`docs/plans/2026-10-13-adopt-everything-audiocpp.md` §5), built
+2026-10-16 (JustVoice `0e3a89bf`, branch `slice4`) on `catalog.json` as slice 1 left it (fork `jv` `4d2f1a2b`, models `f861648c`). All
+*code + tests, 2026-10-16* unless marked; the engines are `generated.ownEngine`, their notes each
+family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
+
+- **Read from audio.cpp's files now:** every download (repository, revision, files, sizes — one
+  per package; Qwen3-ASR's aligner as the companion package of its own precision), each model's
+  precisions, the task it registers as (its catalog entry's: Chatterbox Multilingual `clon`, Qwen3
+  VoiceDesign `vdes`, the rest `tts` / `asr`), the built-in voices and their default (Kokoro's 54
+  and `af_heart`, Kitten's 8 and `Leo`, Qwen3 CustomVoice's 9, Pocket's `alba`), the languages
+  (Qwen3's 10, Chatterbox's 23 with our fork's he/ru/zh/ja, Turbo's `en`, VoxCPM2's 30, Qwen3-ASR's
+  30), audio.cpp's piece budget (`text_chunk_size`: Chatterbox and Turbo 128, Kokoro 240 — also
+  Kokoro's `split_chars` — Kitten 400; `slot.FAMILY_BUDGET` gone) and the memory estimate
+  (`min_vram_gb`). (was: copied by hand into `engines/<id>/manifest.js` and `kokoro/voices.js` —
+  until 2026-10-16, the narrowings review F10.)
+- **Kept in our notes, with why:** our ids (engine, model, variant and voice — personas, takes,
+  prices and downloads on disk use them), the names and descriptions the app shows, voices'
+  genders and display names, and each voice's language as the app writes it (Kokoro's `fr`,
+  `en-US`, `pt-BR`, Kitten's `en-US` against the spec's `fr-fr`, `en-us`, `pt-br`, `en`: a
+  persona's language, and a take's cache key, are built from it); which Qwen3 checkpoint clones
+  (Base), speaks the 9 speakers (CustomVoice) or designs (VoiceDesign) — the spec lists all three
+  on one family and its voices on every entry; Pocket's other 19 presets (their files are in the
+  model repo, named by no spec package) and its one language per package; the measured facts
+  (`cpu_realtime`, `quality`, `split_chars` 200 for Qwen3 and VoxCPM2); Kyutai's terms on Pocket
+  cloning; and each engine's request (`slot.js`), which sends the names the pinned build reads
+  (v0.9.0-jv.5 reads only the old ones — `speaker`, `s3gen_cfg_rate`). "zh dialects" stays out of
+  VoxCPM2's and Qwen3-ASR's languages (a description; how to show it is open).
+- **The same, checked:** `server/tests/seven_engines_unchanged.test.js` compares against
+  `seven_engines_before.json`, written on main (5bcd223f) before the move — 40 persona requests
+  (`runtime._jsonBody`'s bytes, or the refusal's words), every model's registration, warm-up and
+  calibrating warm-up, Qwen3-ASR's transcriptions and alignment, a persona's saved settings as a
+  render reads them (`modelSettings`), and every model, voice and price key (`load_options`,
+  `split_chars`): all the same but what the decisions below change.
+- **Added (the plan's E6/E14/F5):** Qwen3-TTS Base 1.7B and VoxCPM2 at their original precision
+  (`-orig`, 4.5 GB and 5.0 GB); audio.cpp's own Turbo package (`chatterbox_turbo_q8_0`, 699 MB,
+  estimate 4 GB; its f16 file is missing at `f861648c`) — its built-in voice only, no voice
+  encoder, so no cloning (refused by name), named as audio.cpp's catalog names it whole, "Chatterbox
+  Turbo (tts)", since "Chatterbox Turbo" is our Turbo's; and QwenCleo-ASR (`qwencleo_asr_q8_0` /
+  `_f16`, 2.48 / 4.09 GB, `mohammedaly22/QwenCleo-ASR-GGUF` at `6884dc20`), with the aligner like
+  every Qwen3-ASR row. Pocket TTS French (`pocket_tts_french_q8_0` / `_bf16`, in the spec, not in
+  audio.cpp's own install choices) is not offered: its one preset, cosette, is Expresso's,
+  non-commercial — the only spec package of the seven's entries left out.
+- **QwenCleo-ASR:** Apache-2.0, "inheriting the Qwen3-ASR license terms"; its card names Egyptian
+  Arabic, Modern Standard Arabic and Arabic ↔ English code-switching, "Not optimized for
+  pure-English audio", and recommends the language hint "Arabic"; the card's and its GGUF repo's
+  language tags are `ar`, `en` (HF API). audio.cpp's doc: "Egyptian Arabic and Arabic-English
+  code-switching" (`docs/models/qwen3_asr.md:47-50`). Its languages in our notes: `ar-EG`, `en`, as
+  VoiceTut-TTS's (decided 2026-10-15); its request sends "Arabic" for either Arabic tag. — *web
+  (HF API, model card) + code, 2026-10-16*.
+- **Turbo's and Nano's own voice** (the plan's F4): a line with no clip and the model's own voice
+  goes as no voice (`{model, input, seed, options}`), as the warm-up always spoke; listed as
+  "Turbo (built-in)" and "Nano (built-in)", gender Not known (decided 2026-10-15, §7 question 6),
+  id `<model>_model_default`. Nano shares Turbo's conditioning (gap-1 §2), so it is likely the same
+  voice; not heard yet.
+- **Memory before a load** (the build's answer 3): the seven get `needOf` as every model — the
+  catalog entry's estimate or the files, whichever is more: Kokoro and Kitten 1 GB, Pocket 2,
+  Qwen3 Base 0.6B 5, the 1.7B checkpoints 8, Chatterbox Multilingual 12, VoxCPM2 6, Qwen3-ASR 0.6B
+  3 and 1.7B 6; our own conversions (CustomVoice 0.6B, Turbo, Nano) and QwenCleo have no estimate,
+  so their files decide. Auto weighs an unmeasured one by it (Chatterbox on an 8 GB card: "tries the
+  graphics card first", its files fitting); a measured price still decides first. A clone-only one
+  (Chatterbox Multilingual, Qwen3 Base) is priced after its first line (§7 answer 5). (was: none —
+  "memory not measured yet", Auto taking the card without a reason — until 2026-10-16.)
+- **The seven's settings at audio.cpp's ranges** (TASKS "Slice 3's six questions" 4,
+  `capability_details.atAudiocppRange`, ends from `generated.audiocppEnds`): Kitten's Speed from
+  0.01; Chatterbox's Top p, Min p and Decoder CFG, Turbo's and Nano's Temperature, Repetition
+  penalty and Top p, Qwen3's Detail temperature, VoxCPM2's Tries on a runaway and Runaway limit are
+  number boxes (audio.cpp gives no range). **Kept narrower than audio.cpp's, ours, so a saved value
+  stays valid:** Kokoro's and Kitten's Speed top 3 (audio.cpp's control list 2), Chatterbox's and
+  Qwen3's Repetition penalty top 4 (control list 2). **Kept above audio.cpp's bottom, the app's
+  floors:** every temperature and top-p from 0.05 (audio.cpp's 0 on Chatterbox's and Qwen3's
+  temperature, Qwen3's top-p and Detail top-p, and its spec's 0 on Qwen3's Detail temperature —
+  Qwen3 refuses a temperature of 0, Chatterbox divides by it, Turbo reads it as 1.0, Qwen3 reads a
+  top-p of 0 as no filter, §1.2), and VoxCPM2's tries from 1 (its request sends at least 1).
+- **A recogniser has no capability row:** Qwen3-ASR's variant ids (`qwen3-asr-1.7b-q8`) walked
+  `capability_details.lookup`'s suffixes to Qwen3-TTS's `qwen3` row; `lookup` now answers null
+  for every recogniser's variant, as it did for the generated ones. (was: Qwen3-TTS's row —
+  until 2026-10-16.)
 
 ---
 
@@ -2262,10 +2342,13 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   `../audio.cpp/src/models/fireredtts3/session.cpp:129-182`,
   [github.com/studio-dots-ai/dots.tts](https://github.com/studio-dots-ai/dots.tts),
   [github.com/FireRedTeam/FireRedTTS3](https://github.com/FireRedTeam/FireRedTTS3).
-- Wiring a new engine follows VoxCPM2's: a manifest (`engines/<id>/manifest.js`), an entry in
-  `engines/manager.js` `MANIFEST_MODULES`, a capability row, a `toSpeechRequest` branch in
-  `engines/audiocpp/slot.js`, the renderer's voice-maker notes, and the tests that count engines.
-  — *agent, 2026-10-11*.
+- Every engine is built from audio.cpp's files (`engines/audiocpp/generated.js`); a family that
+  needs more than its spec says gets it in its notes (`curated/<family>.js`): its direction, its
+  licence reading, a request branch in `engines/audiocpp/slot.js` only where the spec can't say it
+  (§1.6). (was: wiring a new engine followed VoxCPM2's — a manifest (`engines/<id>/manifest.js`), an
+  entry in `engines/manager.js` `MANIFEST_MODULES`, a capability row, a `toSpeechRequest` branch,
+  the renderer's voice-maker notes, the tests that count engines — *agent, 2026-10-11*; until
+  2026-10-16, the adoption plan's slice 4.) — *code, 2026-10-16*.
 - **By ear, blind (the user, 2026-10-11, the page's 62 answers; one seed per take, one listener):**
   each take rated against the book's description — *like the book / plain / wrong feeling* — and
   each voice *good / OK / bad*.
@@ -2927,7 +3010,7 @@ title; ten of 32 answers differ from it (eight until "Separate licence" was adde
   GLM-TTS (card MIT, code Apache-2.0), MioTTS, the three MOSS-TTS, Audio8, Irodori (its author on
   issue #32: "feel free to use it, including for commercial purposes"), Chatterbox (every output
   watermarked by Resemble's Perth — **wrong for JustVoice**: Resemble's own package adds it,
-  audio.cpp doesn't; no PerTh code in its `src/`, and `engines/chatterbox/manifest.js` says so —
+  audio.cpp doesn't; no PerTh code in its `src/`, and `curated/chatterbox.js` says so —
   corrected 2026-10-15), VoxCPM2 ("free for commercial use"), VoxCPM1 (Apache-2.0 and
   "free for commercial use", though its card's Risks section says "released for research and
   development purposes only" — read as a caution, ✓), Pocket TTS (CC-BY-4.0 behind Kyutai's gate,
