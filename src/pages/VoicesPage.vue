@@ -790,7 +790,7 @@ function voiceTypeVariant(kind) {
           :title="personasByVoice[row.id].map((p) => p.name).join(', ')">
           🎭 {{ personasByVoice[row.id].slice(0, 2).map((p) => p.name).join(", ") }}<template v-if="personasByVoice[row.id].length > 2"> +{{ personasByVoice[row.id].length - 2 }}</template>
         </span>
-        <span v-else class="jv-hint">— unused —</span>
+        <span v-else class="jv-hint voices-view__unused">— unused —</span>
       </template>
 
       <template #actions="{ row }">
@@ -881,6 +881,10 @@ function voiceTypeVariant(kind) {
 
 .voices-view__chips {
   display: inline-flex;
+  /* At phone width the five kinds wrap inside the strip; on one line they ran 60 px past a
+     390 px window and the page scrolled sideways (2026-10-15). */
+  flex-wrap: wrap;
+  max-width: 100%;
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: var(--r-control);
@@ -917,6 +921,13 @@ function voiceTypeVariant(kind) {
    the same cell while that voice plays — one object, not a button in one
    column and a player elsewhere on the page. */
 .voices-view__name-cell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+/* A long name wraps beside its ▶ (Name keeps its 240 px floor) so the row fits the lane: one
+   name ("LFM2.5-Audio 1.5B JP (built-in)", a test clone's) widened Name to 323 px, the table ran
+   39 px past a 1280 px window with the ⋯ menu cut off, and Used by was squeezed to three lines
+   ("— unused —") (2026-10-15). */
+.voices-view__name-cell > strong { white-space: normal; min-width: 0; }
+/* "— unused —" is one phrase: it keeps its line (it broke into three). */
+.voices-view__unused { white-space: nowrap; }
 .voices-view__transport { margin-left: 4px; }
 
 /* Columns sized to what they hold — otherwise six columns share the whole
