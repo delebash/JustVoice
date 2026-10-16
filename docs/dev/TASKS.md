@@ -283,6 +283,47 @@ BUILT:  15 — 8d7adf6. 1 — 1705ac9. 2 and 12 — the commit after 4371c9a (Au
 OPEN:   the rest of 1–16 as above; 3 and 13 with the engine slices (their files).
 GO:     given 2026-10-15 for 1–16.
 
+### Slice 2's acceptance findings: what each one gets (2026-10-15)
+STATE:  DECIDED 2026-10-15 under the user's "your rec go" for finishing the register and the
+        adoption plan ("rethink on anything you are really unsure of … otherwise complete
+        everything"). Seven findings and the run's own load faults (RESEARCH §10.15), each
+        researched at the source before deciding.
+WHY:    a model that's listed must speak or transcribe; a rule that sends a 3 GB model to the CPU
+        beside 0.6 GB of other use is wrong.
+NOT:    hiding a model that can be wired the way audio.cpp's own docs describe; changing the
+        2026-10-12 rule that a model needs its estimate or its files, whichever is more.
+BUILT:  6 and the load faults — 75af433b, kit 1401dc8: an unmeasured model whose estimate doesn't
+        fit beside other programs, but whose files do, is tried on the card first at its files
+        (the 2026-10-12 too-big rule, extended); an unload, and a load that unloads the model
+        before it, wait up to 6 s for the card to free; the kit's full AI stop releases only the
+        AI models' bookings; `POST /v1/engines/unload {}` unloads a recogniser loaded alone.
+        The 34 licence readings and the three wrong records — 19af47a3 (FireRedAudio's
+        recogniser reads Yes from its own RECOGNISER_LICENCE).
+OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the runtime: the fork's
+        dev build and every release bundle (fork work under way). 4 — F5-TTS's memory: upstream's
+        open PR #924 (frees evicted graphs, bounds the Vocos cache) into the fork, then size F5's
+        no_alloc graph contexts for metadata only, as on Windows the 12 GiB pool is committed
+        memory even on the card (fork work under way; measured through the app after).
+        1 — VieNeu hidden again: it needs SEA-G2P phonemes (a Rust library the release doesn't
+        build) and refuses to speak with no voice; the K2 listing waited on this check, and the
+        build's answer 13 (its "Can't copy a voice" note) goes with it — IDEAS: SEA-G2P in the
+        release. VibeVoice wired as audio.cpp's docs give it: each line of text as "Speaker 1:
+        …", the clip as its voice (`voice_ref`), clone-only (no voice of its own); MOSS-TTSD's
+        text and clip words tagged [S1] as its spec says (untested: 12 GB). 3 — Index-Echo
+        hidden from the recognisers (a Chinese speech translator: its text is timed captions with
+        a translation); MOSS-Transcribe-Diarize and VibeVoice-ASR Streaming give dictation the
+        plain words, from the response's parsed segments or turns. 5 — the model's notes name a
+        checkpoint's languages where it speaks fewer than its family (LFM2.5-Audio JP, GigaAM,
+        Kroko's English package, QwenCleo, the Habibi models), from audio.cpp's docs. 7 — a line's
+        language goes to MOSS-TTS v1.5, MOSS-TTSD and MOSS-VoiceGenerator as its English name in
+        `options.language` (their sessions read only that; a top-level language never reaches
+        them). Each after slice 3's code lands (the same files), then through the app.
+        For the user at the end: the topbar at 390 px (the page name gets 73 px, cut on every
+        page; hide the status word "Operational", 104 px, and keep its dot?); Voices at 390 (the
+        stacked filters leave the table about 105 px). To fix: Home (210 px) and Captures (106 px)
+        scroll sideways at 390.
+GO:     given 2026-10-15 ("your rec go").
+
 ### An audio.cpp update tests only the engines and models it adds; no full re-run (decided 2026-10-15)
 STATE:  DECIDED 2026-10-15 — during slice 2's acceptance (every model that fits 8 GB loads, speaks,
         reads back), asked "have we made any major changes since we last ran a test like this … why
