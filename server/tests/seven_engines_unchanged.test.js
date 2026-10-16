@@ -358,6 +358,9 @@ const CHANGED = {
   "asr.models.qwen3-asr-1.7b-f16.row.languages": "F10",
   "asr.models.qwen3-asr-0.6b-q8.row.languages": "F10",
   "asr.models.qwen3-asr-0.6b-f16.row.languages": "F10",
+  // Pocket TTS's description names French, cloning only (decided 2026-10-16, TASKS "Slice 5's
+  // findings: what each one gets" 2).
+  "pocket.engine.DESCRIPTION": "slice 5's findings 2",
 };
 // Slice 3's question 4 (decided 2026-10-15): the knobs audio.cpp gives a wider range, or none, take
 // audio.cpp's — a number box where an end is open; never narrower than ours, nor below the app's

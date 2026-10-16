@@ -78,6 +78,23 @@ test("auto_tries_the_card_first_when_the_files_fit_it_easily", async () => {
   expect(await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8")).toEqual(["gpu", want, true]);
 });
 
+test("auto_says_the_card_first_words_for_an_estimate_that_fits_the_card_only_without_the_margin", async () => {
+  // Decided 2026-10-16 (TASKS "Slice 5's findings: what each one gets" 3): Qwen3-TTS Base 1.7B —
+  // audio.cpp's 8 GB, the whole of an 8 GB card — said nothing after "Loads on the graphics card".
+  // Its 2.5 GB of files fit with the margin: the card-first words. Where it goes is unchanged.
+  const mgr = mgrFor();
+  const base = () => mgr.placementFor(mgr.getManifest("qwen3"), "tts", "qwen3-base-1.7b-q8");
+  const want =
+    "audio.cpp says it needs about 8 GB, but its files are about 2.5 GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU";
+  expect(await base()).toEqual(["gpu", want, false]);
+  // What other programs hold doesn't move it: its estimate stays the size weighed, as before.
+  vi.spyOn(EngineManager.prototype, "poolUsedMb").mockResolvedValue(6500);
+  expect(await base()).toEqual(["gpu", want, false]);
+  // Beside the AI model it is Auto's third step, as before: the AI model makes room.
+  aiOnCard();
+  expect(await base()).toEqual(["gpu", want, true]);
+});
+
 test("a_card_that_failed_or_a_price_it_cannot_hold_sends_the_model_to_the_cpu", async () => {
   const mgr = mgrFor();
   const want = "it didn't load on the graphics card — this may be slow on the CPU";

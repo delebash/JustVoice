@@ -98,7 +98,9 @@ export default defineConfig(() => {
       host: '127.0.0.1',
       port: 1430,
       strictPort: true,
-      hmr: { port: 1431 },
+      // JV_HMR_PORT moves the reload port, so a second renderer (`quasar dev -m spa --port 1440`,
+      // a mock while the app runs) never takes the app's 1431 (slice 5's findings 7, 2026-10-16).
+      hmr: { port: Number(process.env.JV_HMR_PORT) || 1431 },
       open: false
     },
 

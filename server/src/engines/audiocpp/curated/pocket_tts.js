@@ -39,7 +39,7 @@ export const ENGINE = {
   name: "Pocket TTS",
   description:
     "Kyutai's small cloning model — clones a voice from a short clip and speaks 20 preset voices, fast enough on the CPU. " +
-    "One model per language: English, German, Italian, Portuguese, Spanish. Runs in the audio.cpp speech runtime.",
+    "One model per language: English, German, Italian, Portuguese, Spanish, and French for cloning only. Runs in the audio.cpp speech runtime.",
   terms: {
     owner: "Kyutai",
     title: "Kyutai's terms for Pocket TTS",

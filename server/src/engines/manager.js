@@ -916,7 +916,14 @@ export class EngineManager {
     // seven engines described by our own files since 2026-10-15, the build's answer 3).
     const need = EngineManager._catalogNeedGb(m, variant);
     let cardFirst = "";
-    if (need && !prior && cardMb > 0 && need.gb * 1024 > cardMb) {
+    // Whether the card is weighed at the model's files (only an estimate past the whole card).
+    let atFiles = false;
+    const tooBig = Boolean(need) && need.gb * 1024 > cardMb;
+    // An estimate that fits the card only without the safety margin says the card-first words too,
+    // where the files fit with it — it said nothing (decided 2026-10-16, TASKS "Slice 5's findings:
+    // what each one gets" 3). Where it goes is unchanged: its estimate stays the size weighed.
+    const tight = Boolean(need) && need.by === "estimate" && need.gb * 1024 + margin > cardMb;
+    if (need && !prior && cardMb > 0 && (tooBig || tight)) {
       const card = Math.round(cardMb / 1024);
       const files = EngineManager._catalogFilesGb(m, variant);
       if (need.by === "estimate" && files !== null && files * 1024 + margin <= cardMb) {
@@ -926,9 +933,12 @@ export class EngineManager {
         cardFirst =
           `audio.cpp says it needs about ${need.gb} GB, but its files are about ${_gb(files)} GB, ` +
           "so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU";
-      } else {
+        atFiles = tooBig;
+      } else if (tooBig) {
+        // The files' size in the words every other size uses (_gb: 9.5, 12) — it said 10 beside the
+        // row's "needs about 9.5 GB" (TASKS "Slice 5's findings: what each one gets").
         const why = need.by === "files"
-          ? `its files are about ${Math.round(need.gb)} GB, more than this card's ${card} GB`
+          ? `its files are about ${_gb(need.gb)} GB, more than this card's ${card} GB`
           : `audio.cpp says it needs about ${need.gb} GB, more than this card's ${card} GB`;
         // Unlike Auto's other CPU step, this one asks no speed: say it, measured once it has
         // spoken (OmniVoice ran 17× slower than real time there; decided 2026-10-12).
@@ -945,7 +955,7 @@ export class EngineManager {
     // server, about 0.2 GB: accepted 2026-10-15, as per-process card memory isn't readable on
     // Windows.
     let size = prior || null;
-    if (size === null && need && cardMb > 0) size = (cardFirst ? EngineManager._catalogFilesGb(m, variant) : need.gb) * 1024;
+    if (size === null && need && cardMb > 0) size = (atFiles ? EngineManager._catalogFilesGb(m, variant) : need.gb) * 1024;
     const others = size !== null && size + margin <= cardMb ? await this._otherProgramsCardMb() : null;
     // The same for an estimate that fits the card but not beside other programs, where the files
     // do: the card first, at its files (2026-10-15 — Kitten TTS 2's 7 GB estimate plus the margin
