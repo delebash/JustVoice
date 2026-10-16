@@ -321,8 +321,12 @@ NOT:    a combined score (NOT STANDARD, RESEARCH §10.11); NeMo itself (Linux on
 BUILT:  the plan `docs/plans/2026-10-16-test-kit-and-round-4.md`; `npm run round4:render`; the
         four licences accepted through the app 2026-10-16 14:48 UTC and their 8-bit models
         downloading; one-click slice 1 (TASKS "Frontier models get their own recipe").
-OPEN:   round 4's second batch (rendering), the scores of all 2,700 takes and the blind page;
-        the one-click slices' acceptances on the GPU. The kit is built (3f9ca3ed; a pass per metric,
+        Round 4 rendered and scored 2026-10-16 (RESEARCH §10.22): Higgs +0.24 and Breeze +0.20
+        lead the emotion gain, IndexTTS 2.5 in words +0.10, CosyVoice3 and VoxCPM2 +0.06, the rest
+        about 0; IndexTTS's emotion vector moved nothing. The blind page with the top four:
+        claude.ai/artifact/5ar9XVsVy3mPWBf2vH2tch.
+OPEN:   the user's ears on round 4's page, then the character-voice engine (the plan's Q2:
+        `book_voices.clone_model`); the one-click slices' acceptances on the GPU. The kit is built (3f9ca3ed; a pass per metric,
         `--quality-seeds`, `--whisper-model`); slices 1–6 are merged (5 as 4923ab57).
 GO:     given 2026-10-16.
 

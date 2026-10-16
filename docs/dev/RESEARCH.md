@@ -4103,6 +4103,57 @@ time and the tokens written down, a restart resumed) ran with every model faked
 
 ---
 
+### 10.22 Round 4 — nine engine setups the authors' way, scored by the test kit (2026-10-16)
+
+The plan `docs/plans/2026-10-16-test-kit-and-round-4.md` §3. Through the app (`npm run round4:render`,
+the dev build bcc5dfbb = v0.9.2-jv.6), the Hatter's VoxCPM2 clip (slice 0's, with its words)
+copied to each model; Alice VII–VIII's 50 cue lines that name an emotion (shouted 18, sad 11,
+whispered 7, angry 6, fearful 5, contemptuous 2, happy 1), each told (the app's emotion plus its
+word — "shouting", "sad", "whispering", "frightened" … — reaching each model its own way) and not
+told, seeds 7, 8, 9: 300 takes an arm, 2,700 in all, none failed. Scored by `tools/take-check`
+(Whisper turbo read-back, WavLM speaker similarity to the clip, UTMOSv2 on seed 7, emotion2vec+ large,
+emo_vad, BS.1770 loudness); `npm run round4:report -- data/round4/score-a/out data/round4/score-b/out`.
+
+| Arm (how told) | Emotion gain, told − not [95% CI] | Heard as asked: told · not | Shouted / whispered Δ LUFS | WER told | Speaker sim told · not | UTMOSv2 told | s a take |
+|---|---|---|---|---|---|---|---|
+| Higgs Audio v3 TTS (tags) | +0.24 [0.12, 0.41] | 0.33 · 0.11 | +2.4 / −3.0 | 0.020 | 0.82 · 0.92 | 3.12 | 1.1 |
+| BreezeTTS 2 (instruction, guidance 4) | +0.20 [0.10, 0.34] | 0.28 · 0.07 | +4.7 / −7.8 | 0.045 | 0.84 · 0.91 | 2.81 | 10.9 CPU · 4.3 card |
+| IndexTTS 2.5 (emotion in words) | +0.10 [−0.04, 0.24] | 0.27 · 0.16 | +4.5 / +0.3 | 0.029 | 0.87 · 0.93 | 2.93 | 2.0 |
+| CosyVoice3 (its fixed sentences) | +0.06 [0.02, 0.15] | 0.11 · 0.04 | +3.1 / −3.9 | 0.041 | 0.90 · 0.93 | 3.27 | 1.5 |
+| VoxCPM2 (clip alone + "(…)") | +0.06 [0.01, 0.15] | 0.19 · 0.15 | +4.2 / +0.7 | 0.019 | 0.85 · 0.92 | 2.62 | 2.3 |
+| Chatterbox Turbo (its tags) | +0.02 [−0.02, 0.11] | 0.09 · 0.05 | 0.0 / −2.7 | 0.045 | 0.92 · 0.92 | 3.23 | 1.2 |
+| Chatterbox Multilingual (exaggeration 0.7, guidance 0.3) | +0.01 [−0.03, 0.06] | 0.07 · 0.05 | +1.1 / +1.2 | 0.049 | 0.92 · 0.93 | 3.25 | 1.8 |
+| IndexTTS 2.5 (the authors' emotion vector, weight 0.65) | 0.00 [−0.04, 0.08] | 0.17 · 0.16 | 0.0 / 0.0 | 0.017 | 0.93 · 0.93 | 3.39 | 2.0 |
+| Fish Audio S2 Pro (tags) | 0.00 [−0.03, 0.03] | 0.12 · 0.11 | +2.1 / −4.9 | 0.012 | 0.91 · 0.92 | 3.30 | 2.2 |
+
+- **Emotion gain** is emotion2vec+'s probability of the asked emotion (contemptuous read as
+  disgusted), told minus not told, per line then averaged — the kit's paired bootstrap. Angry
+  carries most of it (Higgs +0.69, Breeze +0.49, VoxCPM2 +0.27, CosyVoice3 +0.23); sad moves
+  little anywhere (Higgs +0.17, Breeze +0.07); fearful only on Breeze (+0.32, interval touching
+  0) and IndexTTS words (+0.19). Scorers agree with people on model averages, weakly on one take
+  (§10.11): this ranks, the ear decides.
+- **IndexTTS 2.5's documented way — a one-hot emotion vector at weight 0.65 — moved nothing the
+  scorer hears** (+0.00), against +0.10 for the emotion in words; a vector take differs from the
+  plain one (not byte-identical), but not toward the asked emotion. Shouted and whispered have no
+  category of its own, so those takes are the plain ones. The words way stays (its curated note's
+  "back to the words until a test says otherwise", E9). — *measured*.
+- **Acting costs likeness to the clip**: every arm that moves the emotion loses speaker similarity
+  when told (Higgs 0.92 → 0.82), the ones that barely act keep it (Turbo, Multilingual 0.92 → 0.92);
+  §10.11 notes WavLM similarity drops on emotional speech, so part of this is the measure.
+- **BreezeTTS 2 on an 8 GB card**: measured 7.3 GB at its peak (guidance 4 runs two passes), so
+  Auto sent it to the CPU (0.2× real time, 10.9 s a take) — with the 1 GB margin, even pinned to
+  GPU, it was refused. With speech's own 512 MB margin and a GPU pin honoured (decided 2026-10-16,
+  §2.3) it loads on the card: 4.3 s a take. Its 300 takes here were made on the CPU (the same model;
+  the speed is the card's number). Licence: commercial use No.
+- **Licences for the leaders**: Higgs, Breeze and Fish — commercial use No; IndexTTS — Unclear;
+  VoxCPM2 and CosyVoice3 — Apache-2.0 (§10.13).
+- **By ear**: the four the scores ranked highest that can carry the run — Higgs, Breeze, IndexTTS
+  2.5 in words, and VoxCPM2 (the plan's pick, Apache) — on 13 of the lines (two per emotion; six
+  of rounds 1–3's seven Hatter lines), blind, one seed per line; the clip and each voice's untold
+  takes for "same person". Page: claude.ai/artifact/5ar9XVsVy3mPWBf2vH2tch (collection `round4`; the
+  letters behind each take are in its data, revealed by its Show totals). Waiting on the user's
+  answers. — *measured, 2026-10-16* · `data/round4/` (gitignored).
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next
