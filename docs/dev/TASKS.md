@@ -861,9 +861,17 @@ BUILT:  the plan's §11 and §12 carry these answers. 6 and 7 — 2026-10-16, th
         `POST /v1/scenes/:id/group-lines` gives each spoken line Analyze left blank to one of the
         group the text names, else the narrator, flagged `group` (RESEARCH §10.19; docs studio.md,
         ai-features.md, whats-new). Accepted with the model stubbed (`one_click_alice.test.js`).
+        1 and 3 built 2026-10-16 as slice 3 ("your rec do
+        it all stop stoping and finish it all go!"): `book_voices/index.js`, three routes
+        (describe · design · match), the Local and Frontier rows of "Voices from the book",
+        settings `book_voices` (min_lines 3; Q2's engine is `clone_model`, voxcpm2, until round 4);
+        Smart-assign's matches cast on the server. RESEARCH §10.20; docs ai-features, personas.
 OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a blind listening page.
         7: the Check column's words for the `group` mark (its tag and question) — the user's, with
         the run's screen; slice 4's gemma acceptance, `npm run eval:speakers`, once the card is free.
+        Slice 3: its acceptance on the GPU (Alice VII–VIII, one call per step, the user listens);
+        the user's word on what it chose (RESEARCH §10.20): the match pool (personas playing no one
+        in the book), the persona note's words, a second book's "Narrator" cast by name.
 GO:     given 2026-10-11 ("yes your rec on all").
 
 ### The order of work after the research sweep (decided 2026-10-11)

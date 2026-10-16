@@ -501,14 +501,11 @@ async function smartAssign() {
             language: p.speaks || p.language || null,
             tone: p.note || null,
           })),
+          // The server casts each match (2026-10-16) — the cast the one-click run uses too.
+          apply: true,
         }),
       });
-      let count = 0;
-      for (const [speakerId, personaId] of Object.entries(r?.assignments || {})) {
-        if (!people.some((s) => s.id === speakerId) || !personaById.value[personaId]) continue;
-        await projectsService.updateSpeaker(speakerId, { persona_id: personaId });
-        count += 1;
-      }
+      const count = Object.keys(r?.applied || {}).length;
       task.setStats([...stats, `${count} applied`]);
       return { result: count, usage: r?.usage };
     });

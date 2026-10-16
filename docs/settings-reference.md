@@ -1,6 +1,6 @@
 # Settings reference
 
-The Settings model has fifteen sections. The ones with their own doc pages are
+The Settings model has sixteen sections. The ones with their own doc pages are
 linked; the rest are summarized here at the level the UI exposes them. (Renderer
 preferences — window/layout state — live separately under `/v1/prefs` and never
 need your attention; this page is the operator config under `/v1/settings`.)
@@ -20,6 +20,7 @@ need your attention; this page is the operator config under `/v1/settings`.)
 | `captures` | Dictation: push-to-talk chord, refinement, the speech-recognition model (`stt_model`) and capture language — see [Dictation](dictation.md). |
 | `mcp` | One field: the default voice for agent `speak` calls — see [MCP server](mcp-server.md). |
 | `take_check` | How the take check judges a take read back by speech recognition: `missed_share` (the share of a line's words the read-back may miss — skipped, or heard as other words — before the take fails; 0.2), `extra_share` (the share of the line's words it may hear again past its text — a repeat, a take that runs on; 0.2) and `min_words` (the fewest missed or extra words that fail a take, so one misheard name in a short line doesn't; 2). A take longer than the speech runtime's runaway limit (`engines.speech_runtime.runaway_s_per_char` and `runaway_min_s`) fails too. Starting points, not yet measured on real books — see [Studio → Checking takes](studio.md#checking-takes). |
+| `book_voices` | The one-click audiobook's voices step: `min_lines` (a speaker with at least this many lines in the book gets a voice made from the book; 3), `design_model` (`qwen3-vd`) and `clone_model` (`voxcpm2` — it must clone and still take direction), the Local recipe's reading in words (`speaker_words`, `narrator_words`; 2000 each) and `audition_words` (25) — see [AI features → Voices from the book](ai-features.md#voices-from-the-book). |
 | `app` | `primary_use_case` (the Welcome pick; re-pick here) and app-level toggles. |
 
 Sync's settings — this computer's name, the cloud folder, how often it syncs, letting your other

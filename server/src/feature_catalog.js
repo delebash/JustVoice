@@ -17,6 +17,8 @@ export const PREFER_LOCAL_FEATURES = new Set(["speaker_attribution", "speaker_di
 // lines around a group line) and keeps the preference with it.
 PREFER_LOCAL_FEATURES.add("speaker_merge");
 PREFER_LOCAL_FEATURES.add("speaker_group");
+// Voices from the book (slice 3) reads the book's text about each speaker and keeps it too.
+PREFER_LOCAL_FEATURES.add("book_voices");
 
 export const FEATURE_CATALOG = [
   // ANALYSIS order (user QC 2026-08-06): the plain single cards FIRST, the SPEAKER
@@ -74,4 +76,11 @@ export const FEATURE_CATALOG = [
   ),
   e("persona_rewrite", "Persona rewrite", "Rewrite text in a persona's voice.", "Editing"),
   e("voice_gender", "Voice gender guess", "Label fetched voices the dictionary doesn't know.", "Voices"),
+  // The one-click run's step 5 (slice 3): its rows are the two recipes (book_voices/prompts.js).
+  e(
+    "book_voices",
+    "Voices from the book",
+    "Describes each main speaker's voice from how the book shows them, and the narrator's from the book's genre and tone.",
+    "Voices",
+  ),
 ];

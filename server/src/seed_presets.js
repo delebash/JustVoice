@@ -17,6 +17,7 @@
 // seed writes what Python's does.
 
 import { pyFloatValue as F } from "@delebash/llm-runner/platform/pyjson";
+import { BOOK_VOICES_PRESETS, BOOK_VOICES_SAMPLES } from "./book_voices/prompts.js";
 
 export const DEFAULT_ENGINE_PRESETS = [
   { id: "p_extract", name: "Structured extraction", provider_id: "local-llamacpp", model: "", temperature: 0.2, position: 0 },
@@ -264,6 +265,8 @@ export const DEFAULT_FEATURE_PRESETS = {
   // Dictation cleanup — ONE chooser; the four section rows are pieces of the one composed
   // call and follow the feature ref.
   refine: "p_refine",
+  // Voices from the book — its three rows (book_voices/prompts.js).
+  ...BOOK_VOICES_PRESETS,
 };
 
 // Catch-all for an action with no ref (custom Lab actions before assignment).
@@ -455,4 +458,5 @@ export const DEFAULT_TEST_SAMPLES = [
         "- af_bella — preset voice",
     },
   },
+  ...BOOK_VOICES_SAMPLES,
 ];

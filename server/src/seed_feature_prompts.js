@@ -17,6 +17,7 @@
 
 import { FRONTIER_SYSTEM, FRONTIER_USER_TEMPLATE, LOCAL_SYSTEM, LOCAL_USER_TEMPLATE } from "./extraction/direction.js";
 import { SYSTEM as GROUP_LINES_SYSTEM, USER_TEMPLATE as GROUP_LINES_USER } from "./extraction/group_lines.js";
+import { BOOK_VOICES_PROMPTS } from "./book_voices/prompts.js";
 import { IDENTIFY_SYSTEM } from "./extraction/identify.js";
 import {
   FRONTIER_SYSTEM as MERGE_FRONTIER_SYSTEM,
@@ -295,4 +296,6 @@ Return only the JSON object.`,
 Return only the JSON object.`,
     json_mode: true,
   },
+  // ── voices from the book — the one-click run's step 5, its two recipes (slice 3) ──
+  ...BOOK_VOICES_PROMPTS,
 };

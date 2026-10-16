@@ -396,9 +396,8 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
   engine and the per-block re-render actuator; only the detector+diff is
   missing). Also live there: automatic alias/name-variant clustering ·
   attribution chunking with roster + last-N context (whole scenes go in one
-  prompt today) · length-sorted sub-batching + parallel TTS · the
-  persona-generation loop (LLM writes the description → `/v1/voices/design` →
-  auto-cast) · dialogue-only narrator-split mode · LLM emotion-tag insertion ·
+  prompt today) · length-sorted sub-batching + parallel TTS · dialogue-only
+  narrator-split mode · LLM emotion-tag insertion ·
   non-verbal sounds as pronounceable text · BookNLP deterministic cross-check
   (the disagreement-badge seam in `extraction/pipeline.py` is already built).
 - **2026-08-06 · Game pipeline design residue** — the seven design-target items
