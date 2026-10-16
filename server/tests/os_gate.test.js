@@ -16,7 +16,7 @@ test("every_manifest_declares_supported_oses_explicitly", () => {
   // No engine may rely on the all-three default — an inherited platform claim is a claim
   // nobody made.
   for (const [engineId, m] of manifests()) {
-    expect(Object.hasOwn(m.module, "SUPPORTED_OSES"), `${engineId}/manifest.js does not declare SUPPORTED_OSES`).toBe(true);
+    expect(Object.hasOwn(m.module, "SUPPORTED_OSES"), `${engineId} does not declare SUPPORTED_OSES`).toBe(true);
   }
 });
 

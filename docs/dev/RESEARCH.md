@@ -567,8 +567,8 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
   cloning; and each engine's request (`slot.js`), which sends the names the pinned build reads
   (v0.9.0-jv.5 reads only the old ones — `speaker`, `s3gen_cfg_rate`). "zh dialects" stays out of
   VoxCPM2's and Qwen3-ASR's languages (a description; how to show it is open).
-- **The same, checked** (the test held back from main until the user's word on it, NOT STANDARD —
-  TASKS "Slice 4's gaps" 9; at 58944ac6 on `slice4`): `server/tests/seven_engines_unchanged.test.js` compares against
+- **The same, checked** (NOT STANDARD, kept by the user's word by name, 2026-10-16 — TASKS "The
+  run's last questions" 1): `server/tests/seven_engines_unchanged.test.js` compares against
   `seven_engines_before.json`, written on main (5bcd223f) before the move — 40 persona requests
   (`runtime._jsonBody`'s bytes, or the refusal's words), every model's registration, warm-up and
   calibrating warm-up, Qwen3-ASR's transcriptions and alignment, a persona's saved settings as a
@@ -595,6 +595,15 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
   code-switching" (`docs/models/qwen3_asr.md:47-50`). Its languages in our notes: `ar-EG`, `en`, as
   VoiceTut-TTS's (decided 2026-10-15); its request sends "Arabic" for either Arabic tag. — *web
   (HF API, model card) + code, 2026-10-16*.
+- **Word timings for Arabic: neither of audio.cpp's aligners gives them as things stand.** The Qwen3
+  Forced Aligner covers zh, en, yue, fr, de, it, ja, ko, pt, ru, es (its catalog entry), so a
+  QwenCleo transcription has no word timings. audio.cpp's other aligner, `mms_forced_aligner`
+  (Meta's MMS-300M, 1,130 languages), takes only romanized words: its own normalization handles
+  Dutch and English and rejects other non-Latin text; `text_normalization=pre_romanized` takes the
+  caller's ASCII romanization (e.g. Uroman's). Its checkpoint is CC-BY-NC-4.0 and no audio.cpp GGUF
+  is published — convert locally (`../audio.cpp/docs/models/mms_forced_aligner.md`). So it would
+  need a romanizer and is non-commercial (§10.11 says the same of ctc-forced-aligner's default
+  model). — *fork docs + catalog, 2026-10-16*.
 - **QwenCleo-ASR's files are in two repositories' folders.** Its model is in
   `mohammedaly22/QwenCleo-ASR-GGUF` and Qwen3's aligner in `audio-cpp/audio.cpp-gguf`, so its
   download has two sources, and `speech_cache.fetchHfVariant` keeps each source in its own folder

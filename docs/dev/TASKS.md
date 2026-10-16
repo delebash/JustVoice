@@ -301,10 +301,47 @@ BUILT:  2026-10-15 — the register's recs: Script/Render/Export (7174737, 58569
         JustVoice server left on the app's port is asked to stop through /v1/shutdown, exits 0,
         and the app's server starts after it (the 15 s kill fallback not reached). Fixed on the
         way: the sidebar's Projects and Import labels had no locale key (029b7143).
-OPEN:   the jv.6 release — the user's command (the auto-mode check refused it), waiting on the
-        user's answer about Pocket's and Qwen3's GPU takes — then the pin; the questions the build
-        raised, to the user at the end; then the one-click plan.
+OPEN:   the jv.6 release — the user's command (the auto-mode check refused it) — then the pin;
+        the two mocks waiting on the user's look (TASKS "The run's last questions" 6 and 9); then
+        the one-click plan.
 GO:     given 2026-10-15 ("your rec go").
+
+### The run's last questions, answered (decided 2026-10-16)
+STATE:  DECIDED 2026-10-16 — shown, each with its rec: "1. Slice 4's proof test is NOT STANDARD.
+        It keeps what the seven engines sent audio.cpp in our own JSON file. It allows only the
+        changes it names with their decision, and new models only as additions. Vitest's
+        snapshots can only check 'exactly the same'. I held it out of main; it passed on the
+        branch. Rec: keep it, and I restore it. 2. CLAUDE.md lines 54 and 168 still point at
+        `engines/<id>/manifest.js`, which no longer exists. May I fix them? Rec: yes. 3. Pocket and
+        Qwen3 on the graphics card: a take can differ slightly with the longest line spoken since
+        load. The words are the same; VoiceDesign differs by one frame, and Pocket drifts after
+        2.5 s. (a) fix in the models (a small speed cost on Qwen3); (b) fix in ggml (changes every
+        model's output); (c) leave it and document it. Rec: (c), with (a) in IDEAS for after the
+        one-click plan. 4. jv.6. With (c), tag it yourself: ‹the command› Then I move the pin and
+        regenerate the catalog. 5. Topbar at 390 px. The page name gets 73 px and is cut off on
+        every page. Hide the status word 'Operational' and keep its dot? Rec: yes. 6. Voices at 390
+        px. The stacked filters leave the table about 105 px. Rec: fold the filters behind one
+        'Filters' button at phone width, drawn in the mock first. 7. 'Checkpoint' is audio.cpp's
+        own label for Chatterbox's v2/v3 choice. Rec: keep it. 8. New project's table headers,
+        'What lands' and 'Says who speaks?'. Rec: keep them. 9. The Effects chain editor mock is
+        ready for you at `#/mock/personas/<id>/effects` under `npm run dev`. It shows each step as
+        one compact row. Rec: build it like the mock once you've looked. 10. Devices on other
+        computers: two devices can share a name. Rec: leave it as documented. 11. Arabic gets no
+        word timings: Qwen3's aligner covers 11 languages, not Arabic. audio.cpp's multilingual
+        MMS aligner could cover the rest. Rec: IDEAS." The user: "your rec even for non standard
+        think on it again go".
+WHY:    the last items before the one-click plan; 1 is NOT STANDARD and got its word by name.
+NOT:    a change to ggml's shared code; the Voices fold or the Effects chain editor built before
+        the user has looked at its mock.
+BUILT:  2026-10-16 — 1: `seven_engines_unchanged.test.js` and `seven_engines_before.json`
+        restored from `slice4` 58944ac6, Kitten's seed (slice 5's findings 1) named among the
+        changes, with a check that the seed is the only knob added. 2: CLAUDE.md's two pointers.
+        3: documented since 4baf5d39; IDEAS "Pocket TTS and Qwen3 repeat on the graphics card".
+        7, 8, 10: kept as they are. 11: IDEAS "Word timings for Arabic"; at the source, the MMS
+        aligner turned out non-commercial and to need romanized words (RESEARCH §1.6).
+OPEN:   4 — the user's tag, then the pin. 5 — building. 6 — the mock, then the user's look. 9 —
+        the user's look.
+GO:     given 2026-10-16 ("your rec even for non standard think on it again go").
 
 ### The build's 16 questions: 1, 2, 7, 8 answered; 3, 4, 6 asked to explain (2026-10-15)
 STATE:  DECIDED 2026-10-15 (in part) — asked "what are we waiting on?", shown 16 questions, a rec
@@ -382,11 +419,13 @@ STATE:  DECIDED 2026-10-16 under the user's "your rec go" of 2026-10-15 (the sli
         yet" where the card can't be read or the model has no size (was empty — the agent had
         built only the model case, which no model reaches). 7. CLAUDE.md's two
         `engines/<id>/manifest.js` pointers — to the user (an agent asked; CLAUDE.md isn't edited
-        on an agent's word). 8. The persona mock's old Built-in/Tags reason — slice 5. 9. The
+        on an agent's word); the user's word 2026-10-16 (rec: fix them) — they point at
+        `engines/audiocpp/catalog.json` and `curated/<family>.js`. 8. The persona mock's old Built-in/Tags reason — slice 5. 9. The
         before-snapshot as our own JSON fixture with a write mode (`JV_SEVEN_BEFORE=write`), not
         Vitest's snapshots — NOT STANDARD, to the user by name. It ran green on `slice4` (58944ac6:
-        server 1256 + 2 skipped) and is held back from the merge until the user's word — the two
-        files stay in the branch's history, ready to restore.
+        server 1256 + 2 skipped) and was held back from the merge until the user's word; the
+        user's word by name 2026-10-16 ("your rec even for non standard think on it again go";
+        rec: keep it) — restored to main, Kitten's seed named among its changes.
         10. QwenCleo's languages `ar-EG` and `en` (VoiceTut's precedent), kept. 11. The worktree's
         two package-lock.json changes (the kit's package.json since moved on) — not slice 4's,
         left out.
@@ -395,9 +434,9 @@ WHY:    each gap was the slice's agent's to raise; the rule is to rethink and bu
 NOT:    a fork-only spec for Pocket's presets; Pocket's cosette offered.
 BUILT:  1–6 — on branch `slice4`, the commit after f73f5f2e (server 1255 + 2 skipped, unit 239,
         lint, family guard).
-OPEN:   7 and 9, to the user; the merge, then the GPU half (Pocket TTS French clones and reads
-        back among it).
-GO:     given 2026-10-15 ("your rec go"); 9 waits for its own word.
+OPEN:   none.
+GO:     given 2026-10-15 ("your rec go"); 7 and 9 on 2026-10-16 ("your rec even for non standard
+        think on it again go").
 
 ### Slice 5's findings: what each one gets (2026-10-16)
 STATE:  DECIDED 2026-10-16 under the user's "your rec go" of 2026-10-15 (the slice's agent's seven
@@ -581,8 +620,11 @@ BUILT:  2026-10-16 — fork `det`, merged into jv at bcc5dfbb: 7ec5c652 KittenTT
         `session.cpp:325-370`), and ggml's CUDA flash attention splits its sum by that size
         (`fattn-common.cuh:1057`), so the additions run in another order. A first load with no
         stored price warms up with an 800-character piece, which is why the first take differed.
-OPEN:   Pocket's and Qwen3's — to the user (a model-side fix, ggml's, or none); then jv.6.
-GO:     given 2026-10-15 ("your rec go").
+        Pocket's and Qwen3's, decided 2026-10-16 (TASKS "The run's last questions" 3): left as
+        they are and documented (docs/engines.md → The seed, since 4baf5d39); the fix in the
+        models is in IDEAS for after the one-click plan.
+OPEN:   none — jv.6 next (TASKS "The run's last questions" 4).
+GO:     given 2026-10-15 ("your rec go"); Pocket's and Qwen3's 2026-10-16.
 
 ### An audio.cpp update tests only the engines and models it adds; no full re-run (decided 2026-10-15)
 STATE:  DECIDED 2026-10-15 — during slice 2's acceptance (every model that fits 8 GB loads, speaks,

@@ -50,8 +50,10 @@ release's CPU build (`scripts/audiocpp-dsp-package.js`, Quasar's `beforeBuild`; 
 **One speech runtime runs every engine (since 2026-10-01).** Installing any engine — the
 runtime row on AI Settings → Speech engines — downloads the pinned audio.cpp build for this
 machine (`<data>/engines-runtime/audiocpp/`, binaries via the kit's `acquireRuntime`, which
-leaves upstream's Python reference scripts out) plus eSpeak NG; each engine is then a catalog
-(`server/src/engines/<id>/manifest.js`) of GGUF model files in the speech cache.
+leaves upstream's Python reference scripts out) plus eSpeak NG; each engine is then a family in
+audio.cpp's own catalog (`server/src/engines/audiocpp/catalog.json`, regenerated at the pinned tag
+by `scripts/audiocpp-catalog.js`) plus the model's notes (`server/src/engines/audiocpp/curated/
+<family>.js`), its GGUF model files in the speech cache.
 `docs/plans/2026-10-01-audiocpp-switch.md` is the record; `docs/engines.md` the user-facing
 half. Voice training (LoRA) was removed 2026-10-02 — no PyTorch anywhere.
 
@@ -165,7 +167,7 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 
 | Concern | Layer |
 |---|---|
-| TTS/STT models + the speech runtime | `server/src/engines/<engine>/manifest.js` (catalog) · `engines/audiocpp/` (runtime + request mapping) |
+| TTS/STT models + the speech runtime | `server/src/engines/audiocpp/catalog.json` (audio.cpp's catalog) + `curated/<family>.js` (the model's notes) · `engines/audiocpp/` (runtime + request mapping) |
 | Storage — settings, voices, profiles, projects, chapters, takes, generations, lexicons, personas, story items, renderer prefs | `server/src/storage/` + `database/` |
 | Render orchestration + cache | `server/src/render_core.js`, `api/render_chapter_api.js` |
 | Audio math — effects, speed/gain/pitch, joins, trim, resampling, analyzer, blends | our fork's `dsp/` (`audiocpp_dsp`), reached through `server/src/audio/dsp_client.js` |

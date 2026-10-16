@@ -6,6 +6,24 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-16 · Pocket TTS and Qwen3 repeat on the graphics card** — on the card their take
+  follows the longest line since the model loaded: their graphs are sized by it, and ggml's CUDA
+  flash attention splits its sum by that size (`fattn-common.cuh:1057`), so the additions run in
+  another order. The words stay the same; a VoiceDesign take was one 80 ms frame longer, a Pocket
+  take drifted after 2.5 s. The fix in the models: size those graphs to a fixed capacity from the
+  load (Qwen3's talker step graph, `talker.cpp:1862-1892`; Pocket's capacity controller,
+  `session.cpp:325-370`) — a small speed cost on Qwen3. Not ggml's shared kernels, which would
+  change every model's output. The user chose to leave it and document it for now, this fix after
+  the one-click plan (TASKS "The run's last questions" 3; RESEARCH §1.2).
+
+- **2026-10-16 · Word timings for Arabic** — QwenCleo-ASR transcribes Egyptian Arabic, but the Qwen3
+  Forced Aligner has no Arabic, so its lines get no word timings. audio.cpp's MMS-300M aligner
+  covers 1,130 languages but takes romanized words only (a romanizer such as Uroman before it),
+  its checkpoint is CC-BY-NC-4.0 (non-commercial) and has no published GGUF (RESEARCH §1.6). Worth
+  it only with a commercial-use aligner or the user's word on a non-commercial one. Meanwhile the
+  error could name the aligner's languages (TASKS "slice 4's GPU half"; the user's "IDEAS",
+  2026-10-16).
+
 - **2026-10-15 · VieNeu-TTS v3 Turbo through SEA-G2P in our fork's release** — VieNeu reads
   SEA-G2P phonemes, not text. audio.cpp's session takes ordinary text once
   `vieneu_v3_turbo.g2p_library` names the sea-g2p C library (Rust: `cargo build --release
