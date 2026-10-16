@@ -290,12 +290,20 @@ BUILT:  2026-10-15 — the register's recs: Script/Render/Export (7174737, 58569
         708b9d1, docgen 5506cac), P16 a restore as a new sync device (sync 35dc1d7, kit 4157d95,
         5f76cb9), the kit's shutdown route (f40d57b, kit 0b42f44 by JustWrite's session). The
         fork on upstream v0.9.2, pushed (85d97a43, then 68c3ead0/21607a3a/4d2f1a2b); adoption
-        slice 1, the catalog at v0.9.2 (439d904; RESEARCH §1.2, §1.4, §1.5).
-OPEN:   the jv.6 release (the auto-mode check refused to start the fork's release workflow — the
-        user's command), then the pin; the adoption plan's merge (2–5 built; 4 and 5 on branch
-        `slice4`), then slice 4's GPU half; the sync engine's two convergence
-        fixes (under way); P26's comparison; the questions the build raised; then the one-click
-        plan.
+        slice 1, the catalog at v0.9.2 (439d904; RESEARCH §1.2, §1.4, §1.5). Adoption slices 2–5
+        merged (aa10e4cf) and accepted through the app (slice 4's GPU half and its fixes, c1d419fd);
+        the sync engine's convergence fixes (sync 87dc877); P26's (answer 9: d6a055ba, df711fdc,
+        5b2cac89). The kit shell's three changes through the real window, 2026-10-16 (dev,
+        Playwright over CDP): a port another program holds — "Port 17494 is in use by another
+        program — close that program, then press Retry.", Retry starts the server and Home loads;
+        a data folder another server holds — "Another JustVoice server is using this data folder
+        (E:\Dev\Web\JustVioce\data) — stop it first.", Retry after that server stops loads Home; a
+        JustVoice server left on the app's port is asked to stop through /v1/shutdown, exits 0,
+        and the app's server starts after it (the 15 s kill fallback not reached). Fixed on the
+        way: the sidebar's Projects and Import labels had no locale key (029b7143).
+OPEN:   the jv.6 release — the user's command (the auto-mode check refused it), waiting on the
+        user's answer about Pocket's and Qwen3's GPU takes — then the pin; the questions the build
+        raised, to the user at the end; then the one-click plan.
 GO:     given 2026-10-15 ("your rec go").
 
 ### The build's 16 questions: 1, 2, 7, 8 answered; 3, 4, 6 asked to explain (2026-10-15)
