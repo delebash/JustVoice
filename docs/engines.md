@@ -28,8 +28,9 @@ measured on the same lines, seeds and settings before switching — see
 - **Speed.** Qwen3 renders about 7× faster (2.0× real time against 0.26×),
   Chatterbox about 2× (2.1× against 0.9×), and models load in seconds rather
   than half a minute.
-- **The same seed gives the same audio** on every engine but KittenTTS.
-  Before, only Qwen3 repeated itself.
+- **The same seed gives the same audio** — on every engine on the CPU, and on
+  the graphics card on all but KittenTTS and Pocket TTS (measured again on
+  2026-10-16; see [the seed](#the-seed)). Before, only Qwen3 repeated itself.
 - **One install instead of five.** No Python environments, no PyTorch
   download, nothing to rebuild when you move the install folder.
 
@@ -690,6 +691,10 @@ tags, or only pace, pitch and gain.
 | Someone's own voice in another language | Chatterbox Multilingual — 23 languages | No written direction, no tags |
 | Cloning, designing and written direction together | VoxCPM2 — 30 languages | The largest download (2.8 GB at 8-bit) |
 
+The Kitten row's *the same seed does not repeat the same audio* is the screen's
+wording from 2026-10-02; measured on 2026-10-16, KittenTTS repeats a take on the
+CPU and not on the graphics card ([The seed](#the-seed)).
+
 Each engine's *Best for* line, in the opened engine, says the same. Beyond these:
 
 - **Someone's own voice, acting each line's emotion** — IndexTTS 2.5: tested by
@@ -739,8 +744,10 @@ and reads a lexicon's exact pronunciations (IPA); its Japanese voices need the
 
 A small English model built to run without a graphics card, with eight built-in
 voices: Bella, Luna, Rosie and Kiki (female), Jasper, Bruno, Hugo and Leo (male).
-The same seed does not give it the same audio twice, so it offers no seed. It
-ships one download, already unquantized.
+It offers no seed — each take gets a new one — because on 2026-10-02 the same seed
+didn't repeat its take. Measured again on 2026-10-16, the same seed repeats it
+exactly on the CPU, where KittenTTS is meant to run, and not on the graphics card
+([The seed](#the-seed)). It ships one download, already unquantized.
 
 ### Pocket TTS
 
@@ -765,6 +772,9 @@ naming the model to load, rather than reading German with English sounds.
   doesn't offer it, and the other twenty have no French version: its row has
   CLONING and no BUILT-IN. It hasn't been timed on a CPU yet, so Auto doesn't
   send it there on speed (see [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu)).
+- **The same seed repeats a take on the CPU**, where Pocket TTS usually runs; on the
+  graphics card a take matches for its first few seconds and then drifts
+  ([The seed](#the-seed)).
 - **Its languages are not equally good.** Read back by a recogniser on
   2026-10-02, English, German and Italian came out clean; Portuguese and
   Spanish sometimes leave words out, depending on the seed — a long line in
@@ -1058,15 +1068,6 @@ On the seven engines described by our own files:
 | **Qwen3 Base** | ✓ | ✗ | ✗ | as above |
 | **Qwen3 VoiceDesign** | ✗ | ✗ | **✓ the description** | as above |
 
-Every engine but KittenTTS takes a **seed**: the same seed, text and settings
-give the same audio (measured on Kokoro, Qwen3 and Chatterbox on 2026-10-01 and
-on Pocket TTS on 2026-10-02). KittenTTS gave different audio for the same seed,
-so it offers none. Leave the seed empty — or 0 — and every take gets a new one,
-on every engine. The seed box goes up to the top the model's description gives
-(4,294,967,295 on most), else 2,000,000,000 (Kokoro; since 2026-10-15). Until 2026-10-04 an empty seed on Kokoro repeated the last
-seed it was sent, and VoxCPM2 and Chatterbox Turbo used a fixed one, so a new
-take there came out the same.
-
 Folded under **Advanced** (since 2026-10-15): Chatterbox Multilingual's **Top p**,
 **Min p** (drops sounds less likely than that share of the likeliest; 0.05, 0 =
 off) and **Decoder CFG** (how closely the audio decoder holds to the cloned voice;
@@ -1088,6 +1089,33 @@ penalty**, **Top p** and **Top k**, and VoxCPM2's **Tries on a runaway** and
 below it some models refuse the value or read it as no filter — and the tries at 1.
 Where audio.cpp's own range stops short of JustVoice's, JustVoice keeps its own, so a value a persona saved stays valid: **Repetition penalty** goes up to 4
 on Chatterbox and Qwen3 (audio.cpp's screen: 2).
+
+### The seed
+
+Every engine but KittenTTS offers a **seed**: the same seed, text and settings
+give the same take. Measured on 2026-10-16 through the app (seed 42, the same
+line, three or four takes each):
+
+- **Byte for byte the same, every time:** Kokoro, on the CPU and on the graphics
+  card; Qwen3-TTS CustomVoice; Qwen3-TTS Base 1.7B; Chatterbox Multilingual;
+  Chatterbox Turbo (a clone); VoxCPM2.
+- **The same on the CPU only:** KittenTTS and Pocket TTS. On the graphics card
+  KittenTTS's two takes were unrelated, and Pocket TTS's matched for the first
+  2.5 seconds and then drifted apart.
+- **Qwen3-TTS VoiceDesign:** its first take after a fresh load came out one 80 ms
+  frame longer than the next two, which were identical.
+
+A take made on the CPU and one made on the graphics card differ from each other,
+with the same seed. Every take read back word for word. (Before, the switch record
+measured Kokoro, Qwen3 and Chatterbox on 2026-10-01, and Pocket TTS on
+2026-10-02.) KittenTTS offers no seed — on 2026-10-02 its take didn't repeat — so
+each of its takes gets a new one.
+
+Leave the seed empty — or 0 — and every take gets a new one, on every engine.
+The seed box goes up to the top the model's description gives
+(4,294,967,295 on most), else 2,000,000,000 (Kokoro; since 2026-10-15). Until 2026-10-04 an empty seed on Kokoro repeated the last
+seed it was sent, and VoxCPM2 and Chatterbox Turbo used a fixed one, so a new
+take there came out the same.
 
 ### Direction, emotion and language on the seven
 

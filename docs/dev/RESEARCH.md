@@ -228,6 +228,19 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
 - **The app sends a random seed when none is set, or 0**, so "no seed" is a new take on every
   family. (was: nothing sent — Kokoro, Kitten, Turbo and VoxCPM2 repeated — until 2026-10-04.)
   — *code + tests, 2026-10-04* · `slot.py` `to_speech_request`; audit §13.5.
+- **The same seed repeats the take on every engine on the CPU, and on the graphics card on all
+  but Kitten and Pocket.** Through the app (main `d8cf3055`, runtime audio.cpp dev `8c9a6322`,
+  RTX 2070 SUPER 8 GB), seed 42, the same line, 3–4 takes each: byte-identical every time on
+  Kokoro (CPU and GPU), Qwen3 CustomVoice, Qwen3 Base 1.7B, Chatterbox Multilingual, Chatterbox
+  Turbo (a clone) and VoxCPM2; on the CPU, byte-identical on Kitten and Pocket; on the GPU, Kitten's
+  two takes unrelated (correlation about 0) and Pocket's identical for the first 2.5 s, then
+  drifting. A CPU take and a GPU take of the same seed differ (Kokoro, Kitten, Pocket). Qwen3
+  VoiceDesign: the first take after a fresh load one 80 ms frame longer than the next two
+  (correlation 0.99975), the next two identical. Every take read back word for word. F5-TTS repeats
+  since the fork's `8c9a6322` (§10.15). The app still offers Kitten no seed
+  (`capability_details.js` `kitten`, from the 2026-10-02 reading). (was: "every engine but
+  KittenTTS" repeats, Kitten never — 2026-10-01/02, the device not recorded — until 2026-10-16.) —
+  *measured, 2026-10-16* · the slice-4 GPU run's `phase1/json/renders.json` (scratch, not kept).
 - **Defaults inside audio.cpp:** Qwen3 temperature 0.9, top-k 50, top-p 1.0, repetition 1.05,
   `max_new_tokens` 8192 (the model's own `generation_config.json`); Chatterbox temperature 0.8,
   repetition 1.2, min-p 0.05, top-p 1.0 (upstream `mtl_tts.py` on master says the same); Turbo
