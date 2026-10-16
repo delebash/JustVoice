@@ -390,7 +390,7 @@ speaker dropdown on every row.
 | **Decided by** | why the line has its speaker — the evidence, not a category (below) |
 | **Text** | the line |
 | **Confidence** | how sure the AI said it was. A low number is worth a look; a high one is not proof — the AI has been 100 % sure and wrong. A line you set shows **—** |
-| **Check** | a tag — red **⚠ No speaker** where the line can't render; amber where it is only worth a look, naming the kind of check: **No reply**, **Only line**, **Book and AI differ** or **From a nearby chapter** (since 2026-10-15; one amber **To check** before) — then the question to ask, or why the line can't render |
+| **Check** | a tag — red **⚠ No speaker** where the line can't render; amber where it is only worth a look, naming the kind of check: **No reply**, **Only line**, **Book and AI differ**, **From a nearby chapter** or **Said together** (since 2026-10-15; one amber **To check** before) — then the question to ask, or why the line can't render |
 
 **Decided by** reads:
 
@@ -514,7 +514,7 @@ Script decides who says what, and how it is performed is [Render](#render).
 
 A mark tints the line and asks its question in the **Check** column, under an
 amber tag naming the kind of mark — **No reply**, **Only line**, **Book and AI
-differ**, **From a nearby chapter** (a line with no speaker says so there too,
+differ**, **From a nearby chapter**, **Said together** (a line with no speaker says so there too,
 under a red **⚠ No speaker** tag). It marks
 the shape the AI's mistakes take, measured on three answer-keyed books before
 it was built:
@@ -525,6 +525,7 @@ it was built:
 | A speaker's **only line** in the chapter | **Only line** | *Harbek's only line in this chapter — is it theirs?* |
 | **The book and the AI disagree** — the book's words named one speaker, the AI said another | **Book and AI differ** | *The book says Nettle, the AI says Marius — whose line is it?* |
 | **Found in a nearby chapter** — the [second look](#the-second-look) named the speaker of a line Analyze had left blank | **From a nearby chapter** | *Found in a nearby chapter — is it Odeline Marran?* Its first question, ahead of any other mark on the line |
+| **Said together** — a line [no one person says](#lines-with-no-single-speaker) was given to one of the people who say it, or to the narrator when no one could be named (since 2026-10-16) | **Said together** | *Said together by Hatter and March Hare — given to Hatter. Is that right?* — or *No one could be named — given to Narrator. Who says it?* |
 
 A speech that runs over several paragraphs — each opens a quote, only the last
 closes it — counts as **one** turn, so a long account never looks like three.

@@ -413,6 +413,8 @@ export const CHECK_TAGS = {
   only: "Only line",
   disagree: "Book and AI differ",
   nearby: "From a nearby chapter",
+  // A line with no single speaker, given to one (the one-click plan's answer 7, 2026-10-16).
+  group: "Said together",
 };
 
 /**
@@ -455,6 +457,10 @@ export function checkQuestion(line, groups, nameOf, chapterWord = "chapter") {
       return `The book says ${who}, the AI says ${nameOf(g.other)} — whose line is it?`;
     case "nearby":
       return `Found in a nearby ${chapterWord.toLowerCase()} — is it ${who}?`;
+    case "group":
+      return g.other
+        ? `Said together by ${who} and ${nameOf(g.other)} — given to ${who}. Is that right?`
+        : `No one could be named — given to ${who}. Who says it?`;
     default:
       return "";
   }
