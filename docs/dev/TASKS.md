@@ -470,6 +470,13 @@ OPEN:   6 (mock first); 4's calibration after the first frontier run; 1's differ
         studio.md (the marks). Answer 2 BUILT: the run's stop `all_ignored` (`book_run.allIgnored`,
         the card's "Every name the scans found is ignored — the book would be read in one voice.
         Undo some on Discover ➜"); docs studio.md (Make the audiobook).
+        Answers 3–4: the mock drawn (`src/pages/mock/MockDiscoverPage.vue`,
+        `src/services/mock/discoverMock.js`, route `mock/discover`; states unchecked · merging ·
+        merged (`&by=run`) · stale · failed · noscans). Argued against at the user's "did you think
+        adverserial on the two questions", shown: "before the AI checks, a name counted with 0 lines
+        joins nothing; it stays its own row. That is exactly your approved answer 4 … keep the mock
+        as drawn, the red failed tag and a normal line, and add no new style." The user: "your rec
+        go". Waiting on the user's look at the mock.
         Four follow-up answers, argued against at the user's "think on the questions again
         adverserially", shown: "1 … give it its own check, separate from 'Said together' … draft
         tag 'AI chose', question 'Analyze left it blank; the AI chose the Hatter from the text

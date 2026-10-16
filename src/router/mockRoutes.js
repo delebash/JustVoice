@@ -67,6 +67,16 @@ export const mockRoutes = [
     component: () => import("../pages/mock/MockOneClickPage.vue"),
     meta: { nav: "studio", lede: true },
   },
+  // Discover's Speakers found from the server's grouping of the scans' names, with Merge found
+  // names (decided 2026-10-16, TASKS "The one-click run's leftovers, rethought", item 6 and
+  // answers 3–4): ?state=unchecked|merging|merged|stale|failed|noscans, ?by=run (merged and stale
+  // by Make the audiobook). The build waits for the user to look at it.
+  {
+    path: "mock/discover",
+    name: "mock-discover",
+    component: () => import("../pages/mock/MockDiscoverPage.vue"),
+    meta: { nav: "studio", lede: true, step: "discover" },
+  },
   // Engine list slice 4 (2026-10-11): Speech engines with every audio.cpp model, its licence,
   // status, testing, memory fit, filters and sort; since the adoption plan's slice 5 (2026-10-16)
   // the seven engines described by our own files built like every other, from the server's own
