@@ -4439,6 +4439,59 @@ work togetther to get us the voice we want".
   output audio from text sentiment"). Whether VoiceDesign whispers and shouts on a held voice is
   unmeasured.
 
+### 10.28 Qwen3 CustomVoice speaking our voice — what the "graft" really is (2026-10-16)
+
+*agent, 2026-10-16* — a research agent reading source: the MIT C engine
+github.com/gabriele-mastrapasqua/qwen3-tts (commit ef339be5), the official QwenLM/Qwen3-TTS Python
+(022e286b) and our fork (`../audio.cpp`, `jv` at bcc5dfbb); GGUF headers read locally. For round
+6b's step 3 (TASKS "Round 6b").
+
+- **The C engine's default "graft" holds no reference audio frames.** Frames are saved only with a
+  transcript (`main.c:2155`, `:2738`); its own doc: "our voices are NOT 'ICL' voices … store **0
+  ref_codes** … what `--icl-only` actually keeps … is the **8 KB x-vector** (+ the TPAD/WOVR
+  overrides)" (`docs/icl-graft-portability.md:51-56`). A `.qvoice` holds the ECAPA x-vector (2048
+  floats on 1.7B), optional transcript and frames, and Base's tts_pad/bos/eos and text_projection
+  plus Base's codec rows 0..2047, which replace CustomVoice's on load (`main.c:2334-2346`). Made on
+  Base only — CustomVoice has no ECAPA (`main.c:2141-2142`).
+- **The prompt** (`qwen_tts.c:1070-1486`, the official layout): the instruct first (`<|im_start|>user
+  …<|im_end|>`), the role, the codec prefix with **the x-vector in the speaker slot** where
+  CustomVoice puts a preset's row — rescaled to preset row 3061's norm (not official) — then, with
+  frames, reference text + target text + eos, then the reference frames' 16-codebook embeddings.
+- **Their results:** with the x-vector graft, instruct works at about half a preset's strength —
+  "a naturally calm cloned voice gives *irritated/passive-aggressive* anger and a *veiled* sadness
+  … (instruct response is ~half a preset's)" — and "gender / age / dialect barely move"
+  (`docs/archive/expressivity.md`). **With real reference frames on CustomVoice, "Emotion barely
+  moves … the ref_codes are a very strong prosody anchor … and they damp the instruct"**
+  (`icl-graft-portability.md:177-181`); frames also carry the recording's room. The author's
+  current emotion method on clones is a fine-tune pack plus a steering vector plus the instruct:
+  "Neither alone is enough on a clone" (`emotions-on-cloned-voices.md:71`); "Instruct is
+  Chinese-tuned and weak on EU" (archive); README "beta" is that recipe. Instruct wording: vivid
+  English or Chinese prose; slot templates fail; too strong "can destabilise (noise)"; temperature
+  ~0.9 (low flattens); aggressive sampling "can break EOS → runaway". 0.6B ignores instruct.
+- **Official Python:** the model-level `generate()` already combines instruct with a voice-clone
+  prompt (`modeling_qwen3_tts.py:2076-2106`, `:2170-2197`); only the wrappers block it
+  (`qwen3_tts_model.py:401-407`, `:548-554`, `:788-800`); CustomVoice has `speaker_encoder = None`
+  (`:1822-1825`). Qwen: "our base model does not currently support instruct" (#25); clone +
+  instruct promised as Qwen3-TTS-25Hz-1.7B-VoiceEditing (#14) — not released.
+- **Our fork:** Base's clone prompt `prompt_tts_voice_clone.cpp:32-61`, the x-vector into the
+  speaker slot `talker.cpp:645`, no instruct on that branch (CustomVoice/VoiceDesign add it at
+  `talker.cpp:576-584`); routing `session.cpp:648-675` (Base: voice_ref, reference_text,
+  x_vector_only_mode) and `:691-710` (CustomVoice: speaker, instruct); encoders built for Base only
+  (`:368-381`). Measured from the GGUFs: CustomVoice 1.7B Q8 **contains the speech-tokenizer
+  encoder** (225 tensors, ~117 MB) but **none of the 76 `speaker_encoder.*` (ECAPA)** tensors (~24 MB
+  in Base Q8); CustomVoice's 9 speaker rows have norm 13.9–15.6 where Base's are ~0.022; codec rows
+  0..2047 cosine 0.998 (min 0.994), text_projection 0.999, talker layers 0.997–0.999 — close to Base,
+  not identical.
+- **The smallest fork change** (the agent's plan, not built): in the clone branch prepend the
+  instruct rows (`talker.cpp` ~:639); in `session.cpp` let a CustomVoice request with `voice_ref`
+  fill the clone input, keep its instruct, the speaker optional; build CustomVoice's speech encoder
+  from its own file and the ECAPA from the Base GGUF named by a new session option (e.g.
+  `qwen3_tts.speaker_encoder_model`, Base on disk, not loaded; encoders run on the CPU — host RAM,
+  not VRAM); A/B both x-vector-only and reference-frame modes; a unit test that the CustomVoice
+  clone prefill equals Base's with the instruct rows prepended. JustVoice: `curated/qwen3_tts.js`
+  CustomVoice rows `clone: false` (`:94-110`), `slot.js:969-982` ("the CustomVoice model cannot
+  clone"), `capability_details.js`.
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next
