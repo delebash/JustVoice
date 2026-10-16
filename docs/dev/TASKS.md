@@ -357,6 +357,15 @@ OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the
         language goes to MOSS-TTS v1.5, MOSS-TTSD and MOSS-VoiceGenerator as its English name in
         `options.language` (their sessions read only that; a top-level language never reaches
         them). Each after slice 3's code lands (the same files), then through the app.
+        The plan's own findings, decided the same way: IndexTTS2 reads its language only from
+        options too (IndexTTS2.5's Japanese, Spanish and Arabic lines went without it), so its
+        spec's code goes in `options.language`; VoiceTut lists `ar-EG` and `en` (the tag Habibi's
+        Egyptian model uses; no language is sent, as today, since OmniVoice's list has no
+        `ar-EG`); IndexTTS2 v2 zh/en; the base LFM2.5-Audio en; Habibi's dialects as region tags,
+        MSA `ar-001`; QwenCleo with slice 4; a recogniser's per-model list changes its row and
+        what's offered, not its request, so audio.cpp's own refusal stays (LFM2 JP ASR given
+        `en`); audio.cpp's web page sends MOSS's language top-level too, where it never reaches
+        MOSS (an upstream bug, recorded, nothing posted).
         For the user at the end: the topbar at 390 px (the page name gets 73 px, cut on every
         page; hide the status word "Operational", 104 px, and keep its dot?); Voices at 390 (the
         stacked filters leave the table about 105 px). Home (210 px) and Captures (106 px) scrolled
