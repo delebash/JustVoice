@@ -608,6 +608,16 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
   we don't offer). A Pocket model with no preset now has no warm-up, and its first line sets its
   price (§7 answer 5); the other languages' warm-up is the same request. (was: alba for every
   language — until 2026-10-16.) — *code (fork `bcc5dfbb`) + tests, 2026-10-16* · `slot._warm`.
+- **A built-in voice speaks the languages of the versions that carry it.** A voice's languages
+  (`voice_model.describe`, what `/v1/voices`, the persona page, Cast's filters and a persona's
+  save read) were every version of its model's: Pocket's twenty presets listed French, which
+  only the French model speaks, and it has none of them — so a persona on a preset could be
+  saved in French and was refused at its first line. A preset now lists the languages of the
+  rows whose `audiocpp.voices` carry it (`presetSpeaks`): English, German, Italian, Portuguese
+  and Spanish; a Pocket clone all six. Every other model's built-in voices are on all its
+  versions, so theirs are as before; a model whose rows list no voices keeps every version's.
+  (was: every version's — until 2026-10-16.) — *code + tests, 2026-10-16* · `voice_model.js`
+  `presetSpeaks`; the persona mock's snapshot re-taken.
 - **Turbo's and Nano's own voice** (the plan's F4): a line with no clip and the model's own voice
   goes as no voice (`{model, input, seed, options}`), as the warm-up always spoke; listed as
   "Turbo (built-in)" and "Nano (built-in)", gender Not known (decided 2026-10-15, §7 question 6),

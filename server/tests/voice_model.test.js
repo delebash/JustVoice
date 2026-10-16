@@ -59,6 +59,32 @@ test("a_kokoro_voice_speaks_only_its_own_language", async () => {
   expect(heart.speaks).toEqual([heart.language]);
 });
 
+test("a_pocket_preset_speaks_the_languages_of_the_models_that_carry_it_not_french", async () => {
+  // Slice 4's GPU half (2026-10-16): Pocket TTS French clones only (TASKS "Slice 4's gaps" 2), so
+  // none of the twenty presets speaks French — yet they listed it, so a persona on one could be saved
+  // in French and then be refused at its first line.
+  const { c } = await appClient();
+  const listed = await voices(c);
+  expect(listed.pocket_alba.speaks).toEqual(["en", "de", "it", "pt", "es"]);
+  expect(listed.pocket_vera.speaks).toEqual(["en", "de", "it", "pt", "es"]);
+  let r = await c.post("/v1/personas", { json: { name: "Alba en français", voice_id: "pocket_alba", language: "fr" } });
+  expect(r.status).toBe(400);
+  expect(r.json().detail).toBe("Pocket TTS can't speak fr with this voice — it speaks en, de, it, pt, es.");
+  r = await c.post("/v1/personas", { json: { name: "Alba auf Deutsch", voice_id: "pocket_alba", language: "de" } });
+  expect(r.status, r.text).toBe(201);
+  expect(r.json().speaks).toBe("de");
+  // What a render reads says the same.
+  expect((await vmod.voiceModel(getState(), "pocket_alba")).speaks).toEqual(["en", "de", "it", "pt", "es"]);
+  // A clone speaks all six, French among them.
+  r = await c.post("/v1/voices/clone", { json: { engine: "pocket", model: "pocket", name: "Hatter", ref_wav_b64: b64(wav(6)), language: "fr" } });
+  expect(r.status, r.text).toBe(201);
+  expect(r.json().speaks).toEqual(["en", "de", "it", "pt", "es", "fr"]);
+  // Every other model's built-in voices speak what they spoke: every version carries them.
+  expect(listed.Sohee.speaks).toEqual(vmod.modelSpeaks("qwen3", "qwen3-cv"));
+  expect(listed.kitten_leo.speaks).toEqual(["en-US"]);
+  expect(listed["chatterbox-turbo_model_default"].speaks).toEqual(["en"]);
+});
+
 test("a_clone_stores_the_model_it_was_made_for", async () => {
   const { c } = await appClient();
   const r = await c.post("/v1/voices/clone", {

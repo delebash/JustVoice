@@ -774,7 +774,9 @@ naming the model to load, rather than reading German with English sounds.
 - **Pocket TTS French clones only** (since 2026-10-16). Kyutai's one French
   voice, Cosette, is from a recording that forbids commercial use, so JustVoice
   doesn't offer it, and the other twenty have no French version: its row has
-  CLONING and no BUILT-IN. With no voice of its own to speak a warm-up in, it
+  CLONING and no BUILT-IN, and the presets list English, German, Italian,
+  Portuguese and Spanish — not French — on the Voices page and the persona page,
+  so a persona on one can't be saved in French (since 2026-10-16). With no voice of its own to speak a warm-up in, it
   measures its memory on its first line, like the other models that speak only
   from a clip (see [How fast, and how much memory](#how-fast-and-how-much-memory)).
   It hasn't been timed on a CPU yet, so Auto doesn't

@@ -1,5 +1,5 @@
 {
- "_source": "The server's own answers for the seven engines described by our own files (Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Speech recognition), computed from this checkout's code on 2026-10-16 (da25ad3e) by scripts/mock-snapshots.js, the pinned speech runtime taken as installed: /v1/engines/capabilities, /v1/voices (presets), /v1/engines (terms), /v1/effects/catalog. Model languages: what /v1/voices says each model speaks; versions: /v1/voices/{id}/model-version's rows.",
+ "_source": "The server's own answers for the seven engines described by our own files (Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Speech recognition), computed from this checkout's code on 2026-10-16 (80764e12) by scripts/mock-snapshots.js, the pinned speech runtime taken as installed: /v1/engines/capabilities, /v1/voices (presets), /v1/engines (terms), /v1/effects/catalog. Model languages: what /v1/voices says each model speaks; versions: /v1/voices/{id}/model-version's rows.",
  "capabilities": {
   "kokoro": {
    "engine_id": "kokoro",
@@ -2517,8 +2517,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2538,8 +2537,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2559,8 +2557,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2580,8 +2577,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2601,8 +2597,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2622,8 +2617,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2643,8 +2637,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2664,8 +2657,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2685,8 +2677,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2706,8 +2697,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2727,8 +2717,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2748,8 +2737,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2769,8 +2757,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2790,8 +2777,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2811,8 +2797,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2832,8 +2817,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2853,8 +2837,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2874,8 +2857,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2895,8 +2877,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },
@@ -2916,8 +2897,7 @@
     "de",
     "it",
     "pt",
-    "es",
-    "fr"
+    "es"
    ],
    "design_prompt": null
   },

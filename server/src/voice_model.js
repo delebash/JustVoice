@@ -158,13 +158,27 @@ export function directedBy(model) {
   return SLIDERS;
 }
 
-/** Every language the family's variants list, in first-seen order. */
-export function modelSpeaks(engineId, model) {
+/** Every language the family's variants list, in first-seen order — of the variants `keep`
+ * accepts, where given. */
+export function modelSpeaks(engineId, model, keep = null) {
   const out = [];
   for (const row of _familyRows(engineId, model)) {
+    if (keep && !keep(row)) continue;
     for (const lang of row.languages || []) if (!out.includes(lang)) out.push(lang);
   }
   return out;
+}
+
+/** The languages a built-in voice speaks: those of the family's variants that carry it (a row's
+ * `audiocpp.voices`) — Pocket TTS's twenty presets are in its English, German, Italian,
+ * Portuguese and Spanish models, not its French one, which clones only (TASKS "Slice 4's gaps"
+ * 2). Where no variant lists its voices, every variant's, as for a clone. (was: every variant's —
+ * a Pocket preset listed French, so a persona on one could be saved in French and was refused at
+ * its first line — until 2026-10-16.) */
+export function presetSpeaks(engineId, model, voiceId) {
+  const carries = (row) => Boolean(row.audiocpp?.voices) && Object.hasOwn(row.audiocpp.voices, voiceId);
+  const listed = modelSpeaks(engineId, model, carries);
+  return listed.length ? listed : modelSpeaks(engineId, model);
 }
 
 /** The engine's own default family — the one a no-variant load resolves to — or, when that
@@ -276,22 +290,23 @@ function _registryEngine(state, engineId) {
   return registry !== null ? (registry.get(engineId) ?? null) : null;
 }
 
-/** The facts every screen shows for a voice on `model`. */
-export function describe(state, engineId, model, voiceLanguage) {
+/** The facts every screen shows for a voice on `model`. `presetId`: the voice is that built-in
+ * voice of the model, which speaks only its carrying versions' languages (`presetSpeaks`). */
+export function describe(state, engineId, model, voiceLanguage, presetId = null) {
   if (_registryEngine(state, engineId) !== null && model === engineId) {
     // An online provider: no families, no direction the app can send.
     const langs = voiceLanguage ? [voiceLanguage] : [];
     return new VoiceModel(engineId, model, modelName(model, engineId), SLIDERS, langs);
   }
-  const listed = modelSpeaks(engineId, model);
+  const listed = presetId ? presetSpeaks(engineId, model, presetId) : modelSpeaks(engineId, model);
   let speaks;
   if (model === "kokoro" && voiceLanguage) {
     // A Kokoro voice is bound to its own language's reader: Alpha (Japanese) speaks Japanese,
     // whatever else the model can read.
     speaks = [voiceLanguage];
   } else if (listed.length) {
-    // Kitten and Turbo / Nano list English alone; Pocket lists its five language models;
-    // Qwen3, Multilingual and VoxCPM2 their many.
+    // Kitten and Turbo / Nano list English alone; Pocket its five languages with presets for a
+    // preset, all six for a clone; Qwen3, Multilingual and VoxCPM2 their many.
     speaks = listed;
   } else {
     speaks = voiceLanguage ? [voiceLanguage] : [];
@@ -329,7 +344,7 @@ export async function voiceModel(state, voiceId) {
     for (const p of await engine.voices()) if (p.id === voiceId) lang = p.language ?? null;
     return describe(state, engineId, engineId, lang);
   }
-  return describe(state, engineId, modelForPreset(engineId, _preset(engineId, voiceId)), _presetLanguage(engineId, voiceId));
+  return describe(state, engineId, modelForPreset(engineId, _preset(engineId, voiceId)), _presetLanguage(engineId, voiceId), voiceId);
 }
 
 /** The language a voice itself is in — a stored voice's own, a preset's catalog language — or

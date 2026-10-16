@@ -292,7 +292,11 @@ voice's own language. Where the voice or its model allows only one (a Kokoro voi
 KittenTTS, Chatterbox Turbo) it is plain text: *Speaks English*. Where the model
 can speak several (Qwen3, Chatterbox Multilingual, VoxCPM2, Pocket TTS) it is a
 list of exactly those, so one Qwen3 voice can be an English persona and a Korean one; when the two differ the page says *Speaks English · voice is
-Korean*. Every render of a line this persona plays is sent in this language.
+Korean*. A Pocket TTS built-in voice lists English, German, Italian, Portuguese
+and Spanish — the models it comes with; Pocket TTS French clones only — and a
+Pocket TTS clone all six (since 2026-10-16; before, a built-in voice listed
+French too, and a French persona on one stopped at its first line). Every
+render of a line this persona plays is sent in this language.
 
 **Gender** beside it is the voice's: *Female · from its voice*. A persona has no
 gender of its own — it sounds like its voice — and this is what **Smart-assign**
