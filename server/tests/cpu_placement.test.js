@@ -209,14 +209,30 @@ test("auto_weighs_a_never_measured_model_by_what_audiocpp_says_it_needs", async 
   const used = vi.spyOn(EngineManager.prototype, "poolUsedMb").mockResolvedValue(600);
   const irodori = () => mgr.placementFor(mgr.getManifest("irodori_tts"), "tts", "irodori_tts-irodorittsv3500m-q8");
   expect(await irodori()).toEqual(["gpu", "it fits in the card's free memory", false]);
+  // Its estimate doesn't fit beside them but its files do: the card first, at its files, as the
+  // too-big rule does (2026-10-15 — Kitten TTS 2's 7 GB estimate with the margin is the whole
+  // 8 GB card, so any other use sent its 3.1 GB to the CPU).
   used.mockResolvedValue(4000);
   expect(await irodori()).toEqual([
+    "gpu",
+    "audio.cpp says it needs about 4 GB, but its files are about 1 GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU",
+    false,
+  ]);
+  const kitten2 = () => mgr.placementFor(mgr.getManifest("kitten_tts2"), "tts", "kitten_tts2-q8");
+  used.mockResolvedValue(600);
+  expect((await kitten2())[1]).toBe(
+    "audio.cpp says it needs about 7 GB, but its files are about 3.1 GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU",
+  );
+  // Its files don't fit beside them either: the CPU.
+  used.mockResolvedValue(6500);
+  expect(await irodori()).toEqual([
     "cpu",
-    "other programs are using about 3.9 GB of the graphics card — this may be slow on the CPU",
+    "other programs are using about 6.3 GB of the graphics card — this may be slow on the CPU",
     false,
   ]);
   // Tried on the card by its files when only the estimate is too big (OmniVoice's 1.3 GB).
   const omnivoice = () => mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8");
+  used.mockResolvedValue(4000);
   expect((await omnivoice())[0]).toBe("gpu");
   used.mockResolvedValue(6500);
   expect((await omnivoice())[1]).toBe("other programs are using about 6.3 GB of the graphics card — this may be slow on the CPU");
@@ -807,4 +823,37 @@ test("pocket_shows_its_terms_until_accepted", async () => {
   // An engine without terms has nothing to accept.
   expect((await c.post("/v1/engines/kokoro/terms")).status).toBe(400);
   expect((await engine("kokoro")).terms).toBeNull();
+});
+
+test("an_unload_answers_once_the_card_shows_the_memory_freed", async () => {
+  // Slice 2's acceptance (2026-10-15): ZipVoice, loaded straight after an unload, read the
+  // draining memory as other programs' and went to the CPU. The unload now waits (up to 6 s) for
+  // the card's reading to drop by most of what the model held.
+  const mgr = mgrFor();
+  const terminate = vi.fn();
+  mgr._loaded.set("tts", { manifest: { id: "zipvoice", kind: "tts" }, isAlive: () => true, terminate });
+  arb.reserve("tts:zipvoice", 3000, { kind: "tts", evictFn: () => {}, source: "measured" });
+  const readings = [6000, 5800, 4200, 3100];
+  const used = vi.spyOn(EngineManager.prototype, "poolUsedMb").mockImplementation(async () => readings.shift() ?? 3100);
+  const sleeps = vi.spyOn(manager, "_sleep").mockResolvedValue(undefined);
+  expect(await mgr.unload("tts")).toEqual({ previous_engine: "zipvoice" });
+  expect(terminate).toHaveBeenCalled();
+  expect(arb.isReserved("tts:zipvoice")).toBe(false);
+  // Read before, then until it dropped by 80 % of the 3,000 MB it held.
+  expect(used).toHaveBeenCalledTimes(4);
+  expect(sleeps).toHaveBeenCalledTimes(2);
+});
+
+test("an_empty_unload_frees_a_recogniser_loaded_alone", async () => {
+  // POST /v1/engines/unload {} unloads every loaded engine (its own comment); with only a
+  // recogniser loaded it unloaded nothing (2026-10-15).
+  const { c } = await appClient();
+  const mgr = manager.getManager();
+  const terminate = vi.fn();
+  mgr._loaded.set("stt", { manifest: { id: "asr", kind: "stt" }, isAlive: () => true, terminate });
+  const r = await c.post("/v1/engines/unload", {});
+  expect(r.status).toBe(200);
+  expect(r.json().previous_engine).toBe("asr");
+  expect(terminate).toHaveBeenCalled();
+  expect(mgr._loaded.has("stt")).toBe(false);
 });

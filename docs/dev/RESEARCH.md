@@ -3338,13 +3338,21 @@ Captions: with Citrinet loaded, `POST /v1/align` loaded Qwen3-ASR and returned 2
   refuses English, which its family lists; GigaAM (Russian) transcribes English in Cyrillic.
 - **Finding 6 — two loads went to the CPU beside little other use**: Kitten TTS 2 (3.1 GB, other
   programs 0.6 GB) and Maya1 (6.4 GB, 0.8 GB) on the 8 GB card, under Auto's check of the
-  card's real free memory (2026-10-15).
+  card's real free memory (2026-10-15). The cause: an unmeasured model is weighed at audio.cpp's
+  estimate or its files, whichever is more (Kitten TTS 2: 7 GB against 3.1 GB of files), and only an
+  estimate above the card was tried on the card at its files — Kitten TTS 2's 7 GB plus the 1 GB
+  margin is the whole card, so any other use sent it to the CPU. Fixed: an estimate that doesn't fit
+  beside other programs, for a model whose files do, is tried on the card first at its files, as
+  the too-big rule does (`placementFor`).
 - **Finding 7 — MOSS-TTS v1.5's spec asks for a language name** ("does not understand codes like
   'en'"); JustVoice sends `en`.
 - **Loads beside the run's own steps**: a load straight after an unload, while the card was still
   freeing memory, went to the CPU (ZipVoice); the kit's `POST /v1/llm-runner/stop` clears its
   whole memory ledger (KugelAudio then went to the CPU); `POST /v1/engines/unload {}` unloads
-  only the speech slot.
+  only the speech slot. Fixed: an unload answers once the card's reading has dropped by most of
+  what the model held (up to 6 s, `_waitForDrain`), and so does a load that unloads the model before
+  it; the kit's full stop releases only the AI models' bookings (`releaseKind("llm")`), not the
+  speech slots; `{}` unloads a recogniser loaded alone.
 - **The GPU disturbance of 18:17:26–18:18:30** (another app's run): no load or line of the test
   ran in it, no card failure was recorded and the prices around it are normal. The F5 prices
   from the leaking process (3.1–7.2 GB) are stored under the old build key (`4d2f1a2b + local

@@ -127,7 +127,8 @@ export function router() {
       previousManaged = mgr.currentFor(requestedKind);
       previousInproc = null;
     } else {
-      previousManaged = mgr.currentId();
+      // Either slot: with only a recogniser loaded, `{}` unloaded nothing.
+      previousManaged = mgr.currentId() || mgr.currentFor("stt");
       previousInproc = st.engines.current();
     }
     const previous = previousManaged || previousInproc;

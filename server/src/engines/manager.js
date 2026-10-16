@@ -985,6 +985,19 @@ export class EngineManager {
     let size = prior || null;
     if (size === null && need && cardMb > 0) size = (cardFirst ? EngineManager._catalogFilesGb(m, variant) : need.gb) * 1024;
     const others = size !== null && size + margin <= cardMb ? await this._otherProgramsCardMb() : null;
+    // The same for an estimate that fits the card but not beside other programs, where the files
+    // do: the card first, at its files (2026-10-15 — Kitten TTS 2's 7 GB estimate plus the margin
+    // is a whole 8 GB card, so any other use sent its 3.1 GB to the CPU, while OmniVoice's 10 GB
+    // was tried on the card).
+    if (others !== null && !prior && !cardFirst && need?.by === "estimate" && size + margin + others > cardMb) {
+      const files = EngineManager._catalogFilesGb(m, variant);
+      if (files !== null && files * 1024 + margin + others <= cardMb) {
+        cardFirst =
+          `audio.cpp says it needs about ${need.gb} GB, but its files are about ${_gb(files)} GB, ` +
+          "so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU";
+        size = files * 1024;
+      }
+    }
     if (others !== null && size + margin + others > cardMb) {
       return [
         "cpu",
@@ -1089,19 +1102,25 @@ export class EngineManager {
       const beforeLlm = await llmMb();
       const beforeUsed = await this.poolUsedMb({ fresh: true });
       await arb.makeRoom(total, { protectedKinds: ["tts", "stt"], hardware: hw, reason: `loading ${engineId}` });
-      const freed = beforeLlm - (await llmMb());
       // An unloaded model's memory drains over a second or two. Wait for the card to show it
       // before the load reads the card (audit §5 B2).
-      if (freed > 0 && beforeUsed !== null) {
-        const deadline = monotonic() + 6.0;
-        while (monotonic() < deadline) {
-          const used = await this.poolUsedMb({ fresh: true });
-          if (used === null || used <= beforeUsed - freed * 0.8) break;
-          await self._sleep(0.4);
-        }
-      }
+      await this._waitForDrain(beforeUsed, beforeLlm - (await llmMb()));
     } catch (e) {
       log.debug(`AI-model unload before ${engineId} unavailable: ${msgOf(e)}`);
+    }
+  }
+
+  /** Wait (up to 6 s) for the card's reading to drop by most of what an unloaded model held
+   * (`freedMb`, from `beforeUsed`): its memory drains over a second or two, and until then the
+   * next placement reads it as other programs' and a load's measurement counts it (slice 2's
+   * acceptance, 2026-10-15: ZipVoice, loaded straight after an unload, went to the CPU). */
+  async _waitForDrain(beforeUsed, freedMb) {
+    if (beforeUsed === null || !(freedMb > 0)) return;
+    const deadline = monotonic() + 6.0;
+    while (monotonic() < deadline) {
+      const used = await this.poolUsedMb({ fresh: true });
+      if (used === null || used <= beforeUsed - freedMb * 0.8) break;
+      await self._sleep(0.4);
     }
   }
 
@@ -1956,11 +1975,14 @@ export class EngineManager {
               `unloading ${targetKind} engine ${prior.manifest.id} before loading ${engineId}` +
                 (moving ? ` on the ${placement.toUpperCase()}` : switching ? ` as ${variant}` : ""),
             );
+            const held = EngineManager._bookingMb(`${targetKind}:${prior.manifest.id}`);
+            const beforeUsed = held > 0 ? await this.poolUsedMb({ fresh: true }) : null;
             await prior.terminate();
             this._loaded.delete(targetKind);
             this._releaseEngine(targetKind, prior.manifest.id);
             this._resolvedDevices.delete(prior.manifest.id);
             this._placementReasons.delete(prior.manifest.id);
+            await this._waitForDrain(beforeUsed, held);
           } else if (prior !== null && prior.manifest.id === engineId && prior.isAlive()) {
             // Already loaded — just return current voices. Record the RESOLVED variant: "auto"
             // or null must map to the default id or the Engines page can't tell which row is
@@ -2136,12 +2158,16 @@ export class EngineManager {
 
   async _unloadKind(kind) {
     let prev = null;
+    let held = 0;
+    let beforeUsed = null;
     // Activity lock first: never terminate a slot mid-synth/transcribe.
     await this._activity(kind).run(() =>
       this._lock.run(async () => {
         const proc = this._loaded.get(kind) ?? null;
         if (!proc) return;
         prev = proc.manifest.id;
+        held = EngineManager._bookingMb(`${kind}:${prev}`);
+        if (held > 0) beforeUsed = await this.poolUsedMb({ fresh: true });
         try {
           await proc.terminate();
         } catch {
@@ -2154,8 +2180,10 @@ export class EngineManager {
       }),
     );
     if (prev === null) return { previous_engine: null };
-    // Free the booking with the memory (every unload path releases).
+    // Free the booking with the memory (every unload path releases), and answer once the card
+    // shows it, so a load right after reads the card free.
     this._releaseEngine(kind, prev);
+    await this._waitForDrain(beforeUsed, held);
     return { previous_engine: prev };
   }
 
