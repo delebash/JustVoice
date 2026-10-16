@@ -194,6 +194,7 @@ onBeforeUnmount(() => railObserver?.disconnect());
 function goView(id) { if (id && route.name !== id) router.push(`/${id}`); }
 
 const health = ref(null);
+const serverStatusWord = computed(() => (health.value ? (health.value.status === "ok" ? "Operational" : health.value.status) : "Offline"));
 const api = useApi();
 const tasks = useAiTasksStore();
 
@@ -633,13 +634,16 @@ onMounted(async () => {
              webview swallows target=_blank, so an unrouted anchor is silently
              dead). -->
         <span class="jv-topbar__statusgroup">
+          <!-- At phone width the word gives way and its dot stays, so the page name has room
+               (decided 2026-10-16, TASKS "The run's last questions" 5); the word is in the
+               tooltip there too. -->
           <span
             class="jv-topbar__status"
             :class="{ 'jv-topbar__status--warn': !health || health.status !== 'ok' }"
-            title="Server status"
+            :title="`Server status: ${serverStatusWord}`"
           >
             <span class="jv-topbar__dot"></span>
-            {{ health && health.status === "ok" ? "Operational" : (health ? health.status : "Offline") }}
+            <span class="gt-xs">{{ serverStatusWord }}</span>
             <span v-if="tasks.runningCount" class="jv-topbar__taskcount">
               · <strong>{{ tasks.runningCount }}</strong> in flight
             </span>

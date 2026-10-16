@@ -183,6 +183,26 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   flex-wrap: wrap;
   margin-bottom: 14px;
 }
+/* A toolbar's filters folded behind one Filters button at phone width (decided 2026-10-16, TASKS
+   "The run's last questions" 6 — drawn first in the Voices mock, #/mock/voices). On a wider window
+   the fold is layout-only (display: contents): its filters are the toolbar's own items, as before,
+   and the button (Quasar's `lt-sm`) is hidden. Below 600 px (Quasar's xs) the filters show only
+   while the button is pressed, on a row of their own under it. A toolbar whose filters sit in
+   more than one place (Voices' loaded-model chip between its dropdowns and its type chips) gives
+   each a fold; at phone width the items after the first fold that aren't filters move after
+   them, so the opened filters stay together. */
+.jv-filters-fold { display: contents; }
+@media (max-width: 599.98px) {
+  .jv-filters-fold { display: none; }
+  .jv-filters-fold ~ :not(.jv-filters-fold) { order: 1; }
+  .jv-filters-fold.is-open {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    width: 100%;
+  }
+}
 
 /* Canonical primary mode switch — folder-tab pair for a view's top-level
    two-way split (born in Engines' approved mock v7: Local models /
@@ -693,8 +713,9 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
    "one row at phone width — the topbar's parts hide, in the 2026-10-05 shrink order, until it
    fits"). At 390 px even their shortest forms ran 770 px past the window, so the parts that give
    way hide instead, in that order: the server URL, the project's chips (its name, kind and master
-   target), the two model pills — each carries Quasar's `gt-xs` in MainLayout.vue, so a wider
-   window shows them as before — and the page name gives way last, its end in "…" (its 12ch floor
+   target), the two model pills, the server status's word (its dot stays; decided 2026-10-16) —
+   each carries Quasar's `gt-xs` in MainLayout.vue, so a wider window shows them as before — and
+   the page name gives way last, its end in "…" (its 12ch floor
    is the computer's). Forward stays on the computer, as the family's phone title bar has it
    (the kit's phone plan; JustWrite's bar: ☰ · Back · the title · its controls). */
 @media (max-width: 599.98px) {

@@ -509,7 +509,8 @@ panel, so a failure can't slip past while you're on another page.
 The panel slides in from the right — open it from a strip's **Details**, the ✨
 button in the title bar, or the ✨ AI tasks row in the sidebar. (The server status
 in the title bar — "Operational", and how many tasks are in flight — is status
-only, not a button.) It has two parts:
+only, not a button; in a phone-width window only its dot shows, the word in its
+tooltip.) It has two parts:
 
 - **Running** — a card per active task: elapsed time, its numbers, its own
   Cancel, and **Cancel all** when more than one runs. A streaming language-model

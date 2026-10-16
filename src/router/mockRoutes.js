@@ -31,6 +31,14 @@ export const mockRoutes = [
     component: () => import("../pages/mock/MockPersonaEditorPage.vue"),
     meta: { nav: "personas" },
   },
+  // Voices with its filters folded behind one Filters button at phone width (decided 2026-10-16,
+  // TASKS "The run's last questions" 6). The build waits for the user to look at it.
+  {
+    path: "mock/voices",
+    name: "mock-voices",
+    component: () => import("../pages/mock/MockVoicesPage.vue"),
+    meta: { nav: "voices", lede: true },
+  },
   // Studio Slice 4 (2026-10-04): Render's chapter grid, one chapter's lines,
   // and Script's chapter grid with the chapter verbs (D7).
   {

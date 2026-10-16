@@ -617,6 +617,9 @@ function load() {
   if (id === "new") {
     saved.value = null;
     draft.value = blank();
+    // Voices' ⋯ → New persona from this voice (the Voices mock), as the real page.
+    const voice = String(route.query.voice || "");
+    if (voice && voices.value.some((v) => v.id === voice)) pickVoice(voice);
     opened.value = copyOf(draft.value);
     usage.value = null;
   } else {

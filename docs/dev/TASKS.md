@@ -339,8 +339,19 @@ BUILT:  2026-10-16 — 1: `seven_engines_unchanged.test.js` and `seven_engines_b
         3: documented since 4baf5d39; IDEAS "Pocket TTS and Qwen3 repeat on the graphics card".
         7, 8, 10: kept as they are. 11: IDEAS "Word timings for Arabic"; at the source, the MMS
         aligner turned out non-commercial and to need romanized words (RESEARCH §1.6).
-OPEN:   4 — the user's tag, then the pin. 5 — building. 6 — the mock, then the user's look. 9 —
-        the user's look.
+        5: below 600 px the status word carries Quasar's `gt-xs` and its dot stays, the word in
+        the status's tooltip (`MainLayout.vue`; docs/ai-features.md, whats-new) — at 390 px the
+        status is 30 px (was 104) and "Voices" shows whole (was cut at 73 px); at 1280 as before.
+        6: the mock `#/mock/voices` (`MockVoicesPage.vue`, the real page's template on the persona
+        mock's voices and personas; ?empty) and `.jv-filters-fold` in app.scss: below 600 px the
+        model, language, gender and direction dropdowns and the type chips fold behind one
+        "Filters" button ("Filters (N)" while N of them are set) and open on rows of their own;
+        at 390 px the table gets 339 px (the real page 105), 83 px while the filters are open; at
+        1280 the toolbar is the real page's, item for item. The persona mock's new persona takes
+        the voice it was made from (?voice), as the real page. Smoke gate passed (the running
+        app, every view, zero JS errors).
+OPEN:   4 — the user's tag, then the pin. 6 — the user's look at `#/mock/voices` at phone width,
+        then the build in VoicesPage.vue. 9 — the user's look.
 GO:     given 2026-10-16 ("your rec even for non standard think on it again go").
 
 ### The build's 16 questions: 1, 2, 7, 8 answered; 3, 4, 6 asked to explain (2026-10-15)

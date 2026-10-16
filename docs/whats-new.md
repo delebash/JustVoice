@@ -2,6 +2,9 @@
 
 ## v0.1.0
 
+- **The title bar at phone width (2026-10-16)** — the server status shows only its dot (the word,
+  *Operational*, is in its tooltip), so the page's name has room
+  ([AI features → The AI tasks panel](ai-features.md#the-ai-tasks-panel))
 - **New models that didn't work now do (2026-10-16)** — **QwenCleo-ASR** loads (its model and
   its word aligner come from two places, and the load looked for the model in the wrong folder);
   **Pocket TTS French** loads and clones (its load spoke a built-in voice it doesn't have); Pocket
