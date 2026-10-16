@@ -18,8 +18,10 @@ import { UiButton, UiInput, UiNumber, UiSelect, UiSlider, UiToggle } from "@dele
 import { SHAPE_KNOBS } from "../services/personaFacts.js";
 
 const props = defineProps({
-  // [{key, label, type?, min, max, step, choices?, neutral, unit, hint?, reset?}] — type is
-  // number (a slider, the default), choice (a dropdown), switch (on/off) or text (KnobSpec.type).
+  // [{key, label, type?, min, max, step, box?, choices?, neutral, unit, hint?, reset?}] — type is
+  // number (a slider, the default; a number box when `box` or it has no default), choice (a
+  // dropdown), switch (on/off) or text (KnobSpec.type). A number box's min or max may be null:
+  // open at that end, as audio.cpp gives it (the adoption plan, E2).
   knobs: { type: Array, default: () => SHAPE_KNOBS },
   values: { type: Object, default: () => ({}) },
   fallback: { type: Object, default: () => ({}) },
@@ -30,6 +32,8 @@ const props = defineProps({
   // (key, knob) → the ↺'s title.
   resetTitle: { type: Function, default: (_key, k) => k?.reset || "Back to the default" },
   pausePlaceholder: { type: String, default: "—" },
+  // Every control greyed (Speech engines, while its model is busy).
+  disabled: { type: Boolean, default: false },
 });
 const emit = defineEmits(["input", "commit", "reset"]);
 
@@ -68,26 +72,27 @@ function onCommit(key, v) {
     <div v-for="k in knobs" :key="k.key" class="jv-knob-grid__knob">
       <div class="jv-knob-grid__head">
         <label class="jv-knob-grid__label" :title="k.hint">{{ k.label }}</label>
-        <UiButton intent="ghost" size="small" label="↺" :disabled="!isSet(k.key)"
+        <UiButton intent="ghost" size="small" label="↺" :disabled="disabled || !isSet(k.key)"
           :title="resetTitle(k.key, k)" @click="emit('reset', k.key)" />
       </div>
       <div class="jv-knob-grid__row">
         <template v-if="(k.type || 'number') === 'number'">
-          <UiSlider v-if="k.neutral != null" :model-value="shown(k.key, k.neutral)" :min="k.min" :max="k.max" :step="k.step"
-            width="full" :aria-label="k.label"
+          <UiSlider v-if="k.neutral != null && !k.box" :model-value="shown(k.key, k.neutral)" :min="k.min" :max="k.max" :step="k.step"
+            width="full" :aria-label="k.label" :disabled="disabled"
             @update:model-value="(v) => onInput(k.key, v)" @change="(v) => onCommit(k.key, v)" />
-          <!-- No default (the model's spec gives none): empty until set, audio.cpp's own applies. -->
-          <UiNumber v-else :model-value="shown(k.key)" :min="k.min" :max="k.max" :step="k.step"
-            width="num" size="small" :aria-label="k.label"
+          <!-- A number box: audio.cpp shows it as one, or gives it no range; with no default (the
+               model's spec gives none) it is empty until set, and audio.cpp's own applies. -->
+          <UiNumber v-else :model-value="shown(k.key, k.neutral)" :min="k.min ?? null" :max="k.max ?? null" :step="k.step || 1"
+            width="num" size="small" :aria-label="k.label" :disabled="disabled"
             @update:model-value="(v) => onInput(k.key, v)" @blur="onCommit(k.key)" />
           <span v-if="k.unit" class="jv-knob-grid__unit">{{ k.unit }}</span>
         </template>
         <UiSelect v-else-if="k.type === 'choice'" :model-value="raw(k.key, k.neutral)"
-          :options="(k.choices || []).map((c) => ({ label: c, value: c }))" width="name" :aria-label="k.label"
+          :options="(k.choices || []).map((c) => ({ label: c, value: c }))" width="name" :aria-label="k.label" :disabled="disabled"
           @update:model-value="(v) => { onInput(k.key, v); onCommit(k.key, v); }" />
         <UiToggle v-else-if="k.type === 'switch'" :model-value="raw(k.key, k.neutral) == null ? null : Boolean(raw(k.key, k.neutral))" :aria-label="k.label"
-          @update:model-value="(v) => { onInput(k.key, v); onCommit(k.key, v); }" />
-        <UiInput v-else :model-value="raw(k.key, k.neutral) ?? ''" size="small" width="name" :aria-label="k.label"
+          :disabled="disabled" @update:model-value="(v) => { onInput(k.key, v); onCommit(k.key, v); }" />
+        <UiInput v-else :model-value="raw(k.key, k.neutral) ?? ''" size="small" width="name" :aria-label="k.label" :disabled="disabled"
           @update:model-value="(v) => onInput(k.key, v)" @blur="onCommit(k.key)" />
       </div>
     </div>

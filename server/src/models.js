@@ -1091,16 +1091,20 @@ export const CurrentEngineResponse = T.Object({
 
 // ─── Engine capability detail (drives Generate UI gating) ───────────────
 
-/** One of a model's settings: a slider (`number`), a dropdown (`choice`, its `choices`), an
- * on/off switch (`switch`) or a text field (`text`) — the type a model's spec gives the option
- * (engine list slice 3, 2026-10-11). The hand-wired models' knobs are all sliders. */
+/** One of a model's settings: a number (`number` — a slider, or a number box), a dropdown
+ * (`choice`, its `choices`), an on/off switch (`switch`) or a text field (`text`) — the type a
+ * model's spec gives the option (engine list slice 3, 2026-10-11). */
 export const KnobSpec = T.Object({
   key: T.String(), // e.g. "temperature" / "exaggeration" / "cfg_weight" / "speed"
   label: T.String(),
   type: opt(literal("number", "choice", "switch", "text"), "number"),
-  min: opt(T.Number(), 0),
-  max: opt(T.Number(), 0),
+  // A number's ends — null where audio.cpp gives none: open at that end (the adoption plan, E2).
+  min: opt(nullable(T.Number()), 0),
+  max: opt(nullable(T.Number()), 0),
   step: opt(T.Number(), 0),
+  // A number shown as a number box, not a slider: audio.cpp's own control list makes it one, or
+  // it has no range at one end or both — as audio.cpp's own UI shows it (the adoption plan, E2).
+  box: opt(T.Boolean(), false),
   // null = the model's spec gives none: audio.cpp's own applies, and nothing is sent until set
   // (the narrowings review, E12).
   default: opt(nullable(T.Union([T.Number(), T.String(), T.Boolean()])), null),
@@ -1170,14 +1174,26 @@ export const ModelFile = T.Object({
 
 export const RuntimeOptionChoice = T.Object({ value: T.String(), label: T.String() });
 
-/** One of a model's speech-runtime options, as its row on Speech engines shows it. */
+/** One of a model's load options (audio.cpp's session options, read when it loads), as its row
+ * on Speech engines shows it — every one its spec lists (the adoption plan, E4). Values travel as
+ * text, as audio.cpp reads them. */
 export const RuntimeOption = T.Object({
   key: T.String(), // the runtime's session-option name, e.g. "qwen3_tts.perf_mode"
   label: T.String(),
   hint: opt(T.String(), ""),
-  default: T.String(),
-  value: T.String(), // what this model loads with
+  // A dropdown, an on/off switch, a number box or a text field — the type the spec gives it.
+  type: opt(literal("choice", "switch", "number", "text"), "choice"),
+  // null = no default in its spec: audio.cpp decides, and nothing is sent until it is set.
+  default: opt(nullable(T.String()), null),
+  value: opt(nullable(T.String()), null), // what this model loads with (null = audio.cpp's own)
   choices: opt(T.Array(RuntimeOptionChoice), []),
+  // A number's ends where the spec gives them; whole numbers only for an integer.
+  min: opt(nullable(T.Number()), null),
+  max: opt(nullable(T.Number()), null),
+  integer: opt(T.Boolean(), false),
+  // Shown on the row itself (what JustVoice measured about it); every other one is folded under
+  // "Load options".
+  featured: opt(T.Boolean(), false),
 });
 
 export const ModelVariant = T.Object({

@@ -536,7 +536,7 @@ function setWord(l, key, v) {
 // speed (Pace) and seed (↻ New take).
 const modelKnobs = (l) => (rowOf(l)?.knobs || []).filter((k) => k.key !== "speed" && k.key !== "seed")
   .map((k) => ({
-    key: k.key, label: k.label, type: k.type || "number", min: k.min, max: k.max, step: k.step, choices: k.choices || [],
+    key: k.key, label: k.label, type: k.type || "number", min: k.min, max: k.max, step: k.step, box: Boolean(k.box), choices: k.choices || [],
     // No default (null): none shown, audio.cpp's own applies (the narrowings review, E12).
     neutral: k.default == null ? null : (k.type || "number") === "number" ? Number(k.default) : k.default,
     unit: k.unit || "", hint: k.hint,

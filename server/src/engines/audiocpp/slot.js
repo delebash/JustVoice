@@ -1120,12 +1120,17 @@ export function generatedSpeechRequest(row, body, req) {
   // designed voice's description already carries it.
   const dir = generated.applyDirection(designed ? null : (curated?.DIRECTION ?? null), { emotion: get(delivery, "emotion"), words });
   // A setting saved under a name audio.cpp has since renamed goes under its new name.
+  const shown = generated.settingsByModel(spec.model);
   for (const [k, v] of Object.entries(generated.currentOptionNames(family, knobs))) {
     // Never one the app sets itself or the family's file hides, even saved before it was hidden.
     if (!generated.isSetting(family, k)) continue;
     const opt = specOpts.get(k);
     if (listed && !opt) continue;
-    const value = opt ? generated.coerceOption(opt, v) : v;
+    // A number is kept to the ends its control shows — audio.cpp's control list's, else the
+    // spec's (generated.settingsOf) — so what is sent is what was set.
+    const knob = shown.get(k);
+    const ends = knob?.type === "number" ? { min: knob.min, max: knob.max } : {};
+    const value = opt ? generated.coerceOption({ ...opt, ...ends }, v) : v;
     if (value !== undefined) options[k] = value;
   }
   // A required setting the line leaves unset goes at audio.cpp's own default (Maya1's voice

@@ -106,6 +106,13 @@ export function knobSpecs(model) {
   return out;
 }
 
+/** A number setting's range in words: "runs 0–2", or the one end it has ("is at least 1"). */
+function rangeWords(spec) {
+  if (spec.min != null && spec.max != null) return `runs ${fmtG(spec.min)}–${fmtG(spec.max)}`;
+  if (spec.min != null) return `is at least ${fmtG(spec.min)}`;
+  return spec.max != null ? `is at most ${fmtG(spec.max)}` : "is a number";
+}
+
 /** Python's `format(x, "g")`: 6 significant digits, trailing zeros dropped, exponent form
  * below 1e-4 and from 1e6. Candidate for platform/py.js. */
 export function fmtG(x) {
@@ -151,18 +158,21 @@ export function checkDelivery(delivery) {
     const name = row.display_name;
     const specs = knobSpecs(model);
     for (const [key, raw] of Object.entries(currentSettings(model, ms.knobs || {}))) {
-      const value = Number(raw);
       const spec = Object.hasOwn(specs, key) ? specs[key] : null;
       if (spec === null) {
-        // A setting the model's spec still takes stays valid while it isn't shown (audio.cpp
-        // v0.9.2 dropped some ranges; such a number returns as a number box, the adoption plan's
-        // slice 3): saved before, it still reaches the model, checked against the spec there.
+        // A setting the model's spec still takes stays valid while it isn't shown: saved before,
+        // it still reaches the model, checked against the spec there.
         if (!takesSetting(model, key)) problems.push(`${name} has no ${key} setting`);
         continue;
       }
-      if (!(spec.min <= value && value <= spec.max)) {
-        problems.push(`${name}'s ${spec.label} runs ${fmtG(spec.min)}–${fmtG(spec.max)}; ${fmtG(value)} is outside it`);
-      }
+      // Only a number has a range, open at an end audio.cpp gives none (a number box, the
+      // adoption plan's E2). A choice, a switch and a text field were refused here as numbers
+      // ("runs 0–0; nan is outside it"); the request drops a word its spec doesn't list.
+      if ((spec.type || "number") !== "number") continue;
+      const value = Number(raw);
+      const lo = spec.min ?? Number.NEGATIVE_INFINITY;
+      const hi = spec.max ?? Number.POSITIVE_INFINITY;
+      if (!(lo <= value && value <= hi)) problems.push(`${name}'s ${spec.label} ${rangeWords(spec)}; ${fmtG(value)} is outside it`);
     }
     // An emotion is understood when it's one the model's choices name — or, on a written-direction
     // model, any of the app's nine (a family file that maps only some leaves the others plain, so

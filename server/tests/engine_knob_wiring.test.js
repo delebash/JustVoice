@@ -67,6 +67,11 @@ const LANDS_AT = {
 };
 const TOP_LEVEL = new Set(["speed", "seed"]); // canonical Delivery fields / the request's own seed
 
+// A number to set: its top, else its bottom where the top is open or the default (a number box
+// may be open at either end — the adoption plan, E2), else one past its default.
+const numberToSet = (k) =>
+  k.max != null && k.max !== k.default ? k.max : k.min != null && k.min !== k.default ? k.min : (k.default ?? 0) + 1;
+
 function row(engine, variant) {
   // PENDING_VARIANTS: rows written and published that wait for the pinned runtime's feature —
   // their knobs must reach the runtime too.
@@ -85,7 +90,7 @@ test("every_declared_knob_reaches_the_runtime", () => {
     if (GENERATED_ROWS.has(capId)) continue; // their typed settings: the next test
     for (const knob of CAPABILITY_DETAILS[capId].knobs) {
       expect(Object.hasOwn(LANDS_AT, knob.key), `${capId}: knob ${knob.key} has no audio.cpp mapping`).toBe(true);
-      const value = knob.max !== knob.default ? knob.max : knob.min;
+      const value = numberToSet(knob);
       const body = { text: "Hi.", language: "en", ...base };
       const delivery = { ...(base.delivery || {}) };
       if (knob.key === "seed") body.seed = Math.trunc(value);
@@ -107,7 +112,7 @@ test("every_generated_setting_reaches_the_runtime_in_its_own_type", () => {
     const [engine, variant, base] = ROW_VARIANT[capId];
     for (const knob of CAPABILITY_DETAILS[capId].knobs) {
       const value = {
-        number: knob.max !== knob.default ? knob.max : knob.min,
+        number: numberToSet(knob),
         choice: knob.choices.find((c) => c !== knob.default) ?? knob.choices[0],
         switch: !knob.default,
         text: "a text value",

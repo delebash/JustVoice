@@ -74,14 +74,15 @@ test("shared_values_reach_every_model_and_a_models_own_stay_with_it", () => {
 test("a_value_a_model_would_not_understand_is_refused_by_name", () => {
   const bad = pd({
     models: {
-      "qwen3-cv": { knobs: { exaggeration: 0.5, talker_top_k: 500 }, emotion: "fear" },
+      // Top k is audio.cpp's number box from 0 with no top (the narrowings review, F9; was 1–100).
+      "qwen3-cv": { knobs: { exaggeration: 0.5, talker_top_k: -1 }, emotion: "fear" },
       kokoro: { register_tag: "dramatic" },
       nonsense: {},
     },
   });
   const problems = personaRender.checkDelivery(bad).join(" | ");
   expect(problems).toContain("has no exaggeration setting");
-  expect(problems).toContain("Top k runs 1–100");
+  expect(problems).toContain("Top k is at least 0; -1 is outside it");
   expect(problems).toContain("no emotion called 'fear'"); // Qwen3 takes the app's nine
   expect(problems).toContain("no register called 'dramatic'"); // Kokoro takes no tags
   expect(problems).toContain("nonsense is not a speech model");

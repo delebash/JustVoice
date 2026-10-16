@@ -829,7 +829,8 @@ function compareSpec(key) {
   if (key === "pitch") return { min: -12, max: 12, step: 1, now: shared("pitch", 0) };
   if (key === "gain_db") return { min: -12, max: 12, step: 0.5, now: shared("gain_db", 0) };
   const k = knobs.value.find((x) => x.key === key);
-  return k ? { min: k.min, max: k.max, step: k.step, now: knobValue(k) } : { min: 0, max: 1, step: 0.01, now: 0 };
+  // A number box may be open at an end (null; the adoption plan, E2).
+  return k ? { min: k.min ?? null, max: k.max ?? null, step: k.step || 1, now: knobValue(k) } : { min: 0, max: 1, step: 0.01, now: 0 };
 }
 function openCompare() {
   compareKey.value = "speed";
@@ -839,7 +840,7 @@ function openCompare() {
 }
 function seedCompareValues() {
   const s = compareSpec(compareKey.value);
-  const clamp = (x) => Math.min(s.max, Math.max(s.min, Math.round(x / s.step) * s.step));
+  const clamp = (x) => Math.min(s.max ?? Infinity, Math.max(s.min ?? -Infinity, Math.round(x / s.step) * s.step));
   compareValues.value = [clamp(s.now - 2 * s.step), clamp(s.now), clamp(s.now + 2 * s.step)];
 }
 watch(compareKey, () => { if (compareOpen.value) { seedCompareValues(); compareResults.value = []; } });
@@ -1181,9 +1182,11 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                       :title="k.default == null ? 'Back to the model default' : `Back to the model default (${k.default})`" @click="resetKnob(k)" />
                   </div>
                   <div class="jv-knob-grid__row">
-                    <UiSlider v-if="isNumberKnob(k) && k.default != null" :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="full"
+                    <!-- A number box where audio.cpp shows one or gives no range (k.box; the
+                         adoption plan, E2), or where it gives no default. -->
+                    <UiSlider v-if="isNumberKnob(k) && k.default != null && !k.box" :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="full"
                       :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
-                    <UiNumber v-else-if="isNumberKnob(k)" :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="num"
+                    <UiNumber v-else-if="isNumberKnob(k)" :model-value="knobValue(k)" :min="k.min ?? null" :max="k.max ?? null" :step="k.step || 1" width="num"
                       size="small" :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
                     <UiSelect v-else-if="k.type === 'choice'" :model-value="knobValue(k)" :options="k.choices.map((c) => ({ label: c, value: c }))"
                       width="name" :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />

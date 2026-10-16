@@ -63,7 +63,9 @@ function seedKnob() {
 function qwenSamplingKnobs() {
   return [
     knob({ key: "talker_temperature", label: "Temperature", min: 0.05, max: 2.0, step: 0.05, default: 0.9, hint: "Sampling variance for the talker model." }),
-    knob({ key: "talker_top_k", label: "Top k", min: 1, max: 100, step: 1, default: 50, advanced: true }),
+    // audio.cpp's range (the narrowings review, F9 — was 1–100): its control list's number box
+    // from 0 with no top (webui/configs/model_params.json qwen3_tts `top_k`).
+    knob({ key: "talker_top_k", label: "Top k", min: 0, max: null, step: 1, box: true, default: 50, advanced: true }),
     // Not 0: Qwen3 reads a top-p of 0 as "no filter" (audit §5 D9).
     knob({ key: "talker_top_p", label: "Top p", min: 0.05, max: 1.0, step: 0.01, default: 1.0, advanced: true }),
     knob({ key: "repetition_penalty", label: "Repetition penalty", min: 1.0, max: 4.0, step: 0.05, default: 1.05, advanced: true }),
@@ -80,7 +82,8 @@ function qwenSamplingKnobs() {
       advanced: true,
       hint: "Sampling variance for the finer audio detail (the sub-talker).",
     }),
-    knob({ key: "subtalker_top_k", label: "Detail top k", min: 1, max: 100, step: 1, default: 50, advanced: true }),
+    // The spec's range, from 0 with no top (model_specs/qwen3_tts.json `subtalker_top_k`; F9).
+    knob({ key: "subtalker_top_k", label: "Detail top k", min: 0, max: null, step: 1, box: true, default: 50, advanced: true }),
     knob({ key: "subtalker_top_p", label: "Detail top p", min: 0.05, max: 1.0, step: 0.01, default: 1.0, advanced: true }),
     seedKnob(),
   ];
@@ -96,8 +99,9 @@ function chatterboxExtraKnobs() {
   ];
 }
 
+// 0–2, audio.cpp's control list's (model_params.json chatterbox `exaggeration`; F9 — was 0.25).
 const exaggerationKnob = () =>
-  knob({ key: "exaggeration", label: "Exaggeration", min: 0.25, max: 2.0, step: 0.05, default: 0.5, hint: "Expressiveness. 0.3–0.4 = flat narration. >1.0 = dramatic." });
+  knob({ key: "exaggeration", label: "Exaggeration", min: 0, max: 2.0, step: 0.05, default: 0.5, hint: "Expressiveness. 0.3–0.4 = flat narration. >1.0 = dramatic." });
 const cfgWeightKnob = () =>
   knob({ key: "cfg_weight", label: "CFG weight", min: 0.0, max: 1.0, step: 0.05, default: 0.5, hint: "Text adherence. Lower = looser pacing; higher = strict." });
 
@@ -216,7 +220,9 @@ export const CAPABILITY_DETAILS = {
       temperatureKnob(0.8),
       knob({ key: "repetition_penalty", label: "Repetition penalty", min: 1.0, max: 4.0, step: 0.1, default: 1.2, advanced: true }),
       knob({ key: "top_p", label: "Top p", min: 0.05, max: 1.0, step: 0.01, default: 0.95, advanced: true }),
-      knob({ key: "top_k", label: "Top k", min: 1, max: 2000, step: 1, default: 1000, advanced: true }),
+      // The spec's range, from 0 with no top (model_specs/chatterbox_turbo.json `top_k`; F9 — was
+      // 1–2000).
+      knob({ key: "top_k", label: "Top k", min: 0, max: null, step: 1, box: true, default: 1000, advanced: true }),
       seedKnob(),
     ],
     // The checkpoint's own added_tokens.json: nineteen reserved tokens, ids 50257–50275, in
@@ -345,8 +351,10 @@ CAPABILITY_DETAILS.voxcpm2 = detail({
   supports_voice_design: true,
   supports_instruct_freeform: true,
   knobs: [
-    knob({ key: "cfg_value", label: "CFG", min: 1.0, max: 5.0, step: 0.1, default: 2.0, hint: "How closely it follows the voice and the text. Higher = stricter." }),
-    knob({ key: "inference_timesteps", label: "Inference steps", min: 4, max: 30, step: 1, default: 10, advanced: true, hint: "More steps = finer detail, slower." }),
+    // audio.cpp's control list's ranges (model_params.json voxcpm2: `guidance_scale` 0–5, and
+    // `num_inference_steps` a number box from 1 with no top; F9 — were 1–5 and 4–30).
+    knob({ key: "cfg_value", label: "CFG", min: 0, max: 5.0, step: 0.1, default: 2.0, hint: "How closely it follows the voice and the text. Higher = stricter." }),
+    knob({ key: "inference_timesteps", label: "Inference steps", min: 1, max: null, step: 1, box: true, default: 10, advanced: true, hint: "More steps = finer detail, slower." }),
     // A take that runs far longer than its text — a "runaway" — is cut and made again
     // (../audio.cpp/src/models/voxcpm2/generator.cpp; defaults in types.h, audit §7).
     knob({

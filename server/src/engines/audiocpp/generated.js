@@ -93,12 +93,19 @@ function appInstructs(family, name) {
 }
 // Not offered as settings either: the host splits long lines, and renders don't stream.
 const NOT_SETTINGS = (name) => name.startsWith("stream") || name.startsWith("text_chunk");
+// A file on the server's disk — the clip, a noise file, an embedding: the app's to give, never a
+// setting (docs/plans/2026-10-13-adopt-everything-audiocpp.md §3, E2 "file paths"). The spec's own
+// structural types for one (audio.cpp's docs/maintainers/model_specs.md).
+const FILE_TYPES = new Set(["path", "audio_path", "path_list", "audio_path_list"]);
+/** Whether an option (a spec row) names a file on the server's disk. */
+export const isFileOption = (o) => FILE_TYPES.has(o?.type);
 
 /** Whether a line may set `name` on this family's model through its settings. */
 export const isSetting = (family, name) =>
   !APP_OWNED_OPTIONS.has(name) &&
   !(INSTRUCTION.has(name) && appInstructs(family, name)) &&
   !NOT_SETTINGS(name) &&
+  !isFileOption(requestOptionsOf(family).get(currentOptionName(family, name))) &&
   !(CURATED[family]?.HIDDEN_OPTIONS || []).includes(name);
 
 /** A setting's name as the family's spec has it now: audio.cpp renamed some (v0.9.2 …), and the
@@ -144,8 +151,7 @@ export function generatedFamilyOf(model) {
 }
 
 /** Whether a generated model's spec takes `name` as a setting (a request option the app doesn't
- * set itself) — shown as a control or not (a number with no range, until the adoption plan's
- * slice 3 shows it as a number box). */
+ * set itself). */
 export function takesSetting(model, name) {
   const family = generatedFamilyOf(model);
   return family !== null && isSetting(family, name) && requestOptionsOf(family).has(name);
@@ -159,8 +165,10 @@ export function currentSettings(model, settings) {
 }
 
 const HAN = /[㐀-鿿]/u;
-const english = (...xs) => xs.find((x) => typeof x === "string" && x.trim() && !HAN.test(x)) ?? "";
-const humanize = (name) => {
+/** The first of the texts in English (no Han characters), or "". */
+export const english = (...xs) => xs.find((x) => typeof x === "string" && x.trim() && !HAN.test(x)) ?? "";
+/** An option's name as words, where audio.cpp gives it no label ("top_k" → "Top k"). */
+export const humanize = (name) => {
   const s = String(name).replace(/_/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
@@ -170,9 +178,12 @@ const humanize = (name) => {
  * request options — or, for a family whose spec lists none, audio.cpp's own control list
  * (`webui/configs/model_params.json`) — minus what the app sets itself and what the family's
  * file hides. Labels and help in English from audio.cpp's control list where it has them. A
- * number needs both ends to be a slider; one without is left out. Each is marked advanced
- * (KnobSpec.advanced). A setting with no default in the spec or the control list has none here
- * (null): audio.cpp's own applies, and nothing is sent until it is set.
+ * number's ends are audio.cpp's — its control list's where it gives one, else the spec's (the
+ * adoption plan §2, F9); it is a slider where both are given and the control list doesn't make it
+ * a number box, else a number box, open at an end neither gives (E2) — as audio.cpp's own UI
+ * shows it. Each is marked advanced (KnobSpec.advanced). A setting with no default in the spec or
+ * the control list has none here (null): audio.cpp's own applies, and nothing is sent until it
+ * is set.
  */
 export function settingsOf(m) {
   const params = new Map([...(m.fam.params || []), ...(m.entry.params || [])].map((p) => [p.name, p]));
@@ -202,12 +213,14 @@ export function settingsOf(m) {
     };
     const given = o.default ?? p.default ?? null;
     if (o.type === "int" || o.type === "float" || o.type === "number") {
-      const min = o.min ?? p.minimum;
-      const max = o.max ?? p.maximum;
-      if (min == null || max == null || !(max > min)) continue;
-      const step = p.step ?? (o.type === "int" ? 1 : Number(((max - min) / 100).toPrecision(1)));
+      const min = p.minimum ?? o.min ?? null;
+      const max = p.maximum ?? o.max ?? null;
+      const slider = min !== null && max !== null && max > min && p.type !== "number";
+      // A number box steps by its control's step, else by 1 — the HTML number input's own, which
+      // audio.cpp's UI leaves as it is.
+      const step = p.step ?? (o.type === "int" || !slider ? 1 : Number(((max - min) / 100).toPrecision(1)));
       const def = given === null ? null : Number(given);
-      out.push({ ...base, type: "number", min, max, step, default: Number.isFinite(def) ? def : null });
+      out.push({ ...base, type: "number", min, max, step, box: !slider, default: Number.isFinite(def) ? def : null });
     } else if (o.type === "enum" && Array.isArray(o.values) && o.values.length) {
       const choices = o.values.map(String);
       const def = given === null ? null : String(given);
@@ -219,6 +232,18 @@ export function settingsOf(m) {
     }
   }
   return out;
+}
+
+let _settingsByModel = null;
+
+/** A generated model's settings by key (settingsOf), or an empty map — the request keeps a value
+ * to the ends its control shows. */
+export function settingsByModel(modelId) {
+  if (_settingsByModel === null) {
+    _settingsByModel = new Map();
+    for (const m of generatedModels()) _settingsByModel.set(m.modelId, new Map(settingsOf(m).map((k) => [k.key, k])));
+  }
+  return _settingsByModel.get(modelId) ?? new Map();
 }
 
 /** The family's catalog row, or null. */
@@ -243,10 +268,20 @@ export function requiredDefaultsOf(family) {
   return out;
 }
 
+const _requestOptions = new Map();
+
 /** The family's request options by name (its spec's typed `options.request`). */
 export function requestOptionsOf(family) {
-  const fam = catalogFamily(family);
-  return new Map(((fam?.options || {}).request || []).map((o) => [o.name, o]));
+  if (!_requestOptions.has(family)) {
+    const fam = catalogFamily(family);
+    _requestOptions.set(family, new Map(((fam?.options || {}).request || []).map((o) => [o.name, o])));
+  }
+  return _requestOptions.get(family);
+}
+
+/** The family's load options (its spec's typed `options.session`, read when the model loads). */
+export function sessionOptionsOf(family) {
+  return (catalogFamily(family)?.options || {}).session || [];
 }
 
 /** Whether the family's spec lists its request options at all — audio.cpp refuses an option a

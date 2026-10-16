@@ -341,10 +341,10 @@ test("a persona's and a line's settings under an old name read under the new one
   expect(Number(lineKnobs.shift)).toBe(0.8);
 });
 
-test("a setting the spec still takes stays valid while it isn't shown; one it doesn't take is refused", () => {
-  // audio.cpp v0.9.2 dropped ZipVoice feat_scale's range, so it isn't a control until numbers
-  // with no range are shown (the plan's slice 3) — a value saved before still goes.
-  expect(lookup("zipvoice").knobs.some((k) => k.key === "feat_scale")).toBe(false);
+test("a number audio.cpp gives no range is a number box; a setting the spec doesn't take is refused", () => {
+  // audio.cpp v0.9.2 dropped ZipVoice feat_scale's range: a number box, open at both ends (the
+  // adoption plan's slice 3, E2) — a value saved before it was shown still goes.
+  expect(lookup("zipvoice").knobs.find((k) => k.key === "feat_scale")).toMatchObject({ type: "number", box: true, min: null, max: null });
   expect(checkDelivery({ models: { zipvoice: { knobs: { feat_scale: 0.2 } } } })).toEqual([]);
   expect(slot.toSpeechRequest(rowOf("zipvoice", "zipvoice-orig"), line({ delivery: { engine: { feat_scale: 0.2 } } })).options).toEqual({ feat_scale: 0.2 });
   expect(checkDelivery({ models: { zipvoice: { knobs: { not_an_option: 1 } } } })).toEqual(["ZipVoice has no not_an_option setting"]);
