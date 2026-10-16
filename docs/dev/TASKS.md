@@ -368,6 +368,24 @@ OPEN:   `book_voices.clone_model` → Breeze (after round 5's narrator sample); 
 GO:     given 2026-10-16 ("your rec on breeze and license"; after the check, "your rec on all
         go").
 
+### Round 6 — the best engine to sell with: Fish Drama 3, then Qwen3 with an emotion direction (decided 2026-10-16)
+STATE:  DECIDED 2026-10-16 — after the field sweep (RESEARCH §10.26), shown: "finish round 5 first.
+        After it, a round 6 for the sellable question, in this order: 1. Fish Drama 3. It needs our
+        fork updated to audio.cpp's latest, so it needs your word on that update. 2. Qwen3 with the
+        emotion direction. It needs a fork change, and ESD's licence checked first." The user:
+        "your rec on both go when ready".
+WHY:    the user: "we want both best we can sell with best we cant and best overall for the
+        engines we need to know it all"; Drama 3 is sellable below USD 500,000 a year and the
+        most directable open model; the x-vector direction keeps Qwen3's commercial weights.
+NOT:    act-then-convert (the actor must itself be sellable); Marco-Voice (CosyVoice1-era, a port).
+BUILT:  —
+OPEN:   after round 5's renders: our fork updated to audio.cpp's upstream main (`fish_drama3`,
+        merged upstream 2026-10-15), the dev build rebuilt, only the new models tested (TASKS "An
+        audio.cpp update tests only the engines and models it adds"); Drama 3 on this 8 GB card
+        with CPU expert offload; ESD's licence checked; the x-vector direction as a fork change;
+        both on round 5's lines and four-step page.
+GO:     given 2026-10-16 ("your rec on both go when ready").
+
 ### Round 5 — VoxCPM2 told the authors' way, best of 3 picked by the scorers (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after RESEARCH §10.25 and another session's desk review, shown:
         "keep Breeze as the character voices. Narrow round 5 to VoxCPM2 alone: told the book's
