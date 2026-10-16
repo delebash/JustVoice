@@ -807,6 +807,30 @@ OPEN:   slice 0 (the owed audio measurements) — go given 2026-10-11, the next 
         so structured outputs (§8) don't reach Claude, and the kit turns thinking off under JSON
         mode (`prompts.js:511`) — kit work when an API key arrives; the Direction cards' Lab runs
         the generic call, not the step with its carry.
+        Slice 6, the take check (f4d7c403, merged 05a72faa): each take in use read back by the
+        app's recogniser and lined up against its words with jsdiff (`diff`, BSD-3, the plan's §8
+        row) after Whisper's basic normaliser — ported line for line into
+        `server/src/whisper_normalizer.js` (MIT, NOTICE.md), as the repo ports Python's difflib;
+        no JavaScript port exists (npm, 2026-10-16) — so judged standard, named to the user. A
+        take that runs away, misses or adds words past the `take_check` settings (missed_share
+        0.2, extra_share 0.2, min_words 2 — unmeasured starting points) is rendered again once
+        with a new seed, then flagged with its reasons (`POST /v1/scenes/{id}/check_takes`).
+        Open: the three numbers set on real takes (GPU); Whisper's English normaliser (numbers,
+        spellings) and letter-by-letter Chinese/Japanese, each a bigger port; a per-voice runaway
+        bound; Render showing the findings (slice 5's mock); a paused re-render job resumed after
+        a later check adds a second take; `diff` in the packaged app unverified (no installer
+        build); `engine_vram_wiring`'s runaway test timed out once under a loaded full run.
+        Slice 4, names and group lines (0cc1bdf7, merged 053af6f3): `POST
+        /v1/projects/{id}/speakers/merge` (Local: names inside one another grouped in code, one
+        short call per group to confirm; Frontier: every name in one call), `POST
+        /v1/scenes/{id}/group-lines`, Discover and promote as functions, `npm run eval:speakers`,
+        `speaker_identification` → `speaker_discovery` in the renderer. Script's `group` mark:
+        tag "Said together", question "Said together by ‹X› and ‹Y› — given to ‹X›. Is that
+        right?" / "No one could be named — given to ‹narrator›. Who says it?" (6f3ad045, the
+        slice's proposal under "do it all" — for the user's look). Open: Discover's page still
+        merges names its own way (the Queen shows twice there); a name Discover counted a line
+        for that the book never gives (the Knave) still becomes a speaker; `eval:speakers` imports
+        a temporary book on the server it's pointed at and deletes it after.
 GO:     given 2026-10-10 ("your rec on all"); measuring waits: "wait i want to discuss a little more".
 
 ### The one-click plan's questions, answered (decided 2026-10-11)
