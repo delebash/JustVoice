@@ -101,6 +101,11 @@ offers only the engines whose voices take it, and the type chips count only
 those voices. An engine you chose earlier that has no voices now comes back
 as *engine (0)* instead of an empty list.
 
+In a phone-width window the filters fold behind one **Filters** button, so the
+list keeps the room; press it to show them, press it again to hide them. While
+they're hidden it says how many are set — **Filters (2)** — so a narrowed list
+never looks like the whole library (since 2026-10-16).
+
 | Column | Shows |
 |---|---|
 | Name | ▶ plays the voice saying the test line, then the voice's name |

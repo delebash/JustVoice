@@ -246,6 +246,12 @@ const genderFilterOptions = computed(() => [
 const directionFilterOptions = computed(() =>
   facetChoices(voices.value || [], voiceFilters.value, "direction", DIRECTION_OPTIONS, (v, x) => v.directed_by === x));
 
+// The phone-width fold: the button says how many filters narrow the list while they're hidden.
+const filtersOpen = ref(false);
+const filtersSet = computed(() =>
+  [engineFilter.value !== "all", langFilter.value !== "all", genderFilter.value !== "all", !!directionFilter.value, typeFilter.value !== "all"]
+    .filter(Boolean).length);
+
 const filteredVoices = computed(() =>
   // Needs-install voices sink to the bottom — never first-in-list.
   [...narrowed(voices.value || [], voiceFilters.value)].sort((a, b) => needsInstall(a) - needsInstall(b)));
@@ -623,6 +629,18 @@ function voiceTypeVariant(kind) {
   <!-- ── Toolbar: search + engine + type filters ───── -->
   <div class="voices-view__toolbar">
     <UiInput v-model="search" placeholder="Search voices…" width="name" title="Filter by name or id" />
+    <!-- At phone width the filters fold behind one button (decided 2026-10-16, TASKS "The run's
+         last questions" 6; drawn first in #/mock/voices). A wider window never shows it. -->
+    <UiButton
+      class="lt-sm"
+      intent="secondary"
+      size="small"
+      :label="filtersSet ? `Filters (${filtersSet})` : 'Filters'"
+      :title="filtersOpen ? 'Hide the filters' : 'Show the filters — model, language, gender, direction and type'"
+      :aria-expanded="filtersOpen ? 'true' : 'false'"
+      @click="filtersOpen = !filtersOpen"
+    />
+    <div class="jv-filters-fold" :class="{ 'is-open': filtersOpen }">
     <UiSelect
       :model-value="engineFilter"
       :options="engineFilterOptions"
@@ -649,6 +667,7 @@ function voiceTypeVariant(kind) {
       aria-label="Can be directed"
       width="id"
     />
+    </div>
     <UiChip
       as="a"
       :selected="!!loadedTtsEngine"
@@ -657,6 +676,7 @@ function voiceTypeVariant(kind) {
         ? `${loadedTtsEngine.name || loadedTtsEngine.id} is loaded — previews play instantly. Click to manage engines.`
         : 'No voice model loaded — the first preview will offer to load one. Click to manage speech engines.'"
     >{{ loadedTtsEngine ? `● ${loadedTtsEngine.name || loadedTtsEngine.id} loaded` : "○ no voice model loaded" }}</UiChip>
+    <div class="jv-filters-fold" :class="{ 'is-open': filtersOpen }">
     <div class="voices-view__chips">
       <UiChip
         v-for="f in TYPE_FILTERS"
@@ -665,6 +685,7 @@ function voiceTypeVariant(kind) {
         :title="f.id === 'all' ? 'Show every voice' : `Show only ${f.label.toLowerCase()} voices`"
         @click="typeFilter = f.id"
       >{{ f.label }} ({{ typeCounts[f.id] || 0 }})</UiChip>
+    </div>
     </div>
     <span class="jv-spacer" />
     <UiButton intent="secondary" size="small" :loading="genderGuessBusy"

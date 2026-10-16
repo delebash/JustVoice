@@ -19,13 +19,19 @@
   SortableJS; up/down stay for the keyboard); "A / B it" — given a persona, Dry
   holds its line with no effects (POST /v1/personas/preview, hold) and Wet puts
   this chain on that same take (POST /v1/effects/apply); "Order matters".
+
+  Each step is one row (decided 2026-10-15, the build's question 9; drawn first in the persona
+  mock, `#/mock/personas/p_june/effects`; built 2026-10-16): the grip, the effect's name (its
+  description on hover), its settings inline — the label, a number box sized to its value, the
+  unit after it ("Gain [-2] dB") — then ↑ ↓ Remove; app.scss's `.jv-chain`. A value past the
+  server's range is held to it when you leave the box (the kit's UiNumber).
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useSortable } from "@vueuse/integrations/useSortable";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
-import { Icon, UiButton, UiInput, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
+import { Icon, UiButton, UiInput, UiCheckbox, UiNumber, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { holdDryTake } from "../services/voiceAudition.js";
@@ -76,7 +82,7 @@ const effectiveCatalog = computed(() => catalog.value.length ? catalog.value : F
 // Drag to reorder: the grip moves a step. Each step keeps one key while it moves — an index
 // key would hand a moved step's fields to its neighbour.
 const chainEl = ref(null);
-useSortable(chainEl, chain, { handle: ".effects-modal__grip", animation: 150, watchElement: true });
+useSortable(chainEl, chain, { handle: ".jv-chain__grip", animation: 150, watchElement: true });
 const stepIds = new WeakMap();
 let lastStepId = 0;
 function stepKey(ef) {
@@ -156,10 +162,10 @@ function specFor(type) {
   return effectiveCatalog.value.find((e) => e.type === type) || null;
 }
 
-// A knob's label and its unit, as the catalog writes them: "Gain (dB)" → "Gain" + "(dB)". The
-// label is drawn in capitals; its unit keeps its case — "dB", "Hz", "ms" (2026-10-15: it read "DB").
+// A knob's label and its unit, as the catalog writes them: "Gain (dB)" → "Gain" + "dB", the unit
+// after its box. The unit keeps its case — "dB", "Hz", "ms" (2026-10-15: it read "DB").
 function paramLabel(label) {
-  const m = /^(.*\S)\s*(\([^()]*\))$/.exec(label || "");
+  const m = /^(.*\S)\s*\(([^()]*)\)$/.exec(label || "");
   return m ? { name: m[1], unit: m[2] } : { name: label || "", unit: "" };
 }
 
@@ -311,48 +317,27 @@ onMounted(() => {
           No effects. Pick a type below and click <strong>Add</strong>.
         </p>
 
-        <ul ref="chainEl" class="effects-modal__chain">
-          <li
-            v-for="(ef, i) in chain"
-            :key="stepKey(ef)"
-            class="effects-modal__effect"
-          >
-            <div class="effects-modal__effect-h">
-              <span class="effects-modal__grip" title="Drag to reorder"><Icon name="DragHandle" :size="16" :sw="2.6" /></span>
-              <strong>{{ specFor(ef.type)?.label || ef.type }}</strong>
-              <span class="effects-modal__step">step {{ i + 1 }}</span>
-              <span class="jv-spacer" />
+        <!-- Each step one row: the grip, its name, its settings inline with their units, ↑ ↓ Remove. -->
+        <ul ref="chainEl" class="jv-chain" :class="{ 'effects-modal__chain--empty': !chain.length }">
+          <li v-for="(ef, i) in chain" :key="stepKey(ef)" class="jv-chain__step">
+            <span class="jv-chain__grip" title="Drag to reorder"><Icon name="DragHandle" :size="16" :sw="2.6" /></span>
+            <span class="jv-chain__name" :title="specFor(ef.type)?.description">{{ specFor(ef.type)?.label || ef.type }}</span>
+            <span class="jv-chain__settings">
+              <label v-for="p in specFor(ef.type)?.params || []" :key="p.key" class="jv-chain__setting">
+                <span class="jv-chain__label">{{ paramLabel(p.label).name }}</span>
+                <UiCheckbox v-if="p.type === 'boolean'" :model-value="!!ef.params?.[p.key]"
+                  @change="setParam(i, p.key, $event.target.checked)" />
+                <UiNumber v-else width="num" size="small" :use-grouping="false"
+                  :model-value="ef.params?.[p.key] ?? p.default" :min="p.min" :max="p.max" :step="p.step ?? 1"
+                  :aria-label="p.label" @update:model-value="setParam(i, p.key, $event)" />
+                <span v-if="paramLabel(p.label).unit" class="jv-chain__unit">{{ paramLabel(p.label).unit }}</span>
+              </label>
+            </span>
+            <span class="jv-chain__actions">
               <UiButton intent="ghost" size="small" label="↑" :disabled="i === 0" title="Move up" @click="move(i, -1)" />
               <UiButton intent="ghost" size="small" label="↓" :disabled="i === chain.length - 1" title="Move down" @click="move(i, 1)" />
               <UiButton intent="danger-outline" size="small" label="Remove" @click="removeAt(i)" />
-            </div>
-            <p v-if="specFor(ef.type)?.description" class="jv-muted effects-modal__desc">
-              {{ specFor(ef.type).description }}
-            </p>
-            <div v-if="(specFor(ef.type)?.params || []).length" class="effects-modal__params">
-              <label
-                v-for="p in specFor(ef.type).params"
-                :key="p.key"
-                class="effects-modal__param"
-              >
-                <span>{{ paramLabel(p.label).name }}<span v-if="paramLabel(p.label).unit" class="ui-unit">{{ ` ${paramLabel(p.label).unit}` }}</span></span>
-                <UiCheckbox
-                  v-if="p.type === 'boolean'"
-                  :model-value="!!ef.params?.[p.key]"
-                  @change="setParam(i, p.key, $event.target.checked)"
-                />
-                <UiInput
-                  v-else
-                  type="number"
-                  class="effects-modal__param-num"
-                  :model-value="ef.params?.[p.key] ?? p.default"
-                  :min="p.min"
-                  :max="p.max"
-                  :step="p.step"
-                  @update:model-value="setParam(i, p.key, Number($event))"
-                />
-              </label>
-            </div>
+            </span>
           </li>
         </ul>
 
@@ -461,56 +446,9 @@ onMounted(() => {
 
 .effects-modal__empty { padding: 24px 0; text-align: center; }
 
-.effects-modal__chain {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.effects-modal__effect {
-  border: 1px solid var(--border-soft);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--surface-2);
-}
-
-.effects-modal__effect-h {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.effects-modal__step {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-}
-.effects-modal__desc {
-  margin: 4px 0 8px;
-  font-size: 11.5px;
-}
-
-.effects-modal__params {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 14px;
-}
-.effects-modal__param {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.effects-modal__param > span {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
-.effects-modal__param-num { width: 100%; }
+/* An empty chain draws no box: the line above says so. The rows are app.scss's `.jv-chain`. */
+.effects-modal__chain--empty { display: none; }
+.effects-modal__row + .jv-chain { margin-top: 8px; }
 
 .effects-modal__add {
   align-items: center;
@@ -527,13 +465,6 @@ onMounted(() => {
 .effects-modal__saveas {
   margin-top: 14px;
 }
-
-.effects-modal__grip {
-  display: inline-flex;
-  color: var(--ink-3);
-  cursor: grab;
-}
-.effects-modal__grip:active { cursor: grabbing; }
 
 .effects-modal__card { margin-top: 14px; }
 .effects-modal__card-p { margin: 0; max-width: 60ch; }

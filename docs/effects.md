@@ -53,9 +53,13 @@ scene layer.)
 A persona's **＋ Edit** (beside **Effects** on its page) opens the chain editor.
 The chain runs top to bottom, each step on what the one above it made:
 
-- **The chain** — drag a step by its grip (the six dots left of its name) to
-  move it; ↑ and ↓ move it one place too. **Remove** takes it out; **Add
-  effect** puts a new one at the bottom with its default settings.
+- **The chain** — each step is one row: its name (hover it for what the effect
+  does), then its settings, each a number box with its unit after it
+  (*Gain [-2] dB*), then ↑ ↓ and **Remove**. A setting has the range the effect
+  allows; type a number past it and the box holds it to the nearest end when you
+  leave it. Drag a step by its grip (the six dots left of its name) to move it;
+  ↑ and ↓ move it one place too. **Remove** takes it out; **Add effect** puts a
+  new one at the bottom with its default settings.
 - **A / B it** — type a line (or leave it empty for the stock line), then
   **▶ Dry** plays it with no effects and **▶ Wet** plays the same take through
   the chain as it stands. It is one take, so the only difference you hear is

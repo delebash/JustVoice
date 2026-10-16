@@ -355,9 +355,13 @@ BUILT:  2026-10-16 — 1: `seven_engines_unchanged.test.js` and `seven_engines_b
         yes." The user: "your rec go" — removed 2026-10-16 (both branches merged into main, local
         only; the worktree held only the two package-lock changes slice 4 left out; its links to
         the kit and the sync library were unlinked, their folders untouched).
-OPEN:   4 — the user's tag, then the pin. 6 — the user's look at `#/mock/voices` at phone width,
-        then the build in VoicesPage.vue. 9 — the user's look. Screenshots of both for that look,
-        taken on a throwaway server: the session's scratchpad `look/`.
+        Then the user: "your rec do it all stop stoping and finish it all go!" (2026-10-16) — 4: the
+        tag v0.9.2-jv.6 pushed at bcc5dfbb; 6: the fold built in VoicesPage.vue as the mock draws it
+        (docs/voices.md, whats-new); 9: the Effects chain editor's rows built in
+        EffectsChainEditorModal.vue as the mock draws them — one row a step, settings inline with
+        their units, the kit's UiNumber holding the server's ranges (EffectsChainEditorModal.test.js;
+        docs/effects.md, whats-new).
+OPEN:   4 — the pin, once the release build is published.
 GO:     given 2026-10-16 ("your rec even for non standard think on it again go").
 
 ### The build's 16 questions: 1, 2, 7, 8 answered; 3, 4, 6 asked to explain (2026-10-15)

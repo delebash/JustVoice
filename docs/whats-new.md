@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **The Effects chain editor is compact (2026-10-16)** — each step of a chain is one row: its name,
+  its settings with their units (*Gain [-2] dB*), then ↑ ↓ Remove; a setting past the effect's range
+  is held to it ([Effects → Edit a chain](effects.md#edit-a-chain))
+- **Voices at phone width (2026-10-16)** — the filters fold behind one **Filters** button, which
+  says how many are set, so the list keeps its room ([Voices](voices.md#finding-a-voice-in-the-library))
 - **The title bar at phone width (2026-10-16)** — the server status shows only its dot (the word,
   *Operational*, is in its tooltip), so the page's name has room
   ([AI features → The AI tasks panel](ai-features.md#the-ai-tasks-panel))
