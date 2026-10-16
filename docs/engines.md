@@ -515,7 +515,12 @@ filters**.
 settings — sliders, and also dropdowns, on/off switches and text fields where
 the model has them — in the persona page's *Sampling* and in Render's *This line
 only*. A setting the model gives no default for shows none (a number is an empty
-box) until you set it; until then audio.cpp's own applies. What JustVoice sends
+box) until you set it; until then audio.cpp's own applies. A number's range is
+audio.cpp's own — the one its own screen gives the control, else the model's
+description — and a number with no top or no bottom, or one audio.cpp's own
+screen shows as a box, is a number box you type into rather than a slider
+(MioTTS's *Max tokens*, CosyVoice3's *num_inference_steps*, Audio8's *top_k*
+from 0 — each labelled as audio.cpp labels it; since 2026-10-15). What JustVoice sends
 itself — the line's text, the voice's clip and its words, the language — is never
 a setting, nor are file paths on the computer running the speech runtime. Nor are
 dots.tts's *Source text* and *Target text* (they belong to its editing mode,
@@ -676,9 +681,25 @@ the runtime's own default, so leaving it alone changes nothing. Pocket TTS's
 temperature and end-of-speech settings are read only when its voice is
 prepared, not per line, so they aren't offered.
 
-**Options on a model's row.** A few settings are read when a model loads rather
-than per line, so they live on its row on Speech engines, under **Runs on**.
-Qwen3-TTS has two, measured on CustomVoice 1.7B:
+Since 2026-10-15 these ranges are audio.cpp's own wherever JustVoice's were
+narrower: Chatterbox's **Exaggeration** starts at 0 (was 0.25) and VoxCPM2's
+**CFG** at 0 (was 1); VoxCPM2's **Inference steps** (from 1), Qwen3's **Top k**
+and **Detail top k** (from 0), and Turbo's and Nano's **Top k** (from 0) are
+number boxes with no top (were sliders of 4–30, 1–100 and 1–2000).
+
+**Options on a model's row — its load options.** Some settings are read when a
+model loads rather than per line, so they live on its row on Speech engines,
+under **Runs on**. Every one audio.cpp's description of the model lists is there
+(since 2026-10-15; before, only Qwen3's two below), each starting at audio.cpp's
+own default — a dropdown, an on/off switch, a number box or a text field, with
+its **↺** to go back to the default. They are folded under **Load options (N)**
+below the row, as audio.cpp's own screen folds a model's options; open it to see
+them. Many are for experts: memory pool sizes in MB, the weights' storage type.
+File paths are never among them — the files a model needs are JustVoice's to
+give.
+
+Qwen3-TTS's two that JustVoice measured, on CustomVoice 1.7B, stay on the row
+itself:
 
 - **Attention** — *Exact* or *Flash attention*: about 9 % faster and 0.2 GB
   less at the peak, and the same seed gives a different take. 8-bit models
@@ -686,10 +707,20 @@ Qwen3-TTS has two, measured on CustomVoice 1.7B:
 - **Decoder weights** — *16-bit* (the default) or *32-bit*. 16-bit takes about
   0.5 GB less at the peak; at the same seed the two measure slightly apart, but in a
   listening test no difference could be heard, so 16-bit became the default on
-  2026-10-04. Pick 32-bit on a model's row to go back.
+  2026-10-04 — JustVoice's default, where audio.cpp's own is 32-bit. Pick 32-bit
+  on a model's row to go back. (audio.cpp also offers *native*, the file's own.)
 
-Changing one on a loaded model reloads it. They are saved per model in
-`settings.engines.engine_overrides[engine].runtime_options[model]` (see
+**Chatterbox Multilingual v3** is one of its load options: *Multilingual t3*,
+*v2* (the default) or *v3* — the newer of the two multilingual checkpoints inside
+the same downloaded file. It speaks the same 23 languages audio.cpp lists for
+Chatterbox; an English line uses Chatterbox's English checkpoint either way, so
+the choice changes only the other languages.
+
+Changing one on a loaded model reloads it. A load option can change how much
+memory the model takes, so its measured memory is kept per set of load options:
+the first load with a new set measures it again, and going back to the defaults
+finds the earlier measurement. They are saved per
+model in `settings.engines.engine_overrides[engine].runtime_options[model]` (see
 [Settings reference](settings-reference.md)).
 
 **Direction and identity pull against each other.** Written direction — a

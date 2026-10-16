@@ -483,6 +483,10 @@ when the voice's model takes IPA (Kokoro). See
 Titled with the model, this card shows **exactly that model's own sampling
 settings**, three across, with its own defaults and ranges — Temperature, Top k,
 Top p and Repetition penalty on Qwen3 CustomVoice; others on other models.
+A number is a slider where audio.cpp gives it both ends, and a **number box** you
+type into where it gives no top or no bottom, or where audio.cpp's own screen
+shows a box — Qwen3's *Top k*, from 0 with no top (since 2026-10-15). The ranges
+are audio.cpp's own; see [Engines → What each engine can be tuned with](engines.md#what-each-engine-can-be-tuned-with).
 **↺** puts one back to the model's default. A model with none and no seed says
 *KittenTTS has no sampling settings.*
 

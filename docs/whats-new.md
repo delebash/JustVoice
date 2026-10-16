@@ -45,6 +45,16 @@
     asks you to accept its licence before its first download; CrisperWhisper 2.0 and Hviske ASR
     are *Separate licence*; FireRedAudio's speech recognition is *Yes*. Chatterbox's plain words no longer claim a watermark the speech runtime
     doesn't add ([Commercial use, in plain words](engines.md#commercial-use-in-plain-words))
+  - Speech engines: every load option audio.cpp lists for a model is on its row, folded under
+    **Load options (N)**, each at audio.cpp's own default — among them Chatterbox Multilingual's
+    *Multilingual t3*, which switches its other languages to the newer *v3* checkpoint. Qwen3's
+    **Attention** and **Decoder weights** stay on the row, 16-bit still the default. A model's
+    measured memory is kept per set of load options. Every setting a model has is offered: a
+    number audio.cpp gives no top or no bottom is a number box, and the ranges are audio.cpp's
+    own — Chatterbox's **Exaggeration** and VoxCPM2's **CFG** start at 0, and Qwen3's **Top k**,
+    Turbo's **Top k** and VoxCPM2's **Inference steps** have no top. A setting that's a dropdown,
+    a switch or a text field no longer stops a persona from saving ([Engines](engines.md#what-each-engine-can-be-tuned-with),
+    [Personas](personas.md#sampling))
   - The AI model: a refusal for lack of the computer's memory names the speech models running on
     the CPU. Claude Opus 5.5, Fable and Mythos can't stop thinking, so thinking **Off** asks them
     to think as little as they can, and the control says *This model always thinks — Off makes
