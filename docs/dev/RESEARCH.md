@@ -4492,6 +4492,51 @@ github.com/gabriele-mastrapasqua/qwen3-tts (commit ef339be5), the official QwenL
   CustomVoice rows `clone: false` (`:94-110`), `slot.js:969-982` ("the CustomVoice model cannot
   clone"), `capability_details.js`.
 
+### 10.29 Round 5 — each engine told the authors' way, a person as the bar, scored (2026-10-16)
+
+TASKS "Round 5". Through the app (`npm run round4:render`, the dev build bcc5dfbb; IndexTTS's clip
+arms through the speech runtime's `/v1/tasks/run`), the Hatter's clip copied to each model, round
+4's 50 cue lines told and not told, seeds 7, 8, 9: 300 takes an arm, 1,800 in all, none failed.
+Told = the line's direction words as gemma's direction step found them (`data/round5-direction.json`;
+the key's cue where it found none). Scored by `tools/take-check` as round 4 (Whisper turbo,
+UTMOSv2 on seed 7); `npm run round4:report -- data/round5/score/out`. A person: LibriVox's dramatic
+reading of Alice (librivox.org/4511, Public Domain Mark 1.0), the page's 13 lines found in chapters
+VII–VIII by Whisper turbo (every line an exact word match) and cut; scored against themselves.
+
+| Arm (how told) | Emotion gain [95% CI] | Heard as asked: told · not | Shouted / whispered Δ LUFS | WER told · share > 0.25 | Speaker sim told · not | UTMOSv2 | s a take |
+|---|---|---|---|---|---|---|---|
+| IndexTTS 2.0, acted clip (Breeze acting in Alice's voice, 0.9) | +0.14 [0.04, 0.30] | 0.21 · 0.08 | +11.6 / −2.4 | 0.037 · 0.04 | 0.77 · 0.93 | 2.47 | 2.0 |
+| BreezeTTS 2 (direction words, on the card) | +0.13 [0.05, 0.23] | 0.23 · 0.11 | +5.8 / −8.0 | 0.023 · 0.03 | 0.85 · 0.91 | 2.88 | 4.5 |
+| IndexTTS 2.0, words at 0.6 | +0.11 [0.04, 0.22] | 0.19 · 0.08 | +5.3 / +0.8 | 0.016 · 0.01 | 0.89 · 0.93 | 2.93 | 2.2 |
+| IndexTTS 2.5, words at 0.6 | +0.10 [0.03, 0.25] | 0.27 · 0.16 | +3.4 / +1.3 | 0.021 · 0.01 | 0.90 · 0.93 | 3.11 | 2.0 |
+| IndexTTS 2.5, acted clip | +0.06 [0.01, 0.12] | 0.24 · 0.16 | +6.7 / −1.6 | 0.226 · 0.25 | 0.73 · 0.93 | 2.39 | 1.9 |
+| VoxCPM2 (direction words, cfg 2.7) | +0.04 [0.01, 0.08] | 0.15 · 0.11 | +4.7 / +3.5 | 0.015 · 0.01 | 0.87 · 0.92 | 2.78 | 1.8 |
+
+- **By emotion** (gain): angry — IndexTTS 2.0 clip +0.49, words +0.35, 2.5 words +0.26, VoxCPM2
+  +0.15, Breeze +0.14; sad — only Breeze moves (+0.18); fearful — IndexTTS 2.5 words +0.18, 2.0 clip
+  +0.16; contemptuous — nobody. Against round 4 (§10.22): VoxCPM2 told the line's words at cfg 2.7
+  is no better (+0.04 vs +0.06), and **a whispered line came out louder** (+3.5 dB); Breeze on the
+  card is lower than round 4's CPU run (+0.13 vs +0.20, same loudness gaps) — gemma's direction
+  words in place of the app's one-word emotion. — *measured*.
+- **IndexTTS's acted clip** carries loudness (2.0: shouted +11.6 dB, the biggest of any arm) but
+  costs the likeness (0.93 → 0.77) — the community guide's warning that an emotional clip leaks
+  into the voice (§10.10). **On 2.5 a quarter of the clip takes don't read back** (WER > 0.25 on
+  25 %): broken takes. — *measured*.
+- **The scorer against a person:** emotion2vec+ hears the person's anger (7-32 at 1.00, 7-3 at 0.96)
+  and nothing else — the sad, fearful, contemptuous and happy lines all at 0.00 (top class happy,
+  neutral or angry). The person's loudness: shouted −19.6 and −22.1 LUFS; whispered −30.1 (8-67)
+  and −18.5 (8-48, read aloud). So emotion2vec ranks angry takes, and loudness shouted and
+  whispered ones; for sad, fearful and contemptuous the ear decides (§10.11). — *measured*.
+- **Narration** (10 Alice VII passages, seed 7, no direction; the Alice voice on VoxCPM2 and its
+  Breeze copy): WER 0.017 and 0.023, UTMOSv2 2.70 and 3.05, 7.1 and 14.3 s a passage. — *measured*.
+- **The page** (the user's four steps and a best-of pick; the person hidden among the takes):
+  on each line the person, Breeze, VoxCPM2's pick and a VoxCPM2 take the scorers passed over, and
+  IndexTTS's better words arm and better clip arm (by emotion gain: 2.0 both), each the scorers' pick
+  of its three seeds — the take within 0.2 WER of the best that has the most of the asked emotion
+  (emotion2vec+, or loudness for shouted and whispered; Llasa's verifiers, §10.10); the two
+  narrators on the ten passages. claude.ai/artifact/JksCTD7KkySRK6tQneVqMf (collection `round5`).
+  · `data/round5/` (gitignored).
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next

@@ -462,10 +462,10 @@ WHY:    the best engine whose audiobooks can be sold (VoxCPM2, Apache-2.0) was t
         Public Domain Mark 1.0; chapters VII–VIII in `data/round5/human/`.)
 NOT:    CosyVoice3 (its emotion follows the words; its official phrases were already used);
         Chatterbox (exaggeration sets intensity only, no emotion to choose).
-BUILT:  —
-OPEN:   the renders (the book's cue words as the direction, cfg ~2.5–3.0, 3 seeds), the scorers'
-        pick against a random take, a blind page with no change · a little · clearly · like the
-        book and a best-of pick.
+BUILT:  the renders (six arms, 1,800 takes), the person's 13 lines, the narration sample, the
+        scores (RESEARCH §10.29), the page: claude.ai/artifact/JksCTD7KkySRK6tQneVqMf.
+OPEN:   the user's ears on the page; then the narrator's engine (TASKS "The character voices")
+        and round 6b.
 GO:     given 2026-10-16 ("your rec on all go").
 
 ### Discover's names: the AI suggests, you link — Find same people, Link, Unlink, Kept apart (decided 2026-10-16)
