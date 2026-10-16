@@ -64,11 +64,11 @@ describe("the price", () => {
   test("on a cloud model, the estimate and one question", () => {
     const plan = mockPlan({ frontier: true });
     expect(plan.ask_price).toBe(true);
-    expect(priceText(plan.estimate)).toBe("about $0.76");
-    expect(planLine(plan)).toBe("Sends the book to claude-opus-5-5: about 33,404 tokens in and 31,525 out, about $0.76. The run asks once before it starts.");
+    expect(priceText(plan.estimate)).toBe("up to about $0.76");
+    expect(planLine(plan)).toBe("Sends the book to claude-opus-5-5: about 33,404 tokens in and 31,525 out, up to about $0.76. The run asks once before it starts.");
     const q = priceQuestion(plan);
     expect(q.title).toBe("Send the book to a cloud model?");
-    expect(q.confirmLabel).toBe("Make audiobook — about $0.76");
+    expect(q.confirmLabel).toBe("Make audiobook — up to about $0.76");
     expect(q.message).toContain("It asks only this once — Resume won't ask again.");
     // A model AI Settings → Pricing has no price for.
     const unknown = { ...plan, estimate: { ...plan.estimate, price: null, unpriced: ["claude-opus-5-5"] } };

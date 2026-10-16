@@ -64,6 +64,7 @@ import * as direction from "./extraction/direction.js";
 import * as groupLines from "./extraction/group_lines.js";
 import * as mergeNames from "./extraction/merge_names.js";
 import * as pipeline from "./extraction/pipeline.js";
+import { around } from "./extraction/second_look.js";
 import { resolveMarks, segmentParagraphs, splitIntoParagraphs } from "./extraction/segmentation.js";
 import { isMarker } from "./line_takes.js";
 import * as lineTakes from "./line_takes.js";
@@ -248,14 +249,24 @@ function rowChars(action) {
   return row ? (row.system || "").length + (row.user_template || "").length : 0;
 }
 
-/** Each chapter as the estimate reads it: its text and its spoken lines (the segmenter's count). */
-function chapterSizes(h, projectId, chapters) {
+/** Each chapter as the estimate reads it: its text, its spoken lines (the segmenter's count), and
+ * the size of the text around each line whose narration says several people speak it — what the
+ * step for lines with no single speaker sends (`group_lines.severalSpeak` without the cast's names,
+ * which aren't known before Discover; a line Analyze will leave blank can't be foreseen). */
+function chapterSizes(h, projectId, chapters, words) {
   const marks = extraction._projectMeta(h, projectId).speech_marks;
+  const several = groupLines.severalSpeak([]);
   return chapters.map((scene) => {
     const text = extraction._sceneText(h, scene);
     const style = resolveMarks(marks, text);
-    const spoken = segmentParagraphs(splitIntoParagraphs(text), { marks: style }).filter((s) => s.kind === "dialogue").length;
-    return { scene, chars: text.length, spoken };
+    const paragraphs = splitIntoParagraphs(text);
+    const segments = segmentParagraphs(paragraphs, { marks: style });
+    const lines = segments.filter((s) => s.kind === "dialogue");
+    const near = direction.narrationAround(segments);
+    const groupAsks = lines
+      .filter((s) => several(near.get(s.dialogue_id).before, "before") || several(near.get(s.dialogue_id).after, "after"))
+      .map((s) => around(paragraphs, s.paragraph_idx, s.text, words).length);
+    return { scene, chars: text.length, spoken: lines.length, groupAsks };
   });
 }
 
@@ -265,16 +276,20 @@ function chapterSizes(h, projectId, chapters) {
  * what a step sends is its prompt rows and the text it reads, at `book_run.chars_per_token`
  * characters a token; what comes back is `extraction.answer_tokens_per_line` a spoken line for the
  * steps that answer line by line (Analyze, Direction) and once a call for the rest. Chapters a step
- * already did are left out, as the run leaves them (`redo` aside). The lines with no single speaker
- * aren't counted — how many there are is only known after Analyze. A step on a model of this
- * machine costs nothing; a cloud model with no row in AI Settings → Pricing has no price
- * (`unpriced`), and then neither has the total.
+ * already did are left out, as the run leaves them (`redo` aside). The lines with no single speaker:
+ * one call for each line whose narration says several speak it, in the chapters Analyze will read,
+ * with the text around it (Alice VII, 2026-10-16: 3 calls, 9,949 tokens — a third of the run's).
+ * The answers are counted at the reserve a line gets, so the figure leans high: the price is shown
+ * as "up to about" (decided 2026-10-16). A step on a model of this machine costs nothing; a cloud
+ * model with no row in AI Settings → Pricing has no price (`unpriced`), and then neither has the
+ * total.
  */
 export function estimateRun(h, projectId, routes, { redo = [], settings }) {
   const cpt = Number(settings.book_run.chars_per_token) || 4;
-  const apt = (settings.extraction ?? construct(ExtractionSettings, {})).answer_tokens_per_line;
+  const ext = settings.extraction ?? construct(ExtractionSettings, {});
+  const apt = ext.answer_tokens_per_line;
   const chapters = bookChapters(h, projectId);
-  const sizes = chapterSizes(h, projectId, chapters);
+  const sizes = chapterSizes(h, projectId, chapters, ext.second_look_words);
   const todo = (key) => sizes.filter((s) => redo.includes(key) || !ALREADY[key](h, s.scene));
   const tokens = (chars) => Math.ceil(chars / cpt);
   const bookChars = sizes.reduce((n, s) => n + s.chars, 0);
@@ -290,6 +305,10 @@ export function estimateRun(h, projectId, routes, { redo = [], settings }) {
   raw.discover = perChapter("discover");
   raw.merge = { tokens_in: tokens(rowChars(routes.merge.action)), tokens_out: apt };
   raw.analyze = perChapter("analyze");
+  // Asked in the chapters Analyze reads this run (a chapter decided before has its answers).
+  const asks = todo("analyze").flatMap((s) => s.groupAsks);
+  const groupRow = rowChars(routes.group_lines.action);
+  raw.group_lines = { tokens_in: asks.reduce((n, chars) => n + tokens(groupRow + chars), 0), tokens_out: apt * asks.length };
   // The voices steps ask only about speakers with no persona: a book whose speakers are all cast
   // costs them nothing (a re-run); before Discover nobody is known, so the estimate counts them.
   const speakers = h.all(`select persona_id from ${Speaker} where project_id = ?`, [projectId]);
@@ -444,7 +463,7 @@ export function problemText(p) {
 function priceWords(estimate) {
   if (!estimate) return "its price can't be estimated";
   const tokens = `about ${estimate.tokens_in.toLocaleString("en-US")} tokens in and ${estimate.tokens_out.toLocaleString("en-US")} out`;
-  return estimate.price === null ? `${tokens}, at a price AI Settings → Pricing doesn't have` : `${tokens}, about $${estimate.price.toFixed(2)}`;
+  return estimate.price === null ? `${tokens}, at a price AI Settings → Pricing doesn't have` : `${tokens}, up to about $${estimate.price.toFixed(2)}`;
 }
 
 /** Start the runner. Idempotent — one live runner per run. */

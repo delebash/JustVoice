@@ -81,7 +81,7 @@ test("on a cloud route: each step's estimate, the price on the button", async ()
   await mount({ plan: mockPlan({ frontier: true }), run: null });
   expect(headers()).toEqual(["Step", "Runs on", "Estimate"]);
   expect(cells(3)).toEqual(["Analyze — who speaks each line", "Claude (Anthropic) · claude-opus-5-5Frontier", "23,200 tokens · $0.34"]);
-  expect(buttons()).toEqual(["▶ Make audiobook — about $0.76"]);
+  expect(buttons()).toEqual(["▶ Make audiobook — up to about $0.76"]);
 });
 
 test("blocked: what is in the way, and no start", async () => {

@@ -335,6 +335,12 @@ test("a_frontier_route_shows_its_price_and_the_run_asks_once", { timeout: 60000 
   const e = plan.estimate;
   expect(e.price).toBeCloseTo((e.tokens_in / 1e6) * 5 + (e.tokens_out / 1e6) * 25, 2);
   expect(e.unpriced).toEqual([]);
+  // The lines with no single speaker are counted: Alice VII's four whose narration says several
+  // speak them ("they cried out", "they both cried" ×2, "the Hatter and the March Hare went" —
+  // the last needs the cast's names, unknown before Discover, so three), each with its text around.
+  const group = plan.steps.find((s) => s.key === "group_lines").estimate;
+  expect(group.tokens_in).toBeGreaterThan(3 * 2000);
+  expect(group.tokens_out).toBeGreaterThan(0);
   // Unasked, it doesn't start.
   const refused = await c.post("/v1/book_runs", { json: { project_id: pid } });
   expect(refused.status).toBe(409);

@@ -103,11 +103,12 @@ export function stepStatusText(step, unit, run) {
   return `Done · ${count(key, total, unit)}${kept}`;
 }
 
-/** "about $0.76", "nothing to pay", or that the price isn't known. */
+/** "up to about $0.76" — the estimate leans high, answers counted at their reserve (2026-10-16) —
+ * or that the price isn't known. */
 export function priceText(estimate) {
   if (!estimate) return "";
   if (estimate.price === null) return "price unknown — AI Settings → Pricing has no price for it";
-  return `about $${Number(estimate.price).toFixed(2)}`;
+  return `up to about $${Number(estimate.price).toFixed(2)}`;
 }
 
 /** The line under the steps before a run: what it will cost, or that it costs nothing. */
@@ -126,13 +127,13 @@ export function priceQuestion(plan) {
   const models = [...new Set(plan.steps.filter((s) => s.kind === "ai" && s.cloud).map((s) => s.model))].join(", ");
   const cost = e.price === null
     ? `AI Settings → Pricing has no price for ${e.unpriced.join(", ")}, so what it costs isn't known.`
-    : `At your prices in AI Settings → Pricing that is about $${Number(e.price).toFixed(2)}.`;
+    : `At your prices in AI Settings → Pricing that is ${priceText(e)}.`;
   return {
     title: "Send the book to a cloud model?",
     message: `This run sends about ${e.tokens_in.toLocaleString()} tokens of the book to ${models} and gets about `
       + `${e.tokens_out.toLocaleString()} back. ${cost} It's an estimate; the run writes down what it really used. `
       + "It asks only this once — Resume won't ask again.",
-    confirmLabel: e.price === null ? "Make audiobook" : `Make audiobook — about $${Number(e.price).toFixed(2)}`,
+    confirmLabel: e.price === null ? "Make audiobook" : `Make audiobook — ${priceText(e)}`,
   };
 }
 

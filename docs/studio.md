@@ -142,13 +142,20 @@ before the M4B, and without speech recognition the takes go unchecked.
 
 **On a cloud model it asks once.** When any AI step runs on a cloud account
 (Claude, GPT, Gemini…), the card adds an **Estimate** column and a line — *Sends
-the book to claude-opus-5-5: about 33,404 tokens in and 31,525 out, about $0.76*
+the book to claude-opus-5-5: about 33,404 tokens in and 31,525 out, up to about $0.76*
 — and the button carries the price. Pressing it asks once, *Send the book to a
 cloud model?*, and the run starts only on your yes; Resume never asks again. The
 estimate is arithmetic, not a measurement: the text each step reads at about
 four characters a token (`book_run.chars_per_token`, [Settings
 reference](settings-reference.md)), each spoken line's answer at
-`extraction.answer_tokens_per_line`, priced from AI Settings → Pricing. A model
+`extraction.answer_tokens_per_line`, priced from AI Settings → Pricing; the
+step for [lines with no single speaker](#lines-with-no-single-speaker) as one
+question for each line whose narration says several people speak it, with the
+text around it. The answers are counted at the room a line is given, not what
+a model usually writes, so the figure leans high — the price says *up to
+about* (on *Alice* chapter VII the estimate said 14,569 tokens in and 19,760
+out; the run used 27,943 and 6,782, before the lines with no single speaker
+were counted). A model
 Pricing has no price for gets the token count and *price unknown*. The run
 writes down what it really used.
 

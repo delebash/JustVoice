@@ -331,6 +331,29 @@ OPEN:   the user's ears on round 4's page, then the character-voice engine (the 
         `--quality-seeds`, `--whisper-model`); slices 1–6 are merged (5 as 4923ab57).
 GO:     given 2026-10-16.
 
+### The character voices: BreezeTTS 2, with its licence on the run's card (decided 2026-10-16)
+STATE:  DECIDED 2026-10-16 — the user's ears on round 4's blind page (51 answers: plays like the
+        book — BreezeTTS 2 13/13, IndexTTS 2.5 7/13, Higgs 6/12, VoxCPM2 3/13); shown: "My rec for
+        the engine that plays the book's characters (`book_voices.clone_model`): BreezeTTS 2. It's
+        the only setup that played every line like the book. Its catches: Licence: as your
+        2026-10-11 ruling says (offer the best models, labelled), the run's card shows its licence
+        word before the run starts. Speed: about twice as slow as VoxCPM2 (4.3 s a take on the
+        graphics card). Memory: it peaks at 7.3 GB, so on an 8 GB card the automatic choice may put
+        it on the processor (11 s a take). I'll measure that." Asked what the licence decision is:
+        "(a) BreezeTTS 2 … The run's card would show its licence word before you start. (b)
+        VoxCPM2, today's default … My rec is (a), with the label." The user: "your rec on breeze
+        and license, so our best non commercial only got 3 lines correct in emotion, so chatterbox
+        and qwen did not do well, that just seem like something is wrong, can you check what other
+        people are saying regarding this … maybe we have something configured wrong".
+WHY:    the one-click run needs the engine that acts best on a copied voice (TASKS "The order of
+        work after the research sweep").
+NOT:    switching before the configuration check the same message asked for — if it shows our
+        setup was wrong for the others, the rec goes back to the user.
+BUILT:  —
+OPEN:   the check (a research agent, then RESEARCH); then `book_voices.clone_model` → breeze, the
+        licence word on the run's card, and Breeze's placement on an 8 GB card measured.
+GO:     given 2026-10-16 ("your rec on breeze and license").
+
 ### The one-click run's leftovers, rethought (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the gemma acceptances (RESEARCH §10.24), the recs shown for the
         user's look were "think on your rec again"-ed; shown: "1. Slice 5's card and its words — I
@@ -363,9 +386,13 @@ BUILT:  2 — the "group" flag carries the whole group (`ScriptFlag.group`); Scr
         /v1/speakers/:id?ignore=1` puts every scanned name that is them (`names.match`: their name
         and Also called) on the book's ignore list; Cast's ✕ and Discover's removals ask "…, and
         ‹name› won't be suggested again." (several: "They won't be suggested again.") and send it.
-        Docs studio.md (Removing a speaker, Said together), whats-new.
+        Docs studio.md (Removing a speaker, Said together), whats-new. 4 — the estimate counts
+        the lines with no single speaker (one question for each line whose narration says several
+        speak it, in the chapters Analyze will read, with its text around it — `estimateRun`), and
+        the price reads "up to about $…" on the card, the question and its button (server
+        `priceWords` too); docs studio.md (Make the audiobook).
 OPEN:   1 after the graphics card is free (JustWrite's Lab run); 3 waits on the user's ears;
-        4, 6 (mock first), 9. For the user: the cast card's Clear all ignores no one (a gap — a
+        6 (mock first), 9; 4's calibration after the first frontier run. For the user: the cast card's Clear all ignores no one (a gap — a
         start-over shouldn't empty the next run's cast); a line given to the ONE person the
         answer named still asks "No one could be named — given to ‹X›. Who says it?" (words
         needed).
