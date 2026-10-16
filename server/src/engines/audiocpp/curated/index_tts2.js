@@ -44,3 +44,20 @@ export const LICENCE = {
 export const OLD_OPTION_NAMES = {
   duration_factor: "duration_scale",
 };
+
+// The line's language: its session reads it only from the request's options
+// (../audio.cpp/src/models/index_tts2/request.cpp:90-92, session.cpp:361-366) — a top-level language
+// reaches only the request's text (app/server/server_protocol.cpp:72-75) — as its spec's code:
+// "IndexTTS2.5 text language; empty or auto selects from text". Without it IndexTTS2.5 picks
+// Chinese for text with Han characters, else English (tokenizer_text.cpp:815-818), so a Japanese,
+// Spanish or Arabic line went as Chinese or English. IndexTTS2 (v2) reads it for neither
+// (tokenizer_text.cpp:776-784). Decided 2026-10-15, TASKS "Slice 2's acceptance findings" 7.
+export const LANGUAGE_IN_OPTIONS = "code";
+
+// A checkpoint's languages where it speaks fewer than its family (decided 2026-10-15, "Slice 2's
+// acceptance findings" 5): "IndexTTS2 is a Chinese and English TTS model"
+// (../audio.cpp/docs/models/index_tts2.md:9); IndexTTS2.5 adds Japanese, Spanish and Arabic
+// (index_tts2.md:127), the family's five. Keyed by audio.cpp's catalog entry.
+export const LANGUAGES = {
+  "index-tts2": ["zh", "en"],
+};

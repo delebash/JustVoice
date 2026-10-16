@@ -6,6 +6,15 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-15 · VieNeu-TTS v3 Turbo through SEA-G2P in our fork's release** — VieNeu reads
+  SEA-G2P phonemes, not text. audio.cpp's session takes ordinary text once
+  `vieneu_v3_turbo.g2p_library` names the sea-g2p C library (Rust: `cargo build --release
+  --no-default-features --features capi`) and `vieneu_v3_turbo.g2p_dict_file` its ~50 MB
+  dictionary (`../audio.cpp/docs/models/vieneu_v3_turbo.md:56-81`). Building that library into our
+  fork's release bundle, and giving it a voice (a clip, or the packages' `minh_quan_pro` codes and
+  speaker embedding), would let it speak. Hidden until then (TASKS "Slice 2's acceptance findings"
+  1; its file's `NOT_OFFERED`).
+
 - **2026-10-15 · Audio output channels — a persona's audio to a chosen output device** — the
   user: "4 your rec but add it to ideas so we dont forget what it is" (TASKS "The build's 16
   questions…", 4). What it was meant to be: named channels in Settings, each holding output

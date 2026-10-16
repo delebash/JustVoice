@@ -10,3 +10,10 @@ export const LICENCE = {
   url: "https://huggingface.co/OpenMOSS-Team/MOSS-Transcribe-Diarize",
   checked: "2026-10-15",
 };
+
+// Where its words are without its own markup (decided 2026-10-15, TASKS "Slice 2's acceptance
+// findings" 3): its `text` is the model's raw output, timed and speaker-tagged ("[0.06][S01]
+// …[7.96]"); each segment it parses keeps the words alone in `segments[].text` and
+// `speaker_turns[].text` (../audio.cpp/src/models/moss_transcribe_diarize/session.cpp:123-141),
+// which /v1/audio/transcriptions/details returns (app/server/runtime.cpp:1546-1563).
+export const WORDS_FROM = "speaker_turns";

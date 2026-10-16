@@ -676,7 +676,7 @@ export class AudioCppSlot {
       if (temp) rmSync(p, { force: true });
     }
     // audio.cpp's recognisers report no confidence — null means UNKNOWN, never zero.
-    return new _Resp(200, Buffer.alloc(0), null, { text: strip(out.text || ""), confidence: null });
+    return new _Resp(200, Buffer.alloc(0), null, { text: self.plainTranscript(this._row, out), confidence: null });
   }
 
   async _align(body) {
@@ -700,6 +700,18 @@ export class AudioCppSlot {
     }));
     return new _Resp(200, Buffer.alloc(0), null, { words });
   }
+}
+
+/** A recogniser's transcript: its response's `text` — or, where its family's file names the
+ * response field holding the words without the model's own markup (`WORDS_FROM`:
+ * MOSS-Transcribe-Diarize's timed speaker tags, VibeVoice-ASR Streaming's "Speaker 0:"), that
+ * field's texts joined by a space, as audio.cpp joins VibeVoice-ASR's segments
+ * (src/models/vibevoice_asr/postprocess.cpp:149-153); its `text` where that field is empty
+ * (decided 2026-10-15, TASKS "Slice 2's acceptance findings" 3). */
+export function plainTranscript(row, out) {
+  const field = CURATED[row?.audiocpp?.family]?.WORDS_FROM;
+  const parts = field ? (out?.[field] || []).map((t) => strip(String(t?.text || ""))).filter(Boolean) : [];
+  return parts.length ? parts.join(" ") : strip(out?.text || "");
 }
 
 /** How long a transcription may take (seconds): the request timeout setting, or three times
@@ -1150,12 +1162,42 @@ export function generatedSpeechRequest(row, body, req) {
     if (hasWords && !dir.dropReferenceText) req.reference_text = body.ref_text;
   }
 
-  const language = generatedLanguage(family, get(body, "language"));
-  if (language !== undefined) req.language = language;
+  // The line's language — none where the model's own languages (its family file's) leave it out.
+  // A family whose session reads it only from the request's options gets it there (its file's
+  // LANGUAGE_IN_OPTIONS: MOSS's three by name, IndexTTS2 as its code — a top-level language
+  // reaches only the request's text, app/server/server_protocol.cpp:72-75; decided 2026-10-15,
+  // TASKS "Slice 2's acceptance findings" 7); every other family at the top level.
+  const language = generatedLanguage(family, get(body, "language"), spec.languages ?? null);
+  const inOptions = curated?.LANGUAGE_IN_OPTIONS;
+  if (language !== undefined && inOptions === "name") {
+    const named = get(QWEN_LANGUAGE, String(language).toLowerCase().split("-")[0]);
+    if (named) options.language = named;
+  } else if (language !== undefined && inOptions) options.language = language;
+  else if (language !== undefined) req.language = language;
   if (listed && !specOpts.has("seed")) delete req.seed;
   if (dir.prefix) req.input = `${dir.prefix}${req.input}`;
+  // A speaker script (its family file's SPEAKER_SCRIPT): each line of the text, and of the clip's
+  // words, as the voice's line in it — VibeVoice's "Speaker 1: …", MOSS-TTSD's "[S1] …" (decided
+  // 2026-10-15, "Slice 2's acceptance findings" 1).
+  if (curated?.SPEAKER_SCRIPT) {
+    req.input = self.asSpeakerScript(curated.SPEAKER_SCRIPT, req.input);
+    if (req.reference_text) req.reference_text = self.asSpeakerScript(curated.SPEAKER_SCRIPT, req.reference_text);
+  }
   if (Object.keys(options).length) req.options = options;
   return req;
+}
+
+/** `text` as the voice's lines in a family's speaker script: each non-empty line through
+ * `template`'s `{text}` — VibeVoice drops a line without "Speaker N:"
+ * (../audio.cpp/src/models/vibevoice/tokenizer_text.cpp:48-83), MOSS-TTSD reads `[S1]` as the
+ * first speaker (docs/models/moss_ttsd.md:20-21). A line's own `$&` stays as written. */
+export function asSpeakerScript(template, text) {
+  return String(text)
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => template.replace("{text}", () => l))
+    .join("\n");
 }
 
 /** A line's language (a code: "en", "en-US") in the form a generated model's spec takes it — one
@@ -1163,11 +1205,15 @@ export function generatedSpeechRequest(row, body, req) {
  * or a code its family's languages list (`listedLanguage`) — or undefined where its spec lists no
  * language option, the line has none, or the family lists it in no form it takes: the model then
  * picks it, as its spec says an omitted language does (OmniVoice takes Arabic only as `arb`, `arz`
- * … and its spec lists no codes; it refused `ar`). */
-export function generatedLanguage(family, language) {
+ * … and its spec lists no codes; it refused `ar`). `languages`: the model's own, where its family
+ * file gives them (generated.languagesOf) — a line in none of them goes without one (LFM2.5-Audio
+ * JP given English); the form stays the family's (VoiceTut-TTS's `ar-EG` is the app's tag, not one
+ * OmniVoice takes). */
+export function generatedLanguage(family, language, languages = null) {
   const langSpec = generated.requestOptionsOf(family).get("language");
   const code = String(language || "").toLowerCase().split("-")[0];
   if (!langSpec || !code) return undefined;
+  if (languages && !languages.some((l) => String(l).toLowerCase().split("-")[0] === code)) return undefined;
   const name = get(QWEN_LANGUAGE, code);
   if (Array.isArray(langSpec.values) && langSpec.values.length) {
     return langSpec.values.find((v) => String(v).toLowerCase() === code || (name && String(v).toLowerCase() === name.toLowerCase()));

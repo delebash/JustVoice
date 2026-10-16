@@ -29,3 +29,13 @@ export const DIRECTION = {
 
 export const TESTED = null;
 export const BEST_FOR = [];
+
+// A checkpoint's languages where it speaks fewer than its family (decided 2026-10-15, TASKS "Slice 2's
+// acceptance findings" 5): VoiceTut-TTS is "an OmniVoice fine-tune for Egyptian Arabic and
+// Arabic-English code-switching" (../audio.cpp/docs/models/omnivoice.md:160-166) — listed as
+// `ar-EG`, the tag Habibi-TTS's Egyptian model has, so a book in Arabic offers both. Its request is
+// unchanged: OmniVoice's own languages name no `ar-EG` (it takes `arz`), so the line goes without
+// one and the model picks it, as it did. Keyed by audio.cpp's catalog entry.
+export const LANGUAGES = {
+  "voicetut-tts": ["ar-EG", "en"],
+};

@@ -12,12 +12,12 @@ export const LICENCE = {
   checked: "2026-10-11",
 };
 
-// Listed, marked as not copying a voice from a clip yet (decided 2026-10-13, the narrowings review
-// K2; built with the adoption plan's slice 2, docs/plans/2026-10-13-adopt-everything-audiocpp.md
-// §3). Hidden from 2026-10-11 on the implementer's pick until then. It needs a 192-d speaker
-// embedding from a CAM++ encoder audio.cpp hasn't ported — "Without it the embedding is all zeros
-// and the voice will not match" (audio.cpp docs/community_models/vieneu_v3_turbo.md); from text
-// and a clip it babbled 14.8 s for a line others speak in 4–5 s (RESEARCH §10.14). So its clone
-// isn't offered: it speaks in its one voice, and whether it speaks from text alone is checked in
-// the plan's slice 2 acceptance.
-export const NOT_CLONING_YET = true;
+// Not offered (decided 2026-10-11, TASKS "The download test's first findings"; again 2026-10-15,
+// "Slice 2's acceptance findings" 1, after a few hours listed without cloning). It reads SEA-G2P
+// phonemes, not text: audio.cpp takes plain text only once `vieneu_v3_turbo.g2p_library` names
+// sea-g2p, a Rust library the release doesn't build (../audio.cpp/docs/models/vieneu_v3_turbo.md:56-81)
+// — from text and a clip it babbled 14.8 s for a line others speak in 4–5 s (RESEARCH §10.14). At
+// v0.9.2 it also refuses to speak without a voice ("requires a voice: --voice-ref,
+// reference_codes_file, or speaker_embedding_file…", RESEARCH §10.15).
+export const NOT_OFFERED =
+  "It reads phonemes from SEA-G2P, a library the speech runtime's release doesn't build — from text and a clip it babbled — and it won't speak without a voice.";

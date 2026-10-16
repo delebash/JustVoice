@@ -277,7 +277,9 @@ the model is already loaded, it keeps speaking until the chosen one is: the page
 says *1.7B is loaded and speaks until 0.6B is*. Pocket TTS has one model per
 language, so its **Version** lists only the versions that speak the persona's
 **Speaks** language — *German* and *German (16-bit)* for a German persona
-(since 2026-10-15; before, all ten). Whenever what speaks isn't the
+(since 2026-10-15; before, all ten). sanoTTS has one download per language too,
+and its **Version** lists the same way — *sanoTTS Nano (German)* for a German
+persona (since 2026-10-15). Whenever what speaks isn't the
 chosen version, the page offers **Load 0.6B**, with its progress bar, which
 fetches the version if it isn't downloaded (since 2026-10-13; before, only while
 another version was loaded). (Since 2026-10-05 — before, no persona screen said

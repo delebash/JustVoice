@@ -61,6 +61,18 @@
     the CPU. Claude Opus 5.5, Fable and Mythos can't stop thinking, so thinking **Off** asks them
     to think as little as they can, and the control says *This model always thinks — Off makes
     it think less.* ([GPU](gpu.md))
+  - Speech engines: VibeVoice copies a voice from a clip — each line goes as *Speaker 1: …* in
+    the voice's clip — and no longer lists a voice of its own, which failed to load; MOSS-TTSD's
+    text and clip words are tagged *[S1]*. VieNeu-TTS v3 Turbo is off the list again (it reads
+    phonemes from a library the speech runtime doesn't carry, and won't speak without a voice),
+    and so is Index-Echo, a Chinese speech translator rather than a recogniser.
+    MOSS-Transcribe-Diarize and VibeVoice-ASR Streaming give the words alone, without their times
+    and speaker labels. A model that speaks fewer languages than its family lists only its own —
+    LFM2.5-Audio's English and Japanese models, GigaAM v3, Kroko, IndexTTS2, each Habibi-TTS
+    model's Arabic, VoiceTut-TTS — and each sanoTTS download its one language, picked by the
+    persona's as Pocket TTS's is. MOSS-TTS v1.5, MOSS-TTSD, MOSS-VoiceGenerator and IndexTTS2
+    now get the line's language; before, it never reached them ([Engines](engines.md#every-other-model-audiocpp-has),
+    [Personas](personas.md))
   - Sync: when another computer's changes arrive, the window waits to reload while a dialog is
     open or the cursor is in a text box. Restoring a backup keeps your other computers' newer
     work: a restore used to send the backup's old projects to every paired or cloud-folder

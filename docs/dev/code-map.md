@@ -405,7 +405,7 @@ tag's `model_specs/`, web-UI catalog and control list, and licence table, plus
 Hugging Face file sizes, into `server/src/engines/audiocpp/catalog.json` —
 re-run it when the pin moves. `engines/audiocpp/generated.js` turns each
 uncovered family into manifest-shaped engines (wip and unsupported hidden — decided
-2026-10-11, answer 3; AuK and OuteTTS kept out by their files' `NOT_OFFERED`): every
+2026-10-11, answer 3; AuK, OuteTTS, VieNeu and Index-Echo kept out by their files' `NOT_OFFERED`): every
 family that speaks is a speech engine, its models doing what the spec says
 (`speechFactsOf`: `clone`, `design` from a `vdes` entry, built-in `voices` as its
 `STATIC_VOICES` via `builtinVoicesOf`, else its one voice, "‹Model› (built-in)"), and its
@@ -416,13 +416,20 @@ folder when they share a package — `speech_cache.shareVariantFiles`) — the a
 `manager.discoverEngines`). Its speech models become capability rows
 (`capability_details.js`, `settingsOf` for typed settings), its requests
 `slot.generatedSpeechRequest` (a clip, a built-in voice as `voice`, or a description
-in the spec's design option) and `slot.generatedTranscribeRequest`, and a first load
+in the spec's design option; a speaker script, `asSpeakerScript`; the language at the top level,
+or in the options where the family's session reads it only there) and
+`slot.generatedTranscribeRequest` (its transcript `slot.plainTranscript`), and a first load
 warms up (`slot._warmGenerated`) — a clone-only model is priced after its first line
 (`manager._priceFirstLine`). What a spec can't say — how direction reaches the
 model, what testing found, a voice's gender and language from audio.cpp's docs — is
 one file per family in `engines/audiocpp/curated/<family>.js` (`LICENCE`,
-`DIRECTION`, `PLAIN`, `TESTED`, `BEST_FOR`, `HIDDEN_OPTIONS`, `VOICES`,
-`NOT_CLONING_YET`); a family's `instruct` is the app's only where its `DIRECTION` or its
+`DIRECTION`, `PLAIN`, `TESTED`, `BEST_FOR`, `HIDDEN_OPTIONS`, `VOICES`, `NOT_OFFERED`,
+`CLONES` (VibeVoice clones though its spec doesn't say), `SPEAKER_SCRIPT` (VibeVoice's
+"Speaker 1: …", MOSS-TTSD's "[S1] …"), `LANGUAGE_IN_OPTIONS` (MOSS's three by name,
+IndexTTS2 as its code), `LANGUAGES` (a checkpoint's languages by catalog entry or package —
+`generated.languagesOf`; a speech model's gate the line's language, a recogniser's request
+keeps the family's form), `WORDS_FROM` (a recogniser's words without its markup)); a
+family's `instruct` is the app's only where its `DIRECTION` or its
 voice-design model uses it, else a setting (`isSetting`), and a required setting goes at
 audio.cpp's own default (`requiredDefaultsOf`); a family without `DIRECTION` "can't be directed yet"
 (`direction_known` false → `directed_by: "not_yet"`), and one without `LICENCE`

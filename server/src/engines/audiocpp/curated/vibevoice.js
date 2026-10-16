@@ -15,3 +15,16 @@ export const LICENCE = {
 // `voice_samples` is "Comma-separated reference WAV paths ordered by speaker ID" on the computer
 // running the speech runtime — as MOSS-TTSD's is.
 export const HIDDEN_OPTIONS = ["voice_samples"];
+
+// It copies a voice from a clip, and speaks only that way (decided 2026-10-15, TASKS "Slice 2's
+// acceptance findings" 1). Its spec names no `speaker_reference` (capabilities: multi_speaker,
+// long_form), but its session takes the request's `voice_ref` as the first speaker's voice
+// (../audio.cpp/src/models/vibevoice/session.cpp:325-344), and audio.cpp's own page asks it for a
+// voice (webui/native/src/routes/+page.svelte:507-510, `needsVoice`). It has no stable voice of its
+// own without one, so it lists none.
+export const CLONES = true;
+
+// Its text is a script of speaker lines: a line without "Speaker N:" is dropped
+// (../audio.cpp/src/models/vibevoice/tokenizer_text.cpp:48-83; docs/tts.md:848,857). Each line of a
+// line's text is the cloned voice's, speaker 1's.
+export const SPEAKER_SCRIPT = "Speaker 1: {text}";

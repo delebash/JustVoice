@@ -11,3 +11,28 @@ export const LICENCE = {
   url: "https://huggingface.co/ampixa/sanoTTS",
   checked: "2026-10-15",
 };
+
+// Each download's language — one voice, one language each (decided 2026-10-15, TASKS "Slice 2's
+// acceptance findings" 5), from the table in ../audio.cpp/docs/models/sanotts.md:28-47 (pt is
+// "Brazilian Portuguese"). Keyed by audio.cpp's package: the persona's language picks the download,
+// as Pocket TTS's does (voice_model.variantForModel).
+export const LANGUAGES = {
+  sanotts_heart_orig: ["en"],
+  sanotts_heart_nano_orig: ["en"],
+  sanotts_amy_orig: ["en"],
+  sanotts_hfc_orig: ["en"],
+  sanotts_kristin_orig: ["en"],
+  sanotts_vi_orig: ["vi"],
+  sanotts_id_orig: ["id"],
+  sanotts_cs_orig: ["cs"],
+  sanotts_de_orig: ["de"],
+  sanotts_es_orig: ["es"],
+  sanotts_fr_orig: ["fr"],
+  sanotts_it_orig: ["it"],
+  sanotts_pt_orig: ["pt-BR"],
+  sanotts_ro_orig: ["ro"],
+  sanotts_ru_orig: ["ru"],
+  sanotts_tr_orig: ["tr"],
+  sanotts_ne_orig: ["ne"],
+  sanotts_hi_orig: ["hi"],
+};

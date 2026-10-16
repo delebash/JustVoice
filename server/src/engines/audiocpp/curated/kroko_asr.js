@@ -10,3 +10,11 @@ export const LICENCE = {
   url: "https://huggingface.co/Banafo/Kroko-ASR",
   checked: "2026-10-15",
 };
+
+// A checkpoint's languages where it speaks fewer than its family (decided 2026-10-15, TASKS "Slice 2's
+// acceptance findings" 5): "Each Kroko package recognizes one language" (../audio.cpp/docs/models/
+// kroko_asr.md:25), and the one audio.cpp offers is English (kroko-en-community-64-l-q8_0.gguf).
+// Keyed by audio.cpp's catalog entry.
+export const LANGUAGES = {
+  "kroko-asr": ["en"],
+};

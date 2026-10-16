@@ -74,7 +74,7 @@ No NOT STANDARD piece is new here: the catalog script and the curated files exis
 | F10 | Voices, languages and chunk sizes read from the specs and the GGUFs; the curated file keeps only genders, display names and our ids. |
 | C13 | The voice makers' per-model notes move into the curated files (`BEST_FOR`-style), so a newly offered model gets its note there or none. |
 | P36 | "Picking an engine…" rows come from the curated files' notes for every engine that has one (the approved rows keep their words). |
-| K2 | VieNeu listed, marked as not copying a voice from a clip yet (decided 2026-10-13, the narrowings review K2); whether it speaks from text alone is checked in slice 2. |
+| K2 | VieNeu listed, marked as not copying a voice from a clip yet (decided 2026-10-13, the narrowings review K2); whether it speaks from text alone is checked in slice 2. Reversed 2026-10-15: hidden again — it reads SEA-G2P phonemes and won't speak without a voice (TASKS "Slice 2's acceptance findings" 1). |
 
 ## 4 · What must not break (the checks found these)
 

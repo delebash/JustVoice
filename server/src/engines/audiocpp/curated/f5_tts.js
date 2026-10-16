@@ -25,3 +25,23 @@ export const LICENCE = {
 export const OLD_OPTION_NAMES = {
   cfg_strength: "guidance_scale",
 };
+
+// A checkpoint's languages where it speaks fewer than its family (decided 2026-10-15, TASKS "Slice 2's
+// acceptance findings" 5): the family lists F5-TTS's English beside Habibi-TTS's Arabic, and every
+// model offered here is a Habibi checkpoint — "Habibi Unified (ar)", a "multi-dialect Arabic
+// checkpoint suite", with "per-dialect specialized checkpoints (stronger accent)"
+// (../audio.cpp/docs/models/f5_tts.md:5-7,63-64,112). Upstream names each dialect only by a code
+// (its card and README, read 2026-10-15); a specialised one's language is Arabic with its code's
+// country as the region (ALG Algeria, EGY Egypt, IRQ Iraq, MAR Morocco, SAU Saudi Arabia, UAE the
+// United Arab Emirates), and MSA's is Modern Standard Arabic, `ar-001`. Keyed by audio.cpp's
+// catalog entry.
+export const LANGUAGES = {
+  "f5-tts-habibi-unified": ["ar"],
+  "f5-tts-habibi-alg": ["ar-DZ"],
+  "f5-tts-habibi-egy": ["ar-EG"],
+  "f5-tts-habibi-irq": ["ar-IQ"],
+  "f5-tts-habibi-mar": ["ar-MA"],
+  "f5-tts-habibi-msa": ["ar-001"],
+  "f5-tts-habibi-sau": ["ar-SA"],
+  "f5-tts-habibi-uae": ["ar-AE"],
+};

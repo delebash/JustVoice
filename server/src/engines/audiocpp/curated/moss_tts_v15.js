@@ -24,5 +24,12 @@ export const DIRECTION = {
   option: "instruct",
 };
 
+// The line's language: its session reads it only from the request's options
+// (src/community_models/moss_tts_v15/session.cpp:333-337) — a top-level language reaches only the
+// request's text (app/server/server_protocol.cpp:72-75) — as a "Full language name; the model does
+// not understand codes like 'en'" (its spec; docs/models/moss_tts_v15.md:8,50: English, Chinese).
+// Decided 2026-10-15, TASKS "Slice 2's acceptance findings" 7.
+export const LANGUAGE_IN_OPTIONS = "name";
+
 export const TESTED = null;
 export const BEST_FOR = [];

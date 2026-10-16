@@ -19,3 +19,14 @@ export const VOICES = {
   uk_male: { language: "en-GB", gender: "male" },
   uk_female: { language: "en-GB", gender: "female" },
 };
+
+// A checkpoint's languages where it speaks fewer than its family (decided 2026-10-15, TASKS "Slice 2's
+// acceptance findings" 5): "`en` (`LFM2.5-Audio-1.5B`), `ja` (`LFM2.5-Audio-1.5B-JP`); each
+// checkpoint transcribes, speaks and chats in its own language" (../audio.cpp/docs/models/
+// lfm2_audio.md:17). Keyed by audio.cpp's catalog entry: its speech and its recognition models.
+export const LANGUAGES = {
+  "lfm2-audio-tts": ["en"],
+  "lfm2-audio-asr": ["en"],
+  "lfm2-audio-jp-tts": ["ja"],
+  "lfm2-audio-jp-asr": ["ja"],
+};

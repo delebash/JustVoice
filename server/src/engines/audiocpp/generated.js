@@ -396,9 +396,9 @@ function modelIdOf(fam, engineId, r, runnable) {
 
 /**
  * What a speech model does, from its entries and its spec (the adoption plan's slice 2):
- * - `clone`: the family copies a voice from a clip (`speaker_reference`) and one of the model's
- *   entries is on the Text to speech tab — unless our family file says it can't yet (VieNeu,
- *   decided 2026-10-13, the narrowings review K2: `NOT_CLONING_YET`);
+ * - `clone`: the family copies a voice from a clip (`speaker_reference`) — or our family file says
+ *   it does where its spec doesn't (`CLONES`: VibeVoice, decided 2026-10-15) — and one of the
+ *   model's entries is on the Text to speech tab;
  * - `design`: one of its entries is a voice-design (`vdes`) entry — the entries audio.cpp's own
  *   Voice design tab offers (the plan's E5); `designEntry` is the entry a description goes to;
  * - `voices`: its entries' built-in voices (the spec's `ui.builtin_voices`, else its voice
@@ -410,7 +410,7 @@ function speechFactsOf(fam, entries) {
   const cur = CURATED[fam.family];
   const tab = entries.filter((e) => e.task === "tts" || e.task === "clon");
   const vdes = entries.find((e) => e.task === "vdes") ?? null;
-  const clone = clones(fam) && tab.length > 0 && !cur?.NOT_CLONING_YET;
+  const clone = (cur?.CLONES ?? clones(fam)) && tab.length > 0;
   // A voice from words is a voice-design entry's, as audio.cpp's own Voice design tab lists them
   // (the plan's E5).
   const designEntry = vdes;
@@ -486,11 +486,11 @@ export const builtinVoiceId = (engineId, name) => `${engineId}_${name}`;
 
 /** A model's built-in voices as the app lists them (the hand-wired presets' shape,
  * `STATIC_VOICES`): audio.cpp's name, the gender and language our family file gives it (`VOICES`,
- * from audio.cpp's own model docs) — else no gender ("Not known") and the family's one language
- * where it has only one — and the model it belongs to. A model whose spec names no voice has its
- * one, "‹Model› (built-in)". */
+ * from audio.cpp's own model docs) — else no gender ("Not known") and the model's one language
+ * where it has only one (`languagesOf`) — and the model it belongs to. A model whose spec names no
+ * voice has its one, "‹Model› (built-in)". */
 export function builtinVoicesOf(m) {
-  const own = speaks(m.fam).languages;
+  const own = languagesOf(m).languages;
   const known = m.curated?.VOICES ?? {};
   const one = (id, name, spec) => ({
     id,
@@ -515,6 +515,20 @@ export function speaks(fam) {
   const all = (fam.languages || []).filter((l) => !NOT_LANGUAGES.has(l));
   const note = all.find((l) => LANGUAGES_WORDING.test(l)) ?? "";
   return { languages: all.filter((l) => l !== note), note };
+}
+
+/** The languages a model speaks, {languages, note, own}: our family file's (`LANGUAGES`, from
+ * audio.cpp's docs — a checkpoint that speaks fewer than its family, decided 2026-10-15, TASKS
+ * "Slice 2's acceptance findings" 5) for its package `pkgId`, else for one of its catalog entries;
+ * for the whole model (no `pkgId`) whose packages each have their own, those together (sanoTTS's
+ * one language per download); else the family's (`speaks`). `own`: the family file gave them. */
+export function languagesOf(m, pkgId = null) {
+  const own = m.curated?.LANGUAGES ?? {};
+  const hit = (pkgId == null ? undefined : own[pkgId]) ?? m.entries.map((e) => own[e.id]).find(Boolean);
+  if (hit) return { languages: [...hit], note: "", own: true };
+  const per = pkgId == null ? m.packages.map((p) => own[p.pkg.id]).filter(Boolean) : [];
+  if (per.length) return { languages: [...new Set(per.flat())], note: "", own: true };
+  return { ...speaks(m.fam), own: false };
 }
 
 /** The packages a family file names as a model's companions (`SESSION_FILES`: a session option →
@@ -598,7 +612,7 @@ function variantRow(m, { pkg, main }, label = null) {
   const lic = licenceOf(m.fam);
   const name = modelName(m);
   const files = pkg.source.files.map((f) => f.path);
-  const langs = speaks(m.fam);
+  const langs = languagesOf(m, pkg.id);
   return {
     id: label ? `${m.modelId}-${slug(label)}` : `${m.modelId}-${tail}`,
     name: label ? `${name} (${label})` : tail === "q8" ? name : `${name} (${PRECISION_WORDS[tail] || pkg.precision})`,
@@ -626,6 +640,10 @@ function variantRow(m, { pkg, main }, label = null) {
       model: m.modelId,
       ...sessionFiles(m),
       ...(m.kind === "tts" ? speechRequestFacts(m) : {}),
+      // A speech model's own languages, where its family file gives them: a line in another goes
+      // without one (slot.generatedLanguage). A recogniser's request keeps the family's form, so
+      // audio.cpp's own refusal stays (decided 2026-10-15, "Slice 2's acceptance findings" 5).
+      ...(m.kind === "tts" && langs.own ? { languages: langs.languages } : {}),
     },
     min_vram_gb: m.entry.min_vram_gb,
     status: m.fam.status,

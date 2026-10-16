@@ -301,13 +301,13 @@ graphics memory at all — measured at 0 MB on both the CUDA and Vulkan builds.
 ## Every other model audio.cpp has
 
 Besides the engines above, Speech engines lists **every other speech model the
-speech runtime can run** — 39 more speech engines today, among them IndexTTS 2
+speech runtime can run** — 38 more speech engines today, among them IndexTTS 2
 and 2.5, CosyVoice3, Breeze TTS 2, Higgs Audio 3, Fish Audio S2 Pro, OmniVoice
 (with VoiceTut-TTS, its Egyptian Arabic fine-tune), MOSS-TTS, dots.tts,
 FireRedTTS3, VoxCPM1, Kitten TTS 2, Sopro V2 Turbo, F5-TTS's Habibi-TTS models for
 Arabic and its dialects, Supertonic 3, Voxtral 4B TTS, MagpieTTS Multilingual,
 NeuTTS, KugelAudio-0-Open, LFM2.5-Audio, Maya1, MOSS-VoiceGenerator, VibeVoice,
-Piper TTS, Inflect Micro v2, sanoTTS Nano and Soprano — and **25 more
+Piper TTS, Inflect Micro v2, sanoTTS Nano and Soprano — and **24 more
 speech-recognition engines** under *Transcription* (Parakeet-TDT 0.6B v3, Canary
 180M Flash, Cohere Transcribe, CrisperWhisper 2.0, OWSM, GigaAM ASR and others).
 Until 2026-10-15 only the models that copy a voice from a clip were listed. Each
@@ -317,13 +317,19 @@ Anime model beside its v4 one. JustVoice doesn't hand-write these: it builds the
 from audio.cpp's own description of each model — what it does, its languages, its
 voices, its settings, its download files and its licence. When audio.cpp adds a
 model, the next JustVoice update lists it. (Models audio.cpp marks as work in
-progress, and AuK and OuteTTS — see [Not available yet](#not-available-yet) — are
-not listed.)
+progress, and AuK, OuteTTS and VieNeu-TTS v3 Turbo — see [Not available
+yet](#not-available-yet) — are not listed, nor is Index-Echo: audio.cpp lists it
+with the recognisers, but it translates Chinese speech into English, Spanish or
+Japanese captions rather than transcribing — since 2026-10-15.)
 
 **Each model does what audio.cpp says it does:**
 
 - **Copies a voice from a clip** — its row says `CLONING`, and the persona page's
-  *New clone* offers it.
+  *New clone* offers it. VibeVoice is one too, though audio.cpp's description
+  doesn't say so: its text is a script of speaker lines, so each line it speaks
+  goes as *Speaker 1: …* in the voice's clip, and it has no voice of its own
+  (since 2026-10-15; before, it was listed with one and failed to load).
+  MOSS-TTSD's script is tagged the same way, *[S1] …*, the clip's words too.
 - **Speaks its built-in voices** — `BUILT-IN · N` on its row. They are voices in
   the app like Kokoro's: listed on [Voices](voices.md), filtered the same way, and
   any persona can use one — Supertonic 3's ten, Voxtral 4B TTS's twenty, Kitten TTS
@@ -333,9 +339,9 @@ not listed.)
   and language are set only where audio.cpp's own model notes give them (KugelAudio,
   LFM2.5-Audio, Voxtral 4B TTS, Kitten TTS 2's language presets); elsewhere the gender
   is *Not known* — set one on Voices if you want Smart-assign to use it. A model
-  whose description names no voice — Piper TTS, Inflect, sanoTTS, Soprano, VibeVoice,
-  Maya1, LFM2.5-Audio's Japanese model — speaks in its one voice, listed as **Model
-  default**, audio.cpp's own name for it. Maya1's voice is shaped by its *Voice
+  whose description names no voice — Piper TTS, Inflect, sanoTTS, Soprano, Maya1,
+  LFM2.5-Audio's Japanese model — speaks in its one voice, listed under the model's
+  name: *Piper TTS (built-in)*. Maya1's voice is shaped by its *Voice
   description* setting (persona page → Sampling); until you set one it speaks with
   audio.cpp's own, *Warm female voice with an American accent and conversational
   pacing.*
@@ -345,9 +351,19 @@ not listed.)
   own v3 VoiceDesign model) and MOSS-VoiceGenerator. The description goes to the
   model as its voice description, with the voice-design mode audio.cpp's tab uses
   for it.
-- **VieNeu-TTS v3 Turbo** is listed without cloning: it needs a *speaker
-  embedding* that audio.cpp can't make from a clip yet, so it speaks in its one
-  voice.
+
+**A model that speaks fewer languages than its family lists only its own**
+(since 2026-10-15, from audio.cpp's own model notes; before, each listed its
+family's): LFM2.5-Audio 1.5B English and its JP model Japanese, for speech and
+recognition alike; GigaAM v3 Russian (GigaAM Multilingual keeps its five); Kroko's
+download English; IndexTTS2 Chinese and English (IndexTTS2.5 adds Japanese,
+Spanish and Arabic); each Habibi-TTS model Arabic — *Arabic (Egypt)* and the like
+for the dialect models, *Modern Standard Arabic* for MSA, plain *Arabic* for the
+Unified one; VoiceTut-TTS *Arabic (Egypt)* and English. Each sanoTTS download
+speaks one language, so a persona's language picks the download, as Pocket TTS's
+does, and a language none of them speaks is refused by name. What a model lists is
+what Cast offers it for and what a persona on it can speak. A line in a language
+the speech model doesn't list goes to it without one.
 
 **The speech-recognition models are transcription engines.** Load one on its row
 and it is the one that transcribes: Captures' dictation, the words of a clip you
@@ -356,7 +372,10 @@ captions and `/v1/align` — need an aligner, and audio.cpp has only Qwen3's, so
 caption request loads Qwen3-ASR in the speech-recognition slot, whichever
 recogniser was there. Each recogniser hears the recording at 16 kHz mono, as
 audio.cpp's own page sends it: several (OWSM, CrisperWhisper,
-MOSS-Transcribe-Diarize, Hviske v6) can't take any other rate. Where a family both speaks and recognises speech
+MOSS-Transcribe-Diarize, Hviske v6) can't take any other rate. MOSS-Transcribe-Diarize
+and VibeVoice-ASR Streaming give the words alone, without the times and speaker
+labels they add to their text (since 2026-10-15; before, a transcript read
+*[0.06][S01] …* or *Speaker 0: …*). Where a family both speaks and recognises speech
 (FireRedAudio, LFM2.5-Audio), each has its own engine, and the two share one
 download: on disk once, shown as downloaded on both, deleted from both together.
 
@@ -785,7 +804,14 @@ the list names none in a form the model takes — OmniVoice's *600+ languages*,
 dots.tts's *multilingual*, or Arabic on a model that lists only English and
 Chinese — the line goes without one, as audio.cpp's own page sends it by
 default, and the model picks the language itself (since 2026-10-15: OmniVoice
-refused an Arabic line sent as `ar`).
+refused an Arabic line sent as `ar`). So does a line in a language the model
+itself doesn't list — English on LFM2.5-Audio's JP model, say (see [A model that
+speaks fewer languages](#every-other-model-audiocpp-has)). MOSS-TTS v1.5, MOSS-TTSD
+and MOSS-VoiceGenerator get it as its name — *English* or *Chinese* — and IndexTTS2
+as its code, where those models read it (since 2026-10-15; before, it never
+reached them, so IndexTTS2.5 read a Japanese, Spanish or Arabic line as Chinese or
+English). A speech-recognition model is sent the language as before, whatever it
+lists, so one that can't take it says so — LFM2.5-Audio's JP model given English.
 
 ## Not available yet
 
@@ -796,12 +822,13 @@ runtime; the order is in
 - **A confidence score from speech recognition.** The old recogniser
   reported how sure it was of each transcript; the new one does not.
 - **Voice training** — see [Voice training](#voice-training).
-- **Cloning with VieNeu-TTS v3 Turbo** (Vietnamese and English), from audio.cpp's other
-  models. It reads phonemes from a separate library rather than text, and needs a *speaker
-  embedding* that audio.cpp can't make from a clip yet; given text and a clip, it babbled
-  for 14.8 seconds over a line the other models speak in 4 to 5 in JustVoice's download
-  test (2026-10-11). It was left off the list until 2026-10-15; it is listed now, without
-  cloning, speaking in its one voice.
+- **VieNeu-TTS v3 Turbo** (Vietnamese and English), from audio.cpp's other models. It
+  reads phonemes from SEA-G2P, a separate library the speech runtime's release doesn't
+  build, rather than text: given text and a clip, it babbled for 14.8 seconds over a line
+  the other models speak in 4 to 5 in JustVoice's download test (2026-10-11). Since
+  audio.cpp v0.9.2 it also won't speak without a voice. It was listed without cloning for
+  a few hours on 2026-10-15, and is left off the list again until the release carries
+  SEA-G2P.
 - **AuK** (Tencent), from audio.cpp's other models. audio.cpp loads it from a folder of
   three separate downloads — the AuK generator, Qwen2.5-Omni-3B and a VAE, 6 to 13 GB
   together — and JustVoice fetches only the generator, so it doesn't load. Cloning from a

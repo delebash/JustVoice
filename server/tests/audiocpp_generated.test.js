@@ -218,31 +218,23 @@ test("a language list that describes is shown as audio.cpp words it, never count
   expect(audio8.languages).not.toContain("auto");
   expect(audio8.languages).toHaveLength(11);
   const omni = generated.generatedEngines().get("omnivoice").VARIANTS;
-  expect(omni.every((v) => v.languages_note === "600+ languages")).toBe(true);
-  // bf16 and f16 are both 16-bit: the names say which.
+  // OmniVoice's own model; VoiceTut-TTS lists its own two (decided 2026-10-15).
   const own = omni.filter((v) => v.audiocpp.model === "omnivoice");
+  expect(own.every((v) => v.languages_note === "600+ languages")).toBe(true);
+  // bf16 and f16 are both 16-bit: the names say which.
   expect(own.map((v) => v.name)).toEqual(["OmniVoice", "OmniVoice (16-bit, bf16)", "OmniVoice (16-bit, f16)"]);
 });
 
 test("a family file keeps out a model that doesn't speak as listed", () => {
   // AuK is three downloads loaded as one folder; OuteTTS generated no audio in the download test
-  // (decided 2026-10-12).
-  for (const id of ["auk", "outetts"]) {
+  // (decided 2026-10-12); VieNeu reads SEA-G2P phonemes, a library the release doesn't build, and
+  // won't speak without a voice (decided 2026-10-15, TASKS "Slice 2's acceptance findings" 1).
+  for (const id of ["auk", "outetts", "vieneu_v3_turbo"]) {
     expect(generated.generatedEngines().has(id), id).toBe(false);
     expect(lookup(id), id).toBeNull();
   }
-});
-
-test("VieNeu is listed, marked as not copying a voice from a clip yet", () => {
-  // Decided 2026-10-13, the narrowings review K2: it needs a speaker embedding audio.cpp can't
-  // make yet. Without its clone it speaks in its one voice — whether it does is checked in the
-  // slice's acceptance.
-  const vieneu = generated.generatedEngines().get("vieneu_v3_turbo");
-  expect(vieneu.VARIANTS.every((v) => v.voice_cloning === false)).toBe(true);
-  expect(lookup("vieneu_v3_turbo").supports_voice_cloning).toBe(false);
-  expect(vieneu.STATIC_VOICES.map((v) => v.name)).toEqual(["VieNeu-TTS v3 Turbo (built-in)"]);
-  const row = vieneu.VARIANTS[0];
-  expect(() => slot.toSpeechRequest(row, line())).toThrow(/doesn't copy a voice from a clip/);
+  const voices = [...generated.generatedEngines().values()].flatMap((m) => m.STATIC_VOICES.map((v) => v.id));
+  expect(voices.some((id) => id.startsWith("vieneu"))).toBe(false);
 });
 
 test("a model needs its estimate or its files, whichever is more; a hand-wired one, neither", () => {

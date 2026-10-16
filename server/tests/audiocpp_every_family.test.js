@@ -65,6 +65,12 @@ test("a model does what its spec says: copies a voice, makes one from words, spe
   expect(does("omnivoice", "omnivoice-voicetuttts")).toEqual({ clone: true, design: false, voices: 0 });
   // A model whose spec names no voice speaks in its one voice.
   expect(does("piper_tts", "piper_tts")).toEqual({ clone: false, design: false, voices: 1 });
+  // VibeVoice's spec names no speaker_reference, but its session takes the clip as speaker 1's
+  // voice and it has no stable voice without one: clone-only, no voice of its own (its file's
+  // CLONES; decided 2026-10-15, TASKS "Slice 2's acceptance findings" 1).
+  expect(does("vibevoice", "vibevoice-vibevoice")).toEqual({ clone: true, design: false, voices: 0 });
+  expect(voicesOf("vibevoice")).toEqual([]);
+  expect(lookup("vibevoice-vibevoice")).toMatchObject({ supports_voice_cloning: true, supports_clone_prompt_text: false });
   // The capability rows say the same: the Clone and Design pickers read them.
   expect(lookup("breeze_tts")).toMatchObject({ supports_voice_cloning: true, supports_voice_design: true });
   expect(lookup("maya1")).toMatchObject({ supports_voice_cloning: false, supports_voice_design: false, supports_clone_prompt_text: false });
@@ -160,8 +166,10 @@ test("a designed voice goes in the option the spec's voice design takes, with th
 test("recognition families are speech-recognition engines; the language goes as each spec takes it", () => {
   const ids = generated.generatedRecognisers().map((m) => m.engineId);
   for (const id of ["parakeet_tdt", "canary_asr", "cohere_asr", "moss_transcribe_diarize", "owsm"]) expect(ids, id).toContain(id);
-  // Qwen3-ASR stays hand-wired; audio understanding (its analysis tab) isn't a recogniser.
-  for (const id of ["qwen3_asr", "audio_flamingo", "samsone"]) expect(ids, id).not.toContain(id);
+  // Qwen3-ASR stays hand-wired; audio understanding (its analysis tab) isn't a recogniser; nor is
+  // Index-Echo, a Chinese speech translator (its file's NOT_OFFERED; decided 2026-10-15).
+  for (const id of ["qwen3_asr", "audio_flamingo", "samsone", "index_echo"]) expect(ids, id).not.toContain(id);
+  expect(engines.has("index_echo")).toBe(false);
   const req = (engineId, language) => slot.generatedTranscribeRequest(engines.get(engineId).VARIANTS[0], { language }, "C:/a.wav");
   expect(req("canary_asr", "en")).toEqual({ model: "canary_asr-f32", audio: "C:/a.wav", language: "en" });
   expect(req("confucius4_r2t2", "en").language).toBe("English"); // its default is a name ("Auto")
@@ -232,6 +240,11 @@ test("a model that speaks without a clip warms up on a full-length piece; a clon
   const [cosy, c] = warmSlot("cosyvoice3", modelRow("cosyvoice3", "cosyvoice3"));
   expect(await cosy._warm(800)).toBe(false);
   expect(c).toEqual([]);
+  // VibeVoice too, now that it speaks only cloned voices (its warm-up in its own voice failed:
+  // "VibeVoice prompt has no valid Speaker N: lines").
+  const [vibe, v] = warmSlot("vibevoice", modelRow("vibevoice", "vibevoice-vibevoice"));
+  expect(await vibe._warm(800)).toBe(false);
+  expect(v).toEqual([]);
   // A recogniser hears silence — its 30 s chunk when calibrating, as Qwen3-ASR does.
   const [canary, a] = warmSlot("canary_asr", engines.get("canary_asr").VARIANTS[0]);
   expect(await canary._warm(800)).toBe(true);
@@ -258,6 +271,118 @@ test("a recogniser hears 16 kHz mono, as audio.cpp's own page sends it", async (
   expect([heard[0].sampleRate, heard[0].channels]).toEqual([16000, 1]);
   expect(Math.abs(heard[0].durationSec - 1.0)).toBeLessThanOrEqual(0.01);
   expect(existsSync(f)).toBe(true); // the caller's file stays; only the 16 kHz copy goes
+});
+
+test("MOSS-Transcribe-Diarize and VibeVoice-ASR Streaming give the words without their own markup", async () => {
+  // Decided 2026-10-15 (TASKS "Slice 2's acceptance findings" 3): their `text` carries timed
+  // speaker tags or "Speaker N:" labels; their speaker turns hold the words alone (WORDS_FROM).
+  const heard = async (engineId, answer) => {
+    const [s] = warmSlot(engineId, engines.get(engineId).VARIANTS[0]);
+    vi.spyOn(s, "isAlive").mockReturnValue(true);
+    s._srv.mockReturnValue({ transcribe: async () => answer });
+    const f = path.join(tmpPath(), `${engineId}.wav`);
+    writeFileSync(f, writeWavContainer(Buffer.alloc(16000 * 2), 16000, 1));
+    return JSON.parse((await s._transcribe({ audio_path: f })).text).text;
+  };
+  const turns = [{ speaker_id: "S01", text: "Two days wrong!" }, { speaker_id: "S01", text: " Yes. " }];
+  expect(
+    await heard("moss_transcribe_diarize", {
+      text: "[0.06][S01] Two days wrong![1.20][1.30][S01] Yes.[2.00]",
+      segments: turns.map(({ text }) => ({ text })),
+      speaker_turns: turns,
+    }),
+  ).toBe("Two days wrong! Yes.");
+  expect(
+    await heard("vibevoice_asr_streaming", {
+      text: "Speaker 0: Two days wrong! Speaker 1: Yes.",
+      speaker_turns: [{ speaker_id: "0", text: "Two days wrong!" }, { speaker_id: "1", text: "Yes." }],
+    }),
+  ).toBe("Two days wrong! Yes.");
+  // No turns parsed: its text, as it came.
+  expect(await heard("moss_transcribe_diarize", { text: " Two days wrong! ", speaker_turns: [] })).toBe("Two days wrong!");
+  // Any other recogniser: its text, whatever else it returns.
+  expect(await heard("owsm", { text: "Two days wrong!", speaker_turns: [{ text: "other" }] })).toBe("Two days wrong!");
+});
+
+test("VibeVoice speaks each line as speaker 1 of its script, in the clip's voice; MOSS-TTSD as [S1]", () => {
+  // Decided 2026-10-15 (TASKS "Slice 2's acceptance findings" 1): VibeVoice drops a line without
+  // "Speaker N:" (tokenizer_text.cpp:48-83); the clip goes as voice_ref, never voice_samples, and no
+  // instructions. One mechanism for both, the family file's SPEAKER_SCRIPT.
+  const vibe = modelRow("vibevoice", "vibevoice-vibevoice");
+  const req = slot.toSpeechRequest(vibe, {
+    voice_id: "v",
+    text: "Two days wrong!\n\n  And a $& second.  ",
+    audio_prompt_path: "C:\\clips\\hatter.wav",
+    ref_text: "Ah, that accounts for it.",
+    delivery: { emotion: "sad", instruct: "sad. weary" },
+  });
+  expect(req.input).toBe("Speaker 1: Two days wrong!\nSpeaker 1: And a $& second.");
+  expect(req.voice_ref).toBe("C:/clips/hatter.wav");
+  expect(req.reference_text).toBeUndefined(); // its spec takes no clip words
+  expect(req.instructions).toBeUndefined();
+  expect(req.options?.voice_samples).toBeUndefined();
+  expect(() => slot.toSpeechRequest(vibe, { voice_id: "v", text: "Hi." })).toThrow(/speaks only cloned voices/);
+  // MOSS-TTSD: its text and the clip's words tagged [S1] (moss_ttsd.md:20-21, 53).
+  const ttsd = slot.toSpeechRequest(modelRow("moss_ttsd", "moss_ttsd"), {
+    voice_id: "v",
+    text: "Two days wrong!",
+    audio_prompt_path: "C:\\clips\\hatter.wav",
+    ref_text: "Ah, that accounts for it.",
+  });
+  expect(ttsd.input).toBe("[S1] Two days wrong!");
+  expect(ttsd.reference_text).toBe("[S1] Ah, that accounts for it.");
+  expect(ttsd.voice_ref).toBe("C:/clips/hatter.wav");
+  // Any other family's text is as it was.
+  expect(slot.toSpeechRequest(modelRow("cosyvoice3", "cosyvoice3"), { voice_id: "v", text: "Hi.", audio_prompt_path: "C:\\c.wav" }).input).toBe("Hi.");
+});
+
+test("a checkpoint that speaks fewer languages than its family lists only its own", () => {
+  // Decided 2026-10-15 (TASKS "Slice 2's acceptance findings" 5), from audio.cpp's model docs.
+  const langs = (engineId, variantId) => engines.get(engineId).VARIANTS.find((v) => v.id === variantId);
+  expect(langs("lfm2_audio", "lfm2_audio-lfm2audiotts-q8").languages).toEqual(["en"]);
+  expect(langs("lfm2_audio", "lfm2_audio-lfm2audiojptts-q8").languages).toEqual(["ja"]);
+  expect(langs("lfm2_audio_asr", "lfm2_audio_asr-lfm2audioasr-q8").languages).toEqual(["en"]);
+  expect(langs("lfm2_audio_asr", "lfm2_audio_asr-lfm2audiojpasr-f16").languages).toEqual(["ja"]);
+  expect(voicesOf("lfm2_audio").find((v) => v.model === "lfm2_audio-lfm2audiojptts").language).toBe("ja");
+  expect(langs("gigaam_asr", "gigaam_asr-gigaamv3ctc-f16").languages).toEqual(["ru"]);
+  expect(langs("gigaam_asr", "gigaam_asr-gigaammultilingual-f16").languages).toEqual(["ru", "kk", "ky", "uz", "en"]);
+  expect(langs("kroko_asr", "kroko_asr-q8").languages).toEqual(["en"]);
+  expect(langs("index_tts2", "index_tts2-indextts2-q8").languages).toEqual(["zh", "en"]);
+  expect(langs("index_tts2", "index_tts2-indextts25-q8").languages).toEqual(["zh", "en", "ja", "es", "ar"]);
+  expect(langs("f5_tts", "f5_tts-f5ttshabibiunified-orig").languages).toEqual(["ar"]);
+  expect(langs("f5_tts", "f5_tts-f5ttshabibiegy-orig").languages).toEqual(["ar-EG"]);
+  expect(langs("f5_tts", "f5_tts-f5ttshabibimsa-orig").languages).toEqual(["ar-001"]);
+  const voicetut = langs("omnivoice", "omnivoice-voicetuttts-q8");
+  expect([voicetut.languages, voicetut.languages_note]).toEqual([["ar-EG", "en"], ""]);
+  expect(langs("omnivoice", "omnivoice-q8")).toMatchObject({ languages: [], languages_note: "600+ languages" });
+  // sanoTTS: one language per download.
+  expect(langs("sanotts", "sanotts-german").languages).toEqual(["de"]);
+  expect(langs("sanotts", "sanotts-heart").languages).toEqual(["en"]);
+  expect(langs("sanotts", "sanotts-portuguesebrazil").languages).toEqual(["pt-BR"]);
+  expect(vmod.modelSpeaks("lfm2_audio", "lfm2_audio-lfm2audiojptts")).toEqual(["ja"]);
+  expect(vmod.modelSpeaks("sanotts", "sanotts")).toHaveLength(14);
+  // A speech line in a language its model doesn't speak goes without one; the form stays the
+  // family's (OmniVoice takes no `ar-EG`, so VoiceTut's Arabic line goes as none, as before).
+  const say = (engineId, variantId, language, extra = {}) =>
+    slot.toSpeechRequest(langs(engineId, variantId), { voice_id: "v", text: "Hi.", language, ...extra });
+  const clip = { audio_prompt_path: "C:\\c.wav", ref_text: "Hello." };
+  expect(say("lfm2_audio", "lfm2_audio-lfm2audiojptts-q8", "en", { voice_id: "lfm2_audio-lfm2audiojptts_model_default" }).language).toBeUndefined();
+  expect(say("lfm2_audio", "lfm2_audio-lfm2audiojptts-q8", "ja", { voice_id: "lfm2_audio-lfm2audiojptts_model_default" }).language).toBe("ja");
+  expect(say("omnivoice", "omnivoice-voicetuttts-q8", "ar", clip).language).toBeUndefined();
+  expect(say("index_tts2", "index_tts2-indextts2-q8", "ja", clip).options?.language).toBeUndefined();
+  expect(say("index_tts2", "index_tts2-indextts25-q8", "ja", clip).options.language).toBe("ja");
+  // A recogniser's request keeps the family's form, so audio.cpp's own refusal stays (LFM2.5-Audio
+  // JP: "this LFM2-Audio checkpoint transcribes ja, not en").
+  const hear = (engineId, variantId, language) => slot.generatedTranscribeRequest(langs(engineId, variantId), { language }, "C:/a.wav");
+  expect(hear("lfm2_audio_asr", "lfm2_audio_asr-lfm2audiojpasr-q8", "en").language).toBe("en");
+  expect(hear("kroko_asr", "kroko_asr-q8", "de").language).toBe("de");
+});
+
+test("sanoTTS's download is picked by the persona's language, as Pocket TTS's is", () => {
+  vi.spyOn(vmod, "_onDisk").mockReturnValue(true);
+  expect(vmod.variantForModel("sanotts", "sanotts", "de-DE")).toBe("sanotts-german");
+  expect(vmod.variantForModel("sanotts", "sanotts", "pt")).toBe("sanotts-portuguesebrazil");
+  expect(() => vmod.variantForModel("sanotts", "sanotts", "ko")).toThrow(vmod.ModelUnavailable);
 });
 
 test("captions keep Qwen3-ASR and its aligner whatever recogniser transcribes", async () => {
@@ -353,6 +478,27 @@ test("a line's language goes only in a form the family lists; otherwise the mode
   expect(slot.generatedLanguage("audio8_tts", "en-US")).toBe("en");
   expect(slot.generatedLanguage("audio8_tts", "ar")).toBeUndefined();
   expect(slot.generatedLanguage("index_tts2", "ar")).toBe("ar");
+  // IndexTTS2 and MOSS's three read it only from the request's options: there, as their spec
+  // takes it — IndexTTS2's code, MOSS's name (decided 2026-10-15, "Slice 2's acceptance findings"
+  // 7). A top-level language reaches only the request's text (server_protocol.cpp:72-75).
+  const clip = { voice_id: "v", text: "Hi.", audio_prompt_path: "C:\\c.wav", ref_text: "Hello." };
+  const index = slot.toSpeechRequest(modelRow("index_tts2", "index_tts2-indextts25"), { ...clip, language: "es" });
+  expect([index.language, index.options.language]).toEqual([undefined, "es"]);
+  for (const [engineId, model, extra] of [
+    ["moss_tts_v15", "moss_tts_v15", clip],
+    ["moss_ttsd", "moss_ttsd", clip],
+    ["moss_voicegen", "moss_voicegen", { voice_id: "v", text: "Hi.", delivery: { instruct: "A warm voice." } }],
+  ]) {
+    const row = modelRow(engineId, model);
+    const en = slot.toSpeechRequest(row, { ...extra, language: "en-US" });
+    expect([en.language, en.options.language], model).toEqual([undefined, "English"]);
+    expect(slot.toSpeechRequest(row, { ...extra, language: "zh" }).options.language, model).toBe("Chinese");
+    expect(slot.toSpeechRequest(row, { ...extra, language: "fr" }).options?.language, model).toBeUndefined();
+  }
+  // ZipVoice's `language` is eSpeak's language for the English words in a line, not the line's:
+  // left at the top level, as before.
+  const zip = slot.toSpeechRequest(modelRow("zipvoice", "zipvoice"), { ...clip, language: "en" });
+  expect([zip.language, zip.options?.language]).toEqual(["en", undefined]);
   // Magpie lists Arabic as three regions: not guessed.
   expect(slot.listedLanguage("magpie_tts", "ar")).toBeUndefined();
   expect(slot.listedLanguage("magpie_tts", "ar-SA")).toBe("ar-SA");
