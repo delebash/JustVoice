@@ -320,8 +320,9 @@ OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the
         them). Each after slice 3's code lands (the same files), then through the app.
         For the user at the end: the topbar at 390 px (the page name gets 73 px, cut on every
         page; hide the status word "Operational", 104 px, and keep its dot?); Voices at 390 (the
-        stacked filters leave the table about 105 px). To fix: Home (210 px) and Captures (106 px)
-        scroll sideways at 390.
+        stacked filters leave the table about 105 px). Home (210 px) and Captures (106 px) scrolled
+        sideways at 390 — fixed, 7d1d3841 (below 600 px Home's cards stack, Captures' list sits
+        above the capture).
 GO:     given 2026-10-15 ("your rec go").
 
 ### An audio.cpp update tests only the engines and models it adds; no full re-run (decided 2026-10-15)
