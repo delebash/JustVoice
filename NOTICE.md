@@ -55,6 +55,13 @@ published credits, was removed with the 2026-10-01 switch to the speech runtime.
 
 JustWrite ships `services/m4b.js`, `services/speakerAttribution.js`, `services/render.js`, and `services/audioStore.js`. These remain in JustWrite (which owns audiobook orchestration UI per `CONTRACT.md`). JustVoice does not duplicate them.
 
+### Whisper's basic text normaliser (MIT)
+
+`server/src/whisper_normalizer.js` is a line-for-line port of `whisper/normalizers/basic.py` from
+https://github.com/openai/whisper (commit 26a7cac, 2025-01-04) — MIT License, Copyright (c) 2022
+OpenAI; the full notice is kept in the file. The take check normalises a line's words and the
+recogniser's transcript with it (added 2026-10-16).
+
 ### Through the shared kit (`@delebash/llm-ui`, bundled into the renderer)
 
 - The table's sorting and filtering rules (`ui/src/common/components/tableRows.js`) are ported from
@@ -82,6 +89,12 @@ Copyright © 2019, Encode OSS Ltd.                                 (httpx, https
 Copyright (c) 2005-2025, NumPy Developers.                        (numpy)
 Copyright (c) 2009, Jay Loden, Dave Daeschler, Giampaolo Rodola'  (psutil)
 Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.   (scipy)
+```
+
+**Distributed** in the server's packages (npm, installed with the app — added 2026-10-16):
+
+```
+Copyright (c) 2009-2015, Kevin Decker <kpdecker@gmail.com>        (diff — jsdiff, https://github.com/kpdecker/jsdiff)
 ```
 
 ### audio.cpp (Apache-2.0) — the speech runtime

@@ -57,6 +57,7 @@ The project was GPL-3.0-or-later between 2026-06-08 and 2026-07-29, forced by ex
 | **@tauri-apps/api** | `^2.x` | `Apache-2.0 OR MIT` | ✓ | ✓ | https://github.com/tauri-apps/tauri |
 | **@tauri-apps/plugin-***  | `^2.x` | `Apache-2.0 OR MIT` | ✓ | ✓ | https://github.com/tauri-apps/plugins-workspace |
 | **vite** | `^6.0.0` (dev) | `MIT` | ✓ | ✓ | https://github.com/vitejs/vite |
+| **diff** (jsdiff — the take check's word diff, added 2026-10-16) | `^9.0.0` | `BSD-3-Clause` | ✓ | ✓ | https://github.com/kpdecker/jsdiff |
 
 ## Compatibility legend
 

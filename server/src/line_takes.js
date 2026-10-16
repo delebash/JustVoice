@@ -62,6 +62,11 @@ export const OVERRIDE_LIMITS = {
 export const LINE_MODELS = "line_models";
 const _WORD_FIELDS = ["emotion", "register_tag"];
 
+// What the take check (take_check.js, the one-click plan's slice 6) found about the line's take:
+// the generation it judged, whether it passed, why not, what the recogniser heard, and whether
+// it is flagged — kept in the line's metadata beside its own numbers.
+export const TAKE_CHECK = "take_check";
+
 export const CHAPTER_RENDER = "chapter_render"; // made with the persona's seed
 export const NEW_TAKE = "new_take"; // ↻ New take: a seed of its own
 export const TAKE_SOURCES = [CHAPTER_RENDER, NEW_TAKE];
@@ -210,6 +215,14 @@ export function lineModels(block) {
     if (Object.keys(entry).length) out[String(model)] = entry;
   }
   return out;
+}
+
+/** The take check's record on this line (take_check.js), or null. With `generationId`, only a
+ * record about that take — the one a line plays — so a record about an older take reads null. */
+export function takeCheckOf(block, generationId = null) {
+  const rec = blockMeta(block)[TAKE_CHECK];
+  if (!isDict(rec) || typeof rec.generation_id !== "string") return null;
+  return generationId === null || rec.generation_id === generationId ? rec : null;
 }
 
 /** The line's numbers, delivery-shaped — `planLine`'s request, which wins over the persona.
@@ -517,6 +530,8 @@ export async function sceneLines(h, state, sceneId) {
       state: st,
       takes: countsByBlock.get(block.id) ?? 0,
       live: take !== null ? _takeSummary(take, gen) : null,
+      // The take check's finding about the take in use, when it has one (2026-10-16).
+      check: take !== null ? takeCheckOf(block, take.generation_id) : null,
     });
   }
   return { scene_id: scene.id, title: scene.title || "", position: scene.position, lines: rows, counts: _countsOut(counts) };

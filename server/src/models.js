@@ -522,6 +522,23 @@ export const ExtractionSettings = T.Object({
   second_look_after: opt(T.Integer({ minimum: 0 }), 1500), // the start of the chapter after
 });
 
+/**
+ * Checking a chapter's takes (the one-click plan's step 8, slice 6, 2026-10-16;
+ * take_check.js): the app's own speech recognition reads each take back and the transcript is
+ * lined up against the line's words. A take fails when the read-back misses more than
+ * `missed_share` of the line's words (skipped or heard as other words), or hears more than
+ * `extra_share` of them again past its text (a repeat, a take that runs on) — in either case at
+ * least `min_words` words — or when the take runs longer than the speech runtime's runaway limit
+ * (`engines.speech_runtime.runaway_s_per_char` and `runaway_min_s`). A failed take is rendered
+ * again once with a new seed; one that still fails is flagged. The three numbers are
+ * unmeasured starting points (2026-10-16).
+ */
+export const TakeCheckSettings = T.Object({
+  missed_share: opt(T.Number({ minimum: 0 }), 0.2),
+  extra_share: opt(T.Number({ minimum: 0 }), 0.2),
+  min_words: opt(T.Integer({ minimum: 1 }), 2),
+});
+
 /** First-run onboarding + cross-cutting UI preferences. */
 export const AppSettings = T.Object({
   primary_use_case: opt(UseCase, "unset"),
@@ -543,6 +560,7 @@ export const Settings = T.Object({
   captures: optModel(CapturesSettings),
   mcp: optModel(MCPSettings),
   extraction: optModel(ExtractionSettings),
+  take_check: optModel(TakeCheckSettings),
   app: optModel(AppSettings),
 });
 
@@ -561,6 +579,7 @@ export const SettingsPatch = T.Object({
   captures: opt(nullable(CapturesSettings), null),
   mcp: opt(nullable(MCPSettings), null),
   extraction: opt(nullable(ExtractionSettings), null),
+  take_check: opt(nullable(TakeCheckSettings), null),
   app: opt(nullable(AppSettings), null),
 });
 

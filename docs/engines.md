@@ -616,7 +616,9 @@ The engines under **Transcription — STT** recognise speech; they don't speak.
 a voice — nothing here speaks. It turns speech into text: Captures' dictation, the
 words of a capture you clone a voice from (they fill in its transcript), and, for
 other apps, transcripts and caption timings.* Other apps reach them through
-`/v1/transcribe`, `/v1/align` and the MCP tool `justvoice.transcribe`.
+`/v1/transcribe`, `/v1/align` and the MCP tool `justvoice.transcribe`. The take
+check reads a chapter's takes back with them too, to find a take that skipped
+words or ran on ([Studio → Checking takes](studio.md#checking-takes)).
 
 Load a recogniser on its row and it is the one that transcribes. With none
 loaded, Qwen3-ASR 1.7B loads on first use (`settings.captures.stt_model`). Word
@@ -1043,8 +1045,9 @@ counted the AI model's memory as given back.
 The 2× bar is `speech_runtime.cpu_min_realtime` in the settings, the spill
 threshold `speech_runtime.spill_mb` (also on the runtime row), and what counts as a runaway line
 `speech_runtime.runaway_s_per_char` and `runaway_min_s` (see
-[Settings reference](settings-reference.md)); the CPU threads are on the runtime
-row.
+[Settings reference](settings-reference.md); the take check fails a take past the same
+limit — [Studio → Checking takes](studio.md#checking-takes)); the CPU threads are on the
+runtime row.
 
 ## What each engine can be tuned with
 

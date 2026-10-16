@@ -59,6 +59,7 @@ const _TERMINAL = ["completed", "failed", "cancelled"];
 export const _running = new Set(); // job ids with a live runner
 export const _cancelEvents = new Map();
 export const _liveHandles = new Map(); // job id → scheduler SetHandles
+const _runners = new Map(); // job id → its runner's promise (`finished`)
 
 const marks = (n) => Array(n).fill("?").join(", ");
 
@@ -144,21 +145,25 @@ export function _expandScope(h, projectId, scope, scopeIds) {
 
 /**
  * Create the job + its per-block rows (all pending). A job with zero renderable blocks is born
- * completed — nothing to run. `fresh` renders every block past the render cache (kept with the
- * ids, so a resumed job keeps it). Returns the job row. Throws ValueError on an unknown block
- * id or scope.
+ * completed — nothing to run. `fresh` renders every block past the render cache; `newTake`
+ * gives every block a new seed, as ↻ New take does — the take check's one re-render of a failed
+ * take (take_check.js, 2026-10-16). Both are kept with the ids, so a resumed job keeps them.
+ * Returns the job row. Throws ValueError on an unknown block id or scope.
  */
-export function createJob(projectId, scope, scopeIds, { fresh = false } = {}) {
+export function createJob(projectId, scope, scopeIds, { fresh = false, newTake = false } = {}) {
   const h = _db();
   const ids = scopeIds || [];
   const blockIds = _expandScope(h, projectId, scope, ids);
   const jobId = uuid();
+  const opts = {};
+  if (fresh) opts.fresh = true;
+  if (newTake) opts.new_take = true;
   h.tx(() => {
     h.insert(RenderJob, {
       id: jobId,
       project_id: projectId,
       scope,
-      scope_ids_json: pyJson(fresh ? { ids, fresh: true } : ids),
+      scope_ids_json: pyJson(Object.keys(opts).length ? { ids, ...opts } : ids),
       status: blockIds.length ? "queued" : "completed",
       total_blocks: blockIds.length,
       finished_at: blockIds.length ? null : utcnow(),
@@ -174,8 +179,21 @@ export function startJob(jobId) {
   if (_running.has(jobId)) return false;
   _running.add(jobId);
   _cancelEvents.set(jobId, new AsyncEvent());
-  background(`render-job-${jobId.slice(0, 8)}`, () => self._runJob(jobId), log);
+  const runner = background(`render-job-${jobId.slice(0, 8)}`, () => self._runJob(jobId), log);
+  _runners.set(jobId, runner);
+  runner.finally(() => {
+    if (_runners.get(jobId) === runner) _runners.delete(jobId);
+  });
   return true;
+}
+
+/** The job once its live runner has stopped — done, cancelled or failed — as `jobStatus` shows
+ * it with its blocks (async). A job with no live runner answers at once. The take check waits
+ * on its re-render this way (take_check.js). */
+export async function finished(jobId) {
+  const runner = _runners.get(jobId);
+  if (runner !== undefined) await runner;
+  return jobStatus(jobId, { includeBlocks: true });
 }
 
 /** Cancel: withdraw the job's queued lines at the next line boundary. A job with no live
@@ -410,14 +428,24 @@ function _setFields(h, table, id, fields) {
   if (Object.keys(changed).length) h.update(table, changed, { id });
 }
 
-export function _jobIsFresh(job) {
+/** The job's options kept with its ids ({fresh, new_take}); {} for a job made with neither. */
+function _jobOptions(job) {
   let opts;
   try {
     opts = JSON.parse(job.scope_ids_json || "[]");
   } catch {
-    return false;
+    return {};
   }
-  return opts !== null && typeof opts === "object" && !Array.isArray(opts) && Boolean(opts.fresh);
+  return opts !== null && typeof opts === "object" && !Array.isArray(opts) ? opts : {};
+}
+
+export function _jobIsFresh(job) {
+  return Boolean(_jobOptions(job).fresh);
+}
+
+/** Does the job give every line a new seed (↻ New take's)? */
+export function _jobRollsSeeds(job) {
+  return Boolean(_jobOptions(job).new_take);
 }
 
 /** The job's runner (async; started by `startJob`). */
@@ -430,6 +458,7 @@ export async function _runJob(jobId) {
     const job = h.get(RenderJob, jobId);
     if (job === null) return;
     const fresh = _jobIsFresh(job);
+    const newTake = _jobRollsSeeds(job);
     const work = [];
     let owner;
     h.tx(() => {
@@ -477,8 +506,10 @@ export async function _runJob(jobId) {
     const scheduler = synthScheduler.getScheduler();
     const handles = [];
     for (const { jbId, block, persona, engineId } of work) {
+      // A new take's seed is rolled as its line starts, so a resumed job rolls afresh.
+      const opts = () => (newTake ? { useCache: !fresh, seed: lineTakes.rollSeed() } : { useCache: !fresh });
       const hd = scheduler.submit(
-        [[engineId, () => self._rendering(jbId, () => exportVoicelines.renderBlockTake(state, persona, block, { useCache: !fresh }))]],
+        [[engineId, () => self._rendering(jbId, () => exportVoicelines.renderBlockTake(state, persona, block, opts()))]],
         { owner },
       );
       handles.push([jbId, block, hd]);
@@ -512,7 +543,9 @@ export async function _runJob(jobId) {
           // Deleted while it rendered — nothing left to save it to.
           log.info(`render job ${jobId}: block ${block.id} was deleted while it rendered — not saved`);
         } else {
-          const take = self.persistBlockTake(db, state, block, item.result);
+          const take = newTake
+            ? self.persistBlockTake(db, state, block, item.result, { newSeed: true })
+            : self.persistBlockTake(db, state, block, item.result);
           db.tx(() => {
             _setFields(db, RenderJobBlock, jbId, { status: "completed", generation_id: take.generation_id });
             _refreshCounters(db, jobId);

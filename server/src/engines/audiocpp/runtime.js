@@ -228,6 +228,13 @@ export function runawayMinS() {
   return Number.isFinite(v) && v >= 0 ? v : 30;
 }
 
+/** The longest a line of `text` may run, in seconds, before it ran away: `runaway_s_per_char`
+ * a character of its text, and never less than `runaway_min_s` — the one rule for the manager's
+ * pricing (manager._noteRunaway) and the take check (take_check.js). */
+export function runawayLimitS(text) {
+  return Math.max(self.runawayMinS(), self.runawaySPerChar() * String(text ?? "").length);
+}
+
 /** The backends audio.cpp publishes a build of for this OS (the runtime row's choices). */
 export function availableBackends() {
   const hw = self._hardware();

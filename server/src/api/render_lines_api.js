@@ -9,6 +9,8 @@
 // - POST /v1/scenes/{id}/render_lines — render a chapter's lines as a render job: "ready" (each
 //   line with no take gets one — ⚡ Render N ready, a chapter's ▶ Render) or "all" (a new take
 //   for every line that can render, past the render cache — ↻ Re-render all).
+// - POST /v1/scenes/{id}/check_takes — check a chapter's takes: read back, a failed take
+//   rendered again once, what still fails flagged (take_check.js, the one-click plan's slice 6).
 // - POST /v1/projects/{id}/lexicon — the book's lexicon for 📕 Pronunciation, made ("<book>
 //   names") and chosen for the book when it has none.
 //
@@ -24,6 +26,8 @@ import { badRequest, internal, notFound } from "../errors.js";
 import * as lineTakes from "../line_takes.js";
 import { construct } from "../models.js";
 import * as renderJobs from "../render_jobs.js";
+import * as takeCheck from "../take_check.js";
+import { clientGone } from "./generate_api.js";
 import { RenderJobOut } from "./render_jobs_api.js";
 
 /** The app's database; Python's `_open_db` (internal error before boot). */
@@ -40,6 +44,27 @@ export const LineTake = T.Object({
   label: opt(nullable(T.String()), null),
   new_seed: opt(T.Boolean(), false),
   text: opt(nullable(T.String()), null),
+});
+
+/** What the take check found about a take (take_check.js, 2026-10-16) — the record kept in the
+ * line's metadata. `reasons`: "runaway" (longer than its text allows), "missed" (the read-back
+ * misses its words), "extra" (the read-back hears words past them), "rerender_failed". */
+export const TakeCheck = T.Object({
+  generation_id: T.String(),
+  ok: opt(T.Boolean(), false),
+  flagged: opt(T.Boolean(), false),
+  reasons: opt(T.Array(T.String()), []),
+  heard: opt(nullable(T.String()), null),
+  // The line's words, and the read-back's missed and extra ones — null when the take ran away
+  // and was not read back (`heard` null too).
+  words: opt(T.Integer(), 0),
+  missed: opt(nullable(T.Integer()), null),
+  extra: opt(nullable(T.Integer()), null),
+  seconds: opt(nullable(T.Number()), null),
+  limit_s: opt(nullable(T.Number()), null),
+  retry_of: opt(nullable(T.String()), null),
+  recogniser: opt(nullable(T.String()), null),
+  checked_at: opt(nullable(T.String()), null),
 });
 
 export const RenderLine = T.Object({
@@ -61,6 +86,8 @@ export const RenderLine = T.Object({
   state: literal("needs a speaker", "needs a voice", "ready", "rendered", "stale"),
   takes: opt(T.Integer(), 0),
   live: opt(nullable(LineTake), null),
+  // The take check's finding about the take in use, when it was checked (2026-10-16).
+  check: opt(nullable(TakeCheck), null),
 });
 
 const COUNTS = {
@@ -102,6 +129,35 @@ export const ProjectRenderState = T.Object({
 export const RenderLinesRequest = T.Object({ which: opt(literal("ready", "all"), "ready") });
 
 export const BookLexicon = T.Object({ lexicon_id: T.String(), name: T.String(), created: T.Boolean() });
+
+/** `redo`: judge every take in use again, past what an earlier check found. */
+export const CheckTakesRequest = T.Object({ redo: opt(T.Boolean(), false) });
+
+export const CheckedLine = T.Object({
+  block_id: T.String(),
+  scene_id: T.String(),
+  n: T.Integer(),
+  check: TakeCheck,
+});
+
+export const CheckTakesError = T.Object({ block_id: T.String(), error: T.String() });
+
+/** What one run of the take check did (take_check.checkTakes): takes read back, lines that
+ * passed, were rendered again once, or are flagged; lines already judged (skipped) and lines with
+ * no take made from what they are now (unchecked); the lines it judged, each with its finding. */
+export const CheckTakesOut = T.Object({
+  scene_ids: T.Array(T.String()),
+  recogniser: opt(nullable(T.String()), null),
+  checked: T.Integer(),
+  passed: T.Integer(),
+  rerendered: T.Integer(),
+  flagged: T.Integer(),
+  skipped: T.Integer(),
+  unchecked: T.Integer(),
+  errors: opt(T.Array(CheckTakesError), []),
+  lines: opt(T.Array(CheckedLine), []),
+  stopped: opt(T.Boolean(), false),
+});
 
 export function router() {
   const app = new Hono();
@@ -147,6 +203,21 @@ export function router() {
     }
     if (job.total_blocks) renderJobs.startJob(job.id);
     return c.json(construct(RenderJobOut, renderJobs.jobStatus(job.id)));
+  });
+
+  /**
+   * Check a chapter's takes (the one-click plan's slice 6, 2026-10-16; take_check.js): each take
+   * in use read back by the app's speech recognition, a failed one rendered again once with a
+   * new seed, one that still fails flagged in its line's metadata. Answers when the check is
+   * done, re-render included; leaving early stops it at the next line.
+   */
+  app.post("/v1/scenes/:scene_id/check_takes", input({ body: nullable(CheckTakesRequest) }), async (c) => {
+    const redo = Boolean(c.req.valid("json")?.redo);
+    const h = _openDb();
+    const sceneId = c.req.param("scene_id");
+    if (h.one(`select id from ${Scene} where id = ? limit 1`, [sceneId]) === null) throw notFound(`scene ${sceneId}`);
+    const out = await takeCheck.checkTakes(getState(), [sceneId], { redo, signal: clientGone(c) });
+    return c.json(construct(CheckTakesOut, out));
   });
 
   /**
