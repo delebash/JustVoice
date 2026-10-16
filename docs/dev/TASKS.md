@@ -295,6 +295,25 @@ BUILT:  15 — 8d7adf6. 1 — 1705ac9. 2 and 12 — the commit after 4371c9a (Au
 OPEN:   the rest of 1–16 as above; 3 and 13 with the engine slices (their files).
 GO:     given 2026-10-15 for 1–16.
 
+### Slice 3's six questions: what each one gets (2026-10-15)
+STATE:  DECIDED 2026-10-15 under the user's "your rec go" (the slice's agent's recs, rethought):
+        1. Plan §1's "expert-only settings fold under Advanced" names none — settings in
+        audio.cpp's control list (its own UI's) stay visible, spec-only ones fold. 2. Chatterbox's
+        `multilingual_t3` on the model's row (the plan's F3), labelled with audio.cpp's own word,
+        "Checkpoint" (its spec: "Multilingual T3 checkpoint selection"), v2 · v3, v2 the default.
+        3. The seed box's top is the spec's where it gives one (4,294,967,295; was 2,000,000,000).
+        4. The seven engines' knobs wider than audio.cpp's, or ranged where it gives none: slice
+        4, never narrowed below a saved value. 5. The new error words stay: "is at least N", "is
+        at most N", "must be a number". 6. Control-list-first narrows Echo TTS steps (8–40),
+        Irodori duration_scale and Maya1 temperature: kept, as the plan's §2 says.
+WHY:    the plan leaves which settings fold, and the v3 label, open; audio.cpp's own UI and spec
+        answer both.
+NOT:    a label of my own for the checkpoint.
+BUILT:  slice 3 — 27f1c140, 43007230, 037abbe4, c0a21e7e; 1–3 under way.
+OPEN:   1–3; the runtime check (a load option and a number-box setting reach the runtime) once
+        the fork's build is done. For the user at the end: "Checkpoint" is audio.cpp's word.
+GO:     given 2026-10-15 ("your rec go").
+
 ### Slice 2's acceptance findings: what each one gets (2026-10-15)
 STATE:  DECIDED 2026-10-15 under the user's "your rec go" for finishing the register and the
         adoption plan ("rethink on anything you are really unsure of … otherwise complete
