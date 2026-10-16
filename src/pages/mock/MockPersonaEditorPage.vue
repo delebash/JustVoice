@@ -162,7 +162,8 @@ const voiceFilters = computed(() => [
 ]);
 const shownVoices = computed(() => narrowed(voices.value, voiceFilters.value));
 const directionChoices = computed(() => {
-  const n = facetCounts(voices.value, voiceFilters.value, "direction", ["words", "tags", "sliders"],
+  // Every choice the list offers, "Can't be directed yet" too (it read "(undefined)" — 2026-10-15).
+  const n = facetCounts(voices.value, voiceFilters.value, "direction", DIRECTION_OPTIONS.filter((o) => o.value).map((o) => o.value),
     (v, d) => v.directed_by === d);
   return DIRECTION_OPTIONS.map((o) => ({
     value: o.value,

@@ -1168,10 +1168,18 @@ progress {
 }
 .jv-split__col {
   display: grid;
+  /* One track the column's width: a card holding something wider than the column (a segmented
+     row) stays in it, instead of the grid's `auto` track growing to that thing's width — at
+     1280 px the persona page's Voice card ran 290 px past the window, over the right column
+     (2026-10-15, once How it can be directed gained a fifth choice). */
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-content: start;
   min-width: 0;
 }
+/* A segmented row in a column wraps its choices onto a second line rather than run past the
+   card (the kit's UiSegmented is one inline row). */
+.jv-split__col .ui-seg { flex-wrap: wrap; max-width: 100%; }
 /* An editor beside its summary: the left column the wider, 1.5 : 1 (the
    persona page, as mock `_s7` draws it — decided 2026-10-04). */
 .jv-split--wide-left { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
