@@ -401,8 +401,17 @@ STATE:  DECIDED 2026-10-16 — after RESEARCH §10.25 and another session's desk
 WHY:    the best engine whose audiobooks can be sold (VoxCPM2, Apache-2.0) was told less than its
         authors document (one word, cfg 2.0, one take); best-of-N with automatic verifiers is the
         standard method (Llasa, RESEARCH §10.10).
-NOT:    IndexTTS (licence unclear for selling); CosyVoice3 (its emotion follows the words; its
-        official phrases were already used).
+        Widened the same day at the user's "we want both best we can sell with best we cant and
+        best overall for the engines we need to know it all" and "lets test indextts with emotion
+        clicp": Breeze on the card, VoxCPM2 told the line's words at cfg 2.7, IndexTTS 2.5 and 2.0
+        at 0.6 and with an acted emotion clip, a narration sample. Chatterbox dropped: shown "drop
+        Chatterbox from round 5 … no way to pick an emotion"; the user: "your rec, to me if we cant
+        get a tts that can do emotion than that defeats the whole point of doing an audiobook this
+        way, there are plenty of systems that can already just read text in a plain decent voice
+        without emotion, if this system we are building cant compete with a human then it is
+        pointless".
+NOT:    CosyVoice3 (its emotion follows the words; its official phrases were already used);
+        Chatterbox (exaggeration sets intensity only, no emotion to choose).
 BUILT:  —
 OPEN:   the renders (the book's cue words as the direction, cfg ~2.5–3.0, 3 seeds), the scorers'
         pick against a random take, a blind page with no change · a little · clearly · like the
