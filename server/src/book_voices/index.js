@@ -59,6 +59,13 @@ export function describeRecipe() {
   return presetRecipe(resolveFeaturePreset(ACTIONS.cast, FEATURE));
 }
 
+/** The narrator's persona name: the speaker's, then the book's title ("Narrator · Alice's
+ *  Adventures in Wonderland") — unique per book, as persona names must be. */
+export function narratorPersonaName(speakerName, bookName) {
+  const book = strip(String(bookName || ""));
+  return book ? `${speakerName} · ${book}` : speakerName;
+}
+
 function projectOf(h, projectId) {
   const p = h.one(`select * from ${Project} where id = ? limit 1`, [projectId], Project);
   if (p === null) throw notFound(`project ${projectId}`);
@@ -129,7 +136,8 @@ function descriptionOf(v) {
  * the narrator with at least `minLines` lines in the whole book, most lines first; the narrator:
  * the book's narrator (the role). Either is skipped when it already has a persona (`cast` — left
  * alone) or a persona of exactly its name is in the library (`persona_named` — `matchRest` casts
- * it, as every new speaker is cast). The others are for `matchRest`.
+ * it, as every new speaker is cast: a persona you call "Narrator" narrates every book). The others
+ * are for `matchRest`.
  */
 export function bookTargets(h, projectId, minLines) {
   const counts = speakerLineCounts(h, projectId);
@@ -309,7 +317,12 @@ export async function makeVoices(h, projectId, descriptions, { signal = null } =
       out.left_alone.push(entry);
       continue;
     }
-    const named = personaNamed(h, speaker.name);
+    const narrator = speaker.role_label === "narrator";
+    // The narrator's persona carries the book's title (2026-10-16): named "Narrator" it would be
+    // cast by name as the next book's narrator too (+ Add Narrator's rule for a persona you call
+    // "Narrator"), and that book's would never be designed from its own genre and tone (Q3).
+    const personaName = narrator ? narratorPersonaName(speaker.name, project.name) : speaker.name;
+    const named = personaNamed(h, personaName);
     if (named) {
       if (castIfUncast(h, speaker.id, named)) out.cast_by_name.push({ ...entry, persona_id: named });
       continue;
@@ -321,12 +334,11 @@ export async function makeVoices(h, projectId, descriptions, { signal = null } =
     }
     try {
       // The name the persona will take — refused before a voice is designed for it.
-      personasApi._personaName(speaker.name);
+      personasApi._personaName(personaName);
     } catch (e) {
       out.failed.push({ ...entry, error: errText(e) });
       continue;
     }
-    const narrator = speaker.role_label === "narrator";
     const line = auditionLine(chapters, speaker.id, cfg.audition_words, { narration: narrator });
     const audition = line && cpLen(line) <= AUDITION_MAX_CHARS ? line : stockLine(language);
     const t0 = performance.now();
@@ -344,10 +356,10 @@ export async function makeVoices(h, projectId, descriptions, { signal = null } =
         { signal },
       );
       // Kept at once: a held audition lasts 10 minutes (the plan's §4).
-      const saved = await vp.savePreview(heard.previewId, { name: speaker.name, gender: genderOf(d.gender), model: cfg.clone_model });
+      const saved = await vp.savePreview(heard.previewId, { name: personaName, gender: genderOf(d.gender), model: cfg.clone_model });
       voiceId = saved.voice_id;
       const persona = await personasApi.createPersona(
-        construct(CreatePersonaRequest, { name: speaker.name, voice_id: voiceId, language, note: personaNote(description, d.model) }),
+        construct(CreatePersonaRequest, { name: personaName, voice_id: voiceId, language, note: personaNote(description, d.model) }),
       );
       out.made.push({
         ...entry,

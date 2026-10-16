@@ -735,9 +735,12 @@ persona for each speaker with at least three lines in the book, and for the narr
 description the language model writes of how the voice should sound. Each is an ordinary
 persona, in the list with the rest:
 
-- **Its name** is its speaker's, and its speaker is cast with it. A speaker who already had a
+- **Its name** is its speaker's, and its speaker is cast with it — the narrator's carries the
+  book's title too, *Narrator · Alice's Adventures in Wonderland*, so the next book's narrator is
+  designed from that book rather than cast with this one by name. A speaker who already had a
   persona keeps it; a speaker whose name is already a persona's is cast with that one instead
-  (as every new speaker is), and no new persona is made.
+  (as every new speaker is — a persona you call exactly "Narrator" narrates every book), and no
+  new persona is made.
 - **Its voice** is a design kept as a clip: the description designed once on Qwen3-TTS
   VoiceDesign, speaking one of the speaker's own calm lines, and that take kept as a **VoxCPM2**
   voice — the same as **📌 Keep take N** on [New design](#new-design). The voice keeps its

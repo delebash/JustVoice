@@ -302,7 +302,9 @@ test("each_description_is_designed_once_kept_as_a_voxcpm2_clip_and_made_a_person
   expect(persona.note).toBe("Male, middle-aged, sharp and eccentric.\n\nWritten from the book by gemma-test.");
   const speakers = (await c.get(`/v1/projects/${pid}/speakers`)).json().speakers;
   expect(speakers.find((s) => s.id === ids.hatter).persona_id).toBe(persona.id);
-  expect(speakers.find((s) => s.id === ids.narrator).persona_name).toBe("Narrator");
+  // The narrator's persona carries the book's title, so it isn't cast by name as the next book's
+  // narrator — that one is designed from its own book (2026-10-16).
+  expect(speakers.find((s) => s.id === ids.narrator).persona_name).toBe("Narrator · Wonderland");
 });
 
 test("nothing_you_made_is_replaced", async () => {

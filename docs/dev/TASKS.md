@@ -871,7 +871,10 @@ OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a 
         the run's screen; slice 4's gemma acceptance, `npm run eval:speakers`, once the card is free.
         Slice 3: its acceptance on the GPU (Alice VII–VIII, one call per step, the user listens);
         the user's word on what it chose (RESEARCH §10.20): the match pool (personas playing no one
-        in the book), the persona note's words, a second book's "Narrator" cast by name.
+        in the book), the persona note's words. A second book's narrator cast by name with the
+        first's designed one: fixed 2026-10-16 — the designed narrator's persona is "Narrator ·
+        ‹book›", so the next book's is designed from its own (a persona you call "Narrator" still
+        narrates every book, + Add Narrator's rule).
 GO:     given 2026-10-11 ("yes your rec on all").
 
 ### The order of work after the research sweep (decided 2026-10-11)
