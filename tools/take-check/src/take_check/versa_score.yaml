@@ -1,0 +1,29 @@
+# VERSA score config for take-check. Each entry is VERSA's own, copied from its
+# egs/separate_metrics/*.yaml at the pinned commit; only the model choices differ, where noted.
+
+# Read-back: Whisper large-v3, both texts through Whisper's English normaliser.
+# As egs/separate_metrics/wer_english.yaml. Writes edit counts (whisper_wer_*, whisper_cer_*),
+# the transcript (whisper_hyp_text) and the cleaned reference (ref_text).
+- name: whisper_wer
+  model_tag: large-v3
+  beam_size: 5
+  text_cleaner: whisper_en
+  calc_per: false
+
+# Same speaker: cosine similarity of WavLM-base-plus-sv x-vectors, take against the voice's clip.
+# As egs/separate_metrics/spk_similarity_wavlm.yaml, with the base-plus model it lists
+# (NeMo's option in evaluate_generated_audio.py). Writes spk_similarity.
+- name: speaker
+  model_tag: microsoft/wavlm-base-plus-sv
+  backend: huggingface
+
+# Quality: UTMOSv2. As egs/separate_metrics/utmos2.yaml. Writes utmosv2.
+- name: pseudo_mos
+  predictor_types: ["utmosv2"]
+  predictor_args:
+    utmosv2:
+      fs: 16000
+
+# Dimensional emotion (audeering w2v2-how-to). As egs/separate_metrics/emo_vad.yaml.
+# Writes arousal_emo_vad, valence_emo_vad, dominance_emo_vad.
+- name: emo_vad

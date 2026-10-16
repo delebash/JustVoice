@@ -33,6 +33,12 @@ and protocol).
 | Loud and soft (shouted, whispered) | integrated loudness, ITU-R BS.1770, through pyloudnorm — the told take against the same line not told | [github.com/csteinmetz1/pyloudnorm](https://github.com/csteinmetz1/pyloudnorm) |
 | The summary | scipy's `stats.bootstrap`, paired over lines | [docs.scipy.org — bootstrap](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html) |
 
+**Built 2026-10-16** (`tools/take-check/README.md`): VERSA v1.1.0 (`38454c95`), torch 2.11 cu126,
+funasr 1.4.16, the UTMOSv2 fork VERSA uses; ESPnet and openai-whisper beside it for `whisper_wer`
+instead of VERSA's whole `external` group; a book's curly quotes go to Whisper as ASCII (its
+normaliser splits "There’s"); contemptuous is read as emotion2vec+'s `disgusted`; shouted and
+whispered through loudness. On the CPU, 6 takes in 8½ minutes with the first downloads.
+
 Each score is read on its own, as VERSA reports them; no combined score (RESEARCH §10.11: a z-score
 combiner is NOT STANDARD — not built). Input: a folder of takes and a `manifest.json` (one entry per
 take: its wav, its words, the voice's clip, the emotion asked, the model, the seed, told or not).

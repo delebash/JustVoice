@@ -1,0 +1,10 @@
+# The environment uv builds from uv.lock
+.venv/
+# Downloaded models (Whisper, WavLM, UTMOSv2, audeering, emotion2vec+) and other caches
+.cache/
+versa_cache/
+__pycache__/
+*.egg-info/
+# Score runs
+out/
+outputs/

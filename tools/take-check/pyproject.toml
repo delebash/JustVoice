@@ -1,0 +1,62 @@
+[project]
+name = "take-check"
+version = "0.1.0"
+description = "Scores JustVoice speech takes without a person: read-back, same speaker, quality, emotion, loudness. A tool beside the app; never shipped."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # The harness: VERSA, pinned to its v1.1.0 release commit (see [tool.uv.sources]).
+    # `text` and `ml` are VERSA's own optional groups: Levenshtein for whisper_wer,
+    # transformers for the WavLM speaker model and emo_vad.
+    "versa-speech-audio-toolkit[text,ml]",
+    # VERSA's real-model CI installs transformers below 5 (.github/workflows/real-model-smoke.yml).
+    "transformers>=4.36.2,<5",
+    # whisper_wer's backends: openai-whisper, and ESPnet's TextCleaner (whisper_en = Whisper's
+    # EnglishTextNormalizer). VERSA's `external` group names both; only these two are needed here.
+    "openai-whisper==20250625",
+    "espnet==202610.post2",
+    # utmosv2: the UTMOSv2 fork VERSA's tools/install_utmosv2.sh installs (see [tool.uv.sources]).
+    "utmosv2",
+    # VERSA's pseudo_mos imports librosa at module level.
+    "librosa",
+    # PyTorch, CUDA 12.6 wheels (driver 610.88). ESPnet accepts torch 2.11/2.13/2.14 with
+    # torchaudio 2.11; 2.11.0 is the lockstep pair.
+    "torch==2.11.0",
+    "torchaudio==2.11.0",
+    # timm (UTMOSv2's backbone) needs torchvision; 0.26.0 is torch 2.11.0's pair.
+    "torchvision==0.26.0",
+    # emotion2vec+ large through FunASR's AutoModel.
+    "funasr==1.4.16",
+    # Loudness (ITU-R BS.1770), the paired bootstrap, audio IO.
+    "pyloudnorm==0.2.0",
+    "scipy",
+    "soundfile",
+    "numpy",
+    "pyyaml",
+]
+
+[project.scripts]
+take-check = "take_check.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+# The tool runs on this Windows machine; Linux kept so the lock also serves a Linux box.
+environments = ["sys_platform == 'win32'", "sys_platform == 'linux'"]
+
+[tool.uv.sources]
+# VERSA v1.1.0 (tag v1.1.0, 2026-09-09).
+versa-speech-audio-toolkit = { git = "https://github.com/wavlab-speech/versa", rev = "38454c95f95d9ea717ebf800abe237e846b0f16e" }
+# github.com/ftshijt/UTMOSv2 main as of 2025-04-24 ("update utmosv2 with weights_only load").
+utmosv2 = { git = "https://github.com/ftshijt/UTMOSv2", rev = "65b7dc8fa626fc61a00400a34f393fc8c897ea04" }
+torch = [{ index = "pytorch-cu126" }]
+torchaudio = [{ index = "pytorch-cu126" }]
+torchvision = [{ index = "pytorch-cu126" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
