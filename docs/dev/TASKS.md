@@ -342,7 +342,9 @@ STATE:  DECIDED 2026-10-16 under the user's "your rec go" of 2026-10-15 (the sli
         `engines/<id>/manifest.js` pointers — to the user (an agent asked; CLAUDE.md isn't edited
         on an agent's word). 8. The persona mock's old Built-in/Tags reason — slice 5. 9. The
         before-snapshot as our own JSON fixture with a write mode (`JV_SEVEN_BEFORE=write`), not
-        Vitest's snapshots — NOT STANDARD, to the user by name; the merge waits for the answer.
+        Vitest's snapshots — NOT STANDARD, to the user by name. It ran green on `slice4` (58944ac6:
+        server 1256 + 2 skipped) and is held back from the merge until the user's word — the two
+        files stay in the branch's history, ready to restore.
         10. QwenCleo's languages `ar-EG` and `en` (VoiceTut's precedent), kept. 11. The worktree's
         two package-lock.json changes (the kit's package.json since moved on) — not slice 4's,
         left out.

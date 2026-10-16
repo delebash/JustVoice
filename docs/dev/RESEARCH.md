@@ -554,7 +554,8 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
   cloning; and each engine's request (`slot.js`), which sends the names the pinned build reads
   (v0.9.0-jv.5 reads only the old ones — `speaker`, `s3gen_cfg_rate`). "zh dialects" stays out of
   VoxCPM2's and Qwen3-ASR's languages (a description; how to show it is open).
-- **The same, checked:** `server/tests/seven_engines_unchanged.test.js` compares against
+- **The same, checked** (the test held back from main until the user's word on it, NOT STANDARD —
+  TASKS "Slice 4's gaps" 9; at 58944ac6 on `slice4`): `server/tests/seven_engines_unchanged.test.js` compares against
   `seven_engines_before.json`, written on main (5bcd223f) before the move — 40 persona requests
   (`runtime._jsonBody`'s bytes, or the refusal's words), every model's registration, warm-up and
   calibrating warm-up, Qwen3-ASR's transcriptions and alignment, a persona's saved settings as a
