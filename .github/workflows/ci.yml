@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: MIT
 name: CI
 
+# Run by hand only (Actions → CI → Run workflow) — the user, 2026-10-17: "it should be onluy
+# run by hand".
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,9 +18,6 @@ jobs:
   renderer:
     name: Renderer — Biome, unit tests, Quasar build
     runs-on: ubuntu-latest
-    if: >
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
         with:
@@ -66,9 +62,6 @@ jobs:
   server:
     name: Server — vitest
     runs-on: ubuntu-latest
-    if: >
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
         with:
