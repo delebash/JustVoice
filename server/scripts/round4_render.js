@@ -259,7 +259,12 @@ async function main() {
     const { voices: now } = await call(server, "/v1/voices");
     let voice = a.ours ? source : now.find((v) => v.name === name);
     if (!voice) voice = await call(server, `/v1/voices/${source.id}/copy`, { method: "POST", body: { model: row, name } });
-    if (a.ours === "icl" && !source.transcript) throw new Exit(`${source.name} has no transcript for its clip`);
+    // The voice list leaves the clip's words out; its manifest has them.
+    if (a.ours === "icl" && !source.transcript) {
+      const manifestFile = path.join(args["data-dir"], "voices", source.id, "manifest.json");
+      source.transcript = existsSync(manifestFile) ? JSON.parse(readFileSync(manifestFile, "utf8")).transcript : null;
+      if (!source.transcript) throw new Exit(`${source.name} has no transcript for its clip`);
+    }
     if (a.pin) {
       // Pinned for the round; the setting is put back to Auto at the end of the arm.
       await call(server, "/v1/settings", { method: "PATCH", body: { engines: { engine_overrides: { [a.engine]: { placements: { [a.variant]: a.pin } } } } } });
