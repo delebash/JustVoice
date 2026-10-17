@@ -4552,6 +4552,56 @@ VII–VIII by Whisper turbo (every line an exact word match) and cut; scored aga
   narrators on the ten passages. claude.ai/artifact/JksCTD7KkySRK6tQneVqMf (collection `round5`).
   · `data/round5/` (gitignored).
 
+### 10.30 Round 6b step 3 — Qwen3 CustomVoice 1.7B speaking our voice, standard pieces only (2026-10-17)
+
+TASKS "Round 6b", step 3; plan `docs/plans/2026-10-16-customvoice-our-voice.md`.
+
+**What was tested.** Our fork's `qwen3_tts.base_model_path` (jv 8461cdce):
+- Base's ECAPA x-vector of the Hatter's clip goes in CustomVoice's speaker slot (arm
+  `customvoice-ours`).
+- Or the same, plus the clip's frames from CustomVoice's own tokenizer and the clip's words (arm
+  `customvoice-ours-icl`).
+- Either way, the line's direction words as instruct, its rows first.
+- **Not** the MIT C engine's x-vector rescale (P5) or its Base weight overlay (P6). Those two wait
+  for the user's word.
+
+**How it ran.** Through the app's dev runtime: the model is loaded through the app, registered
+again with the option, and each take sent to `/v1/tasks/run`.
+- Takes: all 50 cue lines, told and plain, seeds 7, 8, 9 — 300 takes an arm, none failed.
+- Told words: round 5's (`data/round5-direction.json`).
+- Scored as round 5 (§10.29); round 5's rows are on the same 50 lines.
+
+| Arm | Emotion gain [95% CI] | Heard as asked: told · not | Shouted / whispered Δ LUFS | WER told · share > 0.25 | Speaker sim told · not | UTMOSv2 | s a take |
+|---|---|---|---|---|---|---|---|
+| CustomVoice, x-vector | +0.01 [−0.03, 0.08] | 0.17 · 0.16 | +0.6 / −2.7 | 0.039 · 0.03 | 0.87 · 0.89 | 3.18 | 0.8 |
+| CustomVoice, x-vector + clip (ICL) | −0.01 [−0.05, 0.01] | 0.07 · 0.07 | +1.0 / −0.5 | 0.031 · 0.01 | 0.91 · 0.91 | 3.35 | 0.8 |
+| *round 5:* VoxCPM2 (best sellable) | +0.04 [0.01, 0.08] | 0.15 · 0.11 | +4.7 / +3.5 | 0.015 · 0.01 | 0.87 · 0.92 | 2.78 | 1.8 |
+
+- **It does not act, in this form.** — *measured*.
+  - The emotion gain's interval crosses 0 on both arms; by emotion every row is within ±0.04.
+  - Shouted lines are louder by only 0.6 and 1.0 dB (VoxCPM2: +4.7).
+  - The one sign of direction is the x-vector arm's whispered lines, 2.7 dB quieter. VoxCPM2's
+    came out louder.
+  - The ICL arm acts least, as the C engine's author warns: reference frames damp the instruct
+    (§10.28).
+- **The direction reaches the model.** — *measured*.
+  - None of the 300 told takes is byte-identical to its plain twin of the same seed.
+  - The path is code-verified: the request's `instruct` → `custom_voice.instruct` → the
+    voice-clone prompt builder → instruct rows first. The fork's unit test proves the rows.
+  - Told takes run about as long as plain ones: median length ratio 1.03 and 1.00, none over 2.6×.
+- **It keeps the voice and sounds the best of any arm so far.** — *measured*.
+  - ICL: speaker similarity 0.91 told and plain; UTMOSv2 3.35. Round 5's best was IndexTTS 2.5 at
+    3.11 (§10.29).
+  - x-vector: 0.89 plain, just under the plan's 0.90 bar.
+  - Both read back (97 % and 99 % of takes at WER ≤ 0.25).
+  - The fastest arm measured: 0.8 s a take on the card.
+- **Against the plan's bars (§4):** 1 passes on both arms. 2 passes on ICL; the x-vector arm
+  misses by 0.01 plain. 3 fails on both. The bars send this form to EDICT, unless P5 and P6 change
+  it. The card's peak memory with the option was not recorded.
+- **The page:** on each of round 5's 13 lines, the person, VoxCPM2's round-5 pick and each
+  CustomVoice arm's pick, by round 5's rule. https://claude.ai/artifact/UJjuQupm5aHTzuEhAmNRpZ
+  (collection `round6b`). Data: `data/round6b/standard/` (gitignored).
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next

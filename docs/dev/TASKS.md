@@ -384,7 +384,10 @@ WHY:    the user's bar: "if this system we are building cant compete with a huma
         pointless"; every part here can be sold with (Apache, MIT, open data) and fits 8 GB.
 NOT:    building the four-stage chain before testing whether one model does it; act-then-convert
         (emotion lost in conversion unmeasured); Joint-RL (needs training that won't fit 8 GB).
-BUILT:  — (research: RESEARCH §10.26–10.27).
+BUILT:  research: RESEARCH §10.26–10.27. Step 3, standard pieces only (2026-10-17): fork jv
+        8461cdce (`qwen3_tts.base_model_path`), the harness arms, 600 takes scored (RESEARCH
+        §10.30: keeps the voice, best quality so far, does not act), the page
+        https://claude.ai/artifact/UJjuQupm5aHTzuEhAmNRpZ (collection round6b).
         Reordered the same day, after the user's "are you really thinking about these solutions and
         looking at what we have already tested" (rounds 2–3 had VoxCPM2 told in fuller words like
         the book on 6 of 7 lines at best of three seeds; Qwen3 VoiceDesign acting 5 of 7 but
