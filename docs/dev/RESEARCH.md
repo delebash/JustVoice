@@ -4492,6 +4492,21 @@ github.com/gabriele-mastrapasqua/qwen3-tts (commit ef339be5), the official QwenL
   CustomVoice rows `clone: false` (`:94-110`), `slot.js:969-982` ("the CustomVoice model cannot
   clone"), `capability_details.js`.
 
+- **Checked again 2026-10-16** (an agent reading the fork and the C engine for round 6b's plan,
+  `docs/plans/2026-10-16-customvoice-our-voice.md`): the smallest fork change above **misses the
+  Base weight overlay** — the C engine's default graft also copies Base's text_projection, codec
+  rows 0–2047 and the tts_pad/bos/eos rows into CustomVoice (WOVR + TPAD, `main.c:2290-2380`);
+  without it "coherent ✅, **different timbre (mel 0.49)**" (`docs/icl-graft-portability.md:95-99`).
+  The x-vector rescale fires only when the target row's norm is > 0.1 — on CustomVoice, never on
+  Base (`qwen_tts.c:1319-1336`). "Neither alone is enough on a clone" is
+  `blog/emotions-on-cloned-voices.md:70`, an unpublished draft (`published: false`). §10.26's "a
+  dead end on 1.7B" is inaccurate: the blog (`:52`) says "the 4 KB speaker vector" (0.6B's size;
+  1.7B's is 8 KB) and never names 1.7B. The fork's GGUF reader memory-maps the file
+  (`read_binary_blob` → `MapViewOfFile`); the runtime's memory estimate counts every session
+  option path's file size, its guard off unless `min_free_memory_mb > 0` (JustVoice sets none);
+  JustVoice's `SESSION_FILES` is family-wide (`generated.js:552-584`); `build/jv-dev` has tests
+  off, `build/jv-tests` is a CPU Ninja folder with them on. — *agent, read in code*.
+
 ### 10.29 Round 5 — each engine told the authors' way, a person as the bar, scored (2026-10-16)
 
 TASKS "Round 5". Through the app (`npm run round4:render`, the dev build bcc5dfbb; IndexTTS's clip
