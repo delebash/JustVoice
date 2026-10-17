@@ -27,8 +27,20 @@
 // (audio.cpp's `audio` input) — something the app can't send yet, so those takes go straight to the
 // speech runtime the app runs (`/v1/tasks/run`), the model loaded through the app first. The clips
 // (`<out>/bank/`) are BreezeTTS 2 acting each emotion in another voice (`--bank-voice`), made once.
+//
+// Round 6b step 3 (docs/plans/2026-10-16-customvoice-our-voice.md) — Qwen3 CustomVoice 1.7B
+// speaking the voice's own clip, told the line's words as its instruct:
+//
+//     npm run round4:render -- --out data/round6b --direction <the round-5 dump> \
+//       --arms customvoice-ours,customvoice-ours-icl --voice <the Hatter's id> \
+//       --runtime http://127.0.0.1:<the speech runtime's port> [--lines 7-95,8-57,…]
+//
+// The app can't send a clip to CustomVoice yet (our fork's `qwen3_tts.base_model_path`), so each
+// arm loads the model through the app first (its memory booking), registers the same id again on
+// the speech runtime with that option added, and sends its takes there (`/v1/tasks/run`); it
+// unloads through the app at the end. No voice is copied: the takes use the voice's own clip.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { segmentParagraphs, splitIntoParagraphs } from "../src/extraction/segmentation.js";
@@ -118,6 +130,12 @@ const ARMS = {
     variant: "chatterbox-multilingual-v2-q8",
     told: (e) => ({ ...appWay(e), engine: { exaggeration: 1.0, cfg_weight: 0.3 } }),
   },
+
+  // ── Round 6b step 3 ──
+  // CustomVoice 1.7B with the voice's x-vector (Base's speaker encoder) in its speaker slot, or
+  // the x-vector plus the clip and its words (ICL), told the line's words as its instruct.
+  "customvoice-ours": { engine: "qwen3", variant: "qwen3-cv-1.7b-q8", base: "qwen3-base-1.7b-q8", ours: "x-vector", told: described },
+  "customvoice-ours-icl": { engine: "qwen3", variant: "qwen3-cv-1.7b-q8", base: "qwen3-base-1.7b-q8", ours: "icl", told: described },
 };
 
 // The emotion clips: a short emotional sentence per emotion, acted by BreezeTTS 2 in another voice.
@@ -201,6 +219,7 @@ async function main() {
       direction: { type: "string", default: "" }, // round 5: an eval:direction --out dump
       runtime: { type: "string", default: "" }, // round 5's clip arms: the speech runtime's URL
       "bank-voice": { type: "string", default: "" }, // round 5's clip arms: the voice that acts the clips
+      lines: { type: "string", default: "" }, // only these line ids (e.g. 7-95,8-57)
     },
   });
   const server = args.server.replace(/\/+$/, "");
@@ -208,6 +227,12 @@ async function main() {
   const arms = args.arms.split(",").map((a) => a.trim()).filter(Boolean);
   for (const a of arms) if (!ARMS[a]) throw new Exit(`no arm called ${a} — the arms: ${Object.keys(ARMS).join(", ")}`);
   let lines = cueLines(args.direction);
+  if (args.lines) {
+    const wanted = new Set(args.lines.split(",").map((s) => s.trim()));
+    lines = lines.filter((l) => wanted.has(l.line));
+    const missing = [...wanted].filter((id) => !lines.some((l) => l.line === id));
+    if (missing.length) throw new Exit(`no cue line ${missing.join(", ")}`);
+  }
   if (args.limit) lines = lines.slice(0, Number.parseInt(args.limit, 10));
 
   const { voices } = await call(server, "/v1/voices");
@@ -232,8 +257,9 @@ async function main() {
     if (!row) throw new Exit(`${arm}: no capability row for ${a.variant}`);
     const name = `${source.name} · round 4 · ${arm}`;
     const { voices: now } = await call(server, "/v1/voices");
-    let voice = now.find((v) => v.name === name);
+    let voice = a.ours ? source : now.find((v) => v.name === name);
     if (!voice) voice = await call(server, `/v1/voices/${source.id}/copy`, { method: "POST", body: { model: row, name } });
+    if (a.ours === "icl" && !source.transcript) throw new Exit(`${source.name} has no transcript for its clip`);
     if (a.pin) {
       // Pinned for the round; the setting is put back to Auto at the end of the arm.
       await call(server, "/v1/settings", { method: "PATCH", body: { engines: { engine_overrides: { [a.engine]: { placements: { [a.variant]: a.pin } } } } } });
@@ -242,6 +268,7 @@ async function main() {
     console.log(`\n${arm}: loading ${a.variant} …`);
     const t0 = Date.now();
     await load(server, a.engine, a.variant);
+    if (a.ours) await registerWithBase(args.runtime, a.variant, baseModelFile(args["data-dir"], a.engine, a.base));
     console.log(`   loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s; voice ${voice.id}`);
     const dir = path.join(args.out, arm);
     mkdirSync(dir, { recursive: true });
@@ -255,8 +282,15 @@ async function main() {
           const started = Date.now();
           let error = null;
           try {
-            const audio =
-              told && a.clip
+            const audio = a.ours
+              ? await oursTake(args.runtime, a.variant, {
+                  text: l.text,
+                  voiceRef: path.resolve(reference),
+                  transcript: a.ours === "icl" ? source.transcript : null,
+                  instruct: told ? delivery.instruct : "",
+                  seed,
+                })
+              : told && a.clip
                 ? await runtimeTake(args.runtime, a.variant, { text: l.text, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), clip: bank[l.emotion], alpha: a.clip, seed })
                 : await call(server, "/v1/generate", {
                     method: "POST",
@@ -284,7 +318,61 @@ async function main() {
     const done = manifest.takes.filter((t) => t.model === arm && !t.error);
     console.log(`   ${done.length} takes; median ${median(done.map((t) => t.render_s)).toFixed(1)} s each`);
     if (a.pin) await call(server, "/v1/settings", { method: "PATCH", body: { engines: { engine_overrides: { [a.engine]: { placements: { [a.variant]: "auto" } } } } } });
+    // The app loads its own registration again next time (the runtime reloads a changed entry).
+    if (a.ours) await call(server, "/v1/engines/unload", { method: "POST", body: { kind: "tts" } });
   }
+}
+
+/** The GGUF of an installed variant (`<data>/speech-cache/<engine>/<variant>/…`). */
+function baseModelFile(dataDir, engine, variant) {
+  const dir = path.join(dataDir, "speech-cache", engine, variant);
+  if (!existsSync(dir)) throw new Exit(`${variant} isn't installed (${dir})`);
+  const found = readdirSync(dir, { recursive: true }).filter((f) => String(f).endsWith(".gguf"));
+  if (found.length !== 1) throw new Exit(`${dir}: expected one .gguf, found ${found.length}`);
+  return path.resolve(dir, String(found[0]));
+}
+
+/** Register the app's entry for `id` again on the speech runtime, with our fork's
+ * `qwen3_tts.base_model_path` added; the runtime reloads an entry whose options changed. */
+async function registerWithBase(runtime, id, baseFile) {
+  if (!runtime) throw new Exit("a CustomVoice-with-our-voice arm needs --runtime, the speech runtime's URL");
+  const url = runtime.replace(/\/+$/, "");
+  const listed = await (await fetch(`${url}/v1/models?include_session_options=true`)).json();
+  const entry = listed.data.find((m) => m.id === id);
+  if (!entry) throw new Exit(`the speech runtime has no model ${id} — is the app's runtime at ${url}?`);
+  const body = {
+    id: entry.id,
+    family: entry.family,
+    task: entry.task,
+    mode: entry.mode,
+    path: entry.path,
+    session_options: { ...(entry.session_options || {}), "qwen3_tts.base_model_path": baseFile },
+  };
+  const r = await fetch(`${url}/v1/models/load`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(900 * 1000),
+  });
+  if (!r.ok) throw new Exit(`runtime load ${r.status}: ${(await r.text()).slice(0, 400)}`);
+  console.log(`   registered ${id} with qwen3_tts.base_model_path=${baseFile}`);
+}
+
+/** One take from CustomVoice speaking the voice's clip (`/v1/tasks/run`): the x-vector alone, or
+ * with the clip's words (ICL); `instruct` when told. → WAV bytes. */
+async function oursTake(runtime, model, { text, voiceRef, transcript, instruct, seed }) {
+  const options = { seed, ...(instruct ? { instruct } : {}), ...(transcript ? {} : { x_vector_only_mode: "true" }) };
+  const request = { text, language: "en", voice_ref: voiceRef, options, ...(transcript ? { reference_text: transcript } : {}) };
+  const r = await fetch(`${runtime.replace(/\/+$/, "")}/v1/tasks/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, request }),
+    signal: AbortSignal.timeout(900 * 1000),
+  });
+  if (!r.ok) throw new Exit(`runtime ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  const body = await r.json();
+  if (typeof body.audio !== "string") throw new Exit(`runtime answered no audio: ${JSON.stringify(body).slice(0, 300)}`);
+  return Buffer.from(body.audio, "base64");
 }
 
 /** The emotion clips, made once: BreezeTTS 2 acting each emotion's sentence in `--bank-voice`'s

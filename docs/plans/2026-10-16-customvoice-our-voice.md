@@ -228,6 +228,24 @@ A failure of 1 alone (noise, runaway) gets one rebuild with the raw x-vector fir
     round 5's clip arms were. **Lean:** yes, for the test only; the app sends it itself only after
     P10.
 
+## 7. Built (2026-10-17, after "go your rec")
+
+- **Fork `jv` 8461cdce: P1–P4, P7, P8.** The option, the Base speaker encoder, the routing, the
+  instruct rows first, the three declarations, and the unit test.
+- **P5 (rescale) and P6 (Base overlay) are not built.** They are NOT STANDARD and wait for their
+  word by name.
+- **The unit test changed in three places from §2 P8, because P5 and P6 aren't in yet:**
+  - (b) is now four short renders through a session, x-vector and ICL, plain and told, instead
+    of a bitwise x-vector compare. A compare would need the session to expose its prompt.
+  - (c) waits for P6.
+  - (e) compares a preset render with the option against one without it. They are the same
+    samples until P6.
+- **The test result:** 16 checks pass, CPU, 35 s, `build/jv-tests`. `model_spec_system_test`
+  passes too.
+- **P9 is built in `server/scripts/round4_render.js`:** the arms `customvoice-ours` and
+  `customvoice-ours-icl`, and `--lines`.
+- **The dev build `build/jv-dev` is rebuilt with the change.** The renders wait for the card.
+
 ## Corrections to RESEARCH §10.28 (found while checking)
 
 - The "smallest fork change" leaves out the Base weight overlay. That overlay is Base's

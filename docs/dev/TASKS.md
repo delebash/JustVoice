@@ -406,7 +406,10 @@ OPEN:   in this order, after round 5's renders, each on round 5's 13 lines, scor
         line and the line's instruction (EDICT on VoiceDesign if it fails); 4. gaps — a DSP
         whisper or shout (part of the DSP character-voice plan, IDEAS 2026-10-07), the CREMA-D
         emotion direction; 5. the design comparison alongside.
-GO:     given 2026-10-16 ("your rec, sae the research"; the new order: "go on it all").
+GO:     given 2026-10-16 ("your rec, sae the research"; the new order: "go on it all"). Step 3's
+        plan, docs/plans/2026-10-16-customvoice-our-voice.md: "go your rec" (2026-10-17) — its
+        leans on Q1–Q11. Its two NOT STANDARD pieces, P5 (the rescale to the ryan row's norm) and
+        P6 (the Base weight overlay), wait for their word by name.
 
 ### Round 6 — the best engine to sell with: Fish Drama 3, then Qwen3 with an emotion direction (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the field sweep (RESEARCH §10.26), shown: "finish round 5 first.
