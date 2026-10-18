@@ -4581,6 +4581,10 @@ VII–VIII by Whisper turbo (every line an exact word match) and cut; scored aga
     Breeze's copy on none. A whole book: VoxCPM2 "yes", Breeze's copy "with fixes" (the user in
     chat, 2026-10-17 — the page's two answers never saved: their key "r5whole-Narrator 1" has a
     space, which the page's store refuses; fixed in the page's version 3). — *by ear*.
+  - **The narrator shares the characters' model today:** `makeVoices` keeps every designed voice on
+    `book_voices.clone_model`, the narrator included (`book_voices/index.js:188, 320, 359`); no
+    narrator setting exists. Keeping the narrator on VoxCPM2 while the characters move to Breeze
+    needs one: `docs/plans/2026-10-17-narrator-and-character-engines.md`. — *read in code*.
 
 ### 10.30 Round 6b step 3 — Qwen3 CustomVoice 1.7B speaking our voice, standard pieces only (2026-10-17)
 
