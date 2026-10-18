@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // /v1/lexicons CRUD (the port of justvoice/api/lexicons_api.py).
 
-import { Hono, input } from "@delebash/llm-runner/platform";
+import { Hono, input } from "@delebash/core/platform";
 import { getState } from "../app_state.js";
 import { Block, Persona, Project, Scene, Speaker } from "../database/models.js";
 import * as session from "../database/session.js";
@@ -9,7 +9,7 @@ import { notFound } from "../errors.js";
 import * as blending from "../engines/blending.js";
 import { lackingAll, toKokoro, vocabOf } from "../engines/kokoro/ipa.js";
 import { wordsIn } from "../render_core.js";
-import { strip } from "@delebash/llm-runner/platform/py";
+import { strip } from "@delebash/core/platform/py";
 import { construct, CreateLexiconRequest, Lexicon, LexiconEntry, LexiconList, LexiconReach } from "../models.js";
 
 /**

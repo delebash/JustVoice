@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, afterEach, expect, test, vi } from "vitest";
-import * as hardware from "@delebash/llm-runner/runner/hardware";
+import * as hardware from "@delebash/core/runner/hardware";
 import { appClient, closeApps } from "./app_helpers.js";
 import { discrete } from "./engines_helpers.js";
 import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";

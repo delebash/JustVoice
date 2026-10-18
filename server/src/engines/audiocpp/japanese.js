@@ -17,9 +17,9 @@
 import { createHash } from "node:crypto";
 import { createReadStream, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
-import { extractTarGz } from "@delebash/llm-runner/runner/binary";
-import * as download from "@delebash/llm-runner/runner/download";
+import { RuntimeError } from "@delebash/core/platform/py";
+import { extractTarGz } from "@delebash/core/runner/binary";
+import * as download from "@delebash/core/runner/download";
 import * as speechCache from "../../speech_cache.js";
 
 export const VERSION = "1.0.8";

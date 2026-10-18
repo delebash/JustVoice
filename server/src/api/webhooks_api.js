@@ -8,13 +8,13 @@
 // §4.12 + §5 webhooks workflow.
 
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { sleep } from "@delebash/llm-runner/platform/asyncutil";
-import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
-import * as http from "@delebash/llm-runner/platform/http";
-import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { isDict } from "@delebash/llm-runner/platform/py";
-import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { Hono, input } from "@delebash/core/platform";
+import { sleep } from "@delebash/core/platform/asyncutil";
+import { RequestValidationError } from "@delebash/core/platform/errors";
+import * as http from "@delebash/core/platform/http";
+import { literal, nullable, opt, T } from "@delebash/core/platform/models";
+import { isDict } from "@delebash/core/platform/py";
+import { jsonLoads, pyJson } from "@delebash/core/platform/pyjson";
 import { Webhook, uuid } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";

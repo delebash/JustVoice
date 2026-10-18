@@ -12,10 +12,10 @@
 
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { purePath, samePath } from "@delebash/llm-runner/platform/data_paths";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
-import { openDatabase } from "@delebash/llm-runner/platform/sql";
+import { purePath, samePath } from "@delebash/core/platform/data_paths";
+import { getLogger } from "@delebash/core/platform/log";
+import { RuntimeError } from "@delebash/core/platform/py";
+import { openDatabase } from "@delebash/core/platform/sql";
 import { defaultDataDir } from "../paths.js";
 import { TABLES } from "./models.js";
 

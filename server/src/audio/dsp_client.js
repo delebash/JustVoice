@@ -25,14 +25,14 @@
 
 import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { Mutex, sleep } from "@delebash/llm-runner/platform/asyncutil";
-import { runtime as dataRuntime } from "@delebash/llm-runner/platform/data_paths";
-import * as http from "@delebash/llm-runner/platform/http";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import * as procs from "@delebash/llm-runner/platform/procs";
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
-import { pyFloatValue, pyJson } from "@delebash/llm-runner/platform/pyjson";
-import * as process_ from "@delebash/llm-runner/runner/process";
+import { Mutex, sleep } from "@delebash/core/platform/asyncutil";
+import { runtime as dataRuntime } from "@delebash/core/platform/data_paths";
+import * as http from "@delebash/core/platform/http";
+import { getLogger } from "@delebash/core/platform/log";
+import * as procs from "@delebash/core/platform/procs";
+import { RuntimeError } from "@delebash/core/platform/py";
+import { pyFloatValue, pyJson } from "@delebash/core/platform/pyjson";
+import * as process_ from "@delebash/core/runner/process";
 import * as appState from "../app_state.js";
 import * as devBuild from "../engines/audiocpp/dev_build.js";
 import * as runtime from "../engines/audiocpp/runtime.js";

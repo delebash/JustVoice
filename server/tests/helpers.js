@@ -3,7 +3,7 @@
 import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { openDatabase } from "@delebash/llm-runner/platform/sql";
+import { openDatabase } from "@delebash/core/platform/sql";
 import { TABLES } from "../src/database/models.js";
 import * as session from "../src/database/session.js";
 

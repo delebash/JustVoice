@@ -30,8 +30,8 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useSortable } from "@vueuse/integrations/useSortable";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/llm-ui";
-import { Icon, UiButton, UiInput, UiCheckbox, UiNumber, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
+import { pushToast } from "@delebash/ui";
+import { Icon, UiButton, UiInput, UiCheckbox, UiNumber, UiTag, UiSelect, AppModal } from "@delebash/ui";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { holdDryTake } from "../services/voiceAudition.js";

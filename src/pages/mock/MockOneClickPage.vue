@@ -20,7 +20,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { UiButton, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, UiToggle, confirmDialog, pageFlow, pushToast } from "@delebash/llm-ui";
+import { UiButton, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, UiToggle, confirmDialog, pageFlow, pushToast } from "@delebash/ui";
 import BookRunCard from "../../components/BookRunCard.vue";
 import { priceQuestion } from "../../services/bookRun.js";
 import { MASTER_TARGETS } from "../../services/masterTargets.js";

@@ -19,8 +19,8 @@
 //   - TXT   — short "Chapter N…"-style lines start a new chapter; otherwise the whole file is
 //             one scene.
 
-import { BadZipFile, ZipReader } from "@delebash/llm-runner/platform/zip";
-import { B, cpLen, decodeUtf8, END, KeyError, PY_WS, splitlines, splitWs, strip, W } from "@delebash/llm-runner/platform/py";
+import { BadZipFile, ZipReader } from "@delebash/core/platform/zip";
+import { B, cpLen, decodeUtf8, END, KeyError, PY_WS, splitlines, splitWs, strip, W } from "@delebash/core/platform/py";
 import { badRequest } from "../../errors.js";
 import { construct } from "../../models.js";
 import { StandardImport } from "../standard_schema.js";

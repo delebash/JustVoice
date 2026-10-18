@@ -10,11 +10,11 @@
 // The narrator is a speaker holding the "narrator" role, one per book; no book gets one on its
 // own (+ Add Narrator, or a book's own "Narrator" character).
 
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { pySorted, splitWs, strip } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { Hono, input } from "@delebash/core/platform";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { pySorted, splitWs, strip } from "@delebash/core/platform/py";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import { Block, Persona, Project, Scene, Speaker, SpeakerCorrection } from "../database/models.js";
 import * as session from "../database/session.js";
 import * as run from "../engines/llm/run.js";

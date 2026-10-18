@@ -33,11 +33,11 @@
 -->
 <script setup>
 import { computed, ref, watch } from "vue";
-import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
+import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/ui";
 import {
   AppModal, EmptyState, UiButton, UiCheckbox, UiChip, UiSelect, UiTable, UiTag,
   UiTextarea, confirmDialog, promptDialog, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";

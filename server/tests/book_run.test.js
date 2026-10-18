@@ -13,7 +13,7 @@
 // routes, every step's function, the render job, the take check and the export job.
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { sleep } from "@delebash/llm-runner/platform/asyncutil";
+import { sleep } from "@delebash/core/platform/asyncutil";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import * as captures from "../src/api/captures_api.js";
 import * as renderChapterApi from "../src/api/render_chapter_api.js";

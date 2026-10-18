@@ -3,7 +3,7 @@
 // justvoice/paths.py). Paths are strings, as the kit's data_paths hands them out.
 //
 // Resolution order (THE family policy — the shape lives in the kit, never here:
-// `@delebash/llm-runner/platform/data_paths`):
+// `@delebash/core/platform/data_paths`):
 //   1. Explicit `--data-dir` CLI flag (handled by the CLI)
 //   2. `JUSTVOICE_DATA_DIR` — the user's choice; also how the desktop shell hands down its
 //      resolved root
@@ -13,7 +13,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveDataDir } from "@delebash/llm-runner/platform/data_paths";
+import { resolveDataDir } from "@delebash/core/platform/data_paths";
 
 export const APP_NAME = "JustVoice";
 

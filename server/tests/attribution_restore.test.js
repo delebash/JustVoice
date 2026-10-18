@@ -8,7 +8,7 @@
 // (`pipeline.measureFeature`, which only sizes pieces) is stubbed to "can't say" as well, so no
 // test reaches a model — not even after `auto_judges_the_model_that_would_run` gives the local
 // provider a default model.
-import * as llmDb from "@delebash/llm-runner/llm/db";
+import * as llmDb from "@delebash/core/llm/db";
 import { afterEach, expect, test, vi } from "vitest";
 import * as pipeline from "../src/extraction/pipeline.js";
 import { construct, ExtractionSettings, modelDump } from "../src/models.js";

@@ -7,8 +7,8 @@
 // `voice_preview_api.synthCandidate` (as the persona makers' tests fake it); everything between
 // them is the real app.
 import { existsSync } from "node:fs";
-import { resolveFeaturePreset } from "@delebash/llm-runner/llm";
-import * as llmStores from "@delebash/llm-runner/llm/stores";
+import { resolveFeaturePreset } from "@delebash/core/llm";
+import * as llmStores from "@delebash/core/llm/stores";
 import { afterEach, expect, test, vi } from "vitest";
 import * as vp from "../src/api/voice_preview_api.js";
 import { getState } from "../src/app_state.js";
@@ -251,7 +251,7 @@ test("a_speaker_already_cast_or_named_for_a_persona_is_not_described", async () 
 
 test("no_language_model_is_a_501", async () => {
   const { c, pid } = await book();
-  const { LLMNotConfiguredError } = await import("@delebash/llm-runner/llm");
+  const { LLMNotConfiguredError } = await import("@delebash/core/llm");
   vi.spyOn(run, "runFeature").mockRejectedValue(new LLMNotConfiguredError("no LLM provider registered"));
   expect((await c.post(`/v1/projects/${pid}/book-voices/describe`, { json: {} })).status).toBe(501);
 });

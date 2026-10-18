@@ -10,10 +10,10 @@
 // Status per engine: managed → manager.status(id) (not_installed | installed | loaded); legacy
 // → the registry's registration + computeStatus().
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { HttpError } from "@delebash/llm-runner/platform/errors";
-import { opt, T } from "@delebash/llm-runner/platform/models";
-import { pyInt, strRepr } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import { HttpError } from "@delebash/core/platform/errors";
+import { opt, T } from "@delebash/core/platform/models";
+import { pyInt, strRepr } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import { engineFacts } from "../engines/audiocpp/generated.js";
 import * as runtime from "../engines/audiocpp/runtime.js";
@@ -135,8 +135,8 @@ export function _asInstalled(detail) {
  */
 export async function _onDemandClaim() {
   try {
-    const { stores } = await import("@delebash/llm-runner/llm");
-    const { getService } = await import("@delebash/llm-runner/runner/lifecycle");
+    const { stores } = await import("@delebash/core/llm");
+    const { getService } = await import("@delebash/core/runner/lifecycle");
     const { jvLlmConfig } = await import("../engines/llm/run.js");
     const localModels = new Set();
     let namedAny = false;
@@ -202,7 +202,7 @@ export function _leftoversResponse(found) {
 export async function getEngineVram(eventsSince = 0) {
   let arb;
   try {
-    const { getArbiter } = await import("@delebash/llm-runner/runner/arbiter");
+    const { getArbiter } = await import("@delebash/core/runner/arbiter");
     arb = getArbiter();
   } catch {
     throw new HttpError(503, "the shared LLM stack is not mounted");

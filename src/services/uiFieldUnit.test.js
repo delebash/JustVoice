@@ -5,7 +5,7 @@
 // "Head silence (s)" read "HEAD SILENCE (S)" (2026-10-15, the P26 sweep).
 import { createApp, h } from "vue";
 import { afterEach, describe, expect, it } from "vitest";
-import UiField from "@delebash/llm-ui/common/components/UiField.vue";
+import UiField from "@delebash/ui/common/components/UiField.vue";
 
 let app;
 let el;

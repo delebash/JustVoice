@@ -21,7 +21,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { AiModelsArea, useModelApply, pageFlow } from "@delebash/llm-ui";
+import { AiModelsArea, useModelApply, pageFlow } from "@delebash/ui";
 import SpeechEnginesTab from "../components/SpeechEnginesTab.vue";
 // The one-strip consolidation (2026-08-15): JV feeds its memory cells
 // (TTS · STT · Other apps · Busy) and the LLM cell's idle claim into the

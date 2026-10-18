@@ -23,8 +23,8 @@
 // else. Both functions are synchronous over the database but load the extraction modules
 // (another slice's) on first use, so they are async.
 
-import * as llmDb from "@delebash/llm-runner/llm/db";
-import { getLogger } from "@delebash/llm-runner/platform/log";
+import * as llmDb from "@delebash/core/llm/db";
+import { getLogger } from "@delebash/core/platform/log";
 import * as dbSession from "../../database/session.js";
 
 const log = getLogger("justvoice.engines.llm.migrate_prompts");

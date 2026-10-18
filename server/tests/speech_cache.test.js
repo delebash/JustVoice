@@ -4,9 +4,9 @@
 // nesting (the port of tests/test_speech_cache.py).
 import { mkdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { FileNotFoundError } from "@delebash/llm-runner/platform/py";
-import * as dl from "@delebash/llm-runner/runner/download";
-import * as km from "@delebash/llm-runner/runner/models";
+import { FileNotFoundError } from "@delebash/core/platform/py";
+import * as dl from "@delebash/core/runner/download";
+import * as km from "@delebash/core/runner/models";
 import { beforeEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as sc from "../src/speech_cache.js";

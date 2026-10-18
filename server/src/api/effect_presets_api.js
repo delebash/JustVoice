@@ -9,10 +9,10 @@
 // chain editor's A / B.
 
 import { randomUUID } from "node:crypto";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { strRepr } from "@delebash/llm-runner/platform/py";
-import { pyJson, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
+import { Hono, input } from "@delebash/core/platform";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { strRepr } from "@delebash/core/platform/py";
+import { pyJson, pyJsonParse } from "@delebash/core/platform/pyjson";
 import { LRUCache } from "lru-cache";
 import { EFFECT_CATALOG } from "../audio/effect_catalog.js";
 import { applyEffectsChain, chainEntries } from "../audio/effects.js";

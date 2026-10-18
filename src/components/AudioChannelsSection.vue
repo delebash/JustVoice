@@ -10,9 +10,9 @@
 import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
 import { listAudioOutputDevices } from "../services/native.js";
-import { pushToast } from "@delebash/llm-ui";
-import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiTable } from "@delebash/llm-ui";
+import { pushToast } from "@delebash/ui";
+import { confirmDialog } from "@delebash/ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiTable } from "@delebash/ui";
 
 // The kit grid in the JustVoice look (`jv-table-look`). Sorting comes with it.
 const CHANNEL_COLUMNS = [

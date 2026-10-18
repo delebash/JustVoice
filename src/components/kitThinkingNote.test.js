@@ -11,10 +11,10 @@
 import { createPinia } from "pinia";
 import { h, nextTick } from "vue";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import ConfigColumn from "@delebash/llm-ui/components/ConfigColumn.vue";
-import LuFeatureChip from "@delebash/llm-ui/components/LuFeatureChip.vue";
+import ConfigColumn from "@delebash/ui/components/ConfigColumn.vue";
+import LuFeatureChip from "@delebash/ui/components/LuFeatureChip.vue";
 // Quasar installed as in the real app — the kit's controls are Quasar components
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 import { i18n } from "../i18n/index.js";
 
 const NOTE = "This model always thinks — Off makes it think less.";

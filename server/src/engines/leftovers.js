@@ -25,10 +25,10 @@
 import { readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { sleep } from "@delebash/llm-runner/platform/asyncutil";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import * as procs from "@delebash/llm-runner/platform/procs";
-import * as hardware from "@delebash/llm-runner/runner/hardware";
+import { sleep } from "@delebash/core/platform/asyncutil";
+import { getLogger } from "@delebash/core/platform/log";
+import * as procs from "@delebash/core/platform/procs";
+import * as hardware from "@delebash/core/runner/hardware";
 import * as devBuild from "./audiocpp/dev_build.js";
 import * as manager from "./manager.js";
 import * as self from "./leftovers.js";
@@ -192,7 +192,7 @@ export async function processTable() {
 let winApi = null;
 function windowsApi() {
   if (winApi) return winApi;
-  const require = createRequire(import.meta.resolve("@delebash/llm-runner/runner/process"));
+  const require = createRequire(import.meta.resolve("@delebash/core/runner/process"));
   const koffi = require("koffi");
   const k32 = koffi.load("kernel32.dll");
   const nt = koffi.load("ntdll.dll");

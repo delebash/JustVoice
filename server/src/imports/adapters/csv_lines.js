@@ -13,8 +13,8 @@
 // dialect (its C reader's state machine), so quoting, embedded line breaks and blank rows land
 // as they did in Python.
 
-import { decodeUtf8, isDict, pyIntOfStr, strip, ValueError } from "@delebash/llm-runner/platform/py";
-import { jsonLoads } from "@delebash/llm-runner/platform/pyjson";
+import { decodeUtf8, isDict, pyIntOfStr, strip, ValueError } from "@delebash/core/platform/py";
+import { jsonLoads } from "@delebash/core/platform/pyjson";
 import { badRequest } from "../../errors.js";
 import { construct } from "../../models.js";
 import { StandardImport } from "../standard_schema.js";

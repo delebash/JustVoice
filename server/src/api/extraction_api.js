@@ -22,12 +22,12 @@
 // response drains — the queue, the stop flag and the "kept" copy are Python's, the thread is
 // gone. API agent 2 ported `RunUsage` first; API agent 3 the rest under the same names.
 
-import { LLMNotConfiguredError, stores } from "@delebash/llm-runner/llm";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { B, cpSlice, isDict, pyCapitalize, pyRound, pySorted, reEscape, strip, truthy } from "@delebash/llm-runner/platform/py";
-import { jsonLoads, pyFloatValue, pyJson, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { LLMNotConfiguredError, stores } from "@delebash/core/llm";
+import { Hono, input } from "@delebash/core/platform";
+import { getLogger } from "@delebash/core/platform/log";
+import { literal, nullable, opt, T } from "@delebash/core/platform/models";
+import { B, cpSlice, isDict, pyCapitalize, pyRound, pySorted, reEscape, strip, truthy } from "@delebash/core/platform/py";
+import { jsonLoads, pyFloatValue, pyJson, pyStrOf } from "@delebash/core/platform/pyjson";
 import { getState } from "../app_state.js";
 import { Block, Project, Scene, Speaker, SpeakerCorrection, Take } from "../database/models.js";
 import * as session from "../database/session.js";

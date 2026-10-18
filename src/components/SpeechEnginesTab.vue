@@ -42,16 +42,16 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, UiButton, confirmDialog, fmtBytes, languageName, openExternal, openPath, promptDialog, pushToast } from "@delebash/llm-ui";
+import { DownloadBar, UiButton, confirmDialog, fmtBytes, languageName, openExternal, openPath, promptDialog, pushToast } from "@delebash/ui";
 import { makeEngineDownloadTask, makeEngineLoadTask, makeJobDownloadTask } from "../services/ttsJobChannel.js";
 import { setDefaultVariant as setEngineDefault } from "../services/engineDefaults.js";
 // The row's three-dot menu — the kit's UiMenu, as the kit's LuModelCatalog
 // (its list portals out of the group's overflow clip).
-import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
+import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/ui";
 
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
 import DeliveryKnobs from "./DeliveryKnobs.vue";
-import { UiNumber, UiSelect, UiTable } from "@delebash/llm-ui";
+import { UiNumber, UiSelect, UiTable } from "@delebash/ui";
 import { openEngineTerms } from "../services/engineTerms.js";
 import { COMMERCIAL_OPTIONS, COMMERCIAL_USE, SORTS, licClass, licTitle, memoryText, reading } from "../services/engineFacts.js";
 import { directionCell } from "../services/personaFacts.js";

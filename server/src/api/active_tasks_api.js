@@ -6,8 +6,8 @@
 // pending generations + active model downloads so the UI can re-attach progress toasts after a
 // window close+reopen or page refresh.
 
-import { Hono } from "@delebash/llm-runner/platform";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { Hono } from "@delebash/core/platform";
+import { nullable, opt, T } from "@delebash/core/platform/models";
 import { Generation } from "../database/models.js";
 import * as session from "../database/session.js";
 import { construct, DateTime } from "../models.js";

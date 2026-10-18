@@ -8,8 +8,8 @@
 // model the dictation setting names (`settings.captures.stt_model`) is in the speech cache. It
 // loads on first use, so "downloaded" is the gate, not "loaded".
 
-import { Hono } from "@delebash/llm-runner/platform";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { Hono } from "@delebash/core/platform";
+import { nullable, opt, T } from "@delebash/core/platform/models";
 import { getState } from "../app_state.js";
 import * as manager from "../engines/manager.js";
 import * as modelCatalog from "../engines/model_catalog.js";
@@ -62,8 +62,8 @@ export function _sttReadiness() {
  */
 export async function _llmReadiness() {
   try {
-    const { resolveRoute } = await import("@delebash/llm-runner/llm/dispatch");
-    const { resolveFeaturePreset } = await import("@delebash/llm-runner/llm/preset_resolve");
+    const { resolveRoute } = await import("@delebash/core/llm/dispatch");
+    const { resolveFeaturePreset } = await import("@delebash/core/llm/preset_resolve");
     const { jvLlmConfig } = await import("../engines/llm/run.js");
     const preset = resolveFeaturePreset("refine.base");
     const [, model] = resolveRoute(jvLlmConfig(), "refine", {

@@ -5,10 +5,10 @@
 // unload flush) moved to the kit (target-tree P9 — this file was the donor);
 // what stays here is JustVoice's own boot-time default below.
 
-import { readPref, writePref } from "@delebash/llm-ui";
-import { safeRequest } from "@delebash/llm-ui";
+import { readPref, writePref } from "@delebash/ui";
+import { safeRequest } from "@delebash/ui";
 
-export { bootPrefs, readPref, writePref, flushPrefs } from "@delebash/llm-ui";
+export { bootPrefs, readPref, writePref, flushPrefs } from "@delebash/ui";
 
 /** Boot-time default for the active-project slot: if no project is "open" yet
  *  (no `activeProject` pref), point it at the most-recently-updated project so

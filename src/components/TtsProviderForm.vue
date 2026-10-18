@@ -19,7 +19,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { UiButton, UiCheckbox, UiSelect, pushToast } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiSelect, pushToast } from "@delebash/ui";
 
 const props = defineProps({
   draft: { type: Object, required: true },

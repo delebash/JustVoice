@@ -30,8 +30,8 @@
 // `pyJsonParse` so its whole-number floats stay floats ("1.0") — or every key changes.
 
 import { createHash } from "node:crypto";
-import { isJsonObject } from "@delebash/llm-runner/platform/py";
-import { pyJsonCompact } from "@delebash/llm-runner/platform/pyjson";
+import { isJsonObject } from "@delebash/core/platform/py";
+import { pyJsonCompact } from "@delebash/core/platform/pyjson";
 import * as dspClient from "./dsp_client.js";
 
 export const cfg = {

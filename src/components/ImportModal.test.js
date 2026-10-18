@@ -7,10 +7,10 @@
 // the chosen format's section in the Help drawer, as New project's dialog does.
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 const openHelp = vi.fn();
-vi.mock("@delebash/llm-ui", () => ({
+vi.mock("@delebash/ui", () => ({
   openHelp: (...a) => openHelp(...a),
   pushToast: vi.fn(),
   UiButton: { props: ["label", "disabled", "intent", "loading"], setup: (p) => () => h("button", { disabled: p.disabled }, p.label) },

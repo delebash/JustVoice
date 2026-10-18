@@ -5,7 +5,7 @@
 // What this pins (2026-10-05): a persona saved with no delivery settings (Cast's batch makes
 // them so) exports `{}` — it used to crash the whole export with a 500; and the archive is named
 // `<name>-<time>.justvoice.zip`, as the button says (the name as written since 2026-10-15).
-import { ZipReader } from "@delebash/llm-runner/platform/zip";
+import { ZipReader } from "@delebash/core/platform/zip";
 import { afterEach, expect, test } from "vitest";
 import { appClient, closeApps } from "./app_helpers.js";
 import { bookJson, scene } from "./jw_fixtures.js";

@@ -11,7 +11,7 @@
 // insert. Without them an insert that leaves an id or a timestamp out throws.
 
 import { randomUUID } from "node:crypto";
-import { registerDefaultFn } from "@delebash/llm-runner/platform/sql";
+import { registerDefaultFn } from "@delebash/core/platform/sql";
 import { utcNowNaive } from "../models.js";
 import { TABLES } from "./models_schema.js";
 

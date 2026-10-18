@@ -14,7 +14,7 @@
 // scenes. Paralinguistic tags like [laughs] stay in the text — engines that support them
 // perform them (CONCEPTS §17 keeps that contract).
 
-import { decodeUtf8, END, PY_WS, pyIsUpper, pyTitle, splitlines, splitWs, strip } from "@delebash/llm-runner/platform/py";
+import { decodeUtf8, END, PY_WS, pyIsUpper, pyTitle, splitlines, splitWs, strip } from "@delebash/core/platform/py";
 import { badRequest } from "../../errors.js";
 import { construct } from "../../models.js";
 import { StandardImport } from "../standard_schema.js";

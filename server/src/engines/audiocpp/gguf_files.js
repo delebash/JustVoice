@@ -10,7 +10,7 @@
 // data after it never is.
 
 import { closeSync, openSync, readSync } from "node:fs";
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { ValueError } from "@delebash/core/platform/py";
 
 // GGUF metadata scalar types → [byte width, reader].
 const SCALAR = {

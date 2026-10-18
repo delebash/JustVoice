@@ -14,11 +14,11 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
-import { withAiTask } from "@delebash/llm-ui";
-import { pushToast, saveBlob } from "@delebash/llm-ui";
+import { withAiTask } from "@delebash/ui";
+import { pushToast, saveBlob } from "@delebash/ui";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
-import { UiButton, UiInput, UiChip, UiTag, UiSelect, UiTable } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiChip, UiTag, UiSelect, UiTable } from "@delebash/ui";
 import ImportModal from "./ImportModal.vue";
 
 // Studio mounts this grid as a game project's step 1 (2026-09-27, decision

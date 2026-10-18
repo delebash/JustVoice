@@ -23,9 +23,9 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, fmtBytes, pushToast } from "@delebash/llm-ui";
+import { DownloadBar, fmtBytes, pushToast } from "@delebash/ui";
 import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
-import { UiButton, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/ui";
 
 const emit = defineEmits(["close"]);
 

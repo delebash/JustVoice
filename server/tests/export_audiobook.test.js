@@ -9,11 +9,11 @@
 // Python stubbed it in the two job tests and left it real in the rest, where a cast book's warm
 // could reach a speech model.
 import { writeFileSync } from "node:fs";
-import { sleep } from "@delebash/llm-runner/platform/asyncutil";
-import * as procs from "@delebash/llm-runner/platform/procs";
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
-import { ZipReader } from "@delebash/llm-runner/platform/zip";
+import { sleep } from "@delebash/core/platform/asyncutil";
+import * as procs from "@delebash/core/platform/procs";
+import { RuntimeError } from "@delebash/core/platform/py";
+import { pyJson } from "@delebash/core/platform/pyjson";
+import { ZipReader } from "@delebash/core/platform/zip";
 import { afterEach, expect, test, vi } from "vitest";
 import { appClient, closeApps } from "./app_helpers.js";
 import "./engines_helpers.js";

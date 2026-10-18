@@ -35,8 +35,8 @@ FEATURES roots — lives in `../plans/archive/`):
    (2026-07-15 shared-LLM, 2026-06-18 cross-app, data-model, the
    persona/voiceprofile design, the audiobook/game journeys) are banner'd history
    in `../plans/archive/`.
-6. **The shared stack**: `../../../just-llm-runner/docs/dev/README.md` + the family
-   standard `../../../just-llm-runner/docs/app-structure.md`.
+6. **The shared stack**: `../../../just-core/docs/dev/README.md` + the family
+   standard `../../../just-core/docs/app-structure.md`.
 
 User-facing docs are `../*.md` indexed by `../toc.json` — update them in the SAME
 change that alters anything a user sees.

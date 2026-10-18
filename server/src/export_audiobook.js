@@ -14,10 +14,10 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import * as procs from "@delebash/llm-runner/platform/procs";
-import { pyRound, RuntimeError, ValueError } from "@delebash/llm-runner/platform/py";
-import * as hardware from "@delebash/llm-runner/runner/hardware";
+import { getLogger } from "@delebash/core/platform/log";
+import * as procs from "@delebash/core/platform/procs";
+import { pyRound, RuntimeError, ValueError } from "@delebash/core/platform/py";
+import * as hardware from "@delebash/core/runner/hardware";
 import * as renderChapterApi from "./api/render_chapter_api.js";
 import { analyze } from "./audio/analyzer.js";
 import { parseWavHeader } from "./audio/wav.js";

@@ -22,7 +22,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { UiButton, UiSelect, pushToast } from "@delebash/llm-ui";
+import { UiButton, UiSelect, pushToast } from "@delebash/ui";
 import { SOURCE_LEGEND, routeWords, sourceChipClass, sourceMeaning } from "../../services/attribution.js";
 import { useApi } from "../../stores/api.js";
 import { useActiveProject } from "../../stores/activeProject.js";

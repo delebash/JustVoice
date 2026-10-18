@@ -14,7 +14,7 @@
 // Emits:
 //   close — closing / cancel / Esc / after a successful dry-run handoff
 //
-// Renders on the shared kit AppModal (@delebash/llm-ui) shell — the
+// Renders on the shared kit AppModal (@delebash/ui) shell — the
 // modal-system convergence is complete; no hand-rolled JV modal shell
 // remains.
 //
@@ -25,11 +25,11 @@
 // opens for an app:// link and the headless server doesn't serve.
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton, UiSelect, AppModal, openHelp } from "@delebash/llm-ui";
+import { UiButton, UiSelect, AppModal, openHelp } from "@delebash/ui";
 import { projectsService } from "../services/projects.js";
 import { pickAdapter } from "../services/importPicker.js";
 import { setImportDraft } from "../stores/importDraft.js";
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast } from "@delebash/ui";
 
 const props = defineProps({
   // When set, the import MERGES into this project by stable line id

@@ -5,7 +5,7 @@
 // to check" list — on the mock's runs, which are the server's shapes (services/mock/bookRunMock.js).
 import { describe, expect, test, vi } from "vitest";
 
-vi.mock("@delebash/llm-ui", () => ({ withAiTask: vi.fn() }));
+vi.mock("@delebash/ui", () => ({ withAiTask: vi.fn() }));
 
 const {
   STEP_LABELS, currentStepText, planLine, priceQuestion, priceText, reviewItems, runBanner, runningLine, stepStatusText, stepsDone,

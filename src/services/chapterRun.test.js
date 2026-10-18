@@ -9,7 +9,7 @@ function held({ task }) {
     task.signal?.addEventListener("abort", () => reject(new Error("aborted")));
   });
 }
-vi.mock("@delebash/llm-ui", () => ({
+vi.mock("@delebash/ui", () => ({
   pushToast: vi.fn(),
   runAiEndpoint: vi.fn((o) => held(o)),
   runAiEndpointStream: vi.fn((o) => held(o)),

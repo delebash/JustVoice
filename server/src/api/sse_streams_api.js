@@ -6,9 +6,9 @@
 // useModelDownloadToast (toast progress bar tied to download), DictateWindow's agent-speak cycle
 // (MCP justvoice.speak playback).
 
-import { Hono, stream } from "@delebash/llm-runner/platform";
-import { sleep } from "@delebash/llm-runner/platform/asyncutil";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { Hono, stream } from "@delebash/core/platform";
+import { sleep } from "@delebash/core/platform/asyncutil";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import { Generation } from "../database/models.js";
 import * as session from "../database/session.js";
 

@@ -6,10 +6,10 @@
 // cost on a cloud route, the progress, the states a run stops in, and what to check afterwards.
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 const slot = (tag, cls) => ({ setup: (_p, { slots }) => () => h(tag, { class: cls }, slots.default?.()) });
-vi.mock("@delebash/llm-ui", () => ({
+vi.mock("@delebash/ui", () => ({
   withAiTask: vi.fn(),
   UiButton: {
     props: ["label", "disabled", "loading"],

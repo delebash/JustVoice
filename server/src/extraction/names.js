@@ -29,7 +29,7 @@ import {
   rstrip,
   splitWs,
   strip,
-} from "@delebash/llm-runner/platform/py";
+} from "@delebash/core/platform/py";
 
 const _PUNCT = new RegExp(`[^\\p{L}\\p{N}_${PY_WS}'-]`, "gu");
 const _SPACE = new RegExp(`[${PY_WS}]+`, "gu");

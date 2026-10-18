@@ -6,8 +6,8 @@
 // contract has ONE definition on this side. The shape mirrors justwrite-app's
 // `book_io.assemble()`: `parts[].chapters[]` for order, a `scenes` map keyed by chapter id, and
 // scene bodies of rich-editor HTML.
-import { ZipWriter } from "@delebash/llm-runner/platform/zip";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { ZipWriter } from "@delebash/core/platform/zip";
+import { pyJson } from "@delebash/core/platform/pyjson";
 
 /** One JustWrite scene row. Its body is editor HTML — one `<p>` per paragraph, which is what
  * the TipTap editor stores. */

@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
-import * as download from "@delebash/llm-runner/runner/download";
+import * as download from "@delebash/core/runner/download";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as speechRuntimeApi from "../src/api/speech_runtime_api.js";

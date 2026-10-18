@@ -17,7 +17,7 @@
 -->
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { AiTaskStrip, UiButton, UiProgress, useAiTasksStore } from "@delebash/llm-ui";
+import { AiTaskStrip, UiButton, UiProgress, useAiTasksStore } from "@delebash/ui";
 import { useCopy } from "../services/copy.js";
 import { cancelRun, runStripTask, stepRun } from "../services/chapterRun.js";
 

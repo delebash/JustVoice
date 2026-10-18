@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // JustVoice's ONE build config (Quasar CLI, app-structure §Q) — the renderer for every mode, the
 // desktop app (Electron mode on the kit's runDesktopApp) and the phone app (Capacitor mode).
-// Written from the family template (../just-llm-runner/template/quasar.config.js); what differs
+// Written from the family template (../just-core/template/quasar.config.js); what differs
 // is JustVoice's: the kit UI alias, the dev ports, the audio.cpp dev build, the installer.
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
@@ -15,7 +15,7 @@ import { defineConfig } from '#q-app'
 delete process.env.npm_config_allow_scripts
 
 const root = import.meta.dirname
-const kitUi = path.resolve(root, '../just-llm-runner/ui')
+const kitUi = path.resolve(root, '../just-core/packages/ui')
 // the audiocpp_dsp an installer carries (scripts/audiocpp-dsp-package.js stages it here)
 const dspStage = path.join(root, 'dist', 'audiocpp-dsp')
 
@@ -41,7 +41,7 @@ export default defineConfig(() => {
       alias: {
         '@renderer': path.join(root, 'src'),
         // The kit's UI, consumed from source (the sibling checkout) for the dev/HMR loop.
-        '@delebash/llm-ui': path.join(kitUi, 'src'),
+        '@delebash/ui': path.join(kitUi, 'src'),
       },
 
       extendViteConf (viteConf) {
@@ -171,7 +171,7 @@ export default defineConfig(() => {
           oneClick: false,
           perMachine: false,
           allowToChangeInstallationDirectory: true,
-          include: path.resolve(root, '../just-llm-runner/server/src/shell/installer.nsh')
+          include: path.resolve(root, '../just-core/packages/core/src/shell/installer.nsh')
         },
         electronFuses: {
           runAsNode: true,

@@ -11,14 +11,14 @@
 -->
 <script setup>
 import { ref, computed, onActivated } from "vue";
-import { pushToast, pageFlow } from "@delebash/llm-ui";
+import { pushToast, pageFlow } from "@delebash/ui";
 import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { openProjectInStudio } from "../services/openProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { getImportDraft, clearImportDraft, updateImportStandard } from "../stores/importDraft.js";
 import { kindLabel } from "../services/projectKinds.js";
-import { UiButton, UiCheckbox, UiTag, UiSelect, UiTable } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiTag, UiSelect, UiTable } from "@delebash/ui";
 
 // Kit grid in the JustVoice look (`jv-table-look`). The excluded-row state
 // goes on the <tr> through `:row-class` — it used to be a `:class` on the row,

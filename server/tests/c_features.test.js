@@ -9,7 +9,7 @@ import { alignKnownText } from "../src/alignment.js";
 import { groupCues, toSrt, toVtt } from "../src/captions.js";
 import { construct, utcNow, VoiceRecord } from "../src/models.js";
 import { scanNames } from "../src/pronunciation.js";
-import { ZipReader, ZipWriter } from "@delebash/llm-runner/platform/zip";
+import { ZipReader, ZipWriter } from "@delebash/core/platform/zip";
 import { buildBundle, importBundle } from "../src/voice_bundle.js";
 import { tmpPath } from "./helpers.js";
 

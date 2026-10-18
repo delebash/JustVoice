@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useAiTasksStore } from "@delebash/llm-ui";
+import { useAiTasksStore } from "@delebash/ui";
 import {
   QC_WAITS, chapterRenderTask, chapterRunning, clock, followJob, followRender, jobFollowed, loadingText, mediaUrl, renderChapter, runFigures,
   waitingText,

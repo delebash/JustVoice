@@ -8,7 +8,7 @@
 -->
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { AppModal, UiButton, openExternal, pushToast } from "@delebash/llm-ui";
+import { AppModal, UiButton, openExternal, pushToast } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { TERMS_EVENT, acceptEngineTerms } from "../services/engineTerms.js";
 

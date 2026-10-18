@@ -7,7 +7,7 @@
 // `engines.llm[].providerType` etc. natively, and the renderer reads/writes those sections in
 // camelCase. Non-LLM settings sections keep their own (snake) field names.
 
-import { Hono, input } from "@delebash/llm-runner/platform";
+import { Hono, input } from "@delebash/core/platform";
 import { getState } from "../app_state.js";
 import { construct, Settings, SettingsPatch, SettingsPatchResponse } from "../models.js";
 

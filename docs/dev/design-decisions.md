@@ -134,7 +134,7 @@ integration decisions record (2026-07-15) is executed history at
 
 ## 4 · Convergence outcomes (2026-06-24 arc, closed)
 
-- **Layer A complete: both apps share ONE renderer kit** (`@delebash/llm-ui` +
+- **Layer A complete: both apps share ONE renderer kit** (`@delebash/ui` +
   its `common/`): one serverApi transport (JW's SSE `aiFeature.js` is the one kept
   exception), one appearance engine (JV's palette reproduced hue-driven in
   `tokens.css`), one AppModal + AppDialog, all primitives/shells shared —

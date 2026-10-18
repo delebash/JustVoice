@@ -5,11 +5,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const rev = { value: 1 };
-vi.mock("@delebash/llm-ui/common/services/serverApi.js", () => ({
+vi.mock("@delebash/ui/common/services/serverApi.js", () => ({
   get: vi.fn(async () => ({ rev: rev.value, pollSeconds: 5 })),
 }));
 
-const { isEditing, watchSync } = await import("@delebash/llm-ui/common/services/syncWatch.js");
+const { isEditing, watchSync } = await import("@delebash/ui/common/services/syncWatch.js");
 
 describe("isEditing", () => {
   afterEach(() => {

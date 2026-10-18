@@ -10,8 +10,8 @@
 
 import { readFileSync } from "node:fs";
 import os from "node:os";
-import * as hardware from "@delebash/llm-runner/runner/hardware";
-import * as procs from "@delebash/llm-runner/platform/procs";
+import * as hardware from "@delebash/core/runner/hardware";
+import * as procs from "@delebash/core/platform/procs";
 import { construct, SystemInfo } from "./models.js";
 import * as self from "./system_info.js";
 

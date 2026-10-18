@@ -14,7 +14,7 @@
 -->
 <script setup>
 import { computed, onBeforeUnmount, ref } from "vue";
-import { AppModal, UiButton, UiCheckbox, UiSelect, UiTable, UiTag, pushToast } from "@delebash/llm-ui";
+import { AppModal, UiButton, UiCheckbox, UiSelect, UiTable, UiTag, pushToast } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { andList } from "../services/newPersonas.js";

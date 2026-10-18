@@ -30,14 +30,14 @@ import { blockStats, projectState, stepStatus } from "../services/studioStatus.j
 import { masterLabel } from "../services/masterTargets.js";
 import { useCopy } from "../services/copy.js";
 import { chapterRunFor, onChapterDone } from "../services/chapterRun.js";
-import { pushToast, pageFlow, useAiTasksStore } from "@delebash/llm-ui";
+import { pushToast, pageFlow, useAiTasksStore } from "@delebash/ui";
 import { followLive, loadBookRun } from "../services/bookRun.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { UiButton, UiTag, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiTag, UiSelect } from "@delebash/ui";
 
 import ExportPanel from "../components/ExportPanel.vue";
 import StudioOverview from "../components/StudioOverview.vue";

@@ -9,8 +9,8 @@
 // Every test injects its own VramArbiter (fake hardware) and restores the singleton after. The
 // pool probe is stubbed to null by default; measured-admission and delta tests install their
 // own probe sequences.
-import * as stores from "@delebash/llm-runner/llm/stores";
-import * as hardware from "@delebash/llm-runner/runner/hardware";
+import * as stores from "@delebash/core/llm/stores";
+import * as hardware from "@delebash/core/runner/hardware";
 import { afterEach, expect, test, vi } from "vitest";
 import { writeWavContainer } from "../src/audio/wav.js";
 import { seedWorkspace } from "../src/database/seed.js";
@@ -20,7 +20,7 @@ import * as runtime from "../src/engines/audiocpp/runtime.js";
 import * as manager from "../src/engines/manager.js";
 import { EngineManager } from "../src/engines/manager.js";
 import { SynthScheduler } from "../src/synth_scheduler.js";
-import { AsyncEvent, sleep } from "@delebash/llm-runner/platform/asyncutil";
+import { AsyncEvent, sleep } from "@delebash/core/platform/asyncutil";
 
 afterEach(async () => {
   await closeApps();

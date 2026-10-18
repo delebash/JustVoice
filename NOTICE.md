@@ -62,7 +62,7 @@ https://github.com/openai/whisper (commit 26a7cac, 2025-01-04) — MIT License, 
 OpenAI; the full notice is kept in the file. The take check normalises a line's words and the
 recogniser's transcript with it (added 2026-10-16).
 
-### Through the shared kit (`@delebash/llm-ui`, bundled into the renderer)
+### Through the shared kit (`@delebash/ui`, bundled into the renderer)
 
 - The table's sorting and filtering rules (`ui/src/common/components/tableRows.js`) are ported from
   TanStack Table's table-core 8 — MIT License, Copyright (c) 2016 Tanner Linsley; the full notice
@@ -180,7 +180,7 @@ Copyright 2019 Kenneth Reitz
 
 ### llm-runner (MIT)
 
-- Upstream: https://github.com/delebash/just-llm-runner
+- Upstream: https://github.com/delebash/just-core
 - License: MIT
 - Own repo, consumed as a pinned git dependency and frozen into the sidecar by PyInstaller.
 

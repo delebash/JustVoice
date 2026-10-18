@@ -11,7 +11,7 @@
 -->
 <script setup>
 import { computed } from "vue";
-import { Icon, UiButton } from "@delebash/llm-ui";
+import { Icon, UiButton } from "@delebash/ui";
 
 const props = defineProps({
   state: {

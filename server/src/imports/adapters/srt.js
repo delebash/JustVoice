@@ -11,7 +11,7 @@
 // the name is lifted into a StandardCharacter and stripped from the line. All cues go into a
 // single StandardScene.
 
-import { decodeUtf8, digitsToInt, END, PY_WS, pyTitle, splitlines, strip } from "@delebash/llm-runner/platform/py";
+import { decodeUtf8, digitsToInt, END, PY_WS, pyTitle, splitlines, strip } from "@delebash/core/platform/py";
 import { badRequest } from "../../errors.js";
 import { construct } from "../../models.js";
 import { StandardImport } from "../standard_schema.js";

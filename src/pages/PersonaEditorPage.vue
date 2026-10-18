@@ -39,7 +39,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
   AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
   DownloadBar, UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, pushToast, runAiEndpoint, saveBlob,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import PersonaBlendMaker from "../components/PersonaBlendMaker.vue";
@@ -68,7 +68,7 @@ import { useLexiconsStore } from "../stores/lexicons.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useVoicesStore } from "../stores/voices.js";
-import { pageFlow } from "@delebash/llm-ui";
+import { pageFlow } from "@delebash/ui";
 
 const api = useApi();
 const route = useRoute();

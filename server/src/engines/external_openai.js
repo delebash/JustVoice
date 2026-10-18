@@ -6,10 +6,10 @@
 // Configured via `settings.engines.external`. Requests go through the kit's one HTTP client;
 // the JSON body is httpx's (compact, UTF-8, `speed` a float).
 
-import * as http from "@delebash/llm-runner/platform/http";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
-import { PyFloat, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import * as http from "@delebash/core/platform/http";
+import { getLogger } from "@delebash/core/platform/log";
+import { RuntimeError } from "@delebash/core/platform/py";
+import { PyFloat, pyJson } from "@delebash/core/platform/pyjson";
 import { EngineMeta, PresetVoice, SynthOutput } from "./base.js";
 
 const log = getLogger("justvoice.engines.external_openai");

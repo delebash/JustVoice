@@ -15,7 +15,7 @@ import { EngineRegistry } from "../src/engines/registry.js";
 import { construct, Settings } from "../src/models.js";
 import { PersonaStore } from "../src/storage/personas.js";
 import { tmpDb, tmpPath } from "./helpers.js";
-import { pyClone } from "@delebash/llm-runner/platform/pyjson";
+import { pyClone } from "@delebash/core/platform/pyjson";
 
 class FakeSettingsStore {
   constructor() {

@@ -24,11 +24,11 @@ import { randomBytes } from "node:crypto";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import * as procs from "@delebash/llm-runner/platform/procs";
-import { pyInt, RuntimeError, ValueError } from "@delebash/llm-runner/platform/py";
-import { pyFloat } from "@delebash/llm-runner/platform/pyjson";
-import * as hardware from "@delebash/llm-runner/runner/hardware";
+import { getLogger } from "@delebash/core/platform/log";
+import * as procs from "@delebash/core/platform/procs";
+import { pyInt, RuntimeError, ValueError } from "@delebash/core/platform/py";
+import { pyFloat } from "@delebash/core/platform/pyjson";
+import * as hardware from "@delebash/core/runner/hardware";
 import { writeWavContainer } from "./audio/wav.js";
 import * as self from "./mastering.js";
 

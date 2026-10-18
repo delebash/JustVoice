@@ -2,7 +2,7 @@
 // /v1/ai/prompts — every JV action is a SHARED template row (F1 Phase 2: the legacy shadow
 // editor died; the kit's prompt router serves this path), the endpoints read their prompt from
 // the DB, and tunables live on presets (the port of tests/test_feature_prompts.py).
-import { render } from "@delebash/llm-runner/llm/prompts";
+import { render } from "@delebash/core/llm/prompts";
 import { afterEach, expect, test } from "vitest";
 import * as projectsApi from "../src/api/projects_api.js";
 import * as smartAssignApi from "../src/api/smart_assign_api.js";

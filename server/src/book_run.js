@@ -39,13 +39,13 @@
 // from the text each AI step reads (`estimateRun`) and priced from the kit's pricing table, and
 // the start must carry `accept_price` (book_runs_api.js).
 
-import { LLMNotConfiguredError, resolveRoute, stores as llmStores } from "@delebash/llm-runner/llm";
-import { costFor, priceFor } from "@delebash/llm-runner/llm/pricing";
-import { resolveFeaturePresetWithSource } from "@delebash/llm-runner/llm/preset_resolve";
-import { background } from "@delebash/llm-runner/platform/asyncutil";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { isDict, strip } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { LLMNotConfiguredError, resolveRoute, stores as llmStores } from "@delebash/core/llm";
+import { costFor, priceFor } from "@delebash/core/llm/pricing";
+import { resolveFeaturePresetWithSource } from "@delebash/core/llm/preset_resolve";
+import { background } from "@delebash/core/platform/asyncutil";
+import { getLogger } from "@delebash/core/platform/log";
+import { isDict, strip } from "@delebash/core/platform/py";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import { speakerLineCounts } from "./api/_speaker_helpers.js";
 import { _sttReadiness } from "./api/capture_readiness_api.js";
 import * as exportJobsApi from "./api/export_jobs_api.js";

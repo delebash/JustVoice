@@ -6,7 +6,7 @@
 // from the piece before whose answers are thrown away. Backstops halve a piece the provider
 // refuses as too big, or whose reply comes back cut off (finish_reason "length" — llama.cpp's
 // only signal when the context fills).
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
+import { RuntimeError } from "@delebash/core/platform/py";
 import { expect, test, vi } from "vitest";
 import * as run from "../src/engines/llm/run.js";
 import { identifySpeakers } from "../src/extraction/identify.js";

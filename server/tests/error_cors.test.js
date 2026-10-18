@@ -2,7 +2,7 @@
 // Unhandled server errors reach the browser as real 500s, not "blocked by CORS" (the port of
 // tests/test_error_cors.py): the catch-all envelope answers inside the CORS hook, so the 500
 // carries Access-Control-Allow-Origin.
-import { closeApp } from "@delebash/llm-runner/platform";
+import { closeApp } from "@delebash/core/platform";
 import { afterEach, expect, test, vi } from "vitest";
 import { createApp } from "../src/app.js";
 import { closeApps, client } from "./app_helpers.js";

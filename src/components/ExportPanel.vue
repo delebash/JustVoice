@@ -14,11 +14,11 @@
 import { ref, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
-import { openPath, pushToast, saveBlob } from "@delebash/llm-ui";
+import { openPath, pushToast, saveBlob } from "@delebash/ui";
 import { exportRun, savedMessage } from "../services/exportRun.js";
 import { useCopy } from "../services/copy.js";
 import { masterLabel, projectMaster } from "../services/masterTargets.js";
-import { UiButton, UiTag, runAiEndpoint } from "@delebash/llm-ui";
+import { UiButton, UiTag, runAiEndpoint } from "@delebash/ui";
 
 const props = defineProps({
   project: { type: Object, required: true },

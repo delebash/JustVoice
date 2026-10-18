@@ -6,7 +6,7 @@
 // sentence detection: a cue closes at ~42 characters (the captioning industry's one-line
 // limit), at 7 words, or at a pause longer than a second — whichever comes first.
 
-import { floorDiv, pyMod, pyRound } from "@delebash/llm-runner/platform/py";
+import { floorDiv, pyMod, pyRound } from "@delebash/core/platform/py";
 
 const MAX_CUE_CHARS = 42;
 const MAX_CUE_WORDS = 7;

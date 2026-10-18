@@ -10,7 +10,7 @@
 // the dialogue segment the tag touches, then sweeps forward + backward through unanchored
 // dialogue segments in the same paragraph to fill in pronoun-only or bare turn-taking patterns.
 
-import { B, pyEscapedLen, pySorted, reEscape } from "@delebash/llm-runner/platform/py";
+import { B, pyEscapedLen, pySorted, reEscape } from "@delebash/core/platform/py";
 
 // 40+ dialogue-tag verbs. Order doesn't matter — they're joined into one regex alternation.
 // Past + present + third-person where relevant.

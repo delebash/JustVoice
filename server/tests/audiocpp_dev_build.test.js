@@ -6,7 +6,7 @@
 // tests/test_audiocpp_dev_build.py).
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { runtime as dataRuntime } from "@delebash/llm-runner/platform/data_paths";
+import { runtime as dataRuntime } from "@delebash/core/platform/data_paths";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as speechRuntimeApi from "../src/api/speech_runtime_api.js";

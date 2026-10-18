@@ -7,7 +7,7 @@
 //
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import * as binary from "@delebash/llm-runner/runner/binary";
+import * as binary from "@delebash/core/runner/binary";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as speechRuntimeApi from "../src/api/speech_runtime_api.js";

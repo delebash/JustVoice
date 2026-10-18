@@ -10,10 +10,10 @@
 // The dataclasses keep their Python field names: `AttributionRow` IS the wire row
 // (`AttributionRowResponse(**row.__dict__)` in extraction_api), so one name per field.
 
-import { getLlmRegistry, LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/llm-runner/llm";
-import * as llmDb from "@delebash/llm-runner/llm/db";
-import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { getLogger } from "@delebash/llm-runner/platform/log";
+import { getLlmRegistry, LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
+import * as llmDb from "@delebash/core/llm/db";
+import { literal, nullable, opt, T } from "@delebash/core/platform/models";
+import { getLogger } from "@delebash/core/platform/log";
 import {
   B,
   cpLen,
@@ -26,8 +26,8 @@ import {
   strip,
   truthy,
   ValueError,
-} from "@delebash/llm-runner/platform/py";
-import { jsonLoads, jsonRawDecode, pyFloatOf, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+} from "@delebash/core/platform/py";
+import { jsonLoads, jsonRawDecode, pyFloatOf, pyStrOf } from "@delebash/core/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import { construct, ExtractionSettings } from "../models.js";
 import { findAnchors } from "./anchors.js";

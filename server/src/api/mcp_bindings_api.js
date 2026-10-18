@@ -6,8 +6,8 @@
 // the per-client binding's defaults apply. After Slice 4 of the Profile-kill rollout the
 // binding points at a Persona rather than a (now-dead) VoiceProfile.
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { Hono, input } from "@delebash/core/platform";
+import { nullable, opt, T } from "@delebash/core/platform/models";
 import { MCPBinding } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";

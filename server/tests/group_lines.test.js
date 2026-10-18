@@ -11,7 +11,7 @@
 // line you set; a chapter never analyzed is refused, and a re-analyze clears the record. The main pass is
 // `pipeline.runFeature` (its measure stubbed to "can't say"); the question is
 // `group_lines.runFeature`.
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { Line, flagGroups } from "../src/extraction/flags.js";
 import * as gl from "../src/extraction/group_lines.js";

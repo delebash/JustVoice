@@ -12,12 +12,12 @@
 // The archive is the kit's ZIP (platform/zip.js — CPython 3.12's zipfile, deflated).
 
 import { statSync } from "node:fs";
-import { attachment, Hono, input } from "@delebash/llm-runner/platform";
-import { safeTitle } from "@delebash/llm-runner/platform/filename";
-import { opt, T } from "@delebash/llm-runner/platform/models";
-import { strip } from "@delebash/llm-runner/platform/py";
-import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
-import { ZipWriter } from "@delebash/llm-runner/platform/zip";
+import { attachment, Hono, input } from "@delebash/core/platform";
+import { safeTitle } from "@delebash/core/platform/filename";
+import { opt, T } from "@delebash/core/platform/models";
+import { strip } from "@delebash/core/platform/py";
+import { jsonLoads, pyJson } from "@delebash/core/platform/pyjson";
+import { ZipWriter } from "@delebash/core/platform/zip";
 import { Block, Generation, Lexicon, LexiconEntry, Persona, Project, Scene, Speaker, Take } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";

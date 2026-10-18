@@ -5,7 +5,7 @@
 // stereo at any sample rate; rejects other formats with a clear error so callers convert via
 // ffmpeg first. Bytes are Node Buffers (a Uint8Array is accepted on input).
 
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { ValueError } from "@delebash/core/platform/py";
 
 /** The parsed format (Python's `WavFormat` dataclass). */
 export class WavFormat {

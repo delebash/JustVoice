@@ -13,8 +13,8 @@
 // The model is `direction.runFeature` and its prompt measure `direction.measureFeature` (as
 // pipeline's in analyze_persist); a voice's model is `voice_model.voiceModel`, so no test reaches
 // a model or a speech engine.
-import * as llmStores from "@delebash/llm-runner/llm/stores";
-import { resolveFeaturePreset, stores } from "@delebash/llm-runner/llm";
+import * as llmStores from "@delebash/core/llm/stores";
+import { resolveFeaturePreset, stores } from "@delebash/core/llm";
 import { afterEach, expect, test, vi } from "vitest";
 import { getState } from "../src/app_state.js";
 import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js";

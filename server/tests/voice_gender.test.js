@@ -6,8 +6,8 @@
 // label; the run rides the `voice_gender` template row + its preset; the route maps
 // male/female/unknown onto JV's F/M/"" vocabulary. The run goes through the real shared run
 // path; only the provider adapter is faked (registered under the preset's `local-llamacpp` id).
-import { getLlmRegistry, LLMResponse } from "@delebash/llm-runner/llm";
-import { setEnsureLocalModel } from "@delebash/llm-runner/llm/dispatch";
+import { getLlmRegistry, LLMResponse } from "@delebash/core/llm";
+import { setEnsureLocalModel } from "@delebash/core/llm/dispatch";
 import { afterEach, expect, test } from "vitest";
 import { appClient, closeApps } from "./app_helpers.js";
 

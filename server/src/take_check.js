@@ -33,9 +33,9 @@
 // /v1/scenes/{id}/check_takes (render_lines_api.js) calls it for one chapter.
 
 import { diffArrays } from "diff";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { pyRound, splitWs } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { getLogger } from "@delebash/core/platform/log";
+import { pyRound, splitWs } from "@delebash/core/platform/py";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import * as captures from "./api/captures_api.js";
 import { personaForBlock } from "./api/_speaker_helpers.js";
 import { Block, Generation, Scene } from "./database/models.js";

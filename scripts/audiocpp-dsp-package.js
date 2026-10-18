@@ -19,8 +19,8 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { _fileSha256, _findServerExe, _unpack, _verifyExeLaunches } from "@delebash/llm-runner/runner/binary";
-import { streamDownload } from "@delebash/llm-runner/runner/download";
+import { _fileSha256, _findServerExe, _unpack, _verifyExeLaunches } from "@delebash/core/runner/binary";
+import { streamDownload } from "@delebash/core/runner/download";
 import * as release from "../server/src/engines/audiocpp/release.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");

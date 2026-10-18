@@ -9,9 +9,9 @@
 
 import { createReadStream, statSync, unlinkSync } from "node:fs";
 import { Readable } from "node:stream";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { cpSlice } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { cpSlice } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import { Block, Generation, Scene, Take } from "../database/models.js";
 import * as session from "../database/session.js";

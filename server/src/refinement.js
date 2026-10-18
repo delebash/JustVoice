@@ -20,8 +20,8 @@
 // belongs to a section (clean-room gap 2, my rec applied under the 2026-10-08 go (not shown)).
 // With every toggle off the transcript comes back with its words as spoken.
 
-import { render, stores } from "@delebash/llm-runner/llm";
-import { NOT_W, PY_WS, splitWs, strip } from "@delebash/llm-runner/platform/py";
+import { render, stores } from "@delebash/core/llm";
+import { NOT_W, PY_WS, splitWs, strip } from "@delebash/core/platform/py";
 import * as run from "./engines/llm/run.js";
 
 // ─── The loop collapse ──────────────────────────────────────────────────────

@@ -32,7 +32,7 @@ import { useRouter } from "vue-router";
 import {
   EmptyState, UiButton, UiCheckbox, UiChip, UiInput, UiMultiSelect, UiSelect, UiTable, UiTag, UiTextarea,
   confirmDialog, languageName, promptDialog, pushToast, withAiTask,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
 import CastNewPersonas from "./CastNewPersonas.vue";

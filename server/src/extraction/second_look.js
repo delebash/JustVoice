@@ -24,9 +24,9 @@
 // join the run's usage, and a cancel stops the look before its next line — the stream then
 // saves the chapter as it stood (extraction_api).
 
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { cpSlice, errText, isDict, pyRound, splitWs, strip, strRepr, truthy, ValueError } from "@delebash/llm-runner/platform/py";
-import { jsonLoads, pyFloatOf, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { getLogger } from "@delebash/core/platform/log";
+import { cpSlice, errText, isDict, pyRound, splitWs, strip, strRepr, truthy, ValueError } from "@delebash/core/platform/py";
+import { jsonLoads, pyFloatOf, pyStrOf } from "@delebash/core/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import * as self from "./second_look.js";
 

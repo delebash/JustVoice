@@ -7,7 +7,7 @@
 // the model rows are the server's own (`personaMock.js`).
 
 import { DIRECTION_OPTIONS } from "../personaFacts.js";
-import { languageName } from "@delebash/llm-ui";
+import { languageName } from "@delebash/ui";
 import { capabilities, directedByOf, modelLanguages, statusOf } from "./personaMock.js";
 
 // An engine's own row is left out where its families have rows of their own

@@ -6,10 +6,10 @@
 // registry (only external OpenAI-compatible engines). The branch lives in each route so the
 // route shapes stay the same.
 
-import { Hono, input, readJson } from "@delebash/llm-runner/platform";
-import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { isDict } from "@delebash/llm-runner/platform/py";
+import { Hono, input, readJson } from "@delebash/core/platform";
+import { RequestValidationError } from "@delebash/core/platform/errors";
+import { getLogger } from "@delebash/core/platform/log";
+import { isDict } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import * as manager from "../engines/manager.js";
 import { conflict, notFound, serviceUnavailable } from "../errors.js";

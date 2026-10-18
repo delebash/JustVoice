@@ -13,7 +13,7 @@ import { applyEffectsChain, chainEntries, effectsChainHash } from "../src/audio/
 import { parseWavHeader } from "../src/audio/wav.js";
 import { BUILTIN_EFFECT_PRESETS } from "../src/database/seed.js";
 import { sineWav } from "./audio_fixtures.js";
-import { pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
+import { pyJsonParse } from "@delebash/core/platform/pyjson";
 
 afterAll(() => dspClient.stop());
 

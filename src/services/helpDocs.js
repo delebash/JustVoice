@@ -10,7 +10,7 @@
 // markdown loads LAZILY (no `eager`) — a doc is fetched only when its Help
 // drawer opens, never on the boot path — and is cached for the session.
 
-import { makeDocsHelpAdapter } from "@delebash/llm-ui";
+import { makeDocsHelpAdapter } from "@delebash/ui";
 import HELP_TOC_DATA from "../../docs/toc.json";
 
 export const HELP_TOC = HELP_TOC_DATA;

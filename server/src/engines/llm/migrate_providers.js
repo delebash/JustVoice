@@ -12,8 +12,8 @@
 // on every boot is safe and user edits win forever after. The settings list stays as dormant
 // legacy data, but NOTHING reads it anymore.
 
-import { stores } from "@delebash/llm-runner/llm";
-import { getLogger } from "@delebash/llm-runner/platform/log";
+import { stores } from "@delebash/core/llm";
+import { getLogger } from "@delebash/core/platform/log";
 
 const log = getLogger("justvoice.engines.llm.migrate_providers");
 

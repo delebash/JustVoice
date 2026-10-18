@@ -27,7 +27,7 @@
 // PIECE_JOIN_SILENCE_DBFS. `dsp_client.js` sends them with every join; the DSP program applies
 // the rule.
 
-import { PY_WS, ValueError } from "@delebash/llm-runner/platform/py";
+import { PY_WS, ValueError } from "@delebash/core/platform/py";
 
 /** The general piece length (`settings.generation.max_chunk_chars`' default). */
 export const DEFAULT_MAX_CHUNK_CHARS = 800;

@@ -15,7 +15,7 @@
 // external subset), namespaces (`xml:` bound, unbound prefixes refused), comments and processing
 // instructions dropped. Not done: attribute defaults declared in a DTD, parameter entities.
 
-import { cpIndex } from "@delebash/llm-runner/platform/py";
+import { cpIndex } from "@delebash/core/platform/py";
 
 export class ParseError extends Error {
   constructor(msg, line, column) {

@@ -4,7 +4,7 @@
 // is never split or cut (one with a space in it included), and a piece length of 0 or less is
 // refused. And the guarantees every split keeps: no piece over the length, nothing but
 // whitespace lost, code points counted.
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { ValueError } from "@delebash/core/platform/py";
 import { expect, test } from "vitest";
 import { splitTextIntoChunks as split } from "../src/audio/chunked.js";
 

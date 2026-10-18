@@ -12,8 +12,8 @@
 // exist; 400 when the persona has no note (how it sounds — 2026-09-29); 501 when no LLM
 // provider is registered; 502 when the LLM call raises; 200 with {original, rewritten,
 // persona_id} on success; the persona's note reaches the system prompt via the template row.
-import { getLlmRegistry, LLMResponse } from "@delebash/llm-runner/llm";
-import { setEnsureLocalModel } from "@delebash/llm-runner/llm/dispatch";
+import { getLlmRegistry, LLMResponse } from "@delebash/core/llm";
+import { setEnsureLocalModel } from "@delebash/core/llm/dispatch";
 import { afterEach, expect, test } from "vitest";
 import { getState } from "../src/app_state.js";
 import { appClient, closeApps } from "./app_helpers.js";

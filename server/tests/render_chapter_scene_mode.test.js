@@ -5,7 +5,7 @@
 // Each test points the module database at a fresh SQLite (Python patched SessionLocal) and
 // writes the minimum scene/block/speaker graph the resolver needs; personas live in a fake
 // store. `_resolveSceneToLines` is called directly — the load-bearing internal function.
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import "./engines_helpers.js";
 import { _resolveSceneToLines } from "../src/api/render_chapter_api.js";

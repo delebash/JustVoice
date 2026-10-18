@@ -24,10 +24,10 @@
 // scans, never asked of the model; a person every scan counted 0 lines for is left out, one a
 // scan gave no number for is kept.
 
-import { presetRecipe, resolveFeaturePreset } from "@delebash/llm-runner/llm";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { cpLen, cpSlice, isDict, splitWs, strip } from "@delebash/llm-runner/platform/py";
-import { isNumber, pyIntOfNumber, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
+import { getLogger } from "@delebash/core/platform/log";
+import { cpLen, cpSlice, isDict, splitWs, strip } from "@delebash/core/platform/py";
+import { isNumber, pyIntOfNumber, pyStrOf } from "@delebash/core/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import { bare, isVariantBare, norm } from "./names.js";
 import { parse } from "./second_look.js";

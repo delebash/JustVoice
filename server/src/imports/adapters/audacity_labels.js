@@ -12,8 +12,8 @@
 //
 // Each row becomes one line. Pause-after is the gap to the next label's start, if known.
 
-import { decodeUtf8, END, pyRound, splitlines, strip } from "@delebash/llm-runner/platform/py";
-import { pyFloatOf } from "@delebash/llm-runner/platform/pyjson";
+import { decodeUtf8, END, pyRound, splitlines, strip } from "@delebash/core/platform/py";
+import { pyFloatOf } from "@delebash/core/platform/pyjson";
 import { badRequest } from "../../errors.js";
 import { construct } from "../../models.js";
 import { StandardImport } from "../standard_schema.js";

@@ -15,7 +15,7 @@
 // step says while it runs and after, the price, and the "what to check" list.
 
 import { reactive } from "vue";
-import { withAiTask } from "@delebash/llm-ui";
+import { withAiTask } from "@delebash/ui";
 import { clock } from "./renderRun.js";
 
 // ── the words ────────────────────────────────────────────────────────────

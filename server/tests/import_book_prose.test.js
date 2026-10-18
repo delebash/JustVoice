@@ -4,7 +4,7 @@
 // router — a bare app holding only projects_api's router (render_helpers.js `viaRoutes`) over the
 // test's own database and app state (`useState()`; Python overrode `get_db` with conftest_db's
 // session).
-import { ZipWriter } from "@delebash/llm-runner/platform/zip";
+import { ZipWriter } from "@delebash/core/platform/zip";
 import { expect, test } from "vitest";
 import { client } from "./app_helpers.js";
 import { endState, useState } from "./engines_helpers.js";

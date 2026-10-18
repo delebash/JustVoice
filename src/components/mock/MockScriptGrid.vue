@@ -9,11 +9,11 @@
 -->
 <script setup>
 import { computed, ref } from "vue";
-import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
+import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/ui";
 import {
   AppModal, EmptyState, UiButton, UiCheckbox, UiChip, UiTable, UiTag, UiTextarea,
   confirmDialog, promptDialog, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { render, renumber } from "../../services/mock/renderMock.js";
 
 const emit = defineEmits(["go"]);

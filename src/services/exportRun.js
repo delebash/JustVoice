@@ -10,7 +10,7 @@
 // zip (the chapters only without ffmpeg, the job's `note` saying so —
 // 2026-10-15, the narrowings review R8).
 
-import { withAiTask } from "@delebash/llm-ui";
+import { withAiTask } from "@delebash/ui";
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const ENDED = new Set(["done", "error", "cancelled"]);

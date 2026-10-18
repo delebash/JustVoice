@@ -5,9 +5,9 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import * as stores from "@delebash/llm-runner/llm/stores";
-import * as http from "@delebash/llm-runner/platform/http";
-import * as hardware from "@delebash/llm-runner/runner/hardware";
+import * as stores from "@delebash/core/llm/stores";
+import * as http from "@delebash/core/platform/http";
+import * as hardware from "@delebash/core/runner/hardware";
 import { afterEach, expect, test, vi } from "vitest";
 import * as captures from "../src/api/captures_api.js";
 import * as voicePreview from "../src/api/voice_preview_api.js";

@@ -7,12 +7,12 @@
 
 import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { HttpError } from "@delebash/llm-runner/platform/errors";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { b64decode, isDict, NotImplementedError, pyRound, pySorted, strip, ValueError } from "@delebash/llm-runner/platform/py";
-import { jsonLoads, pyFixed, pyFloat, pyFloatValue, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { Hono, input } from "@delebash/core/platform";
+import { HttpError } from "@delebash/core/platform/errors";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { b64decode, isDict, NotImplementedError, pyRound, pySorted, strip, ValueError } from "@delebash/core/platform/py";
+import { jsonLoads, pyFixed, pyFloat, pyFloatValue, pyStrOf } from "@delebash/core/platform/pyjson";
 import { getState } from "../app_state.js";
 import { noiseMarginDb } from "../audio/analyzer.js";
 import { parseWavHeader } from "../audio/wav.js";

@@ -115,11 +115,11 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
   the 2026-10-08 GUI entry). The shape the user named: a new default Quasar app first, then each
   app built on it — framework conformity instead of each app's own hand-rolled surfaces.
   What it would touch, for when it's planned (not decided):
-  - the kit UI `@delebash/llm-ui` (its Ui* controls, UiTable, the task strip, the settings shells,
+  - the kit UI `@delebash/ui` (its Ui* controls, UiTable, the task strip, the settings shells,
     `tokens.css`) would give way to Quasar's components, or wrap them — the family rule
     "nothing gets hand-rolled that the kit ships" becomes "nothing that Quasar ships";
   - Quasar's Electron mode generates its own main/preload (`src-electron/`) — the kit's shared
-    shell (`@delebash/llm-runner/shell`, `runDesktopApp`) would run inside it; its Capacitor mode
+    shell (`@delebash/core/shell`, `runDesktopApp`) would run inside it; its Capacitor mode
     is the phone app (JustWrite, ruling 8);
   - the servers don't change: the Node server kit and each app's routes stay as the move leaves
     them.

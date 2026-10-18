@@ -14,9 +14,9 @@
 // opening the chapter. Parsing is defensive: code fences stripped, non-dict entries dropped,
 // names deduped case-insensitively against the known cast AND each other.
 
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { cpLen, cpSlice, errText, isDict, PY_WS, pyGet, RuntimeError, splitlines, strip, truthy } from "@delebash/llm-runner/platform/py";
-import { isNumber, jsonLoads, pyIntOfNumber, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { getLogger } from "@delebash/core/platform/log";
+import { cpLen, cpSlice, errText, isDict, PY_WS, pyGet, RuntimeError, splitlines, strip, truthy } from "@delebash/core/platform/py";
+import { isNumber, jsonLoads, pyIntOfNumber, pyStrOf } from "@delebash/core/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import { ExtractionSettings, construct } from "../models.js";
 import { ParagraphTooBig, Piece, planPieces } from "./pieces.js";

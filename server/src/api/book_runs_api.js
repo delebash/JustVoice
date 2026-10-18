@@ -12,8 +12,8 @@
 //   POST /v1/book_runs/{id}/cancel    stop it at the next chapter or line — what is done is kept
 //   POST /v1/book_runs/{id}/resume    pick up where it stopped
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { Hono, input } from "@delebash/core/platform";
+import { literal, nullable, opt, T } from "@delebash/core/platform/models";
 import * as bookRun from "../book_run.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";

@@ -7,13 +7,13 @@
 import { nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
 // Quasar installed as in the real app — the kit's controls are Quasar components
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 import { i18n } from "../i18n/index.js";
 
 const status = vi.fn();
 vi.mock("../services/native.js", () => ({ shellServerStatus: () => status() }));
-vi.mock("@delebash/llm-ui", async () => ({
-  ConnectionError: (await import("@delebash/llm-ui/common/components/ConnectionError.vue")).default,
+vi.mock("@delebash/ui", async () => ({
+  ConnectionError: (await import("@delebash/ui/common/components/ConnectionError.vue")).default,
   serverUrl: () => "http://127.0.0.1:17494",
 }));
 

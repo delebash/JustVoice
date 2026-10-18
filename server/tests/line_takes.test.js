@@ -15,7 +15,7 @@
 import { existsSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { sleep } from "@delebash/llm-runner/platform/asyncutil";
+import { sleep } from "@delebash/core/platform/asyncutil";
 import { endState, useState } from "./engines_helpers.js";
 import { router as projectsRouter } from "../src/api/projects_api.js";
 import * as renderChapterApi from "../src/api/render_chapter_api.js";
@@ -32,7 +32,7 @@ import * as mastering from "../src/mastering.js";
 import { mediaFile } from "../src/media_paths.js";
 import * as renderCore from "../src/render_core.js";
 import { lineInputsKey, RenderedLine } from "../src/render_core.js";
-import { ZipReader } from "@delebash/llm-runner/platform/zip";
+import { ZipReader } from "@delebash/core/platform/zip";
 import { inject as request } from "./helpers.js";
 import { book, lines, metaOf, patchLineOverride, patchMetadata, patchText, renderBlock, states, unwrap, viaRoutes } from "./render_helpers.js";
 import * as renderJobs from "../src/render_jobs.js";

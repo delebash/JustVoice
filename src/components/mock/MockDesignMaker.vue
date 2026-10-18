@@ -15,7 +15,7 @@
 -->
 <script setup>
 import { computed, ref } from "vue";
-import { UiButton, UiChip, UiField, UiInput, UiSelect, UiTextarea, pushToast } from "@delebash/llm-ui";
+import { UiButton, UiChip, UiField, UiInput, UiSelect, UiTextarea, pushToast } from "@delebash/ui";
 import { capabilities, keepVoice, silentWav, wait } from "../../services/mock/personaMock.js";
 import { MODEL_NOTE, engineOf, forDirection, languageOptionsFor, modelOptions, preferred } from "../../services/mock/mockMakers.js";
 

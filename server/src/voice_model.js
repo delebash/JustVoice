@@ -24,8 +24,8 @@
 // list may need the network): voiceModel, voiceLanguage, modelKey, versionsOf, and
 // ensureModelLoaded (it loads a model). Everything else is synchronous.
 
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { KeyError, pyRound, pySorted, pyStr, RuntimeError, strip, ValueError } from "@delebash/llm-runner/platform/py";
+import { getLogger } from "@delebash/core/platform/log";
+import { KeyError, pyRound, pySorted, pyStr, RuntimeError, strip, ValueError } from "@delebash/core/platform/py";
 import * as appState from "./app_state.js";
 import * as capabilityDetails from "./engines/capability_details.js";
 import * as manager from "./engines/manager.js";

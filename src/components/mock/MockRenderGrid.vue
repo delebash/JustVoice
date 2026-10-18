@@ -14,7 +14,7 @@ import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   AiTaskStrip, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import PagePlayer from "../PagePlayer.vue";
 import PageTaskStrips from "../PageTaskStrips.vue";
 import PlayTransport from "../PlayTransport.vue";

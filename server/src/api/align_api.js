@@ -14,10 +14,10 @@
 // frame-exact editing.
 
 import { readFileSync } from "node:fs";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
-import { opt, T } from "@delebash/llm-runner/platform/models";
-import { RuntimeError, strip } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import { RequestValidationError } from "@delebash/core/platform/errors";
+import { opt, T } from "@delebash/core/platform/models";
+import { RuntimeError, strip } from "@delebash/core/platform/py";
 import { alignKnownText } from "../alignment.js";
 import { getState } from "../app_state.js";
 import { parseWavHeader } from "../audio/wav.js";

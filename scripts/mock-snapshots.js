@@ -47,7 +47,7 @@ const kit = (spec) => import(pathToFileURL(serverRequire.resolve(spec)).href);
 const server = (rel) => import(pathToFileURL(path.join(SERVER, rel)).href);
 
 const session = await server("database/session.js");
-const llmDb = await kit("@delebash/llm-runner/llm/db");
+const llmDb = await kit("@delebash/core/llm/db");
 const appState = await server("app_state.js");
 session.initDb(dataDir);
 llmDb.configureStorage(session.cfg.handle);

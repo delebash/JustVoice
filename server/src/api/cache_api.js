@@ -2,9 +2,9 @@
 // /v1/cache/* — stats + clear + recent entries (the port of justvoice/api/cache_api.py).
 
 import { statSync } from "node:fs";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { pyRepr } from "@delebash/llm-runner/platform/pyjson";
+import { Hono, input } from "@delebash/core/platform";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { pyRepr } from "@delebash/core/platform/pyjson";
 import { getState } from "../app_state.js";
 import { Generation } from "../database/models.js";
 import * as session from "../database/session.js";

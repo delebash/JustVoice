@@ -10,7 +10,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { UiButton, pushToast } from "@delebash/llm-ui";
+import { UiButton, pushToast } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 
 const props = defineProps({

@@ -7,9 +7,9 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { webhooksService } from "../services/projects.js";
-import { pushToast } from "@delebash/llm-ui";
-import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiField, UiCheckbox, UiTag, UiTable } from "@delebash/llm-ui";
+import { pushToast } from "@delebash/ui";
+import { confirmDialog } from "@delebash/ui";
+import { UiButton, UiInput, UiField, UiCheckbox, UiTag, UiTable } from "@delebash/ui";
 
 // Sorting comes with the kit grid; the hand-rolled table had none.
 const WEBHOOK_COLUMNS = [

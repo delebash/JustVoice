@@ -2,7 +2,7 @@
 // The KIT's task queue, exercised as JustVoice uses it.
 //
 // JustVoice deleted its own renderTasks/TaskStrip/TaskStatusPanel trio and moved
-// its 17 task sites onto @delebash/llm-ui's shared queue. The three capabilities that
+// its 17 task sites onto @delebash/ui's shared queue. The three capabilities that
 // move made the swap possible — linger, retry, per-task stats — and NONE of them had a
 // caller when they were written, so every app's suite passed while proving nothing
 // about them. This is that proof, and it lives here because JustVoice is the consumer
@@ -15,7 +15,7 @@
 // and its own tests would not catch it.
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { FAMILY_TASK_LINGER, useAiTasksStore } from "@delebash/llm-ui";
+import { FAMILY_TASK_LINGER, useAiTasksStore } from "@delebash/ui";
 
 const LINGER = { completed: 5000, cancelled: 3000, failed: null };
 

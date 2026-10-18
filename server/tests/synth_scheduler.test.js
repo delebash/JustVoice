@@ -5,7 +5,7 @@
 // Each test builds its own SynthScheduler (never the process singleton) and holds the worker
 // on a gate item so submissions queue deterministically before the drain starts. (Python's
 // threading.Event is the kit's AsyncEvent; a wait's timeout is in milliseconds there.)
-import { AsyncEvent, sleep } from "@delebash/llm-runner/platform/asyncutil";
+import { AsyncEvent, sleep } from "@delebash/core/platform/asyncutil";
 import { beforeEach, expect, test, vi } from "vitest";
 import * as manager from "../src/engines/manager.js";
 import * as renderCore from "../src/render_core.js";

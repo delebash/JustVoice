@@ -16,7 +16,7 @@
 // (`dtWire`, `dtIso`, `utcNow`, `utcNowNaive`, `dtMicros`). Stored text is read with the
 // kit's `pyJsonParse` (json.loads that keeps a whole-number float literal a float).
 
-import { LLMProviderConfig } from "@delebash/llm-runner/llm/schema";
+import { LLMProviderConfig } from "@delebash/core/llm/schema";
 import {
   branchOf,
   check,
@@ -29,9 +29,9 @@ import {
   strictObject,
   T,
   unwrapTyped,
-} from "@delebash/llm-runner/platform/models";
-import { isDict } from "@delebash/llm-runner/platform/py";
-import { PyFloat, pyClone, pyFloatValue } from "@delebash/llm-runner/platform/pyjson";
+} from "@delebash/core/platform/models";
+import { isDict } from "@delebash/core/platform/py";
+import { PyFloat, pyClone, pyFloatValue } from "@delebash/core/platform/pyjson";
 
 export { LLMProviderConfig };
 

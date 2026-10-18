@@ -9,8 +9,8 @@
 //   - the workspace seed — the shared LLM stack's migrations and seed in JustWrite's order, then
 //     the provider registry booted from the database.
 
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { pyFloatValue as F, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { getLogger } from "@delebash/core/platform/log";
+import { pyFloatValue as F, pyJson } from "@delebash/core/platform/pyjson";
 import { EffectPreset } from "./models.js";
 import * as session from "./session.js";
 
@@ -102,8 +102,8 @@ export function seedBuiltinEffectPresets() {
 export async function seedWorkspace() {
   seedBuiltinEffectPresets();
 
-  const { loadFromConfigs, stores } = await import("@delebash/llm-runner/llm");
-  const { seedLlm } = await import("@delebash/llm-runner/llm/seed");
+  const { loadFromConfigs, stores } = await import("@delebash/core/llm");
+  const { seedLlm } = await import("@delebash/core/llm/seed");
   const { getState } = await import("../app_state.js");
   const { liftEditedTunablesIntoPresets, migrateJvPromptsToShared } = await import("../engines/llm/migrate_prompts.js");
   const { migrateSettingsProvidersToDb } = await import("../engines/llm/migrate_providers.js");

@@ -11,7 +11,7 @@
 // renderCore.renderLine makes a short sound that records the real inputs key (its length follows
 // the text, or `long` for a runaway), and captures._sttTranscribe answers from a script per line.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { sleep } from "@delebash/llm-runner/platform/asyncutil";
+import { sleep } from "@delebash/core/platform/asyncutil";
 import { endState, useState } from "./engines_helpers.js";
 import * as captures from "../src/api/captures_api.js";
 import { router as renderLinesRouter } from "../src/api/render_lines_api.js";

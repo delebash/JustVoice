@@ -10,7 +10,7 @@
 // Old payloads can be migrated by the `justvoice_standard` adapter (which also validates
 // incoming JSON that claims to already be in this shape).
 
-import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { literal, nullable, opt, T } from "@delebash/core/platform/models";
 
 export const SCHEMA_VERSION = "1.0";
 

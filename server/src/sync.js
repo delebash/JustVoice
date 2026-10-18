@@ -15,9 +15,9 @@
 
 import { betterSqlite3Adapter, parseStamp } from "@delebash/sqlite-sync";
 import { createAppSync } from "@delebash/sqlite-sync/app";
-import { Hono, readJson } from "@delebash/llm-runner/platform";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { Hono, readJson } from "@delebash/core/platform";
+import { getLogger } from "@delebash/core/platform/log";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import { getState } from "./app_state.js";
 import * as session from "./database/session.js";
 import { ApiError, HttpError } from "./errors.js";

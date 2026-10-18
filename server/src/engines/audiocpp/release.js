@@ -14,8 +14,8 @@
 // module globals): read them from `cfg`, never copy them out.
 
 import os from "node:os";
-import { BinaryAsset } from "@delebash/llm-runner/runner/schema";
-import { model } from "@delebash/llm-runner/platform/models";
+import { BinaryAsset } from "@delebash/core/runner/schema";
+import { model } from "@delebash/core/platform/models";
 import * as devBuild from "./dev_build.js";
 
 export const cfg = {

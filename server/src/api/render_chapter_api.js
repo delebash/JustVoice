@@ -21,10 +21,10 @@
 // the module namespaces (render_core.renderLine / concatLines, synth_scheduler.warmLines,
 // mastering.*, this module's own `self.`).
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { pySorted, strip, truthy } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import { getLogger } from "@delebash/core/platform/log";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { pySorted, strip, truthy } from "@delebash/core/platform/py";
 import * as appState from "../app_state.js";
 import { writeWavContainer } from "../audio/wav.js";
 import * as session from "../database/session.js";

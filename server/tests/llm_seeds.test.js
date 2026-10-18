@@ -5,9 +5,9 @@
 //
 // The shared-rows test boots the LLM half of create_app headless (llm_boot.js) and reads the
 // store; the others boot the real app (app_helpers.js).
-import { stores } from "@delebash/llm-runner/llm";
-import * as llmDb from "@delebash/llm-runner/llm/db";
-import * as llmSeed from "@delebash/llm-runner/llm/seed";
+import { stores } from "@delebash/core/llm";
+import * as llmDb from "@delebash/core/llm/db";
+import * as llmSeed from "@delebash/core/llm/seed";
 import { afterEach, expect, test, vi } from "vitest";
 import { cfg as appCfg } from "../src/app_state.js";
 import { seedWorkspace } from "../src/database/seed.js";

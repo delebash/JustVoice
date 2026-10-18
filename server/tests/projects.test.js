@@ -3,7 +3,7 @@
 // tests/test_projects.py). The ORM queries become SQL on the captured schema; the
 // Python-side defaults (uuid ids, timestamps) come from the column map.
 import { expect, test } from "vitest";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import { tmpDb } from "./helpers.js";
 
 test("project_types_are_first_class", () => {

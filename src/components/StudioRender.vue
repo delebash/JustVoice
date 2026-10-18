@@ -20,7 +20,7 @@
 import { computed, ref, watch } from "vue";
 import {
   AiTaskStrip, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { CANT_RENDER, partOf } from "../services/lineStates.js";

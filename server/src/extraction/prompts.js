@@ -15,8 +15,8 @@
 //
 // These texts seed the shared prompt rows (seed_feature_prompts.js) — byte for byte Python's.
 
-import { strip, truthy } from "@delebash/llm-runner/platform/py";
-import { pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { strip, truthy } from "@delebash/core/platform/py";
+import { pyStrOf } from "@delebash/core/platform/pyjson";
 
 export const DIRECT_SYSTEM = `You attribute dialogue in a novel chapter to its speaker.
 

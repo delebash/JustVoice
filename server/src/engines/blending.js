@@ -17,7 +17,7 @@
 
 import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { NotImplementedError, pyRound, ValueError } from "@delebash/llm-runner/platform/py";
+import { NotImplementedError, pyRound, ValueError } from "@delebash/core/platform/py";
 import * as dspClient from "../audio/dsp_client.js";
 import * as speechCache from "../speech_cache.js";
 import { generatedEngines, kokoroVoices } from "./audiocpp/generated.js";

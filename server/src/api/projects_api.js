@@ -24,11 +24,11 @@
 
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { attachment, Hono, input } from "@delebash/llm-runner/platform";
-import { safeTitle } from "@delebash/llm-runner/platform/filename";
-import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
-import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { attachment, Hono, input } from "@delebash/core/platform";
+import { safeTitle } from "@delebash/core/platform/filename";
+import { RequestValidationError } from "@delebash/core/platform/errors";
+import { literal, nullable, opt, T } from "@delebash/core/platform/models";
 import {
   casefold,
   cpSlice,
@@ -43,8 +43,8 @@ import {
   strRepr,
   truthy,
   ValueError,
-} from "@delebash/llm-runner/platform/py";
-import { jsonLoads, pyJson, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+} from "@delebash/core/platform/py";
+import { jsonLoads, pyJson, pyStrOf } from "@delebash/core/platform/pyjson";
 import { getState } from "../app_state.js";
 import * as bookRun from "../book_run.js";
 import { SequenceMatcher } from "../difflib.js";

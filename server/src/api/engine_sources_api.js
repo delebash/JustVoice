@@ -17,9 +17,9 @@
 // `engines.engine_overrides` map. `resolveSource` is SYNC: engines/manager.js
 // `_ensureVariantLocal` and installer.spawnPrefetch import it.
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { strRepr } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { strRepr } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import * as manager from "../engines/manager.js";
 import * as modelCatalog from "../engines/model_catalog.js";

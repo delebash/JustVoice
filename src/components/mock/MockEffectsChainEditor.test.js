@@ -6,13 +6,13 @@
 // "A / B it" and "Order matters" as built.
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 vi.mock("@vueuse/integrations/useSortable", () => ({ useSortable: () => {} }));
 vi.mock("../PagePlayer.vue", () => ({ default: { render: () => null } }));
 vi.mock("../PlayTransport.vue", () => ({ default: { render: () => null } }));
 const slot = (tag, cls) => ({ setup: (_p, { slots }) => () => h(tag, { class: cls }, slots.default?.()) });
-vi.mock("@delebash/llm-ui", () => ({
+vi.mock("@delebash/ui", () => ({
   pushToast: vi.fn(),
   Icon: { render: () => h("i") },
   UiButton: { props: ["label", "disabled"], setup: (p) => () => h("button", { disabled: p.disabled }, p.label) },

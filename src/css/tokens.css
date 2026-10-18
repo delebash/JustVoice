@@ -4,7 +4,7 @@
  * -----------------------
  * The :root custom properties (+ dark-theme overrides) — the single source of
  * design values, themeable at runtime by the shared appearance engine
- * (@delebash/llm-ui applyAppearance, wired in main.js). Imported before
+ * (@delebash/ui applyAppearance, wired in main.js). Imported before
  * styles.css so every primitive can read them. App standard: tokens.css = the
  * :root tokens only; styles.css = reset/base + canonical jv- primitives.
  *
@@ -72,7 +72,7 @@
 
   --font-ui: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-  /* Semantic font tokens the shared @delebash/llm-ui shells read (AppModal /
+  /* Semantic font tokens the shared @delebash/ui shells read (AppModal /
      AppDialog / EmptyState / HelpDrawer). JustVoice's identity is sans
      throughout (no serif in the design), so headings + body both map to the UI
      font — modal/empty-state titles stay Inter. */

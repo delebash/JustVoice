@@ -13,7 +13,7 @@
 -->
 <script setup>
 import { onMounted, ref } from "vue";
-import { UiToggle, pushToast } from "@delebash/llm-ui";
+import { UiToggle, pushToast } from "@delebash/ui";
 import { useApi } from "../../stores/api.js";
 
 const api = useApi();

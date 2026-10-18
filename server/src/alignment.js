@@ -11,7 +11,7 @@
 //
 // Pure functions only — the aligner call lives in the engine slot.
 
-import { casefold, pyRound } from "@delebash/llm-runner/platform/py";
+import { casefold, pyRound } from "@delebash/core/platform/py";
 import { SequenceMatcher } from "./difflib.js";
 
 // Python's `\S` on str: anything but str.isspace() — JavaScript's `\s` also counts U+FEFF and

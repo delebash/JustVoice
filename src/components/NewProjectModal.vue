@@ -17,7 +17,7 @@
 //   create  — { name, project_type, language } with no file (caller owns the API call)
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton, UiInput, UiSelect, UiTable, UiTag, AppModal, fmtBytes, openHelp, pushToast } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiSelect, UiTable, UiTag, AppModal, fmtBytes, openHelp, pushToast } from "@delebash/ui";
 import { bookLanguageOptions } from "../services/personaFacts.js";
 import { projectKind } from "../services/projectKinds.js";
 import { projectsService } from "../services/projects.js";

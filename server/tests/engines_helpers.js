@@ -9,11 +9,11 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import * as llmDb from "@delebash/llm-runner/llm/db";
-import { Mutex } from "@delebash/llm-runner/platform/asyncutil";
-import { model } from "@delebash/llm-runner/platform/models";
-import * as arbiter from "@delebash/llm-runner/runner/arbiter";
-import { GpuInfo, HardwareInfo } from "@delebash/llm-runner/runner/schema";
+import * as llmDb from "@delebash/core/llm/db";
+import { Mutex } from "@delebash/core/platform/asyncutil";
+import { model } from "@delebash/core/platform/models";
+import * as arbiter from "@delebash/core/runner/arbiter";
+import { GpuInfo, HardwareInfo } from "@delebash/core/runner/schema";
 import * as appState from "../src/app_state.js";
 import { writeWavContainer } from "../src/audio/wav.js";
 import * as session from "../src/database/session.js";

@@ -8,8 +8,8 @@
 // audio/dsp_client); everything else is passed to the engine and the engine chooses how to
 // honor it.
 
-import { pyFloatParse, pyInt, pyStr, strip, truthy } from "@delebash/llm-runner/platform/py";
-import { pyJson, unwrap } from "@delebash/llm-runner/platform/pyjson";
+import { pyFloatParse, pyInt, pyStr, strip, truthy } from "@delebash/core/platform/py";
+import { pyJson, unwrap } from "@delebash/core/platform/pyjson";
 
 /**
  * Stable string form for cache-key hashing — the bytes Python's

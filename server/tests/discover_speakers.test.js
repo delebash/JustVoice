@@ -7,11 +7,11 @@
 // `justvoice.extraction.identify.identify_speakers`), `run.runFeature`
 // (`justvoice.engines.llm.run.run_feature`), `pipeline.runFeature` / `measureFeature`, or a fake
 // adapter registered under the preset's `local-llamacpp` id with the bundled-runner load off.
-import { getLedger } from "@delebash/llm-runner/llm/usage";
-import { getLlmRegistry, LLMResponse } from "@delebash/llm-runner/llm";
-import * as dispatch from "@delebash/llm-runner/llm/dispatch";
-import { LLMNotConfiguredError, setEnsureLocalModel } from "@delebash/llm-runner/llm/dispatch";
-import * as http from "@delebash/llm-runner/platform/http";
+import { getLedger } from "@delebash/core/llm/usage";
+import { getLlmRegistry, LLMResponse } from "@delebash/core/llm";
+import * as dispatch from "@delebash/core/llm/dispatch";
+import { LLMNotConfiguredError, setEnsureLocalModel } from "@delebash/core/llm/dispatch";
+import * as http from "@delebash/core/platform/http";
 import { afterEach, expect, test, vi } from "vitest";
 import { _resolveCast } from "../src/api/extraction_api.js";
 import { getState } from "../src/app_state.js";

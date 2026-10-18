@@ -13,11 +13,11 @@
 <script setup>
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { UiMenu, UiMenuItem, UiMenuSeparator, pageFlow } from "@delebash/llm-ui";
+import { UiMenu, UiMenuItem, UiMenuSeparator, pageFlow } from "@delebash/ui";
 import {
   EmptyState, UiButton, UiCheckbox, UiInput, UiSelect, UiTable, UiTag,
   confirmDialog, languageName, promptDialog, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { facetChoices, facetOptions, narrowed } from "../../services/facets.js";
 import { DIRECTION_OPTIONS, PERSONA_IS, baseLang, directionCell, tagCount, voiceKindLabel } from "../../services/personaFacts.js";
 import { capabilities, effectLabels, personaView, silentWav, store, wait } from "../../services/mock/personaMock.js";

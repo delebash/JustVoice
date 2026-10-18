@@ -6,7 +6,7 @@
 // `registry.synthesize(...)`, which routes to the right backend. Python's RLock guarded state
 // that never spans an await, so it is gone here (one event loop).
 
-import { KeyError } from "@delebash/llm-runner/platform/py";
+import { KeyError } from "@delebash/core/platform/py";
 
 export class EngineRegistry {
   constructor() {

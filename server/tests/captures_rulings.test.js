@@ -5,7 +5,7 @@
 //   19 — a capture's duration_ms is written, from the WAV's header.
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
 import { afterEach, expect, test, vi } from "vitest";
 import * as captures from "../src/api/captures_api.js";
 import { writeWavContainer } from "../src/audio/wav.js";

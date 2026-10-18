@@ -26,12 +26,12 @@
 import { createHash } from "node:crypto";
 import { createReadStream, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
-import { Mutex } from "@delebash/llm-runner/platform/asyncutil";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { pyInt, RuntimeError } from "@delebash/llm-runner/platform/py";
-import * as download from "@delebash/llm-runner/runner/download";
-import * as lifecycle from "@delebash/llm-runner/runner/lifecycle";
-import * as kitModels from "@delebash/llm-runner/runner/models";
+import { Mutex } from "@delebash/core/platform/asyncutil";
+import { getLogger } from "@delebash/core/platform/log";
+import { pyInt, RuntimeError } from "@delebash/core/platform/py";
+import * as download from "@delebash/core/runner/download";
+import * as lifecycle from "@delebash/core/runner/lifecycle";
+import * as kitModels from "@delebash/core/runner/models";
 import { speechCacheRoot } from "./paths.js";
 import * as self from "./speech_cache.js";
 import { atomicWriteJson } from "./storage/atomic.js";

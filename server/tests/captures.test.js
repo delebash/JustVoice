@@ -4,8 +4,8 @@
 // The repetition collapse is refinement's own pure pass; the system composition reads the
 // seeded `refine.*` prompt rows, so its test boots the LLM half of create_app headless
 // (llm_boot.js).
-import * as dispatch from "@delebash/llm-runner/llm/dispatch";
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm/dispatch";
+import * as dispatch from "@delebash/core/llm/dispatch";
+import { LLMNotConfiguredError } from "@delebash/core/llm/dispatch";
 import { afterEach, expect, test, vi } from "vitest";
 import * as captures from "../src/api/captures_api.js";
 import { cfg as appCfg } from "../src/app_state.js";

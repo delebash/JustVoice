@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Reactive façade over the shared server transport (@delebash/llm-ui
+// Reactive façade over the shared server transport (@delebash/ui
 // serverApi). The transport (request, safeRequest, requestBlob, postForm, verbs)
 // lives in the kit; this Pinia store only holds the reactive bits the UI binds
 // to — server URL, bearer token, last error, auth flag — and the setters that
@@ -9,7 +9,7 @@ import { ref, computed } from "vue";
 import {
   lastError, request, safeRequest, get, post, patch, put, del, requestBlob, postForm,
   serverUrl as kitServerUrl,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 
 export const useApi = defineStore("api", () => {
   // ONE resolver (2026-08-15): the kit already layered the `jt:server` override

@@ -6,9 +6,9 @@
 // required to prevent an accidental nuke-all.
 
 import { statSync, unlinkSync } from "node:fs";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
-import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { Hono, input } from "@delebash/core/platform";
+import { RequestValidationError } from "@delebash/core/platform/errors";
+import { literal, nullable, opt, T } from "@delebash/core/platform/models";
 import { Generation, Persona } from "../database/models.js";
 import * as session from "../database/session.js";
 import { badRequest } from "../errors.js";

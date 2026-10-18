@@ -9,7 +9,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { UiButton, UiSelect, UiTag, pushToast, pageFlow } from "@delebash/llm-ui";
+import { UiButton, UiSelect, UiTag, pushToast, pageFlow } from "@delebash/ui";
 import { stepsFor } from "../../services/studioSteps.js";
 import { stepStatus } from "../../services/studioStatus.js";
 import MockRenderChapterView from "../../components/mock/MockRenderChapter.vue";

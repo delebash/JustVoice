@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // The development build of audio.cpp that `npm run dev` runs (docs/dev/TASKS.md, "`npm run
 // dev` always runs the latest audio.cpp"). Our fork's checkout sits beside this one at
-// ../audio.cpp, the way the kit sits at ../just-llm-runner, and the dev app always runs its
+// ../audio.cpp, the way the kit sits at ../just-core, and the dev app always runs its
 // current source: this builds it into ../audio.cpp/build/jv-dev before the app starts,
 // recompiling only what changed. A failed build stops `npm run dev` — starting on the
 // previous binary would not be "the latest" (decided D1).

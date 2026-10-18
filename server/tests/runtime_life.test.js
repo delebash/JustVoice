@@ -8,7 +8,7 @@
 // The Node server is one event loop by design; the load's long waits are awaits.
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import * as kitProcess from "@delebash/llm-runner/runner/process";
+import * as kitProcess from "@delebash/core/runner/process";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { discrete, makeArbiter, resetArbiter, wav } from "./engines_helpers.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";

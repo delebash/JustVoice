@@ -10,8 +10,8 @@
 // Why a dedicated module: the merge is called from BOTH /v1/generate (single line) AND
 // /v1/chapters/render (chapter batch), and the tier ordering must match exactly across both.
 
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { isDict, rstrip, truthy } from "@delebash/llm-runner/platform/py";
+import { getLogger } from "@delebash/core/platform/log";
+import { isDict, rstrip, truthy } from "@delebash/core/platform/py";
 import { Delivery, modelFields } from "./models.js";
 
 // (Python named this logger "justvoice.delivery-merge"; nothing logs through it today.)

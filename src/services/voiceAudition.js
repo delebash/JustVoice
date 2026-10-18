@@ -11,7 +11,7 @@
 // Each returns the WAV Blob, or null when you declined the load. Throws what
 // the server said otherwise (the caller runs handleTermsRefusal first).
 
-import { confirmDialog, pushToast } from "@delebash/llm-ui";
+import { confirmDialog, pushToast } from "@delebash/ui";
 import { readPref, writePref } from "./prefs.js";
 
 async function askingToLoad(play, { who, modelName }) {

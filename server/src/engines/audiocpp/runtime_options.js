@@ -24,7 +24,7 @@
 // Values are text, as audio.cpp reads a session option (`json_options_map`): "true"/"false", a
 // number's digits, a word.
 
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { ValueError } from "@delebash/core/platform/py";
 import * as appState from "../../app_state.js";
 import { CURATED } from "./curated/index.js";
 import { catalogFamily, english, humanize, isFileOption, sessionOptionsOf } from "./generated.js";

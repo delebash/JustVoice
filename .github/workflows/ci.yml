@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 # The app needs the family kit and the sync engine beside it (server/package.json:
-# file:../../just-llm-runner/server and file:../../just-sqlite-sync; quasar.config.js:
-# ../just-llm-runner/ui), so every job checks all three out side by side.
+# file:../../just-core/packages/core and file:../../just-sqlite-sync; quasar.config.js:
+# ../just-core/packages/ui), so every job checks all three out side by side.
 jobs:
   # ── Renderer (Vue + Vite) ─────────────────────────────────────────────────
   renderer:
@@ -24,8 +24,8 @@ jobs:
           path: JustVioce
       - uses: actions/checkout@v4
         with:
-          repository: delebash/just-llm-runner
-          path: just-llm-runner
+          repository: delebash/just-core
+          path: just-core
       - uses: actions/checkout@v4
         with:
           repository: delebash/just-sqlite-sync
@@ -37,10 +37,10 @@ jobs:
           cache-dependency-path: |
             JustVioce/package-lock.json
             JustVioce/src-electron/package-lock.json
-            just-llm-runner/server/package-lock.json
+            just-core/packages/core/package-lock.json
             just-sqlite-sync/package-lock.json
       - name: Install the kit's server deps
-        working-directory: just-llm-runner/server
+        working-directory: just-core/packages/core
         run: npm ci
       - name: Install the sync engine's deps
         working-directory: just-sqlite-sync
@@ -68,8 +68,8 @@ jobs:
           path: JustVioce
       - uses: actions/checkout@v4
         with:
-          repository: delebash/just-llm-runner
-          path: just-llm-runner
+          repository: delebash/just-core
+          path: just-core
       - uses: actions/checkout@v4
         with:
           repository: delebash/just-sqlite-sync
@@ -81,10 +81,10 @@ jobs:
           cache-dependency-path: |
             JustVioce/package-lock.json
             JustVioce/src-electron/package-lock.json
-            just-llm-runner/server/package-lock.json
+            just-core/packages/core/package-lock.json
             just-sqlite-sync/package-lock.json
       - name: Install the kit's server deps
-        working-directory: just-llm-runner/server
+        working-directory: just-core/packages/core
         run: npm ci
       - name: Install the sync engine's deps
         working-directory: just-sqlite-sync

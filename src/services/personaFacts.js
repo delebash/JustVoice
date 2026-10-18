@@ -7,7 +7,7 @@
 // themselves come from the server: a voice's or persona's `directed_by`
 // (`words` · `tags` · `sliders`) and `model_name`.
 
-import { languageName } from "@delebash/llm-ui";
+import { languageName } from "@delebash/ui";
 import { voiceGenderWord } from "./voiceGender.js";
 
 /** Pace · Pitch · Gain — the persona page's How it speaks and Render's "This

@@ -20,7 +20,7 @@
 //   here and the cache key computed there always agree.
 
 import { statSync } from "node:fs";
-import { B, cpLen, pySorted, reEscape, strip } from "@delebash/llm-runner/platform/py";
+import { B, cpLen, pySorted, reEscape, strip } from "@delebash/core/platform/py";
 import { embeddedFiles } from "../audiocpp/gguf_files.js";
 
 // IPA → Kokoro, longest first so "t͡ʃ" is not half-replaced by "tʃ".

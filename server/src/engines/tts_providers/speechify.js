@@ -5,9 +5,9 @@
 // POST /v1/audio/speech with bearer auth. The response is base64-encoded audio in JSON
 // (`audio_data`) — distinct from ElevenLabs returning raw bytes.
 
-import * as http from "@delebash/llm-runner/platform/http";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
+import * as http from "@delebash/core/platform/http";
+import { getLogger } from "@delebash/core/platform/log";
+import { RuntimeError } from "@delebash/core/platform/py";
 import { EngineMeta, PresetVoice, SynthOutput } from "../base.js";
 import { httpxJson } from "../external_openai.js";
 

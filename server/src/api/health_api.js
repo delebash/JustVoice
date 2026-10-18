@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // GET /v1/health (the port of justvoice/api/health_api.py).
 
-import { Hono } from "@delebash/llm-runner/platform";
+import { Hono } from "@delebash/core/platform";
 import { getState } from "../app_state.js";
 import * as manager from "../engines/manager.js";
 import { _variantRows } from "../engines/model_catalog.js";

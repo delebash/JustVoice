@@ -28,7 +28,7 @@ import { computed, nextTick, reactive, ref, watch } from "vue";
 import {
   AppModal, UiButton, UiChip, UiField, UiSelect, UiTable, UiTag, UiTextarea,
   confirmDialog, promptDialog, pushToast, useAiTasksStore,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import DeliveryKnobs from "./DeliveryKnobs.vue";
 import { directionCell, tagCount, voiceKind } from "../services/personaFacts.js";

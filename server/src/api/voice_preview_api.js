@@ -15,11 +15,11 @@ import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, utimesSync, w
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { b64decode, cpLen, NotImplementedError, pyInt, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
-import { pyFloatValue, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { Hono, input } from "@delebash/core/platform";
+import { getLogger } from "@delebash/core/platform/log";
+import { literal, nullable, opt, T } from "@delebash/core/platform/models";
+import { b64decode, cpLen, NotImplementedError, pyInt, strip, truthy, ValueError } from "@delebash/core/platform/py";
+import { pyFloatValue, pyJson } from "@delebash/core/platform/pyjson";
 import { LRUCache } from "lru-cache";
 import { getState } from "../app_state.js";
 import { splitTextIntoChunks } from "../audio/chunked.js";

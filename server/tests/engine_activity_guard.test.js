@@ -2,7 +2,7 @@
 // The manager's per-kind activity guard (2026-08-08 §7b P2-6): an unload of a slot WAITS for
 // that slot's in-flight synth call to finish before terminating the process (the port of
 // tests/test_engine_activity_guard.py — Python's threads are concurrent async calls here).
-import { AsyncEvent, sleep } from "@delebash/llm-runner/platform/asyncutil";
+import { AsyncEvent, sleep } from "@delebash/core/platform/asyncutil";
 import { expect, test } from "vitest";
 import { bareManager } from "./engines_helpers.js";
 

@@ -3,7 +3,7 @@
 // log under the data dir (the port of tests/test_logs_download.py).
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
-import { getLogger } from "@delebash/llm-runner/platform/log";
+import { getLogger } from "@delebash/core/platform/log";
 import { afterEach, expect, test } from "vitest";
 import { appClient, closeApps } from "./app_helpers.js";
 

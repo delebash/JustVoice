@@ -11,7 +11,7 @@
 //
 // Empty strings count as not given.
 
-import { strip } from "@delebash/llm-runner/platform/py";
+import { strip } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import { MCPBinding } from "../database/models.js";
 

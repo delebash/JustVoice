@@ -5,8 +5,8 @@
 // spec's); a file on the server's disk is never a setting; every load option the spec lists is
 // on the model's row at audio.cpp's default, Qwen3's decoder 16-bit by default; Chatterbox
 // Multilingual's v3 checkpoint is one of them; a model's memory price is kept per load-option set.
-import * as stores from "@delebash/llm-runner/llm/stores";
-import * as hardware from "@delebash/llm-runner/runner/hardware";
+import * as stores from "@delebash/core/llm/stores";
+import * as hardware from "@delebash/core/runner/hardware";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as generated from "../src/engines/audiocpp/generated.js";

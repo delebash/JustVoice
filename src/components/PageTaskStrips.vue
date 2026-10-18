@@ -10,7 +10,7 @@
 -->
 <script setup>
 import { computed } from "vue";
-import { AiTaskStrip, useAiTasksStore } from "@delebash/llm-ui";
+import { AiTaskStrip, useAiTasksStore } from "@delebash/ui";
 import { pageTasks } from "../services/pageTasks.js";
 
 const props = defineProps({

@@ -20,9 +20,9 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from "node:fs";
 import path from "node:path";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { RuntimeError, truthy } from "@delebash/llm-runner/platform/py";
-import { pyJson, pyClone, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
+import { getLogger } from "@delebash/core/platform/log";
+import { RuntimeError, truthy } from "@delebash/core/platform/py";
+import { pyJson, pyClone, pyJsonParse } from "@delebash/core/platform/pyjson";
 import * as session from "../database/session.js";
 import { construct, dtIso, floatify, modelDump, Persona, PersonaDelivery, utcNow } from "../models.js";
 import { personasRoot } from "../paths.js";

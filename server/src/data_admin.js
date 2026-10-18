@@ -11,10 +11,10 @@
 
 import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
-import { LLM_TABLES } from "@delebash/llm-runner/llm";
-import * as lifecycle from "@delebash/llm-runner/runner/lifecycle";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { makeDataRouter } from "@delebash/llm-runner/platform/data_api";
+import { LLM_TABLES } from "@delebash/core/llm";
+import * as lifecycle from "@delebash/core/runner/lifecycle";
+import { getLogger } from "@delebash/core/platform/log";
+import { makeDataRouter } from "@delebash/core/platform/data_api";
 import * as appState from "./app_state.js";
 import { TABLE_NAMES, TABLES } from "./database/models.js";
 import * as dbSeed from "./database/seed.js";

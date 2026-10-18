@@ -4,9 +4,9 @@
 // Proprietary /v1/text-to-speech/{voice_id} endpoint. Voices listed at /v1/voices, models
 // hardcoded (ElevenLabs doesn't expose a /models endpoint).
 
-import * as http from "@delebash/llm-runner/platform/http";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
+import * as http from "@delebash/core/platform/http";
+import { getLogger } from "@delebash/core/platform/log";
+import { RuntimeError } from "@delebash/core/platform/py";
 import { writeWavContainer } from "../../audio/wav.js";
 import { EngineMeta, PresetVoice, SynthOutput } from "../base.js";
 import { httpxJson } from "../external_openai.js";

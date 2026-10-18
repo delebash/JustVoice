@@ -11,7 +11,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { UiButton, UiTag, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiTag, AppModal } from "@delebash/ui";
 
 const props = defineProps({
   takeId: { type: String, default: null },

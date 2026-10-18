@@ -17,7 +17,7 @@
 import { computed, ref } from "vue";
 import {
   UiButton, UiCheckbox, UiField, UiInput, UiSegmented, UiSelect, UiSlider, languageName, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { facetOptions, facetTotal, narrowed } from "../services/facets.js";
 import { baseLang, voiceLabel } from "../services/personaFacts.js";

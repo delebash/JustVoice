@@ -27,9 +27,9 @@
 // submit starts it again. An item's callable may return a value or a promise. Python's lock
 // guarded state no `await` splits, so none is needed.
 
-import { AsyncEvent, background } from "@delebash/llm-runner/platform/asyncutil";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import * as arbiter from "@delebash/llm-runner/runner/arbiter";
+import { AsyncEvent, background } from "@delebash/core/platform/asyncutil";
+import { getLogger } from "@delebash/core/platform/log";
+import * as arbiter from "@delebash/core/runner/arbiter";
 import * as manager from "./engines/manager.js";
 import * as renderCore from "./render_core.js";
 import * as self from "./synth_scheduler.js";

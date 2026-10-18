@@ -3,7 +3,7 @@
 // what is wrong, never a 500. Each case was a 500 until 2026-10-08, when the port's comparison
 // found them: a zip named .epub that isn't one, a damaged zip, a CSV with old-Mac line ends, a
 // JustWrite file whose fields have the wrong type (docs/dev/TASKS.md, the step-5 FINDING).
-import { ZipWriter } from "@delebash/llm-runner/platform/zip";
+import { ZipWriter } from "@delebash/core/platform/zip";
 import { expect, test } from "vitest";
 import { ApiError } from "../src/errors.js";
 import { runAdapter } from "../src/imports/index.js";

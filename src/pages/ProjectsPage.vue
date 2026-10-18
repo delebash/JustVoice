@@ -14,13 +14,13 @@
 -->
 <script setup>
 import { computed, onActivated, onMounted, ref } from "vue";
-import { UiButton, UiInput, UiChip, pageFlow } from "@delebash/llm-ui";
-import { EmptyState } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiChip, pageFlow } from "@delebash/ui";
+import { EmptyState } from "@delebash/ui";
 import NewProjectModal from "../components/NewProjectModal.vue";
 import { projectsService } from "../services/projects.js";
 import { openProjectInStudio } from "../services/openProject.js";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast } from "@delebash/ui";
 import { chapterWordForKind, useCopy } from "../services/copy.js";
 import { PROJECT_KINDS, kindLabel, projectKind } from "../services/projectKinds.js";
 import { useActiveProject } from "../stores/activeProject.js";

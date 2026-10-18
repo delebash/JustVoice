@@ -4,7 +4,7 @@
 // dispatch-config concerns (the family shape, JustWrite's feature_catalog). Labels match the
 // routing surface.
 
-import { FeatureCatalogEntry } from "@delebash/llm-runner/llm";
+import { FeatureCatalogEntry } from "@delebash/core/llm";
 
 const e = (key, label, hint, group) => FeatureCatalogEntry({ key, label, hint, group });
 

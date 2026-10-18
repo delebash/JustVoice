@@ -16,12 +16,12 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { KeyError, pySorted, ValueError } from "@delebash/llm-runner/platform/py";
+import { getLogger } from "@delebash/core/platform/log";
+import { KeyError, pySorted, ValueError } from "@delebash/core/platform/py";
 import { construct, dtIso, dtMicros, floatify, modelDump, utcNow, VoiceRecord } from "../models.js";
 import { voicesRoot } from "../paths.js";
 import { atomicWriteJson } from "./atomic.js";
-import { pyClone } from "@delebash/llm-runner/platform/pyjson";
+import { pyClone } from "@delebash/core/platform/pyjson";
 
 const log = getLogger("justvoice.storage.voices");
 

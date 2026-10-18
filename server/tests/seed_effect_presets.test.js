@@ -13,7 +13,7 @@ import { writeWavContainer } from "../src/audio/wav.js";
 import * as session from "../src/database/session.js";
 import { seedBuiltinEffectPresets } from "../src/database/seed.js";
 import { closeModuleDb, initDbAt, tmpPath } from "./helpers.js";
-import { pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
+import { pyJsonParse } from "@delebash/core/platform/pyjson";
 
 afterAll(() => dspClient.stop());
 afterEach(() => closeModuleDb());

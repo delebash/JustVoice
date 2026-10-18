@@ -12,8 +12,8 @@
 // MCP server's `justvoice.speak` calls too. Calls a test spies on go through the module
 // namespaces (render_core, voice_model, the manager, the scheduler, this module's own `self.`).
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { cpLen, pyInt, strRepr } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import { cpLen, pyInt, strRepr } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import { DEFAULT_MAX_CHUNK_CHARS, splitTextIntoChunks } from "../audio/chunked.js";
 import * as dspClient from "../audio/dsp_client.js";

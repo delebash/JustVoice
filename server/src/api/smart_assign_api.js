@@ -14,12 +14,12 @@
 // run's voices step runs for the speakers left without a voice of their own (book_voices). Until
 // then the renderer cast each match with PATCH /v1/speakers/{id}.
 
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { isDict, strip } from "@delebash/llm-runner/platform/py";
-import { jsonLoads, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { Hono, input } from "@delebash/core/platform";
+import { getLogger } from "@delebash/core/platform/log";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { isDict, strip } from "@delebash/core/platform/py";
+import { jsonLoads, pyStrOf } from "@delebash/core/platform/pyjson";
 import { Persona, Speaker } from "../database/models.js";
 import * as session from "../database/session.js";
 import * as run from "../engines/llm/run.js";

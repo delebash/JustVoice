@@ -16,8 +16,8 @@
 // Python; they leave `modelSettings` as PyFloats, so the render-cache key (which hashes
 // Python's json.dumps text) writes them as Python does — "2.0", not "2".
 
-import { strip, truthy } from "@delebash/llm-runner/platform/py";
-import { PyFloat, pyFloatValue } from "@delebash/llm-runner/platform/pyjson";
+import { strip, truthy } from "@delebash/core/platform/py";
+import { PyFloat, pyFloatValue } from "@delebash/core/platform/pyjson";
 import { chainEntries } from "./audio/effects.js";
 import { composeInstruct, mergeDelivery, nestEngineKeys } from "./delivery_merge.js";
 import { currentSettings, takesSetting } from "./engines/audiocpp/generated.js";

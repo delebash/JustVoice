@@ -16,8 +16,8 @@
 // layer, MissingTemplateVariables → a caller bug named loudly, UnknownActionError → an
 // unseeded row).
 
-import { measureAction, runAction, stores, streamAction } from "@delebash/llm-runner/llm";
-import { buildLlmConfig } from "@delebash/llm-runner/llm/config_builder";
+import { measureAction, runAction, stores, streamAction } from "@delebash/core/llm";
+import { buildLlmConfig } from "@delebash/core/llm/config_builder";
 import { PREFER_LOCAL_FEATURES } from "../../feature_catalog.js";
 
 /** The dispatch view over the shared stores — JV's one per-app input is the prefer-local set

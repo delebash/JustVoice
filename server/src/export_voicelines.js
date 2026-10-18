@@ -18,9 +18,9 @@
 // them plans the line with line_takes.planBlock and renders it through render_core.renderLine.
 
 import { createHash } from "node:crypto";
-import { pyRound } from "@delebash/llm-runner/platform/py";
-import { pyFloatValue, pyJson } from "@delebash/llm-runner/platform/pyjson";
-import { ZipWriter } from "@delebash/llm-runner/platform/zip";
+import { pyRound } from "@delebash/core/platform/py";
+import { pyFloatValue, pyJson } from "@delebash/core/platform/pyjson";
+import { ZipWriter } from "@delebash/core/platform/zip";
 import { personaForBlock } from "./api/_speaker_helpers.js";
 import { parseWavHeader, writeWavContainer } from "./audio/wav.js";
 import * as session from "./database/session.js";

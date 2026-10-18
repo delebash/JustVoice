@@ -35,8 +35,8 @@
 
 // The kit's one rule for a file's name — the same module the server names exports with (it is
 // pure, for both sides; JustWrite's renderer imports it too).
-import { safeTitle } from "@delebash/llm-runner/platform/filename";
-import { withAiTask } from "@delebash/llm-ui";
+import { safeTitle } from "@delebash/core/platform/filename";
+import { withAiTask } from "@delebash/ui";
 
 const TERMINAL = new Set(["completed", "failed", "cancelled", "paused"]);
 const JSON_HEADERS = { "Content-Type": "application/json" };

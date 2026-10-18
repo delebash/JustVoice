@@ -8,10 +8,10 @@
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
 // Quasar installed as in the real app — the kit's controls are Quasar components
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 import { i18n } from "../i18n/index.js";
 
-vi.mock("@delebash/llm-ui", () => ({
+vi.mock("@delebash/ui", () => ({
   Icon: { props: ["name", "size", "fill"], setup: () => () => h("i") },
   UiButton: {
     props: ["intent", "size"],

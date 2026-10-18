@@ -16,8 +16,8 @@
 // `closeApps()` closes every app built since the last call (its close hooks stop MCP sessions, the
 // engine manager and the DSP program), then forgets the module database and the app state — the
 // next test starts clean.
-import { closeApp } from "@delebash/llm-runner/platform";
-import { multipart } from "@delebash/llm-runner/platform/http";
+import { closeApp } from "@delebash/core/platform";
+import { multipart } from "@delebash/core/platform/http";
 import "./helpers.js"; // the sandboxed family registry + user cache (JUST_AI_HOME, LLM_RUNNER_CACHE)
 import { createApp } from "../src/app.js";
 import { cfg as appCfg } from "../src/app_state.js";

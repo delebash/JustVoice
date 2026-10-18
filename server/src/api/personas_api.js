@@ -5,11 +5,11 @@
 // people in a book — and one persona can play many. So "used" means the speakers it plays, in
 // which books.
 
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { HttpError } from "@delebash/llm-runner/platform/errors";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { pySorted, splitWs, strip } from "@delebash/llm-runner/platform/py";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { Hono, input } from "@delebash/core/platform";
+import { HttpError } from "@delebash/core/platform/errors";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { pySorted, splitWs, strip } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import { parseWavHeader, writeWavContainer } from "../audio/wav.js";
 import { Block, Generation, Lexicon, MCPBinding, Project, Speaker } from "../database/models.js";

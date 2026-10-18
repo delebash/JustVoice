@@ -5,7 +5,7 @@
   something else (Render's ▶ Play chapter assembles the chapter first).
 -->
 <script setup>
-import { UiButton, UiSlider } from "@delebash/llm-ui";
+import { UiButton, UiSlider } from "@delebash/ui";
 import { fmtTime } from "../composables/usePagePlayer.js";
 
 defineProps({

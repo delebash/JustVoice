@@ -29,7 +29,7 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { _entryOid, _entrySize, _revisionSha, _tree } from "@delebash/llm-runner/runner/models";
+import { _entryOid, _entrySize, _revisionSha, _tree } from "@delebash/core/runner/models";
 import { marked } from "marked";
 import { cfg, MODEL_REPO, MODEL_REVISION } from "../server/src/engines/audiocpp/release.js";
 

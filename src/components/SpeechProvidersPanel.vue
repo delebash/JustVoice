@@ -14,7 +14,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { UiButton, confirmDialog, pushToast } from "@delebash/llm-ui";
+import { UiButton, confirmDialog, pushToast } from "@delebash/ui";
 import TtsProviderForm from "./TtsProviderForm.vue";
 
 const props = defineProps({

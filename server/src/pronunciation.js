@@ -13,7 +13,7 @@
 // Python's regexes are Unicode (`\w`, `\s`, `\b`, IGNORECASE): the kit's W/B classes with the
 // `u` flag stand in for them, and lengths and slices count code points.
 
-import { B, casefold, pySorted, S } from "@delebash/llm-runner/platform/py";
+import { B, casefold, pySorted, S } from "@delebash/core/platform/py";
 
 // `[A-Za-zÀ-ÖØ-öø-ÿ][\w'’-]*`
 const TOKEN_RE = /[A-Za-zÀ-ÖØ-öø-ÿ](?:[\p{L}\p{N}_]|['’-])*/gu;

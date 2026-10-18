@@ -6,14 +6,14 @@
 // The kit's words come first: the instance starts from the kit's catalogs (`kit.*`) and
 // JustVoice's own are merged over them, so a `kit.*` key in ./locales/en.json rewords the kit's —
 // "LLM providers" for the AI console's tab (the vue-i18n standard; the family's plan,
-// just-llm-runner/docs/plans/2026-10-12-i18n-standard.md, Task 1 step B). A language is a file in
+// just-core/docs/plans/2026-10-12-i18n-standard.md, Task 1 step B). A language is a file in
 // ./locales/ (`<code>.json`, the kit's one rule in catalogsFromFiles).
 //
 // Most of JustVoice's screens still carry their words in their templates; moving them into
 // ./locales/en.json is the plan's Task 5.
 
 import { createI18n } from "vue-i18n";
-import { catalogsFromFiles, kitMessages } from "@delebash/llm-ui/i18n/index.js";
+import { catalogsFromFiles, kitMessages } from "@delebash/ui/i18n/index.js";
 
 const own = catalogsFromFiles(import.meta.glob("./locales/*.json", { eager: true }));
 

@@ -16,7 +16,7 @@
 // Ported in full by the render wave (wave C), which reads `leftOutBlocks`. Python's `\w` and
 // `\s` are Unicode on str: the kit's classes stand in, with the `u` flag.
 
-import { PY_WS, strip, truthy } from "@delebash/llm-runner/platform/py";
+import { PY_WS, strip, truthy } from "@delebash/core/platform/py";
 import { DIALOGUE_VERBS } from "./anchors.js";
 import { spokenBlock } from "./flags.js";
 

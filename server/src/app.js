@@ -14,7 +14,7 @@
 
 import path from "node:path";
 import { statSync } from "node:fs";
-import { installLlm, router as runnerRouter } from "@delebash/llm-runner";
+import { installLlm, runnerRouter } from "@delebash/core/llm";
 import {
   bearerAuth,
   createServer,
@@ -28,10 +28,10 @@ import {
   SHUTDOWN_PATH,
   serveStatic,
   starletteCors,
-} from "@delebash/llm-runner/platform";
-import { purePath } from "@delebash/llm-runner/platform/data_paths";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { ValueError } from "@delebash/llm-runner/platform/py";
+} from "@delebash/core/platform";
+import { purePath } from "@delebash/core/platform/data_paths";
+import { getLogger } from "@delebash/core/platform/log";
+import { ValueError } from "@delebash/core/platform/py";
 // ── The routers (registered below in app.py's order) ──
 import { router as activeTasksRouter } from "./api/active_tasks_api.js";
 import { router as alignRouter } from "./api/align_api.js";

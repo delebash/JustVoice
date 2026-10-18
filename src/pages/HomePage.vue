@@ -19,7 +19,7 @@
 <script setup>
 import { ref, onActivated, onBeforeUnmount, onDeactivated, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { useAiTasksStore, pageFlow } from "@delebash/llm-ui";
+import { useAiTasksStore, pageFlow } from "@delebash/ui";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { openProjectInStudio } from "../services/openProject.js";
@@ -28,8 +28,8 @@ import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { pushToast } from "@delebash/llm-ui";
-import { UiButton, UiTag, UiChip, usePoll } from "@delebash/llm-ui";
+import { pushToast } from "@delebash/ui";
+import { UiButton, UiTag, UiChip, usePoll } from "@delebash/ui";
 import { hostCells, llmClaim, residentCells, subscribeVramFeed } from "../services/vramFeed.js";
 import { chapterRendered, needSpeaker, partOf } from "../services/lineStates.js";
 import { PROJECT_KINDS, kindLabel, projectKind } from "../services/projectKinds.js";

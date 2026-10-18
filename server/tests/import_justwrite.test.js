@@ -5,7 +5,7 @@
 // The other half of this contract lives in JustWrite: a test there asserting
 // `book_io.assemble()` still emits the key paths read here. It is recorded in docs/dev/TASKS.md
 // and not built, so these fixtures are JustVoice's only guard against the shape drifting.
-import { ZipWriter } from "@delebash/llm-runner/platform/zip";
+import { ZipWriter } from "@delebash/core/platform/zip";
 import { expect, test } from "vitest";
 import { ApiError } from "../src/errors.js";
 import { listAdapters, runAdapter } from "../src/imports/index.js";

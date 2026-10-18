@@ -16,9 +16,9 @@
 //
 // The rules — what a take was made from, stale, the line's own numbers — live in line_takes.js.
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import { literal, nullable, opt, T } from "@delebash/core/platform/models";
+import { ValueError } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import { Project, Scene } from "../database/models.js";
 import * as session from "../database/session.js";

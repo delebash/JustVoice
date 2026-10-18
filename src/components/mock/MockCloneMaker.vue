@@ -14,7 +14,7 @@
 import { computed, onBeforeUnmount, ref } from "vue";
 import {
   UiButton, UiCheckbox, UiField, UiInput, UiSelect, UiTag, UiTextarea, fmtBytes, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { CAPTURES, capabilities, keepVoice, silentWav, statusOf, terms, termsAccepted, wait } from "../../services/mock/personaMock.js";
 import { MODEL_NOTE, engineOf, fmtLength, forDirection, languageOptionsFor, modelOptions, preferred } from "../../services/mock/mockMakers.js";
 

@@ -7,10 +7,10 @@
 // row → render → preset → dispatch) runs end to end. The prompt measure
 // (`pipeline.measureFeature`, which only sizes pieces) is stubbed to "can't say" on the routes
 // that run the pipeline, so nothing probes a local runner.
-import { getLlmRegistry, LLMResponse, resolveFeaturePreset } from "@delebash/llm-runner/llm";
-import * as llmStores from "@delebash/llm-runner/llm/stores";
-import { setEnsureLocalModel } from "@delebash/llm-runner/llm/dispatch";
-import { RuntimeError, rstrip, cpSlice } from "@delebash/llm-runner/platform/py";
+import { getLlmRegistry, LLMResponse, resolveFeaturePreset } from "@delebash/core/llm";
+import * as llmStores from "@delebash/core/llm/stores";
+import { setEnsureLocalModel } from "@delebash/core/llm/dispatch";
+import { RuntimeError, rstrip, cpSlice } from "@delebash/core/platform/py";
 import { afterEach, expect, test, vi } from "vitest";
 import * as pipeline from "../src/extraction/pipeline.js";
 import { appClient, closeApps } from "./app_helpers.js";

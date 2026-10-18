@@ -16,7 +16,7 @@
 // A whole-number float literal of the Python (`0.0`, `10240.0`) is a PyFloat here, so the
 // seed writes what Python's does.
 
-import { pyFloatValue as F } from "@delebash/llm-runner/platform/pyjson";
+import { pyFloatValue as F } from "@delebash/core/platform/pyjson";
 import { BOOK_VOICES_PRESETS, BOOK_VOICES_SAMPLES } from "./book_voices/prompts.js";
 
 export const DEFAULT_ENGINE_PRESETS = [

@@ -11,7 +11,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { ValueError } from "@delebash/core/platform/py";
 import { construct, CacheStats } from "./models.js";
 
 /** Composable cache-key hasher. Order matters for stable keys. */

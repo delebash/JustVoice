@@ -12,8 +12,8 @@
 // lives here is JustVoice's storage: the `prefs` table, one JSON-encoded value per row
 // (Python's `json.dumps` — a whole-number float stays `1.0`, app.js's body parser keeps it).
 
-import { makePrefsRouter } from "@delebash/llm-runner/platform";
-import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { makePrefsRouter } from "@delebash/core/platform";
+import { jsonLoads, pyJson } from "@delebash/core/platform/pyjson";
 import { Pref } from "../database/models.js";
 import * as session from "../database/session.js";
 

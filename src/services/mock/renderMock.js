@@ -16,9 +16,9 @@
 // stale. "Rendered": its ★ take was made from what the line says and how it is said now;
 // "stale": something it was made from changed since — you choose when to render it again (D4).
 
-import { safeTitle } from "@delebash/llm-runner/platform/filename";
+import { safeTitle } from "@delebash/core/platform/filename";
 import { reactive } from "vue";
-import { withAiTask } from "@delebash/llm-ui";
+import { withAiTask } from "@delebash/ui";
 import { runFigures } from "../renderRun.js";
 import { personaView, silentWav, store, wait } from "./personaMock.js";
 import script from "./ninthFacetScript.json";

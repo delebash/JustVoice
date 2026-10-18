@@ -6,8 +6,8 @@
 // seven_engines_unchanged.test.js.
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import * as dl from "@delebash/llm-runner/runner/download";
-import * as km from "@delebash/llm-runner/runner/models";
+import * as dl from "@delebash/core/runner/download";
+import * as km from "@delebash/core/runner/models";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as generated from "../src/engines/audiocpp/generated.js";

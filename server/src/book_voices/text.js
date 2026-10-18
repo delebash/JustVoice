@@ -6,8 +6,8 @@
 // lines of one paragraph share `paragraph_idx` in their metadata, and a line with none is a
 // paragraph of its own (the rule segmentation.segmentsFromLines reads).
 
-import { splitWs, strip } from "@delebash/llm-runner/platform/py";
-import { jsonLoads } from "@delebash/llm-runner/platform/pyjson";
+import { splitWs, strip } from "@delebash/core/platform/py";
+import { jsonLoads } from "@delebash/core/platform/pyjson";
 import { Block, Scene } from "../database/models.js";
 import { spokenBlock } from "../extraction/flags.js";
 import { stripMarks } from "../extraction/segmentation.js";

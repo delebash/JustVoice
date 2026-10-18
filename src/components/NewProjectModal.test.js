@@ -6,9 +6,9 @@
 // server's words, and Says who speaks? as a yes / no tag from the server's `says_who_speaks`.
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 
-vi.mock("@delebash/llm-ui", () => ({
+vi.mock("@delebash/ui", () => ({
   openHelp: vi.fn(),
   pushToast: vi.fn(),
   fmtBytes: (n) => `${n} B`,

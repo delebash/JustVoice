@@ -24,9 +24,9 @@
 
 import { realpathSync, statSync } from "node:fs";
 import zlib from "node:zlib";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { B, pyFloatParse, pyInt, pySorted, strip, truthy, ValueError, cpLen, reEscape } from "@delebash/llm-runner/platform/py";
-import { unwrap } from "@delebash/llm-runner/platform/pyjson";
+import { getLogger } from "@delebash/core/platform/log";
+import { B, pyFloatParse, pyInt, pySorted, strip, truthy, ValueError, cpLen, reEscape } from "@delebash/core/platform/py";
+import { unwrap } from "@delebash/core/platform/pyjson";
 import { DEFAULT_MAX_CHUNK_CHARS, splitTextIntoChunks } from "./audio/chunked.js";
 import * as dspClient from "./audio/dsp_client.js";
 import { effectsChainHash } from "./audio/effects.js";

@@ -4,25 +4,25 @@ import { ref, onMounted, onActivated, computed, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "../components/PageTaskStrips.vue";
-import { pushToast, saveBlob, serverUrl as apiPath, pageFlow } from "@delebash/llm-ui";
-import { confirmDialog, promptDialog } from "@delebash/llm-ui";
-import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
+import { pushToast, saveBlob, serverUrl as apiPath, pageFlow } from "@delebash/ui";
+import { confirmDialog, promptDialog } from "@delebash/ui";
+import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/ui";
 import { DIRECTION_OPTIONS, VOICE_KINDS, baseLang, directionCell, tagCount, voiceKind, voiceKindLabel } from "../services/personaFacts.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { rowOptions } from "../services/capabilities.js";
 import { voiceRowState } from "../services/voiceGrid.js";
 import { genderWord, savePresetGenderOverride, voiceGender } from "../services/voiceGender.js";
-import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiTable } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiTable } from "@delebash/ui";
 // Language CODE → the name a person reads ("en-US" → American English).
 // Kit-side, because every app in the family shows a language somewhere.
-import { languageName, languageOptionsFrom } from "@delebash/llm-ui";
+import { languageName, languageOptionsFrom } from "@delebash/ui";
 import { facetChoices, facetCounts, facetOptions, facetTotal, narrowed } from "../services/facets.js";
-import { EmptyState } from "@delebash/llm-ui";
+import { EmptyState } from "@delebash/ui";
 // An engine's own terms (Pocket TTS — Kyutai's) refuse a clone until accepted.
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
-import { runAiEndpoint } from "@delebash/llm-ui";
+import { runAiEndpoint } from "@delebash/ui";
 import { useEnginesStore } from "../stores/engines.js";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import PagePlayer from "../components/PagePlayer.vue";

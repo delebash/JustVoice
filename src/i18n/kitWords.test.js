@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 // The kit's words through JustVoice's vue-i18n instance (the family's i18n plan, Task 1 step B —
-// just-llm-runner/docs/plans/2026-10-12-i18n-standard.md): the kit's catalog first, JustVoice's own
+// just-core/docs/plans/2026-10-12-i18n-standard.md): the kit's catalog first, JustVoice's own
 // `kit.*` keys winning, the kit's catalog itself never reworded.
 import { describe, expect, it } from "vitest";
 
-import { kitMessages } from "../../../just-llm-runner/ui/src/i18n/index.js";
+import { kitMessages } from "../../../just-core/packages/ui/src/i18n/index.js";
 import { i18n } from "./index.js";
 
 const { t } = i18n.global;

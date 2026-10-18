@@ -14,7 +14,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { UiInput, UiToggle } from "@delebash/llm-ui";
+import { UiInput, UiToggle } from "@delebash/ui";
 import { useApi } from "../../stores/api.js";
 
 const props = defineProps({

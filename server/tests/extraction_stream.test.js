@@ -14,8 +14,8 @@
 // 2026-10-08): its fake deltas are SimpleNamespaces with no `reasoning` attribute, which the
 // pipeline's stream reader reads, so the run ends in an error frame. Here a missing field is just
 // undefined and the test passes as written.
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { strip, isDict } from "@delebash/llm-runner/platform/py";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { strip, isDict } from "@delebash/core/platform/py";
 import { afterEach, expect, test, vi } from "vitest";
 import * as pipeline from "../src/extraction/pipeline.js";
 import { appClient, closeApps } from "./app_helpers.js";

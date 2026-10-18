@@ -28,7 +28,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
   AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
   UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, pushToast, saveBlob,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import MockEffectsChainEditor from "../../components/mock/MockEffectsChainEditor.vue";
 import SlashTagMenu from "../../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../../composables/usePageCrumbs.js";
@@ -45,7 +45,7 @@ import MockDesignMaker from "../../components/mock/MockDesignMaker.vue";
 import {
   LEXICONS, capabilities as caps, effectLabels, emotionValues, modelVersions, newId, silentWav, statusOf, store, wait,
 } from "../../services/mock/personaMock.js";
-import { pageFlow } from "@delebash/llm-ui";
+import { pageFlow } from "@delebash/ui";
 
 const route = useRoute();
 const router = useRouter();

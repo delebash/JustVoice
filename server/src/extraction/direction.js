@@ -21,10 +21,10 @@
 // the emotion becomes its own tag (render_core's `value_map`); a sliders-only model, or a line with
 // no voice yet, gets nothing. Writing it is extraction_api's `_persistDirection`.
 
-import { LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/llm-runner/llm";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { B, cpLen, errText, isDict, RuntimeError, splitWs, strip, truthy } from "@delebash/llm-runner/platform/py";
-import { jsonRawDecode, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
+import { getLogger } from "@delebash/core/platform/log";
+import { B, cpLen, errText, isDict, RuntimeError, splitWs, strip, truthy } from "@delebash/core/platform/py";
+import { jsonRawDecode, pyStrOf } from "@delebash/core/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import { construct, EMOTION_VALUES, ExtractionSettings } from "../models.js";
 import { emotionChoices } from "../persona_render.js";

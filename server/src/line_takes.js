@@ -26,9 +26,9 @@
 
 import { randomInt } from "node:crypto";
 import { closeSync, fstatSync, openSync, readFileSync, readSync, rmSync, statSync } from "node:fs";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { cpLen, isDict, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
-import { pyFloat, pyFloatValue, pyJsonParse, unwrap } from "@delebash/llm-runner/platform/pyjson";
+import { getLogger } from "@delebash/core/platform/log";
+import { cpLen, isDict, strip, truthy, ValueError } from "@delebash/core/platform/py";
+import { pyFloat, pyFloatValue, pyJsonParse, unwrap } from "@delebash/core/platform/pyjson";
 import { parseWavHeader } from "./audio/wav.js";
 import * as session from "./database/session.js";
 import { Block, Generation, Project, Scene, Speaker, Take } from "./database/models.js";

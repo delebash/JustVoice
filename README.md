@@ -42,8 +42,8 @@ npm install
 npm run dev
 ```
 
-The shared AI stack (`@delebash/llm-runner`) comes from the kit checked out beside this repo
-(`../just-llm-runner`), as `server/package.json` names it. `npm install` installs the app and its
+The shared AI stack (`@delebash/core`) comes from the kit checked out beside this repo
+(`../just-core`), as `server/package.json` names it. `npm install` installs the app and its
 server (an npm workspace); once, also `cd src-electron && npm install` (the desktop app's
 Electron). `npm run dev` opens the desktop app on Quasar's dev server with hot reload; its server
 runs on the dev data folder `data/` in the checkout. `npm run build` makes the installer

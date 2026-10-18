@@ -7,7 +7,7 @@
 // "Auto-detect" for auto was the implementer's label, not the audit's; kept by
 // the user's word on 2026-10-13 (the narrowings review K7).
 
-import { languageName } from "@delebash/llm-ui";
+import { languageName } from "@delebash/ui";
 
 /** The languages Settings offers besides Auto-detect. */
 export const CAPTURE_LANGUAGES = ["en", "es", "fr", "de", "ja"];

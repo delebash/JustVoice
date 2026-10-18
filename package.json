@@ -33,7 +33,7 @@
     "test:server:js": "node scripts/node24.js node_modules/vitest/vitest.mjs run --config server/vitest.config.js"
   },
   "dependencies": {
-    "@delebash/llm-runner": "file:../just-llm-runner/server",
+    "@delebash/core": "file:../just-core/packages/core",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@quasar/extras": "^2.1.0",

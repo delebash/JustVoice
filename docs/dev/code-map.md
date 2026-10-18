@@ -1136,7 +1136,7 @@ knob has no adapter reader, or an adapter override has no declaration.
 ## 7a. From a book file to an audiobook — where each step lives
 
 Mapped 2026-10-11 for the one-click plan (`docs/plans/2026-10-11-one-click-audiobook.md`);
-paths under `server/src/` unless they start with `src/` (the renderer) or `just-llm-runner/`.
+paths under `server/src/` unless they start with `src/` (the renderer) or `just-core/`.
 The ones marked ✓ were re-read by hand; the rest come from a code-reading agent the same day.
 
 | Step | Route / function | What it writes |

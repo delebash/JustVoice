@@ -42,7 +42,7 @@ import { computed, onActivated, onMounted, ref, watch } from "vue";
 import {
   UiButton, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, UiToggle,
   confirmDialog, pushToast, saveBlob,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import ImportModal from "./ImportModal.vue";
 import StudioBookRun from "./StudioBookRun.vue";
 import { packageName, projectsService } from "../services/projects.js";

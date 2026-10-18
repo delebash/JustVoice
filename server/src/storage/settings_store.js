@@ -14,10 +14,10 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { RuntimeError, isJsonObject } from "@delebash/llm-runner/platform/py";
-import { pyJson, pyClone } from "@delebash/llm-runner/platform/pyjson";
-import { openDatabase } from "@delebash/llm-runner/platform/sql";
+import { getLogger } from "@delebash/core/platform/log";
+import { RuntimeError, isJsonObject } from "@delebash/core/platform/py";
+import { pyJson, pyClone } from "@delebash/core/platform/pyjson";
+import { openDatabase } from "@delebash/core/platform/sql";
 import * as session from "../database/session.js";
 import { construct, floatify, modelDump, Settings, SettingsPatch } from "../models.js";
 import { settingsPath } from "../paths.js";

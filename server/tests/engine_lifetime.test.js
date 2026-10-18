@@ -10,13 +10,13 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { addSink } from "@delebash/llm-runner/platform/log";
-import * as procs from "@delebash/llm-runner/platform/procs";
-import * as hardware from "@delebash/llm-runner/runner/hardware";
-import { pollProc, waitExit } from "@delebash/llm-runner/runner/process";
+import { addSink } from "@delebash/core/platform/log";
+import * as procs from "@delebash/core/platform/procs";
+import * as hardware from "@delebash/core/runner/hardware";
+import { pollProc, waitExit } from "@delebash/core/runner/process";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
-import { registerServerStop, cfg as shutdownCfg } from "@delebash/llm-runner/platform/shutdown_api";
+import { registerServerStop, cfg as shutdownCfg } from "@delebash/core/platform/shutdown_api";
 import * as leftovers from "../src/engines/leftovers.js";
 import * as manager from "../src/engines/manager.js";
 import { client, closeApps, makeApp } from "./app_helpers.js";
@@ -57,7 +57,7 @@ test.skipIf(process.platform !== "win32")("the_runtime_dies_when_its_server_is_h
   // End to end, the way the app spawns it: a stand-in server spawns a stand-in runtime through
   // the kit's spawn seam, then the server is killed the hard way (TerminateProcess — no exit
   // hook). The runtime must be gone a moment later.
-  const kitProcess = pathToFileURL(path.resolve(import.meta.dirname, "../../node_modules/@delebash/llm-runner/src/runner/process.js")).href;
+  const kitProcess = pathToFileURL(path.resolve(import.meta.dirname, "../../node_modules/@delebash/core/src/runner/process.js")).href;
   const script = path.join(tmpPath(), "server.mjs");
   writeFileSync(
     script,

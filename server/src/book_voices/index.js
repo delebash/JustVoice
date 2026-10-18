@@ -22,10 +22,10 @@
 // Nothing replaces a voice or persona you made: a speaker already cast is left alone, and a
 // speaker is cast only while it has no persona.
 
-import { LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/llm-runner/llm";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { cpLen, errText, isJsonObject, pySorted, strip } from "@delebash/llm-runner/platform/py";
-import { jsonLoads } from "@delebash/llm-runner/platform/pyjson";
+import { LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
+import { getLogger } from "@delebash/core/platform/log";
+import { cpLen, errText, isJsonObject, pySorted, strip } from "@delebash/core/platform/py";
+import { jsonLoads } from "@delebash/core/platform/pyjson";
 import { personaNamed, sameName, speakerAliases, speakerLineCounts } from "../api/_speaker_helpers.js";
 import * as personasApi from "../api/personas_api.js";
 import * as smartAssignApi from "../api/smart_assign_api.js";

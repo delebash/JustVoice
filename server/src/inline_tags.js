@@ -10,7 +10,7 @@
 // Python's `\w` and `\d` are Unicode on str; the patterns use the kit's `W` class with the
 // `u` flag.
 
-import { splitWs } from "@delebash/llm-runner/platform/py";
+import { splitWs } from "@delebash/core/platform/py";
 
 export class TextToken {
   constructor(text) {

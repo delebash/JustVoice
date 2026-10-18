@@ -5,10 +5,10 @@
 // the library). A step's answer says what it did, what it left alone and what failed, with the
 // model, the recipe, the tokens and the seconds — the numbers the plan's comparison tests read.
 
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { Hono, input } from "@delebash/core/platform";
+import { getLogger } from "@delebash/core/platform/log";
+import { literal, nullable, opt, T } from "@delebash/core/platform/models";
 import { describeVoices, makeVoices, matchRest } from "../book_voices/index.js";
 import * as session from "../database/session.js";
 import { HttpError } from "../errors.js";

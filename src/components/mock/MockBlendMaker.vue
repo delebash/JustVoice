@@ -9,7 +9,7 @@
 import { computed, ref } from "vue";
 import {
   UiButton, UiField, UiInput, UiSegmented, UiSelect, UiSlider, languageName, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { facetOptions, facetTotal, narrowed } from "../../services/facets.js";
 import { baseLang, voiceLabel } from "../../services/personaFacts.js";
 import { genderWord, voiceGender } from "../../services/voiceGender.js";

@@ -34,7 +34,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { pyFloatValue, pyRepr } from "@delebash/llm-runner/platform/pyjson";
+import { pyFloatValue, pyRepr } from "@delebash/core/platform/pyjson";
 import { flagGroups, linesFromRows, quoteLeftOpen } from "../src/extraction/flags.js";
 import { detectMarks, segmentParagraphs, splitIntoParagraphs } from "../src/extraction/segmentation.js";
 import { runAdapter } from "../src/imports/index.js";

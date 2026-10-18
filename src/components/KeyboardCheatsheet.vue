@@ -8,7 +8,7 @@
 -->
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref } from "vue";
-import { AppModal } from "@delebash/llm-ui";
+import { AppModal } from "@delebash/ui";
 
 const open = ref(false);
 

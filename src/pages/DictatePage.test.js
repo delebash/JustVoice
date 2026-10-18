@@ -7,7 +7,7 @@
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
 // Quasar installed as in the real app — the kit's controls are Quasar components
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 import { i18n } from "../i18n/index.js";
 
 const handlers = {};
@@ -23,7 +23,7 @@ vi.mock("../services/native.js", () => ({
   },
 }));
 vi.mock("../stores/api.js", () => ({ useApi: () => ({ serverUrl: "http://127.0.0.1:17494" }) }));
-vi.mock("@delebash/llm-ui", () => ({
+vi.mock("@delebash/ui", () => ({
   Icon: { setup: () => () => h("i") },
   UiButton: { setup: (_p, { slots }) => () => h("button", slots.icon?.()) },
 }));

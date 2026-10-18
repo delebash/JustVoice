@@ -21,9 +21,9 @@
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runtime as dataRuntime } from "@delebash/llm-runner/platform/data_paths";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { splitlines } from "@delebash/llm-runner/platform/py";
+import { runtime as dataRuntime } from "@delebash/core/platform/data_paths";
+import { getLogger } from "@delebash/core/platform/log";
+import { splitlines } from "@delebash/core/platform/py";
 import * as self from "./dev_build.js";
 
 const log = getLogger("justvoice.engines.audiocpp.dev_build");

@@ -11,9 +11,9 @@
 // VRAM wiring: the kit's family default (warm ON) reaches fresh JV databases. Seeds-only
 // rule: an existing DB keeps its stored value until the user resets or flips it.)
 
-import * as llmDb from "@delebash/llm-runner/llm/db";
-import * as llmSeed from "@delebash/llm-runner/llm/seed";
-import { getLogger } from "@delebash/llm-runner/platform/log";
+import * as llmDb from "@delebash/core/llm/db";
+import * as llmSeed from "@delebash/core/llm/seed";
+import { getLogger } from "@delebash/core/platform/log";
 import * as self from "./llm_bootstrap.js";
 
 const log = getLogger("justvoice.llm_bootstrap");

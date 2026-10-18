@@ -13,7 +13,7 @@
     "samples/the-ninth-facet"
   ],
   "dependencies": {
-    "@delebash/llm-runner": "file:../../just-llm-runner/server",
+    "@delebash/core": "file:../../just-core/packages/core",
     "@delebash/sqlite-sync": "file:../../just-sqlite-sync",
     "@fastify/busboy": "^3.2.2",
     "@modelcontextprotocol/sdk": "1.32.1",

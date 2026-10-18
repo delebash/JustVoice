@@ -22,8 +22,8 @@
 // (speakers added earlier in the same request count too) need nothing here: every insert is
 // written at once.
 
-import { casefold, splitWs, strip } from "@delebash/llm-runner/platform/py";
-import { pyJson, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { casefold, splitWs, strip } from "@delebash/core/platform/py";
+import { pyJson, pyStrOf } from "@delebash/core/platform/pyjson";
 import { Block, Persona, Scene, Speaker } from "../database/models.js";
 import { conflict } from "../errors.js";
 

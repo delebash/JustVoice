@@ -10,8 +10,8 @@
 // minimal FastAPI app did (render_helpers.js `viaRoutes`). Python's threads are async tasks:
 // `_waitTerminal` polls with a short sleep.
 import { existsSync } from "node:fs";
-import { AsyncEvent, sleep } from "@delebash/llm-runner/platform/asyncutil";
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { AsyncEvent, sleep } from "@delebash/core/platform/asyncutil";
+import { ValueError } from "@delebash/core/platform/py";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import { router as renderJobsRouter } from "../src/api/render_jobs_api.js";

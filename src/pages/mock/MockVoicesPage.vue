@@ -22,7 +22,7 @@ import { useRoute, useRouter } from "vue-router";
 import {
   EmptyState, UiButton, UiChip, UiField, UiInput, UiMenu, UiMenuItem, UiMenuSeparator, UiSelect, UiTable, UiTag,
   UiTextarea, confirmDialog, languageName, languageOptionsFrom, pageFlow, promptDialog, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import PagePlayer from "../../components/PagePlayer.vue";
 import PlayTransport from "../../components/PlayTransport.vue";
 import { usePagePlayer } from "../../composables/usePagePlayer.js";

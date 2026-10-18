@@ -16,7 +16,7 @@ import {
   CHECK_SERVER_MS,
   installLlmUi,
   startWarmOnBoot,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import AttributionAutoPanel from "../components/lab/AttributionAutoPanel.vue";
 import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
 import SmartAssignResult from "../components/lab/SmartAssignResult.vue";

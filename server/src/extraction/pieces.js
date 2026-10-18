@@ -12,7 +12,7 @@
 // Pure: the caller measures what each paragraph costs (its text plus the answer it will need)
 // and how much room one call has; this module only decides where the cuts go.
 
-import { PY_WS, strip, ValueError } from "@delebash/llm-runner/platform/py";
+import { PY_WS, strip, ValueError } from "@delebash/core/platform/py";
 
 // A paragraph that is only a scene-break mark: "***", "* * *", "---", "#", "~" (fullmatch).
 const _BREAK = new RegExp(`^[${PY_WS}*#~=_\\-–—•·.]+$`, "u");

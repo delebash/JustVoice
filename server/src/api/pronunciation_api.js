@@ -12,7 +12,7 @@
 // line), since 2026-09-30. It used to count every book-scoped lexicon of the project, chosen or
 // not, while the render read none of them: a name could be "handled" and still be said wrong.
 
-import { Hono } from "@delebash/llm-runner/platform";
+import { Hono } from "@delebash/core/platform";
 import { Block, LexiconEntry, Persona, Project, Scene, Speaker } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";

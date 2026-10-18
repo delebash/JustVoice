@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // JustVoice appearance — the generic theme engine + catalogs are SHARED (kit
-// @delebash/llm-ui appearance). JustVoice has no manuscript editor, so no
+// @delebash/ui appearance). JustVoice has no manuscript editor, so no
 // extraApply; it just sets its own brand defaults (Inter UI font, green accent
 // hue 166 — matching tokens.css's measured palette) and re-exports the catalogs
 // its Settings → Appearance UI uses. Supersedes JV's old standalone theme
@@ -9,13 +9,13 @@ import {
   applyAppearance as applyGeneric,
   migrateAppearance as migrateGeneric,
   DEFAULT_APPEARANCE as GENERIC_DEFAULT,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 
 // Re-export the shared catalogs the Settings UI renders.
 export {
   UI_FONTS, UI_SCALES, INK_PALETTES, ACCENT_PRESETS, GOLD_PRESETS, FUNCTIONAL_PRESETS,
   BUTTON_RADIUS_OPTIONS, BUTTON_DENSITY_OPTIONS, BUTTON_LABEL_CASE_OPTIONS, currentMode,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 
 // JustVoice defaults = the generic engine defaults + JV brand. The hue defaults
 // reproduce JV's measured palette (see tokens.css) so the default look is exact.

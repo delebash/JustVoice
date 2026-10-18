@@ -5,8 +5,8 @@
 
 import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
+import { getLogger } from "@delebash/core/platform/log";
+import { RuntimeError } from "@delebash/core/platform/py";
 import { RenderCache } from "./cache.js";
 import { cacheRoot } from "./paths.js";
 import { LexiconStore, PersonaStore, SettingsStore, VoiceStore } from "./storage/index.js";

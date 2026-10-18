@@ -11,12 +11,12 @@
 // (explicit composed system + the worked examples for the current toggles as history), with the
 // column's overrides riding like any feature's.
 
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { HttpError } from "@delebash/llm-runner/platform/errors";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { pyInt, strRepr } from "@delebash/llm-runner/platform/py";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { Hono, input } from "@delebash/core/platform";
+import { HttpError } from "@delebash/core/platform/errors";
+import { getLogger } from "@delebash/core/platform/log";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { pyInt, strRepr } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import * as run from "../engines/llm/run.js";
 import { construct } from "../models.js";

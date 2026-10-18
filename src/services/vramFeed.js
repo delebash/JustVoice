@@ -7,7 +7,7 @@
 // two pollers or double eviction toasts (the exact two-truths shape the
 // 2026-08-13 redesign exists to kill).
 import { computed, ref } from "vue";
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 
 export const vram = ref(null);

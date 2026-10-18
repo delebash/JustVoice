@@ -9,7 +9,7 @@
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { runAiEndpoint, toTaskUsage, useAiTasksStore, withAiTask } from "@delebash/llm-ui";
+import { runAiEndpoint, toTaskUsage, useAiTasksStore, withAiTask } from "@delebash/ui";
 
 beforeEach(() => {
   setActivePinia(createPinia());

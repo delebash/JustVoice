@@ -4,7 +4,7 @@
 // then the workspace seed — what Python's `TestClient(create_app(data_dir=tmp_path))` +
 // `seed_workspace()` gave a test that reads the shared prompt or preset stores. (app.js is the
 // API wave's; this is the same boot without the routes.)
-import { installLlm } from "@delebash/llm-runner/llm";
+import { installLlm } from "@delebash/core/llm";
 import { AppState, setState } from "../src/app_state.js";
 import { seedWorkspace } from "../src/database/seed.js";
 import * as session from "../src/database/session.js";

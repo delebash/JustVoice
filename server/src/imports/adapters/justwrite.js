@@ -26,9 +26,9 @@
 // `docs/dev/design-decisions.md` §3 puts attribution on this side — so lines arrive speakerless
 // and Script's Analyze discovers the speakers.
 
-import { BadZipFile, ZipReader } from "@delebash/llm-runner/platform/zip";
-import { decodeUtf8, isDict, strip, strRepr, truthy } from "@delebash/llm-runner/platform/py";
-import { jsonLoads, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { BadZipFile, ZipReader } from "@delebash/core/platform/zip";
+import { decodeUtf8, isDict, strip, strRepr, truthy } from "@delebash/core/platform/py";
+import { jsonLoads, pyStrOf } from "@delebash/core/platform/pyjson";
 import { badRequest } from "../../errors.js";
 import { construct } from "../../models.js";
 import { StandardImport } from "../standard_schema.js";

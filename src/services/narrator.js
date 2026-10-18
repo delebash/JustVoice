@@ -8,7 +8,7 @@
 // library's persona called Narrator when there is exactly one, and the
 // narration with no speaker moves to it.
 
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast } from "@delebash/ui";
 import { projectsService } from "./projects.js";
 
 /** Narration lines in Script's chapter rows: read, not spoken. */

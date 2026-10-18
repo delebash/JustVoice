@@ -8,7 +8,7 @@
 // real summed bytes). This module projects those rows onto the wire shape (`ModelVariant`).
 // A variant's footprint is MEASURED at load time; before that, audio.cpp's estimate or its files.
 
-import { floorDiv, pyInt, pyMin } from "@delebash/llm-runner/platform/py";
+import { floorDiv, pyInt, pyMin } from "@delebash/core/platform/py";
 import { construct, ModelVariant } from "../models.js";
 import { needOf } from "./audiocpp/generated.js";
 import * as manager from "./manager.js";

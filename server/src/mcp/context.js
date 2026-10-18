@@ -8,8 +8,8 @@
 // background task — there is no client id and no address.
 
 import { AsyncLocalStorage } from "node:async_hooks";
-import { clientHost, isLoopback } from "@delebash/llm-runner/platform/auth";
-import { getLogger } from "@delebash/llm-runner/platform/log";
+import { clientHost, isLoopback } from "@delebash/core/platform/auth";
+import { getLogger } from "@delebash/core/platform/log";
 import { MCPBinding } from "../database/models.js";
 import { getDb } from "../database/session.js";
 import { utcNowNaive } from "../models.js";

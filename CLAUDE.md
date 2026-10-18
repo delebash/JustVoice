@@ -16,10 +16,10 @@ live in `docs/dev/design-decisions.md` §3 — read them before touching anythin
 original `CONTRACT.md` was archived to `docs/plans/archive/` by the 2026-08-04 docs campaign;
 its endpoint table is stale — trust `server/src/api/*` route literals.)
 
-The AI/LLM stack is shared with JustWrite: `@delebash/llm-runner` (the kit's Node package, `../just-llm-runner/server`) + `@delebash/llm-ui` (Vue).
+The AI/LLM stack is shared with JustWrite: `@delebash/core` (the kit's Node package, `../just-core/packages/core`) + `@delebash/ui` (Vue).
 Only TTS and each app's feature catalog differ. A change in those repos lands here too.
 
-The family rules every family repo follows: @../just-llm-runner/docs/family-rules.md
+The family rules every family repo follows: @../just-core/docs/family-rules.md
 
 ## Commands
 
@@ -33,7 +33,7 @@ npm run build:spa                  # the browser build (dist/spa), what the head
 
 npm run server                     # headless; same UI at / (options after --)
 npm run lint && npm run test:server && npm run test:unit   # all must pass before a commit
-node ../just-llm-runner/scripts/check-family.js            # the family guard — must pass too
+node ../just-core/scripts/check-family.js            # the family guard — must pass too
 ```
 
 The dev data folder is `<repo>/data` (gitignored) — the desktop app, `npm run server` and every
@@ -59,7 +59,7 @@ half. Voice training (LoRA) was removed 2026-10-02 — no PyTorch anywhere.
 
 **`npm run dev` runs our audio.cpp checkout, not the release (since 2026-10-03).** Our fork
 (github.com/delebash/audio.cpp, branch `jv`) is checked out beside this repo at `../audio.cpp`,
-the way the kit sits at `../just-llm-runner`. `npm run dev` (Quasar's `beforeDev` hook in
+the way the kit sits at `../just-core`. `npm run dev` (Quasar's `beforeDev` hook in
 `quasar.config.js`) builds the checkout into `../audio.cpp/build/jv-dev` (only what changed; the first build sets the folder up
 — CUDA 12.4 when installed, about 30 min — `scripts/audiocpp-dev.js`), then starts the app with
 `JUSTVOICE_AUDIOCPP_BUILD` naming that build, which the server runs instead of the pinned
@@ -75,7 +75,7 @@ instead (under Tauri that spawned infinite windows). `build/launcher/justvoice-s
 the exe as Node (`ELECTRON_RUN_AS_NODE=1`) on `server/src/serve.js`. Never rename it to match
 the exe.
 
-**The desktop shell is the kit's** (`@delebash/llm-runner/shell`, checked against Electron's
+**The desktop shell is the kit's** (`@delebash/core/shell`, checked against Electron's
 security checklist 2026-10-08): `src-electron/electron-main.js` only names this app's settings;
 the renderer reaches the shell through `src/services/native.js` alone (`window.appShell`).
 
@@ -139,7 +139,7 @@ browser-driven, banned as an acceptance surface on 2026-08-02.
 
 **Browser lookup has one door — `scripts/lib/smoke-common.js`.** Import `findChrome()` or
 `chromeLaunchOptions()` from it; never re-fork the lookup and never hardcode a browser path. The
-implementation is the kit's `../just-llm-runner/scripts/lib/exec-resolve.js` (one copy for the
+implementation is the kit's `../just-core/scripts/lib/exec-resolve.js` (one copy for the
 family; the door binds `JV_CHROME`): it probes `/opt/pw-browsers` (the dev container's prebuilt
 browsers), `~/.cache/ms-playwright` and `%LOCALAPPDATA%\ms-playwright`, across Linux, Windows and
 macOS layouts, skips `headless_shell` builds (they lack the surface these scripts drive), and
@@ -200,7 +200,7 @@ server), and **accessibility users** (real-time TTS, screen-reader integration �
 | The JustWrite ↔ JustVoice boundary | `docs/dev/design-decisions.md` §3 (archived original: `docs/plans/archive/CONTRACT.md`) |
 | UI design method, class inventory, sweep checklist | `docs/dev/design-law.md` |
 | Open work across all three repos | `../justwrite-app/docs/TASKS.md` |
-| The shared AI-stack ledger | `../just-llm-runner/docs/plans/archive/2026-07-06-outstanding-master-plan.md` |
+| The shared AI-stack ledger | `../just-core/docs/plans/archive/2026-07-06-outstanding-master-plan.md` |
 | Per-task history and evidence | `docs/plans/*` |
 | Product scope and feature history | `docs/plans/archive/FEATURES.md`, `docs/plans/archive/DESIGN_FREEZE.md` (both historical records) |
 

@@ -10,9 +10,9 @@
 <script setup>
 import { computed, ref, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/llm-ui";
-import { confirmDialog, promptDialog } from "@delebash/llm-ui";
-import { UiButton, UiTag, UiTable } from "@delebash/llm-ui";
+import { pushToast } from "@delebash/ui";
+import { confirmDialog, promptDialog } from "@delebash/ui";
+import { UiButton, UiTag, UiTable } from "@delebash/ui";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { voiceLabel } from "../services/personaFacts.js";

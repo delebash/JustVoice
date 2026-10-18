@@ -52,7 +52,7 @@
 import { computed, ref, watch } from "vue";
 import {
   UiButton, UiCheckbox, UiChip, UiTable, UiTag, confirmDialog, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useCopy } from "../services/copy.js";

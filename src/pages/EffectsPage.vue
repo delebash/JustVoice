@@ -15,9 +15,9 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast, pageFlow } from "@delebash/llm-ui";
-import { confirmDialog, promptDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTag, UiChip, UiTable } from "@delebash/llm-ui";
+import { pushToast, pageFlow } from "@delebash/ui";
+import { confirmDialog, promptDialog } from "@delebash/ui";
+import { UiButton, UiInput, UiTag, UiChip, UiTable } from "@delebash/ui";
 
 // Kit grid in the JustVoice look (`jv-table-look`). `row-hover` carries both
 // the pointer cursor and the row tint, so the two scoped `.effects-view__row`

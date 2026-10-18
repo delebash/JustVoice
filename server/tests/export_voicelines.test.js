@@ -14,7 +14,7 @@ import * as session from "../src/database/session.js";
 import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js";
 import { ApiError } from "../src/errors.js";
 import * as exportVoicelines from "../src/export_voicelines.js";
-import { ZipReader } from "@delebash/llm-runner/platform/zip";
+import { ZipReader } from "@delebash/core/platform/zip";
 
 const wav = (seconds = 0.25, rate = 16000) => writeWavContainer(Buffer.alloc(2 * Math.trunc(rate * seconds)), rate, 1);
 

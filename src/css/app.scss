@@ -246,7 +246,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .jv-rowact--danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
 .jv-rowact:disabled { opacity: 0.5; cursor: default; }
 
-/* Checkbox now comes from the shared UiCheckbox (@delebash/llm-ui, .ui-checkbox*). */
+/* Checkbox now comes from the shared UiCheckbox (@delebash/ui, .ui-checkbox*). */
 
 /* Canonical eyebrow micro-label + eyebrow-headed pane card — the Labs
    panes (Speaker, Render): a jv-card whose first row is eyebrow ·
@@ -815,13 +815,13 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
 .jv-chip-card--disabled { opacity: 0.55; cursor: not-allowed; }
 .jv-chip-card--disabled input { cursor: not-allowed; }
 
-/* Buttons now use the shared .ui-btn (@delebash/llm-ui), tuned via tokens
+/* Buttons now use the shared .ui-btn (@delebash/ui), tuned via tokens
    (--btn-radius, --accent, --on-accent, …). Only the .jv-btn-group layout
    helper + the jvSpin keyframe (used by other spinners) stay JV-local. */
 .jv-btn-group { display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 @keyframes jvSpin { to { transform: rotate(360deg); } }
 
-/* Inputs/selects now use the shared .ui-input / .ui-select (@delebash/llm-ui),
+/* Inputs/selects now use the shared .ui-input / .ui-select (@delebash/ui),
    tuned via JV tokens. The .ui-w-* content-width caps live in the shared kit
    (token-driven from JV's --w-*). Only JV's untagged-input cap stays local: */
 /* Shared UiInput defaults to full width; JV caps untagged single-line inputs
@@ -835,7 +835,7 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   color: var(--ink-2);
 }
 
-/* Field block (.ui-field*) now comes from the shared kit (@delebash/llm-ui),
+/* Field block (.ui-field*) now comes from the shared kit (@delebash/ui),
    tuned via JV's token bridge. */
 
 /* Form layout primitives (added 2026-06-10 — plan Q6 / Slice 1)
@@ -933,7 +933,7 @@ p + .jv-field-row { margin-top: 12px; }
 }
 
 /* Status badges + selectable chips now use the shared .ui-tag / .ui-chip
-   (@delebash/llm-ui), tuned via JV's tokens (--tag-radius/--chip-radius =
+   (@delebash/ui), tuned via JV's tokens (--tag-radius/--chip-radius =
    --r-pill, --tag-border-width:1px). JV adds one extra tag intent, through the variables an
    intent sets (the kit's quasar/theme.css, "Tag"): */
 .ui-tag--violet { --ui-tag-ink: #6b4fae; --ui-tag-border: #c8b9ea; --ui-tag-bg: #f3eefb; }
@@ -1575,7 +1575,7 @@ p.note,
 .jv-empty__title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
 .jv-empty__message { font-size: 12px; color: var(--ink-3); }
 
-/* Toggle switch now comes from the shared UiToggle (@delebash/llm-ui). */
+/* Toggle switch now comes from the shared UiToggle (@delebash/ui). */
 
 /* Segmented control — used in Settings sub-nav + filters. */
 .jv-segmented {

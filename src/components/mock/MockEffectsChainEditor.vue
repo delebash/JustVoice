@@ -18,7 +18,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useSortable } from "@vueuse/integrations/useSortable";
-import { AppModal, Icon, UiButton, UiCheckbox, UiInput, UiNumber, UiSelect, UiTag, pushToast } from "@delebash/llm-ui";
+import { AppModal, Icon, UiButton, UiCheckbox, UiInput, UiNumber, UiSelect, UiTag, pushToast } from "@delebash/ui";
 import { usePagePlayer } from "../../composables/usePagePlayer.js";
 import { BUILTIN_PRESETS, CATALOG } from "../../services/mock/effectsChainMock.js";
 import { silentWav, wait } from "../../services/mock/personaMock.js";

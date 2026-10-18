@@ -20,7 +20,7 @@
 import { mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { b64decode, pyRound, strRepr } from "@delebash/llm-runner/platform/py";
+import { b64decode, pyRound, strRepr } from "@delebash/core/platform/py";
 import * as z from "zod/v4";
 import { getState } from "../app_state.js";
 import { parseWavHeader } from "../audio/wav.js";

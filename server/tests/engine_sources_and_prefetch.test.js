@@ -9,10 +9,10 @@
 // counterpart (there is no hub library to block); the no-hub-layout half runs.
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { sleep } from "@delebash/llm-runner/platform/asyncutil";
-import * as dl from "@delebash/llm-runner/runner/download";
-import { DownloadCancelled } from "@delebash/llm-runner/runner/download";
-import * as km from "@delebash/llm-runner/runner/models";
+import { sleep } from "@delebash/core/platform/asyncutil";
+import * as dl from "@delebash/core/runner/download";
+import { DownloadCancelled } from "@delebash/core/runner/download";
+import * as km from "@delebash/core/runner/models";
 import { afterEach, expect, test, vi } from "vitest";
 import { resolveSource } from "../src/api/engine_sources_api.js";
 import { getState } from "../src/app_state.js";

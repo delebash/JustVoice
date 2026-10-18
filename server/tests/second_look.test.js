@@ -21,7 +21,7 @@
 // since 2026-10-06 (ExtractionSettings.second_look false) and they never turn it on, so no
 // second-look call is made (IndexError on `calls[0]`, KeyError on `not_in_cast`). Here they turn
 // it on first (PATCH /v1/settings {extraction: {second_look: true}}) — what they test — and pass.
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
+import { RuntimeError } from "@delebash/core/platform/py";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { Line, flagGroups } from "../src/extraction/flags.js";
 import * as pipeline from "../src/extraction/pipeline.js";

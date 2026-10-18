@@ -20,7 +20,7 @@ import { useRoute } from "vue-router";
 import {
   AppModal, DownloadBar, UiButton, UiMenu, UiMenuItem, UiMenuSeparator, UiNumber, UiSelect, UiTable,
   confirmDialog, fmtBytes, languageName, openExternal, openPath, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import DeliveryKnobs from "../../components/DeliveryKnobs.vue";
 import { COMMERCIAL_OPTIONS, COMMERCIAL_USE, SORTS, licClass, licTitle, memoryText, reading } from "../../services/engineFacts.js";
 import { directionCell } from "../../services/personaFacts.js";

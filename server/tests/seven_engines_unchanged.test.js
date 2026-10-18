@@ -12,7 +12,7 @@
 // decision changes is named below with its decision; nothing else may differ.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import { _jsonBody } from "../src/engines/audiocpp/runtime.js";

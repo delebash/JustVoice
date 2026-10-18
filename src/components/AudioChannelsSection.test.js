@@ -5,10 +5,10 @@
 // supported" is gone, and with no device list the form has no device field.
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 const stub = (tag) => ({ props: ["label", "modelValue"], setup: (p, { slots }) => () => h(tag, [p.label, slots.default?.()]) });
-vi.mock("@delebash/llm-ui", () => ({
+vi.mock("@delebash/ui", () => ({
   pushToast: vi.fn(),
   confirmDialog: vi.fn(),
   UiButton: stub("button"),

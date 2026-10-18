@@ -6,8 +6,8 @@
 // 2026-10-05: ⋯ → Export on a voice you made, ⤒ Import voice… in the toolbar.
 
 import { readFileSync } from "node:fs";
-import { Hono } from "@delebash/llm-runner/platform";
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { Hono } from "@delebash/core/platform";
+import { ValueError } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import * as manager from "../engines/manager.js";
 import { badRequest, notFound } from "../errors.js";

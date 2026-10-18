@@ -4,9 +4,9 @@
 // Maps a persona to specific OS audio output devices. Use cases: multi-monitor setups, route
 // certain voices to OBS virtual mic, per-character podcast monitoring across multiple outputs.
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { Hono, input } from "@delebash/core/platform";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { jsonLoads, pyJson } from "@delebash/core/platform/pyjson";
 import { Channel, PersonaChannel, uuid } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";

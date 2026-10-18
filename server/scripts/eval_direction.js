@@ -32,7 +32,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { pyRepr } from "@delebash/llm-runner/platform/pyjson";
+import { pyRepr } from "@delebash/core/platform/pyjson";
 import { segmentParagraphs, splitIntoParagraphs } from "../src/extraction/segmentation.js";
 import { runAdapter } from "../src/imports/index.js";
 

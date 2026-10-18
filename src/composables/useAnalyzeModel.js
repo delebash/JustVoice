@@ -9,7 +9,7 @@
 // changes (a model loaded, unloaded or downloaded — the list the header reads).
 
 import { computed, onActivated, onMounted, ref, watch } from "vue";
-import { useRunnerModels } from "@delebash/llm-ui";
+import { useRunnerModels } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 
 export function useAnalyzeModel() {

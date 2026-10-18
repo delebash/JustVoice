@@ -12,8 +12,8 @@
 
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import * as http from "@delebash/llm-runner/platform/http";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import * as http from "@delebash/core/platform/http";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import { construct, floatify, Settings } from "./models.js";
 
 export const PROG = "justvoice-cli";

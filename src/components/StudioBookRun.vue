@@ -13,7 +13,7 @@
 <script setup>
 import { computed, onActivated, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { confirmDialog, openPath, pushToast, saveBlob, useAiTasksStore } from "@delebash/llm-ui";
+import { confirmDialog, openPath, pushToast, saveBlob, useAiTasksStore } from "@delebash/ui";
 import BookRunCard from "./BookRunCard.vue";
 import {
   LIVE, bookRunFor, followBookRun, followLive, loadBookRun, priceQuestion, resumeBookRun, runFollowed, startBookRun, stopBookRun,

@@ -20,7 +20,7 @@ memory is organised by session, not by subject. The answer, approved "your rec o
   carries that section and the line *"don't re-derive these; re-check one only if the code it
   cites changed after its date"*.
 - **After research:** its facts land here in the same change. A research doc with no entry here
-  is not done. The family guard (`../../../just-llm-runner/scripts/check-family.js`, check 15)
+  is not done. The family guard (`../../../just-core/scripts/check-family.js`, check 15)
   fails any `docs/plans/YYYY-MM-DD-*.md` dated 2026-10-04 or later that this page does not link,
   and any link here that points nowhere. (It can check the link, not that the facts came with
   it — that part is the rule.)
@@ -684,7 +684,7 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
 [`2026-10-02-cpu-placement.md`](../plans/2026-10-02-cpu-placement.md).
 Before the switch (Python engines, history): [`2026-08-08-vram-think.md`](../plans/2026-08-08-vram-think.md) ·
 [`2026-08-13-speech-catalog-redesign.md`](../plans/2026-08-13-speech-catalog-redesign.md).
-The arbiter and the probes are the kit's: [`../../../just-llm-runner/docs/dev/RESEARCH.md`](../../../just-llm-runner/docs/dev/RESEARCH.md).
+The arbiter and the probes are the kit's: [`../../../just-core/docs/dev/RESEARCH.md`](../../../just-core/docs/dev/RESEARCH.md).
 
 ### 2.1 What a line costs
 
@@ -1156,7 +1156,7 @@ its blast radius and the gaps.
   with `refreshRunnerModels`): each model's status — `loaded`, `loading`, `disk`, `available`,
   `error`. AI Settings' catalog reads it and refreshes it after its own Load and Unload; it polls
   itself only while a model is `loading`. — *code, 2026-10-05* ·
-  `../just-llm-runner/ui/src/composables/useRunnerModels.js` (`refresh`, `_startPoll`),
+  `../just-core/packages/ui/src/composables/useRunnerModels.js` (`refresh`, `_startPoll`),
   `components/LuModelCatalog.vue` (`unloadModel`).
 - The kit's LLM engine setup loads through its own task and re-reads that list only after its
   speed measure succeeds; its host hook — `installLlmUi`'s `onQuickSetupApplied({ modelId })` since
@@ -1796,7 +1796,7 @@ blast radius.
   `services/pageTasks.js`, by feature and by the meta the page stamps). (was: `App.vue` showed
   every non-inline task at the top of every page.) — *code, 2026-10-05*.
 - The kit's task panel (the ✨ button) lists every task whatever `inline` says; `inline` only
-  told a global stack to skip a task (`just-llm-runner/ui/src/stores/aiTasks.js`, start()).
+  told a global stack to skip a task (`just-core/packages/ui/src/stores/aiTasks.js`, start()).
   — *code, 2026-10-05*.
 - JustWrite has no app-wide strip — 22 surfaces each mount `AiTaskStrip` for their own task;
   docgen has one surface, no stack. — *code, 2026-10-05* · `grep -rln AiTaskStrip src`.
@@ -2202,7 +2202,7 @@ steps, recipes and slices, and §13 what the research found that bears on it.
 - JV's MCP server has four tools — speak, list_voices, list_personas, transcribe
   (`server/src/mcp/tools.js:4`) — on the official SDK's `McpServer` over Streamable HTTP
   (`server/src/mcp/server.js:27`). — *code, 2026-10-10*.
-- The kit already speaks to Claude with an API key (`../just-llm-runner/server/src/llm/anthropic.js`),
+- The kit already speaks to Claude with an API key (`../just-core/packages/core/src/llm/anthropic.js`),
   routed per feature in AI Settings → Routing by feature. It doesn't know the 5.5 models yet —
   kit RESEARCH §7. — *code, 2026-10-10*.
 - Speaker attribution's Auto picks its route by parameter count alone (Direct from 14 B, else
@@ -3868,11 +3868,11 @@ the module is `server/src/extraction/direction.js`, the step `directScene` in
   `think && !jsonMode` (its comment: "B3 guardrail: a reasoning block corrupts strict JSON"). That
   is why §10.5's `think: true` changed nothing: the run was in JSON mode. So the Frontier recipe's
   row runs with JSON mode off, its preset's thinking on, and its reply is read wherever its JSON
-  sits. — *code, 2026-10-16* · `../just-llm-runner/server/src/llm/prompts.js:511-514`.
+  sits. — *code, 2026-10-16* · `../just-core/packages/core/src/llm/prompts.js:511-514`.
 - **The kit's Claude adapter drops `response_format`** — it passes only `top_p`, `top_k`,
   `metadata` and `stop` — so neither JSON mode nor an action's `json_schema` reaches Claude as
   structured outputs (`output_config.format`, the plan's §8 standard for JSON answers on Claude).
-  — *code, 2026-10-16* · `../just-llm-runner/server/src/llm/anthropic.js:187-188`.
+  — *code, 2026-10-16* · `../just-core/packages/core/src/llm/anthropic.js:187-188`.
 - **§10.5's hand prompt was not kept**, so the seeded Local prompt is new: the rules of the
   cue (a manner verb, an adverb or phrase, narration showing the speaker's state, a thought; not
   the words alone or an exclamation mark), the nine emotions or "", a few words from the cue,
@@ -4069,7 +4069,7 @@ time and the tokens written down, a restart resumed) ran with every model faked
   CJK nearer 1), answers at `extraction.answer_tokens_per_line` (65) a spoken line for Analyze and
   Direction and once a call for the rest, leaves out chapters it would keep (and the voices steps
   once every speaker has a persona — a re-run), and prices it with
-  the kit's `priceFor` / `costFor` (`@delebash/llm-runner/llm/pricing`). The lines with no single
+  the kit's `priceFor` / `costFor` (`@delebash/core/llm/pricing`). The lines with no single
   speaker aren't counted (unknown before Analyze). The start refuses (409) until `accept_price`;
   Resume never asks. *Arithmetic, unmeasured* — on Alice VII–VIII: 30,144 tokens in, 31,525 out
   on the local recipes; 33,404 in, 31,525 out on the frontier ones (Direction reading the chapters
@@ -4077,7 +4077,7 @@ time and the tokens written down, a restart resumed) ran with every model faked
 - **The kit's pricing table has no 5.x row** (`DEFAULT_PRICING`: claude-opus-4-8, sonnet-4-6 …;
   matched by exact id or prefix), so `claude-opus-5-5` and `gpt-6.1-sol` read as *price unknown*
   until a row is added in AI Settings → Pricing — the run still shows their tokens and still
-  asks. — *code* · `../just-llm-runner/server/src/llm/pricing.js:9`.
+  asks. — *code* · `../just-core/packages/core/src/llm/pricing.js:9`.
 - **What the run writes down (§5):** per step the model of its last call, the recipe, tokens in
   and out summed over its calls, calls, and seconds (the steps' own time — a pause between them
   doesn't count); totals and a cost from `costFor`. On the faked Alice VII run each AI step

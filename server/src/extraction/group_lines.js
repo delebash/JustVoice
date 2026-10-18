@@ -21,10 +21,10 @@
 // Analyze gave a speaker is asked too when the narration right beside it says several people speak
 // it (`severalSpeak`); the answer marks it only when it names several.
 
-import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { B, cpSlice, errText, strip, strRepr } from "@delebash/llm-runner/platform/py";
-import { pyStrOf } from "@delebash/llm-runner/platform/pyjson";
+import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { getLogger } from "@delebash/core/platform/log";
+import { B, cpSlice, errText, strip, strRepr } from "@delebash/core/platform/py";
+import { pyStrOf } from "@delebash/core/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import { _buildNameRegex } from "./anchors.js";
 import * as self from "./group_lines.js";

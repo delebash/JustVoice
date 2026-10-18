@@ -27,10 +27,10 @@ import { createReadStream, mkdtempSync, rmSync, statSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
-import { attachment, Hono } from "@delebash/llm-runner/platform";
-import { safeTitle } from "@delebash/llm-runner/platform/filename";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { ZipWriter } from "@delebash/llm-runner/platform/zip";
+import { attachment, Hono } from "@delebash/core/platform";
+import { safeTitle } from "@delebash/core/platform/filename";
+import { getLogger } from "@delebash/core/platform/log";
+import { ZipWriter } from "@delebash/core/platform/zip";
 import { getState } from "../app_state.js";
 import { Project } from "../database/models.js";
 import * as session from "../database/session.js";

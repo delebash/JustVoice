@@ -8,7 +8,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { betterSqlite3Adapter, decodeFile, openSync } from "@delebash/sqlite-sync";
-import { openDatabase } from "@delebash/llm-runner/platform";
+import { openDatabase } from "@delebash/core/platform";
 import { afterEach, expect, test } from "vitest";
 import { getState } from "../src/app_state.js";
 import { readAuth } from "../src/auth.js";

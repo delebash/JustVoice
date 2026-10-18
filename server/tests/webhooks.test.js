@@ -3,8 +3,8 @@
 // dispatcher's delivery bookkeeping + retry ladder (HTTP faked, the backoff zeroed so the ladder
 // runs at once). The port of tests/test_webhooks.py.
 import { createHmac } from "node:crypto";
-import * as http from "@delebash/llm-runner/platform/http";
-import { pyJson, jsonLoads } from "@delebash/llm-runner/platform/pyjson";
+import * as http from "@delebash/core/platform/http";
+import { pyJson, jsonLoads } from "@delebash/core/platform/pyjson";
 import { afterEach, expect, test, vi } from "vitest";
 import * as whApi from "../src/api/webhooks_api.js";
 import { Webhook } from "../src/database/models.js";

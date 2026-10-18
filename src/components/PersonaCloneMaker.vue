@@ -19,7 +19,7 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   UiButton, UiCheckbox, UiField, UiInput, UiSelect, UiTag, UiTextarea, fmtBytes, languageName, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { acceptEngineTerms, handleTermsRefusal } from "../services/engineTerms.js";
 import {
   MODEL_NOTE, blobToB64, checkClip, clipChecks, engineOfRow, makerModelOptions, preferredModel, previewCandidate,

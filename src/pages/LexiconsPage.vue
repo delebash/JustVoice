@@ -7,16 +7,16 @@
   commits on Save / discards on Cancel (save-pattern ruling 2026-06-14) —
   consistent with the other library editors. "+ New lexicon" opens the same
   dialog directly on a blank draft (no prompt-then-popup). Uses the shared
-  AppModal (@delebash/llm-ui) shell so the close ✕ never overlaps Import/Export.
+  AppModal (@delebash/ui) shell so the close ✕ never overlaps Import/Export.
 -->
 <script setup>
 import { computed, nextTick, onActivated, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { kokoroCantSayWords, previewLexiconText } from "../services/lexiconPreview.js";
-import { pushToast, saveBlob, pageFlow } from "@delebash/llm-ui";
-import { confirmDialog, promptDialog } from "@delebash/llm-ui";
-import { UiButton, UiField, UiInput, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
-import { EmptyState } from "@delebash/llm-ui";
+import { pushToast, saveBlob, pageFlow } from "@delebash/ui";
+import { confirmDialog, promptDialog } from "@delebash/ui";
+import { UiButton, UiField, UiInput, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/ui";
+import { EmptyState } from "@delebash/ui";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";

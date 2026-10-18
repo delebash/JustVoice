@@ -8,7 +8,7 @@
 // The legacy-row test initialised the DB through create_app; here through initDb (the part it
 // needs).
 import { afterEach, expect, test } from "vitest";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import * as session from "../src/database/session.js";
 import { construct, LLMProviderConfig, modelDump } from "../src/models.js";
 import { _migrateLlmCamel, SettingsStore } from "../src/storage/settings_store.js";

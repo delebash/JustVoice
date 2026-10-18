@@ -4,7 +4,7 @@
 // built-in Robotic, but the editor could not offer it and the Effects page showed its key.
 import { afterAll, expect, test } from "vitest";
 import "./engines_helpers.js";
-import { pyFloatValue as F } from "@delebash/llm-runner/platform/pyjson";
+import { pyFloatValue as F } from "@delebash/core/platform/pyjson";
 import * as dspClient from "../src/audio/dsp_client.js";
 import { EFFECT_CATALOG } from "../src/audio/effect_catalog.js";
 import { applyEffectsChain } from "../src/audio/effects.js";

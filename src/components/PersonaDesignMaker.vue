@@ -19,7 +19,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { UiButton, UiChip, UiField, UiInput, UiSelect, UiTextarea, languageName, pushToast } from "@delebash/llm-ui";
+import { UiButton, UiChip, UiField, UiInput, UiSelect, UiTextarea, languageName, pushToast } from "@delebash/ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import {
   DESIGN_NOTE, MODEL_NOTE, engineOfRow, makerModelOptions, preferredModel, previewCandidate,

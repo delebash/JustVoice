@@ -24,10 +24,10 @@
 
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { AsyncEvent, background } from "@delebash/llm-runner/platform/asyncutil";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { pyRound, pyStr, strip, ValueError } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { AsyncEvent, background } from "@delebash/core/platform/asyncutil";
+import { getLogger } from "@delebash/core/platform/log";
+import { pyRound, pyStr, strip, ValueError } from "@delebash/core/platform/py";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import { personaForBlock } from "./api/_speaker_helpers.js";
 import * as appState from "./app_state.js";
 import { writeWavContainer } from "./audio/wav.js";

@@ -28,9 +28,9 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { cmp, pyFloatParse, pyInt, rstrip, RuntimeError, splitWs, S, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
-import { pyIntOf, pyJson, unwrap } from "@delebash/llm-runner/platform/pyjson";
+import { getLogger } from "@delebash/core/platform/log";
+import { cmp, pyFloatParse, pyInt, rstrip, RuntimeError, splitWs, S, strip, truthy, ValueError } from "@delebash/core/platform/py";
+import { pyIntOf, pyJson, unwrap } from "@delebash/core/platform/pyjson";
 import * as appState from "../../app_state.js";
 import * as dspClient from "../../audio/dsp_client.js";
 import { parseWavHeader, writeWavContainer } from "../../audio/wav.js";

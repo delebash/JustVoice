@@ -9,10 +9,10 @@
 // tokens already sit in the locally readable settings store, so the loopback door exposes
 // nothing new. Wire shape: {"tokens": [...], "requireForLoopback": bool}.
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { HttpError } from "@delebash/llm-runner/platform/errors";
-import { T } from "@delebash/llm-runner/platform/models";
-import { strip, truthy } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import { HttpError } from "@delebash/core/platform/errors";
+import { T } from "@delebash/core/platform/models";
+import { strip, truthy } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import { AuthSettings, construct } from "../models.js";
 

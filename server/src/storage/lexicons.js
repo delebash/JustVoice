@@ -19,8 +19,8 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from "node:fs";
 import path from "node:path";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { RuntimeError, strip } from "@delebash/llm-runner/platform/py";
+import { getLogger } from "@delebash/core/platform/log";
+import { RuntimeError, strip } from "@delebash/core/platform/py";
 import * as session from "../database/session.js";
 import { construct, Lexicon, utcNow } from "../models.js";
 import { lexiconsRoot } from "../paths.js";

@@ -4,7 +4,7 @@
 > so it can be read cold. **Close = delete** — git keeps the history, so nothing
 > finished stays on this page. **An item lives where the code that closes it
 > lives** — JustVoice work here; shared-kit and shared-server work in
-> `../just-llm-runner/docs/dev/TASKS.md`; JustWrite work in
+> `../just-core/docs/dev/TASKS.md`; JustWrite work in
 > `../justwrite-app/docs/dev/TASKS.md`. Unscheduled ideas go in `IDEAS.md`;
 > adding an idea is never starting it.
 >
@@ -1475,7 +1475,7 @@ GO:     given 2026-10-12 ("fix it all your rec go"; the memory number, the door 
 ### The family on vue-i18n: JustVoice's step B (decided 2026-10-12, in the kit's tracker)
 STATE:  DECIDED 2026-10-12 — the user's ruling in a JustWrite session: "all apps should use the
         standard i18n including kit, everything should be standard no strange worki arounds";
-        then "your rec go" on the plan (`../just-llm-runner/docs/plans/2026-10-12-i18n-standard.md`),
+        then "your rec go" on the plan (`../just-core/docs/plans/2026-10-12-i18n-standard.md`),
         its D2 (b): "JV's session makes them from the diff and the kit commit waits for its word."
         The whole record: the kit's `docs/dev/TASKS.md`, "Every app and the kit on vue-i18n".
         Asked of this session by the JustWrite session's message (2026-10-12).
@@ -1896,7 +1896,7 @@ BUILT:  2026-10-09 — 40 routers, `app.js` (the guards, the MCP stamp and the s
         (not `@hono/mcp` — the SDK's Node transport is that class behind `@hono/node-server`), the SSE
         streams on the kit's `stream`, the uploads on busboy, the test helpers on `app.request`
         (1,061/1,061); a real-socket run on a temp data folder. The plan:
-        `../just-llm-runner/docs/plans/2026-10-09-hono-standard.md` §9.
+        `../just-core/docs/plans/2026-10-09-hono-standard.md` §9.
 OPEN:   nothing.
 GO:     given 2026-10-09 (the kit's item).
 
@@ -2829,7 +2829,7 @@ BUILT:  2026-10-06 — server: `extraction/second_look.py` (each call streams th
         its tokens and time added to the run's usage), `extraction/pipeline.py` (passes them),
         `api/extraction_api.py` analyze stream (`{"step"}` frames, a copy kept at each step, a
         cancel in the second look saves it — synchronously, so the page's reload comes after; the
-        normal save clears the copy first). Kit (committed in just-llm-runner): `client.js`
+        normal save clears the copy first). Kit (committed in just-core): `client.js`
         requestStream `onStep`, `appTask.js` runAiEndpointStream `stepText`/`stepHint`/`onStep`,
         `aiTasks.js` `progress.hint`, the count's tooltip in `AiTaskStrip.vue` and
         `AiStatusPanel.vue`. Script: `services/chapterRun.js` (the words and tooltip; after a cancel
@@ -4036,9 +4036,9 @@ BUILT:  STEP 1, 2026-10-07 — the audio math is in our fork's `dsp/` module and
         (2026-10-07): `docs/plans/2026-10-07-electron-node-plan.md` — READ IT before any step.
         Facts in RESEARCH §6 and the kit's RESEARCH §2. Pointers in the kit's, JustWrite's and
         docgen's TASKS.
-        STEP 2 BUILT, 2026-10-08 — the kit's JavaScript package `../just-llm-runner/server/`
-        (`@delebash/llm-runner`); its build sheet (layout, the conventions every port follows,
-        the slices and waves, the checks): `../just-llm-runner/docs/plans/
+        STEP 2 BUILT, 2026-10-08 — the kit's JavaScript package `../just-core/packages/core/`
+        (`@delebash/core`); its build sheet (layout, the conventions every port follows,
+        the slices and waves, the checks): `../just-core/docs/plans/
         2026-10-07-kit-in-javascript.md` — READ IT before porting any kit module. Checked: 1,084
         tests; the route diff against the Python kit (reads 0 different, writes 37/37, the
         databases 0 different); llama-server load, stop and hard kill on the real GPU, VRAM back
@@ -4535,7 +4535,7 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         settings. server/src/*.js: the server, one file per Python module with the same names;
         serve.js is the entry. server/tests/*.test.js: beside Python's tests until Python is deleted.
         data/: the dev data folder (ruling 6), gitignored. The kit comes in as
-        file:../just-llm-runner/server. server/just_ai_i18n_docgen/ and src-tauri/ are deleted as the
+        file:../just-core/packages/core. server/just_ai_i18n_docgen/ and src-tauri/ are deleted as the
         step's last slice. Lean: yes. It mirrors the kit's own server/src and server/tests."
         DECIDED 2026-10-08 — the user, mid-work: "ok do it all do not stop do the how conversion for
         all apps do not stop at end of turns, unless you have something i really need to answer
@@ -4572,7 +4572,7 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         get quasar" and "1-5 your rec … go" on the five questions as shown. This replaces "the
         conversion continues with today's GUI" above: every app moves to Quasar. The decision, the
         five recommendations and what is open are in the kit's TASKS, "Every family app moves to
-        Quasar" (`../just-llm-runner/docs/dev/TASKS.md`); the phone-app test and the sync design in
+        Quasar" (`../just-core/docs/dev/TASKS.md`); the phone-app test and the sync design in
         JustWrite's TASKS, "The phone app's UI library — the theming test".
 GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07;
         the plan approved 2026-10-07, which is step 1's go. Steps 2–5: "your rec go do it all

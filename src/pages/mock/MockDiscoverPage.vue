@@ -37,7 +37,7 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   UiButton, UiCheckbox, UiChip, UiSelect, UiTable, UiTag, confirmDialog, pageFlow, pushToast,
-} from "@delebash/llm-ui";
+} from "@delebash/ui";
 import { mockOverviewState } from "../../services/mock/bookRunMock.js";
 import {
   AI_SAME, EXAMPLE, FIND_MODEL, PERSONAS, PROJECT, SCENES, STATES, UNIT, fullestName, mockFound, mockNames, mockSetup,

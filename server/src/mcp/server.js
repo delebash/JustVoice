@@ -22,8 +22,8 @@
 // middleware).
 
 import { randomUUID } from "node:crypto";
-import { readJson } from "@delebash/llm-runner/platform";
-import { getLogger } from "@delebash/llm-runner/platform/log";
+import { readJson } from "@delebash/core/platform";
+import { getLogger } from "@delebash/core/platform/log";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";

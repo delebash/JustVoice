@@ -10,9 +10,9 @@
 
 import { existsSync, rmSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { dirSize } from "@delebash/llm-runner/platform/disk_api";
-import { literal, T } from "@delebash/llm-runner/platform/models";
+import { Hono, input } from "@delebash/core/platform";
+import { dirSize } from "@delebash/core/platform/disk_api";
+import { literal, T } from "@delebash/core/platform/models";
 import { getState } from "../app_state.js";
 import * as runtimeOptions from "../engines/audiocpp/runtime_options.js";
 import * as manager from "../engines/manager.js";

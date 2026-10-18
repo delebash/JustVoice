@@ -19,9 +19,9 @@
 
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { runServer } from "@delebash/llm-runner/platform";
-import { addSink, getLogger, LEVELS, setLevel } from "@delebash/llm-runner/platform/log";
-import { pyInt } from "@delebash/llm-runner/platform/py";
+import { runServer } from "@delebash/core/platform";
+import { addSink, getLogger, LEVELS, setLevel } from "@delebash/core/platform/log";
+import { pyInt } from "@delebash/core/platform/py";
 import { createApp } from "./app.js";
 import { getState } from "./app_state.js";
 import { seedWorkspace } from "./database/seed.js";

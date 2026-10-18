@@ -20,7 +20,7 @@
 -->
 <script setup>
 import { computed, reactive, watch } from "vue";
-import { UiButton, UiInput, UiNumber, UiSelect, UiSlider, UiToggle } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiNumber, UiSelect, UiSlider, UiToggle } from "@delebash/ui";
 import { SHAPE_KNOBS } from "../services/personaFacts.js";
 
 const props = defineProps({

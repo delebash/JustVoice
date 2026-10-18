@@ -6,7 +6,7 @@
 // were.
 import { h, nextTick, reactive } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 const reach = { value: null };
 vi.mock("../stores/api.js", () => ({
@@ -30,7 +30,7 @@ vi.mock("../services/voiceAudition.js", () => ({ auditionWithLexicon: vi.fn(), l
 vi.mock("../components/PagePlayer.vue", () => ({ default: { render: () => null } }));
 vi.mock("../components/PlayTransport.vue", () => ({ default: { render: () => null } }));
 const slot = (tag) => ({ setup: (_p, { slots }) => () => h(tag, slots.default?.()) });
-vi.mock("@delebash/llm-ui", () => ({
+vi.mock("@delebash/ui", () => ({
   pushToast: vi.fn(),
   saveBlob: vi.fn(),
   pageFlow: () => ({}),

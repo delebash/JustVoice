@@ -19,7 +19,7 @@
 <script setup>
 import { computed } from "vue";
 import { useQuasar } from "quasar";
-import { LuFeatureChip, UiButton, UiProgress, UiTable, UiTag } from "@delebash/llm-ui";
+import { LuFeatureChip, UiButton, UiProgress, UiTable, UiTag } from "@delebash/ui";
 import {
   LIVE, PROBLEMS, RUN_TAGS, RUNS_ON_SERVER, STEP_LABELS, planLine, priceText, reviewItems,
   runBanner, runningLine, stepStatusText, stepsDone,

@@ -3,7 +3,7 @@
  * Projects API client — Project/Scene/Block CRUD + JustWrite import.
  * Backed by /v1/projects/* endpoints (DESIGN_FREEZE §5).
  */
-import { safeTitle } from "@delebash/llm-runner/platform/filename";
+import { safeTitle } from "@delebash/core/platform/filename";
 import { useApi } from "../stores/api.js";
 
 function withApi() {

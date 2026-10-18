@@ -12,7 +12,7 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { KeyError } from "@delebash/llm-runner/platform/py";
+import { KeyError } from "@delebash/core/platform/py";
 import { runAdapter } from "./imports/index.js";
 import {
   StandardCharacter,

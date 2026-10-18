@@ -3,7 +3,7 @@
 // (The port of justvoice/api/system_api.py. POST /v1/shutdown moved to the kit's
 // platform/shutdown_api.js on 2026-10-15, mounted in app.js.)
 
-import { Hono } from "@delebash/llm-runner/platform";
+import { Hono } from "@delebash/core/platform";
 import { getState } from "../app_state.js";
 import * as systemInfo from "../system_info.js";
 

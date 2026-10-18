@@ -15,8 +15,8 @@
 // The model is stubbed at the pipeline's doors (Python patched `pipeline.run_feature`); the
 // prompt measure is stubbed too (null = "run unmeasured", what a failed measure falls back to),
 // so no test reaches a model.
-import { pySorted } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { pySorted } from "@delebash/core/platform/py";
+import { pyJson } from "@delebash/core/platform/pyjson";
 import { afterEach, expect, test, vi } from "vitest";
 import * as pipeline from "../src/extraction/pipeline.js";
 import { appClient, closeApps } from "./app_helpers.js";

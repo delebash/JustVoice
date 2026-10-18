@@ -5,7 +5,7 @@
 // its book list and open book instead; JustVoice's views each hold their own data, so the window
 // reloads — but not while a dialog is open or the cursor is in a text box (`waitWhileEditing`,
 // decided 2026-10-15, P18): then it reloads at the first check after.
-import { watchSync as watchServerSync } from "@delebash/llm-ui";
+import { watchSync as watchServerSync } from "@delebash/ui";
 
 export function watchSync() {
   return watchServerSync(() => window.location.reload(), { waitWhileEditing: true });

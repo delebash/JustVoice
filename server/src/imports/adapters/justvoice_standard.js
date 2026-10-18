@@ -11,8 +11,8 @@
 
 import { badRequest } from "../../errors.js";
 import { construct } from "../../models.js";
-import { decodeUtf8, isDict } from "@delebash/llm-runner/platform/py";
-import { jsonLoads, PyFloat } from "@delebash/llm-runner/platform/pyjson";
+import { decodeUtf8, isDict } from "@delebash/core/platform/py";
+import { jsonLoads, PyFloat } from "@delebash/core/platform/pyjson";
 import { SCHEMA_VERSION, StandardImport } from "../standard_schema.js";
 
 export const SOURCE_ID = "justvoice_standard";

@@ -30,9 +30,9 @@
 // Python reads these bundles and these read Python's.
 
 import { readFileSync, statSync } from "node:fs";
-import { strip, ValueError } from "@delebash/llm-runner/platform/py";
-import { pyFloatValue, pyJson } from "@delebash/llm-runner/platform/pyjson";
-import { BadZipFile, ZipReader, ZipWriter } from "@delebash/llm-runner/platform/zip";
+import { strip, ValueError } from "@delebash/core/platform/py";
+import { pyFloatValue, pyJson } from "@delebash/core/platform/pyjson";
+import { BadZipFile, ZipReader, ZipWriter } from "@delebash/core/platform/zip";
 import { LookupError } from "./engines/blending.js";
 import { BlendRecipe, construct, floatify, utcNow, VoiceRecord } from "./models.js";
 

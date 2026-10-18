@@ -12,7 +12,7 @@
 -->
 <script setup>
 import { computed, ref } from "vue";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/ui";
 
 const props = defineProps({ modelValue: { type: String, default: "" } });
 const emit = defineEmits(["update:modelValue"]);

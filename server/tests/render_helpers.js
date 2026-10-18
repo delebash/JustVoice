@@ -10,8 +10,8 @@
 // holding just their routers (`viaRoutes`) over the test's own module state (`useState()`). The
 // bare app reads bodies as the real app does (the kit's `installPyFloatBodies`), so a route sees
 // what was sent (`c.get("sentBody")`) and a free field keeps Python's floats.
-import { closeApp, createServer, installPyFloatBodies } from "@delebash/llm-runner/platform";
-import { PyFloat, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
+import { closeApp, createServer, installPyFloatBodies } from "@delebash/core/platform";
+import { PyFloat, pyJsonParse } from "@delebash/core/platform/pyjson";
 import { vi } from "vitest";
 import { router as projectsRouter } from "../src/api/projects_api.js";
 import { router as renderLinesRouter } from "../src/api/render_lines_api.js";

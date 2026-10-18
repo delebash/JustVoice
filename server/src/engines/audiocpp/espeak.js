@@ -19,9 +19,9 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import * as http from "@delebash/llm-runner/platform/http";
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
-import { extractZip } from "@delebash/llm-runner/platform/zip";
+import * as http from "@delebash/core/platform/http";
+import { RuntimeError } from "@delebash/core/platform/py";
+import { extractZip } from "@delebash/core/platform/zip";
 
 export const VERSION = "0.2.4";
 export const _SHA256 = {

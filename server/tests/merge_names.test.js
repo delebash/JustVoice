@@ -5,8 +5,8 @@
 // The names are what gemma's Discover listed on Alice VII–VIII (alice_fixtures.js, RESEARCH
 // §10.4). Every model call is stubbed: `merge_names.runFeature` (the merge's
 // own call) and `identify.identifySpeakers` (Discover's, on the route).
-import * as llmStores from "@delebash/llm-runner/llm/stores";
-import { resolveFeaturePreset } from "@delebash/llm-runner/llm";
+import * as llmStores from "@delebash/core/llm/stores";
+import { resolveFeaturePreset } from "@delebash/core/llm";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import * as identify from "../src/extraction/identify.js";
 import { SpeakerCandidate } from "../src/extraction/identify.js";

@@ -12,9 +12,9 @@
 // mounted — the steps Quasar's generated client entry takes, run here by hand
 // because that entry only exists inside a Quasar build. Quasar is installed as in
 // the real app: the layout and the kit's controls are Quasar components.
-import { registerBootSmoke } from "@delebash/llm-ui/test/bootSmoke.js";
+import { registerBootSmoke } from "@delebash/ui/test/bootSmoke.js";
 // Quasar installed as in the real app — the kit's controls are Quasar components
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 registerBootSmoke({
   boot: async () => {

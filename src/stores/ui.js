@@ -3,7 +3,7 @@
  * uiStore — appearance config + dialog open-state + currently-selected entity
  * ids. Persisted server-side via /v1/prefs (key: `ui`). Partial-persist: only
  * `appearance` + `selectedProfileId` survive a reload. Theming runs through the
- * shared engine (@delebash/llm-ui appearance via services/appearance.js).
+ * shared engine (@delebash/ui appearance via services/appearance.js).
  */
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";

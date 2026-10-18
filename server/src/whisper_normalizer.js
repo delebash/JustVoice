@@ -31,7 +31,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { S } from "@delebash/llm-runner/platform/py";
+import { S } from "@delebash/core/platform/py";
 
 // non-ASCII letters that are not separated by "NFKD" normalization
 const ADDITIONAL_DIACRITICS = {

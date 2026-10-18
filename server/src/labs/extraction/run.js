@@ -17,9 +17,9 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { pyRound, pySorted } from "@delebash/llm-runner/platform/py";
-import { pyFixed, pyFloat } from "@delebash/llm-runner/platform/pyjson";
+import { getLogger } from "@delebash/core/platform/log";
+import { pyRound, pySorted } from "@delebash/core/platform/py";
+import { pyFixed, pyFloat } from "@delebash/core/platform/pyjson";
 
 const logger = getLogger("justvoice.labs.extraction.run");
 

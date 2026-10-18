@@ -8,7 +8,7 @@
   starts.
 -->
 <script setup>
-import { AppModal, UiButton } from "@delebash/llm-ui";
+import { AppModal, UiButton } from "@delebash/ui";
 
 defineProps({
   busy: { type: Boolean, default: false },

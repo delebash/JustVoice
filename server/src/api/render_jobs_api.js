@@ -8,9 +8,9 @@
 // the queued lines at the next boundary; resume re-runs pending + failed blocks only. Jobs
 // survive a server restart as rows ("paused" after the boot sweep).
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { strRepr, ValueError } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { strRepr, ValueError } from "@delebash/core/platform/py";
 import { badRequest, notFound } from "../errors.js";
 import { construct } from "../models.js";
 import * as renderJobs from "../render_jobs.js";

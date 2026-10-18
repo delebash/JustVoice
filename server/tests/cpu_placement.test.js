@@ -7,8 +7,8 @@
 // requests and the Kyutai terms gate, and the runtime processes (the port of
 // tests/test_cpu_placement.py).
 import os from "node:os";
-import * as stores from "@delebash/llm-runner/llm/stores";
-import * as hardware from "@delebash/llm-runner/runner/hardware";
+import * as stores from "@delebash/core/llm/stores";
+import * as hardware from "@delebash/core/runner/hardware";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { discrete, makeArbiter, resetArbiter, wav } from "./engines_helpers.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";

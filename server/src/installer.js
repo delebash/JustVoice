@@ -13,10 +13,10 @@
 // Each `spawn…` returns the job id; `.task` on the module's `cfg.tasks` map holds the running
 // promise (tests await it — Python joined nothing, it polled the job).
 
-import { background } from "@delebash/llm-runner/platform/asyncutil";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { ValueError } from "@delebash/llm-runner/platform/py";
-import { DownloadCancelled } from "@delebash/llm-runner/runner/download";
+import { background } from "@delebash/core/platform/asyncutil";
+import { getLogger } from "@delebash/core/platform/log";
+import { ValueError } from "@delebash/core/platform/py";
+import { DownloadCancelled } from "@delebash/core/runner/download";
 import * as japanese from "./engines/audiocpp/japanese.js";
 import * as manager from "./engines/manager.js";
 import * as modelCatalog from "./engines/model_catalog.js";

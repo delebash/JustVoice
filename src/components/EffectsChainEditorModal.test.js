@@ -7,7 +7,7 @@
 // the effects catalog it gives (services/mock/effectsChainMock.js, its own copy).
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
-import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { createTestApp } from "@delebash/ui/quasar/install.js";
 import { BUILTIN_PRESETS, CATALOG } from "../services/mock/effectsChainMock.js";
 
 vi.mock("@vueuse/integrations/useSortable", () => ({ useSortable: () => {} }));
@@ -26,7 +26,7 @@ vi.mock("../stores/api.js", () => ({
   }),
 }));
 const slot = (tag, cls) => ({ setup: (_p, { slots }) => () => h(tag, { class: cls }, slots.default?.()) });
-vi.mock("@delebash/llm-ui", () => ({
+vi.mock("@delebash/ui", () => ({
   pushToast: vi.fn(),
   Icon: { render: () => h("i") },
   UiButton: { props: ["label", "disabled"], setup: (p) => () => h("button", { disabled: p.disabled }, p.label) },

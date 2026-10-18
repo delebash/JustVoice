@@ -6,7 +6,7 @@
 // drives the SAME task machinery and DownloadBar every LLM download uses.
 // This replaced ~70 lines of hand EWMA/rate/ETA strip code in the old
 // EnginesView (the C3 strip) — the kit's rate tracker owns that now.
-import { createDownloadTask } from "@delebash/llm-ui";
+import { createDownloadTask } from "@delebash/ui";
 
 const PHRASES = {
   connecting: "Connecting",

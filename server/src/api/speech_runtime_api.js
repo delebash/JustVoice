@@ -14,10 +14,10 @@
 
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { Hono, input } from "@delebash/llm-runner/platform";
-import { getLogger } from "@delebash/llm-runner/platform/log";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { strip } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import { getLogger } from "@delebash/core/platform/log";
+import { nullable, opt, T } from "@delebash/core/platform/models";
+import { strip } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import * as devBuild from "../engines/audiocpp/dev_build.js";
 import * as japanese from "../engines/audiocpp/japanese.js";

@@ -26,7 +26,7 @@
 // `onChapterDone` and re-read what changed.
 
 import { reactive } from "vue";
-import { pushToast, runAiEndpoint, runAiEndpointStream } from "@delebash/llm-ui";
+import { pushToast, runAiEndpoint, runAiEndpointStream } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { proseFromBlocks } from "./attribution.js";
 import { bookRunOn } from "./bookRun.js";

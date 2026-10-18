@@ -2,9 +2,9 @@
 // External OpenAI-compatible TTS server probe + live add/remove (the port of
 // justvoice/api/external_api.py).
 
-import { Hono, input } from "@delebash/llm-runner/platform";
-import * as http from "@delebash/llm-runner/platform/http";
-import { isDict, strip } from "@delebash/llm-runner/platform/py";
+import { Hono, input } from "@delebash/core/platform";
+import * as http from "@delebash/core/platform/http";
+import { isDict, strip } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import { ExternalOpenAiTtsBackend } from "../engines/external_openai.js";
 import { badRequest, conflict, notFound } from "../errors.js";

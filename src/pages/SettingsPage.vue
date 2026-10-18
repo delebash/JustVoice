@@ -3,9 +3,9 @@
 import { ref, computed, onActivated, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useApi } from "../stores/api.js";
-import { pushToast, pageFlow } from "@delebash/llm-ui";
-import { confirmDialog } from "@delebash/llm-ui";
-import { AppearancePanel, DataManagement, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore, SETTINGS_SECTION_ORDER } from "@delebash/llm-ui";
+import { pushToast, pageFlow } from "@delebash/ui";
+import { confirmDialog } from "@delebash/ui";
+import { AppearancePanel, DataManagement, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore, SETTINGS_SECTION_ORDER } from "@delebash/ui";
 import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
 import { loadDoc } from "../services/helpDocs.js";
 import { desktopUpdater, hasShell, pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
@@ -20,7 +20,7 @@ import { CAPTURE_LANGUAGES, captureLanguageWord } from "../services/captureLangu
 import CacheView from "../components/CacheSection.vue";
 import WebhooksView from "../components/WebhooksSection.vue";
 // The family Sync screen — by path, not the kit barrel (it needs `qrcode`; SyncPanel.vue's header).
-import SyncPanel from "@delebash/llm-ui/components/SyncPanel.vue";
+import SyncPanel from "@delebash/ui/components/SyncPanel.vue";
 
 // Appearance — the shared rows are the kit AppearancePanel; the Language
 // options are JV app content (docgen has no i18n) so they live here.
@@ -538,7 +538,7 @@ const updater = desktopUpdater();
 
 // ── Appearance ───────────────────────────────────────────────────────
 // The appearance config + theming now live in the shared engine via the ui
-// store (ui.appearance + ui.setAppearance, @delebash/llm-ui applyAppearance).
+// store (ui.appearance + ui.setAppearance, @delebash/ui applyAppearance).
 // The Settings controls below bind straight to ui.appearance.
 
 // ── Capture / Dictation — only what the server reads (decided 2026-10-05) ──

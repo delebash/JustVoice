@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@delebash/llm-ui", () => ({ confirmDialog: vi.fn(), pushToast: vi.fn() }));
+vi.mock("@delebash/ui", () => ({ confirmDialog: vi.fn(), pushToast: vi.fn() }));
 vi.mock("./prefs.js", () => ({ readPref: (_k, fallback) => fallback, writePref: () => {} }));
 
 const { lexiconPreviewBody, lexiconTake, replaysTake } = await import("./voiceAudition.js");

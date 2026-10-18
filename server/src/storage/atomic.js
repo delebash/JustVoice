@@ -8,7 +8,7 @@
 import { closeSync, fsyncSync, mkdirSync, openSync, renameSync, rmSync, writeSync } from "node:fs";
 import { EOL } from "node:os";
 import path from "node:path";
-import { PyFloat, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { PyFloat, pyJson } from "@delebash/core/platform/pyjson";
 import { dtIso } from "../models.js";
 
 /**
