@@ -118,18 +118,6 @@ export const APP_ORIGINS = ["http://localhost:1430", "http://127.0.0.1:1430", DE
 /** The paths the bearer auth and the CSRF Origin check guard: the API and the MCP endpoint. */
 export const GUARDED_PREFIXES = ["/v1", "/mcp"];
 
-/**
- * The catch-all error envelope: an unhandled exception becomes a JSON 500 that still carries
- * the CORS headers (stamped by the CORS hook before the route ran), so the browser sees a real
- * error instead of "blocked by CORS" (verified the hard way, 2026-06-12). The detail is
- * Python's `str(exc)[:300]`.
- */
-function errorEnvelope(err, c) {
-  log.exception(`unhandled error on ${c.req.method} ${new URL(c.req.url).pathname}`, err);
-  const detail = [...String(err instanceof Error ? err.message : err)].slice(0, 300).join("");
-  return c.json({ title: "Internal Server Error", detail }, 500);
-}
-
 /** Routes the kit builds that store a free-form body with Python's json.dumps. */
 export const PY_FLOAT_ROUTES = new Set(["PATCH /v1/prefs"]);
 
@@ -274,7 +262,8 @@ export async function createApp(dataDir = null) {
   // `input({…, pyFloats: true})`, or a kit-built route named here), and every body as sent rides
   // on `c.get("sentBody")` — what pydantic's `exclude_unset` reads (PATCH /v1/settings, PUT
   // /v1/speech-runtime).
-  const app = createServer({ typeBase: TYPE_BASE, onUnhandled: errorEnvelope, pyFloats: { routes: PY_FLOAT_ROUTES } });
+  // An unhandled exception answers the kit's family envelope (§15: problem+json, request id).
+  const app = createServer({ typeBase: TYPE_BASE, pyFloats: { routes: PY_FLOAT_ROUTES } });
 
   // Python's middleware order, outermost first: the MCP client-id stamp, CSRF, then CORS, then
   // bearer auth (Starlette ran the last-added first; Hono runs middleware in the order added). A

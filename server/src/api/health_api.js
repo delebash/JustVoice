@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // GET /v1/health (the port of justvoice/api/health_api.py).
 
-import { Hono } from "@delebash/core/platform";
+import { makeHealthRouter } from "@delebash/core/platform";
 import { getState } from "../app_state.js";
 import * as manager from "../engines/manager.js";
 import { _variantRows } from "../engines/model_catalog.js";
@@ -22,32 +22,33 @@ export function loadedModelName(engineId) {
   return inst ? inst.meta.displayName : engineId;
 }
 
+/** /v1/health through the kit's shared router (app-structure §14); JustVoice's extras are its
+ * engine block and the legacy snake_case api_version. */
 export function router() {
-  const app = new Hono();
-  app.get("/v1/health", (c) => {
-    const st = getState();
-    const engines = st.engines.all().map((e) => ({
-      id: e.meta.engineId,
-      name: e.meta.displayName,
-      ready: e.ready(),
-      backend: e.meta.backend,
-    }));
-    // The legacy in-process registry (st.engines) tracks "current" for backends registered at
-    // boot; the EngineManager tracks the TTS slot's loaded engine independently — checking
-    // both keeps the topbar pill honest however the engine was loaded.
-    const current = manager.getManager().currentId() || st.engines.current();
-    return c.json(
-      construct(HealthResponse, {
-        product: PRODUCT,
-        apiVersion: API_VERSION,
-        status: "ok",
-        version: VERSION,
-        api_version: API_VERSION,
-        current_engine: current,
-        current_model: loadedModelName(current),
-        engines,
-      }),
-    );
+  return makeHealthRouter({ product: PRODUCT, version: VERSION, apiVersion: API_VERSION, extras: () => engineHealth() });
+}
+
+/** The engine half of the health answer, in the HealthResponse model's shape. */
+export function engineHealth() {
+  const st = getState();
+  const engines = st.engines.all().map((e) => ({
+    id: e.meta.engineId,
+    name: e.meta.displayName,
+    ready: e.ready(),
+    backend: e.meta.backend,
+  }));
+  // The legacy in-process registry (st.engines) tracks "current" for backends registered at
+  // boot; the EngineManager tracks the TTS slot's loaded engine independently — checking
+  // both keeps the topbar pill honest however the engine was loaded.
+  const current = manager.getManager().currentId() || st.engines.current();
+  return construct(HealthResponse, {
+    product: PRODUCT,
+    apiVersion: API_VERSION,
+    status: "ok",
+    version: VERSION,
+    api_version: API_VERSION,
+    current_engine: current,
+    current_model: loadedModelName(current),
+    engines,
   });
-  return app;
 }
