@@ -470,8 +470,8 @@ NOT:    CosyVoice3 (its emotion follows the words; its official phrases were alr
         Chatterbox (exaggeration sets intensity only, no emotion to choose).
 BUILT:  the renders (six arms, 1,800 takes), the person's 13 lines, the narration sample, the
         scores (RESEARCH §10.29), the page: claude.ai/artifact/JksCTD7KkySRK6tQneVqMf.
-OPEN:   the user's ears on the page; then the narrator's engine (TASKS "The character voices")
-        and round 6b.
+OPEN:   the narrator's engine (TASKS "The character voices") and round 6b. The user's ears are
+        in (2026-10-17, RESEARCH §10.29).
 GO:     given 2026-10-16 ("your rec on all go").
 
 ### The listening pages: each take's buttons name the line's feeling, plus a note (decided 2026-10-17)
@@ -496,8 +496,7 @@ WHY:    the four steps (No change · A little · Clearly · Like the book) never
 NOT:    one scale for every feeling; a required note.
 BUILT:  both pages, 2026-10-17 (version 2 of each): the buttons from the line's feeling, the note
         box saved with the answers, the totals by the new buttons; checked headless at phone width.
-OPEN:   both pages: https://claude.ai/artifact/JksCTD7KkySRK6tQneVqMf (round 5) and
-        https://claude.ai/artifact/UJjuQupm5aHTzuEhAmNRpZ (round 6b).
+OPEN:   — (both pages answered 2026-10-17: RESEARCH §10.29, §10.30).
 GO:     given 2026-10-17 ("your rec go on all three").
 
 ### Discover's names: the AI suggests, you link — Find same people, Link, Unlink, Kept apart (decided 2026-10-16)

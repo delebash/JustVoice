@@ -4551,6 +4551,34 @@ VII–VIII by Whisper turbo (every line an exact word match) and cut; scored aga
   (emotion2vec+, or loudness for shouted and whispered; Llasa's verifiers, §10.10); the two
   narrators on the ten passages. claude.ai/artifact/JksCTD7KkySRK6tQneVqMf (collection `round5`).
   · `data/round5/` (gitignored).
+- **The user's ears** (2026-10-17; the page's buttons named for each line's feeling — the full
+  feeling · weaker · plain · something else, TASKS "The listening pages"; 116 answers, two takes
+  unrated, the whole-book questions unanswered):
+
+  | Take | Full feeling | Weaker | Plain | Something else | Picked best |
+  |---|---|---|---|---|---|
+  | BreezeTTS 2 | 9 | 2 | 2 | 0 | 9 |
+  | IndexTTS 2.0, acted clip | 4 | 2 | 1 | 6 | 2 |
+  | VoxCPM2, the scorers' pick | 2 | 5 | 3 | 3 | 1 |
+  | IndexTTS 2.0, words | 1 | 2 | 7 | 2 | 1 |
+  | VoxCPM2, a take the scorers passed over | 1 | 5 | 5 | 2 | 0 |
+  | The person (LibriVox) | 0 | 4 | 2 | 6 | 0 |
+
+  - **Breeze is what the ear wants:** the full feeling on both shouted, both contemptuous, both
+    whispered, one angry, one sad and the happy line; weaker on both fearful. — *measured by ear*.
+  - **VoxCPM2 whispers in a whispered voice at speaking volume:** "the volume was loud but in a
+    whispered voice" (8-67, 8-48; the same note on IndexTTS's clip take of 8-48). — *by ear*.
+  - **The scorers' pick barely beats a passed-over take:** on the 8 lines where both VoxCPM2 takes
+    got a feeling, the pick was higher on 2, the same on 5, lower on 1; on 5 more, one of the two
+    was something else. — *by ear*.
+  - **IndexTTS's acted clip** is wrong as often as right: 6 something else, noted "wrong" on both
+    sad lines and "wrong emotion" on 8-27. — *by ear*.
+  - **The person is no bar:** never the full feeling; notes "bad" (8-57, 8-67, 8-48) and "wrong"
+    (7-3). Two of the person's cuts carry a narration word: Whisper hears "shouting off with his
+    head" (8-57) and "whispered she is under sentence of execution" (8-48) — the cut follows
+    Whisper's segment times, which run loose (`data/round5/human/lines/found.json`). — *measured*.
+  - **Narration:** VoxCPM2 (the Alice voice itself) read better on 9 of 10 passages, the same on 1;
+    Breeze's copy on none. — *by ear*.
 
 ### 10.30 Round 6b step 3 — Qwen3 CustomVoice 1.7B speaking our voice, standard pieces only (2026-10-17)
 
@@ -4601,6 +4629,32 @@ again with the option, and each take sent to `/v1/tasks/run`.
 - **The page:** on each of round 5's 13 lines, the person, VoxCPM2's round-5 pick and each
   CustomVoice arm's pick, by round 5's rule. https://claude.ai/artifact/UJjuQupm5aHTzuEhAmNRpZ
   (collection `round6b`). Data: `data/round6b/standard/` (gitignored).
+- **The user's ears** (2026-10-17, the same buttons as round 5's page; 72 answers, a best take
+  picked on 12 of 13 lines):
+
+  | Take | Full feeling | Weaker | Plain | Something else | Picked best |
+  |---|---|---|---|---|---|
+  | VoxCPM2, round 5's pick | 3 | 6 | 2 | 2 | 7 |
+  | CustomVoice, fingerprint | 5 | 1 | 7 | 0 | 4 |
+  | CustomVoice, clip and words (ICL) | 0 | 2 | 10 | 1 | 0 |
+  | The person (LibriVox) | 0 | 4 | 3 | 6 | 1 |
+
+  - **The fingerprint arm acts where the scorer said it doesn't:** the full feeling on both shouted
+    lines, angry 7-32 and both contemptuous lines; plain on both sad, both whispered, the happy line
+    and one fearful (weaker on the other); never something else. The emotion gain (+0.01) and the
+    shouted loudness (+0.6 dB, a mean over all three seeds) missed it; each page take is the
+    loudest of its three seeds. — *by ear*.
+  - **The ICL arm acts on nothing:** the clip's frames damp the direction, as the C engine's author
+    found (§10.28). — *by ear*.
+  - **Fingerprint against VoxCPM2, line by line:** the fingerprint higher on 2 (7-95, 7-57), VoxCPM2
+    on 3 (7-3, 7-31, 8-27), the same on 6; VoxCPM2's two whispers something else. Best picks:
+    VoxCPM2 7, the fingerprint 4. The plan's bar 4 ("prefer its picks … on more lines than not") is
+    not met. — *by ear*.
+  - **One listener's answer moves by a step with the takes around it:** the same VoxCPM2 takes
+    (seeds checked) got the same answer on both pages on 8 of 13 lines, one step apart on 5 (Breeze
+    sat beside them on round 5's page); the person's got the same on 11 of 12. — *by ear*.
+  - **The person's notes:** "says the word wispered" (8-48 — the narration word in the cut); "says
+    intructions" on 8-44 and 8-27, where Whisper hears only the line — unexplained. — *by ear*.
 
 ## Records not yet distilled
 
