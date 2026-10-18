@@ -413,6 +413,24 @@ GO:     given 2026-10-16 ("your rec, sae the research"; the new order: "go on it
         plan, docs/plans/2026-10-16-customvoice-our-voice.md: "go your rec" (2026-10-17) — its
         leans on Q1–Q11. Its two NOT STANDARD pieces, P5 (the rescale to the ryan row's norm) and
         P6 (the Base weight overlay), wait for their word by name.
+        After the user's ears on rounds 5 and 6b (RESEARCH §10.29–10.30), shown: "1. Priming next,
+        on the lines VoxCPM2 leaves plain (sad 7-70, fearful 8-27, happy 7-117)? … Lean: yes, about
+        an hour plus your listening. 2. Whispers: turn VoxCPM2's whispered takes down, and you judge
+        them inside a mastered stretch of chapter? Lean: yes, as part of step 4. 3. P5 and P6: don't
+        build them? Lean: don't build. 4. After priming, for sad, fearful and happy: the emotion
+        direction from CREMA-D … added to the fingerprint? Or EDICT, the approved fallback? Lean:
+        the direction first … It needs its own plan, with the parts that aren't standard named,
+        before anything is built. 5. Narrator: VoxCPM2 narrates, and Breeze does only the character
+        voices? … Lean: yes. 6. Could VoxCPM2 narrate a whole book: yes, with fixes, or no? 7. Drop
+        the LibriVox person from later pages, and make Breeze the bar the engines we can sell have
+        to reach? Lean: yes." The user: "think on it again your rec go". Argued again: priming
+        also on CosyVoice3 (named in the approved step) and on the lines VoxCPM2 is weaker on too
+        (7-31, 8-44), the lead-in cut with the app's own aligner (`/v1/align`); the whispers at three
+        levels inside real narration, through the app's own mastering; for sad, fearful and happy a
+        plan comparing the CREMA-D direction, EDICT and instruct guidance (the direction's only
+        evidence is the scorer that misjudged CustomVoice); the narrator answer waits on the Breeze
+        switch's blast radius. P5 and P6 are not built. Question 6: answered on the page,
+        unsaved (the key "r5whole-Narrator 1" has a space); in chat: "nar 1 yes nar 2 with fixes".
 
 ### Round 6 — the best engine to sell with: Fish Drama 3, then Qwen3 with an emotion direction (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the field sweep (RESEARCH §10.26), shown: "finish round 5 first.

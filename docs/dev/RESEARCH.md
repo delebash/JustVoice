@@ -4578,7 +4578,9 @@ VII–VIII by Whisper turbo (every line an exact word match) and cut; scored aga
     head" (8-57) and "whispered she is under sentence of execution" (8-48) — the cut follows
     Whisper's segment times, which run loose (`data/round5/human/lines/found.json`). — *measured*.
   - **Narration:** VoxCPM2 (the Alice voice itself) read better on 9 of 10 passages, the same on 1;
-    Breeze's copy on none. — *by ear*.
+    Breeze's copy on none. A whole book: VoxCPM2 "yes", Breeze's copy "with fixes" (the user in
+    chat, 2026-10-17 — the page's two answers never saved: their key "r5whole-Narrator 1" has a
+    space, which the page's store refuses; fixed in the page's version 3). — *by ear*.
 
 ### 10.30 Round 6b step 3 — Qwen3 CustomVoice 1.7B speaking our voice, standard pieces only (2026-10-17)
 
