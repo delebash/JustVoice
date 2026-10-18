@@ -68,7 +68,11 @@ test("before a run: one start, each step's model, nothing to pay on this compute
   expect(headers()).toEqual(["Step", "Runs on"]);
   expect(cells(0)).toEqual(["Discover the speakers", "Built-in provider — llama.cpp · gemma-4-26b-a4b-qat"]);
   expect(cells(3)).toEqual(["Analyze — who speaks each line", "Built-in provider — llama.cpp · gemma-4-26b-a4b-qatLocal"]);
-  expect(cells(6)).toEqual(["Design the voices", "Qwen3-TTS VoiceDesign → VoxCPM2"]);
+  expect(cells(6)).toEqual(["Design the voices", "Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2 Commercial use: Separate licence"]);
+  // Breeze's licence word, as the Speech engines list shows it, its hover the licence's words.
+  const chip = el.querySelector(".book-run__steps .ev-lic");
+  expect(chip.className).toBe("ev-lic ev-lic--separate");
+  expect(chip.title).toContain("BreezeBlue Research and Non-Commercial License · JustVoice's reading, checked 2026-10-11");
   expect(cells(9)).toEqual(["Render every line", "Each speaker's persona"]);
   expect(cells(11)).toEqual(["Master and export the M4B", "ffmpeg"]);
   expect(el.querySelector(".book-run__cost").textContent).toContain("nothing to pay");
@@ -89,9 +93,16 @@ test("blocked: what is in the way, and no start", async () => {
   expect(text(".jv-banner--warn")).toEqual([
     "No language model is set up for the AI steps. AI Settings ➜",
     "Set the book's Language below first — its voices are made in it.",
+    "BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the character voices. BreezeTTS 2's licence ➜",
   ]);
   expect(cells(0)[1]).toBe("No model set");
   expect(el.querySelector("button[disabled]")?.textContent).toBe("▶ Make audiobook");
+});
+
+test("blocked by a licence: its link opens the engine's licence to accept", async () => {
+  const events = await mount({ plan: mockPlan({ blocked: true }), run: null });
+  [...el.querySelectorAll("button")].find((b) => b.textContent === "BreezeTTS 2's licence ➜").click();
+  expect(events).toEqual([["onGo", "terms", "breeze_tts"]]);
 });
 
 test("running: the step and chapter it is on, the time so far, Stop", async () => {

@@ -548,15 +548,18 @@ export const TakeCheckSettings = T.Object({
  * Voices from the book — the one-click run's step 5 (the one-click plan's Q1 and Q2, decided
  * 2026-10-11; slice 3, 2026-10-16). A speaker with at least `min_lines` lines in the whole book gets
  * a voice made from the book; the rest are matched from the library. Each voice is designed once on
- * `design_model` and its audition kept as the clip of a voice on `clone_model`, which must clone and
- * still take direction — VoxCPM2, the pick on paper until round 4 settles it. The Local recipe reads
- * up to `speaker_words` words of a speaker's paragraphs and `narrator_words` of the book's opening;
- * an audition speaks the speaker's calm line nearest `audition_words` words.
+ * `design_model` and its audition kept as the clip of a voice on `clone_model` — the narrator's on
+ * `narrator_model` — each of which must clone and still take direction. BreezeTTS 2 plays the
+ * characters (round 4's ears, TASKS "The character voices") and VoxCPM2 narrates (round 5's
+ * narration sample; the narrator's own setting, docs/plans/2026-10-17-narrator-and-character-engines.md).
+ * The Local recipe reads up to `speaker_words` words of a speaker's paragraphs and `narrator_words`
+ * of the book's opening; an audition speaks the speaker's calm line nearest `audition_words` words.
  */
 export const BookVoicesSettings = T.Object({
   min_lines: opt(T.Integer({ minimum: 1 }), 3),
   design_model: opt(T.String(), "qwen3-vd"),
-  clone_model: opt(T.String(), "voxcpm2"),
+  clone_model: opt(T.String(), "breeze_tts"),
+  narrator_model: opt(T.String(), "voxcpm2"),
   speaker_words: opt(T.Integer({ minimum: 50 }), 2000),
   narrator_words: opt(T.Integer({ minimum: 50 }), 2000),
   audition_words: opt(T.Integer({ minimum: 2 }), 25),

@@ -363,13 +363,21 @@ BUILT:  —
         model is weighed at what it took (`manager.placementFor`, `_admitMemory`, `_freeCardMb`);
         docs engines.md (The speech margin), settings-reference, whats-new. Asked of the narrator:
         "Breeze reads everything, narrator included" after a narrator sample in round 5.
-OPEN:   `book_voices.clone_model` → Breeze (after round 5's narrator sample); the licence word on
-        the run's card; the run's stop when its licence isn't accepted. The narrator sample: VoxCPM2
-        read better on 9 of 10 (RESEARCH §10.29), and the narrator stays on it (TASKS "Round 6b",
-        2026-10-17) — but the narrator shares `clone_model` today, so it needs its own setting: the
-        plan docs/plans/2026-10-17-narrator-and-character-engines.md, waiting for its go.
+        2026-10-18: the narrator plan built (docs/plans/2026-10-17-narrator-and-character-engines.md
+        §5) — `book_voices.narrator_model` (voxcpm2), `clone_model` seeded `breeze_tts`, the card's
+        "Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2" with "Commercial use: Separate
+        licence", the stop "BreezeTTS 2's licence isn't accepted on this computer. Accept it to make
+        the character voices." with "BreezeTTS 2's licence ➜"; tests, mock, docs.
+OPEN:   the user's look at the card (#/mock/one-click, and a real book). A stop for the narrator's
+        or design model's licence has no approved words — today's seeds are both "Yes".
 GO:     given 2026-10-16 ("your rec on breeze and license"; after the check, "your rec on all
-        go").
+        go"). The narrator plan (docs/plans/2026-10-17-narrator-and-character-engines.md), shown
+        2026-10-18: "4. The setting's name: `narrator_model`? Lean: yes. 5. The run's card:
+        "Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2", plus Breeze's licence word,
+        "Commercial use: Separate licence", as the engines page shows it? Lean: yes. 6. The stop
+        when Breeze's licence isn't accepted: "BreezeTTS 2's licence isn't accepted on this
+        computer. Accept it to make the character voices." with the link "BreezeTTS 2's licence
+        ➜"? Lean: yes." The user: "compacted re read docs rules session your rec on all go".
 
 ### Round 6b — emotion we build ourselves, simplest first (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the user's "if the tts cant do the emotion directly maybe we do
@@ -440,6 +448,14 @@ GO:     given 2026-10-16 ("your rec, sae the research"; the new order: "go on it
         evidence is the scorer that misjudged CustomVoice); the narrator answer waits on the Breeze
         switch's blast radius. P5 and P6 are not built. Question 6: answered on the page,
         unsaved (the key "r5whole-Narrator 1" has a space); in chat: "nar 1 yes nar 2 with fixes".
+        The plan docs/plans/2026-10-17-sad-fearful-happy.md, shown 2026-10-18: "1. Instruct
+        guidance (NOT STANDARD on Qwen3). Each step of a take is made twice, with and without the
+        direction, and pushed further toward the told one … Lean: yes. 2. Getting fingerprints out
+        of the fork (NOT STANDARD), plus the CREMA-D emotion directions. This is the backup if
+        guidance fails … Lean: yes. 3. EDICT: set aside for now? Its own paper loses the voice when
+        lines are made one at a time, which is how we make them. Lean: set aside." The user:
+        "compacted re read docs rules session your rec on all go" — 3 decided: EDICT set aside.
+        1 and 2 are NOT STANDARD and wait for their word by name.
 
 ### Round 6 — the best engine to sell with: Fish Drama 3, then Qwen3 with an emotion direction (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the field sweep (RESEARCH §10.26), shown: "finish round 5 first.
@@ -451,7 +467,14 @@ WHY:    the user: "we want both best we can sell with best we cant and best over
         engines we need to know it all"; Drama 3 is sellable below USD 500,000 a year and the
         most directable open model; the x-vector direction keeps Qwen3's commercial weights.
 NOT:    act-then-convert (the actor must itself be sellable); Marco-Voice (CosyVoice1-era, a port).
-BUILT:  —
+BUILT:  2026-10-18 (the user: "compacted re read docs rules session your rec on all go"; round 6b's
+        rest waits on the user): the fork updated to audio.cpp's upstream main as of 2026-10-18 —
+        jv 9106c13a, pushed (jv-up's 2026-10-16 merge, our jv, then 28 newer upstream commits,
+        among them "Fix Drama3 seeded repeatability with sorted expert routing (#955)"). Conflicts:
+        the spec-literal helper and F5's staged constants take upstream's own versions of fixes we
+        made first (#934, #953, #956); Qwen3 knows both `stitch_decode` and `base_model_path`; the
+        web UI rebuilt. `build/jv-dev` rebuilt (359 s). Checked against what the app sends: #894
+        keeps `instructions` → `instruction`; #910 is opt-in.
 OPEN:   after round 5's renders: our fork updated to audio.cpp's upstream main (`fish_drama3`,
         merged upstream 2026-10-15), the dev build rebuilt, only the new models tested (TASKS "An
         audio.cpp update tests only the engines and models it adds"); Drama 3 on this 8 GB card

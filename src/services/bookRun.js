@@ -151,6 +151,20 @@ export const PROBLEMS = {
   no_recognition: { text: "Speech recognition isn't installed, so the takes won't be checked.", go: ["ai", "speech-engines"], link: "Speech engines ➜" },
 };
 
+/** A problem's words and its link: PROBLEMS', or — for the character voices' model, whose licence
+ * isn't accepted on this computer (decided 2026-10-16, its words 2026-10-18) — the engine's own
+ * name, and a link that opens its licence to accept. */
+export function problemWords(p) {
+  if (p.code === "terms") {
+    return {
+      text: `${p.name}'s licence isn't accepted on this computer. Accept it to make the character voices.`,
+      go: ["terms", p.engine],
+      link: `${p.name}'s licence ➜`,
+    };
+  }
+  return PROBLEMS[p.code];
+}
+
 /** The banner above the steps for a run that has stopped or ended — `{intent, title, text}`, or
  * null while it runs or before one. */
 export function runBanner(run) {

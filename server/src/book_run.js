@@ -75,6 +75,9 @@ import * as self from "./book_run.js";
 import { flushSync } from "./sync.js";
 import * as takeCheck from "./take_check.js";
 import * as vmod from "./voice_model.js";
+import { _termsAccepted, _termsOf } from "./api/engines_api.js";
+import { engineFacts } from "./engines/audiocpp/generated.js";
+import * as manager from "./engines/manager.js";
 
 export const log = getLogger("justvoice.book_run");
 
@@ -347,6 +350,34 @@ export function estimateRun(h, projectId, routes, { redo = [], settings }) {
   return out;
 }
 
+const modelNameOf = (m) => {
+  try {
+    return vmod.modelName(m);
+  } catch {
+    return m;
+  }
+};
+
+/** A speech model's engine, licence and terms → `{model, engine, name, licence, terms, accepted}`,
+ * or null for a model no engine offers. `licence` is the engine's plain words (the Speech engines
+ * list's, `engineFacts`) when they aren't a plain "Yes" — the run's card shows that word before the
+ * run starts (decided 2026-10-16) — else null; `terms`: the engine has terms to accept (every
+ * licence that isn't "Yes" does, before its first download); `accepted`: they are, on this machine. */
+function speechModelFacts(model) {
+  const engine = vmod.engineOfModel(model);
+  const manifest = engine ? manager.getManager().getManifest(engine) : null;
+  if (!manifest) return null;
+  const licence = manifest.module ? engineFacts(manifest.module).licence : null;
+  return {
+    model,
+    engine,
+    name: modelNameOf(model),
+    licence: licence && licence.commercial !== "Yes" ? licence : null,
+    terms: _termsOf(manifest) !== null,
+    accepted: _termsAccepted(engine),
+  };
+}
+
 /** What each step will run on: the AI steps' routes and recipes, the speech steps' models. */
 function stepModels(settings) {
   const out = {};
@@ -355,14 +386,17 @@ function stepModels(settings) {
     out[key] = { ...self.stepRoute(s.feature, action), feature: s.feature, action, recipe: s.recipe(settings) };
   }
   const cfg = settings.book_voices;
-  const name = (m) => {
-    try {
-      return vmod.modelName(m);
-    } catch {
-      return m;
-    }
+  // "Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2" (decided 2026-10-18); the narrator
+  // goes unsaid when it shares the characters' model.
+  const narrator = cfg.narrator_model !== cfg.clone_model ? ` · narrator ${modelNameOf(cfg.narrator_model)}` : "";
+  const used = [...new Set([cfg.design_model, cfg.clone_model, cfg.narrator_model])].map(speechModelFacts).filter(Boolean);
+  out.design = {
+    model: `${modelNameOf(cfg.design_model)} → ${modelNameOf(cfg.clone_model)}${narrator}`,
+    licences: used
+      .filter((f) => f.licence)
+      .map(({ model, name, licence: l }) => ({ model, name, commercial: l.commercial, licence: l.name, table: l.table, summary: l.summary, url: l.url, checked: l.checked ?? null })),
+    clone: speechModelFacts(cfg.clone_model),
   };
-  out.design = { model: `${name(cfg.design_model)} → ${name(cfg.clone_model)}` };
   const stt = _sttReadiness();
   out.check = { model: stt.display_name, ready: Boolean(stt.ready) };
   return out;
@@ -370,9 +404,11 @@ function stepModels(settings) {
 
 /**
  * What a run of this book would do now, before it starts → `{project_id, chapters, steps:
- * [{key, kind, model, provider, cloud, configured, recipe, action, estimate}], estimate,
- * ask_price, problems, warnings}`. `problems` stop it starting (no chapter with text, no language
- * model, the book's language not set, every name the scans found ignored while the book has no
+ * [{key, kind, model, provider, cloud, configured, recipe, action, estimate, licences}], estimate,
+ * ask_price, problems, warnings}`. A speech step's `licences`: the models it runs on whose
+ * licence isn't a plain "Yes", with their words. `problems` stop it starting (no chapter with
+ * text, no language model, the book's language not set, the character voices' model's licence not
+ * accepted on this machine, every name the scans found ignored while the book has no
  * speaker but the narrator — it would be read in one voice); `warnings` don't (no ffmpeg — it stops before the M4B; no
  * speech recognition — the takes go unchecked). `ask_price`: an AI step runs on a cloud model, so
  * the start must carry `accept_price` (the plan's Q8: "shown before it starts, and the run asks
@@ -389,6 +425,10 @@ export function planRun(h, projectId, { redo = [] } = {}) {
   const unconfigured = Object.keys(AI_STEPS).find((k) => !models[k].configured);
   if (unconfigured) problems.push({ step: unconfigured, code: "no_model", detail: models[unconfigured].detail });
   if (!projectLanguage(project)) problems.push({ step: "design", code: "no_language" });
+  // The character voices' model has a licence to accept on this machine first (decided
+  // 2026-10-16, its words 2026-10-18) — its terms gate its download, and the run would meet it.
+  const clone = models.design.clone;
+  if (clone?.terms && !clone.accepted) problems.push({ step: "design", code: "terms", engine: clone.engine, name: clone.name });
   if (allIgnored(h, project, chapters)) problems.push({ step: "merge", code: "all_ignored" });
   if (!exportAudiobook.haveFfmpeg()) warnings.push({ step: "export", code: "no_ffmpeg" });
   if (!models.check.ready) warnings.push({ step: "check", code: "no_recognition" });
@@ -407,6 +447,7 @@ export function planRun(h, projectId, { redo = [] } = {}) {
       action: m.action ?? null,
       feature: m.feature ?? null,
       estimate: estimate?.steps[key] ?? null,
+      licences: m.licences ?? [],
     };
   });
   return {
@@ -481,6 +522,7 @@ export function problemText(p) {
   if (p.code === "no_text") return "This book has no text yet — import it or add its chapters first.";
   if (p.code === "no_model") return p.detail || "No language model is set up — set one in AI Settings first.";
   if (p.code === "no_language") return "Set the book's language on its Overview first — its voices are made in it.";
+  if (p.code === "terms") return `${p.name}'s licence isn't accepted on this computer. Accept it to make the character voices.`;
   if (p.code === "all_ignored") return "Every name the scans found is ignored — the book would be read in one voice. Undo some on Discover first.";
   return p.code;
 }
@@ -864,7 +906,7 @@ const STEP_FNS = {
     st.done = (st.made?.length ?? 0) + out.cast_by_name.length + out.left_alone.length + out.failed.length;
     flushSync();
     ctx.throwIfStopped();
-    log.info(`book run ${ctx.runId}: ${out.made.length} voices on ${settings.design_model} → ${settings.clone_model}`);
+    log.info(`book run ${ctx.runId}: ${out.made.length} voices on ${settings.design_model} → ${settings.clone_model} (narrator ${settings.narrator_model})`);
   },
 
   async match(ctx) {

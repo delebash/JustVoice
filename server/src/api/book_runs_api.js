@@ -44,6 +44,21 @@ export const BookRunEstimate = T.Object({
   unpriced: opt(T.Array(T.String()), []),
 });
 
+/** A model a speech step runs on whose licence isn't a plain "Yes" — its words, as the Speech
+ * engines list shows them (`engineFacts`): `commercial` (Conditional · Separate licence · No ·
+ * Unclear), the licence's `name`, audio.cpp's word (`table`), our reading (`summary`), its `url`
+ * and when we `checked` it. */
+export const BookRunLicence = T.Object({
+  model: T.String(),
+  name: T.String(),
+  commercial: T.String(),
+  licence: opt(T.String(), ""),
+  table: opt(T.String(), ""),
+  summary: opt(T.String(), ""),
+  url: opt(T.String(), ""),
+  checked: opt(nullable(T.String()), null),
+});
+
 /** One step as the plan shows it: what it runs on. `kind`: ai · speech · recognition · file · book. */
 export const BookRunPlanStep = T.Object({
   key: T.String(),
@@ -57,11 +72,20 @@ export const BookRunPlanStep = T.Object({
   feature: opt(nullable(T.String()), null),
   action: opt(nullable(T.String()), null),
   estimate: opt(nullable(BookRunEstimateStep), null),
+  // The design step's models whose licence isn't a plain "Yes".
+  licences: opt(T.Array(BookRunLicence), []),
 });
 
 /** Something that stops a run starting (`problems`) or that it will meet (`warnings`). `code`:
- * no_text · no_model · no_language · no_ffmpeg · no_recognition. */
-export const BookRunProblem = T.Object({ step: T.String(), code: T.String(), detail: opt(nullable(T.String()), null) });
+ * no_text · no_model · no_language · terms · all_ignored · no_ffmpeg · no_recognition. `terms`
+ * names the engine whose licence isn't accepted on this machine (`engine`, `name`). */
+export const BookRunProblem = T.Object({
+  step: T.String(),
+  code: T.String(),
+  detail: opt(nullable(T.String()), null),
+  engine: opt(nullable(T.String()), null),
+  name: opt(nullable(T.String()), null),
+});
 
 export const BookRunPlan = T.Object({
   project_id: T.String(),

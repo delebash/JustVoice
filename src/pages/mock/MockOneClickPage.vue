@@ -8,7 +8,7 @@
   place of the server.
 
   States (?state=): new (the default) · price (the cloud route's question open) · blocked (no
-  language model, no Language) · running (Direction, chapter VIII) · paused (the same, after a
+  language model, no Language, BreezeTTS 2's licence not accepted) · running (Direction, chapter VIII) · paused (the same, after a
   restart) · stopped (Stop pressed during the render) · failed (no ffmpeg at the M4B) · done (what
   to check). Each on this computer's model, or with ?route=frontier on a cloud model — its
   estimate and price before it starts, its cost after. Start, Stop, Resume, Save and Run again
@@ -65,7 +65,7 @@ function save() {
   pushToast({ kind: "success", message: "Saved Alice's Adventures in Wonderland.m4b to your Downloads folder." });
 }
 function goStep(step, arg) {
-  const where = { script: "Script", render: "Render", cast: "Cast", export: "Export", ai: "AI Settings" }[step] ?? step;
+  const where = { script: "Script", render: "Render", cast: "Cast", export: "Export", ai: "AI Settings", terms: "BreezeTTS 2's licence" }[step] ?? step;
   const chapter = arg?.sceneId ? ` · ${arg.sceneId === "sc_vii" ? "CHAPTER VII" : "CHAPTER VIII"}` : "";
   pushToast({ kind: "info", message: `Opens ${where}${chapter}.` });
 }

@@ -13,9 +13,10 @@
 //   1. `describeVoices` — the model writes each voice's description (the two recipes,
 //      book_voices/prompts.js). Writes nothing.
 //   2. `makeVoices` — each description designed once (`book_voices.design_model`), its audition
-//      kept at once as the clip of a voice on `book_voices.clone_model` (the freeze bridge; a held
-//      audition lasts 10 minutes), a persona made of it — its note the description and the model
-//      that wrote it (the plan's §5) — and the speaker cast with it.
+//      kept at once as the clip of a voice on `book_voices.clone_model` — the narrator's on
+//      `book_voices.narrator_model` (the freeze bridge; a held audition lasts 10 minutes), a
+//      persona made of it — its note the description and the model that wrote it (the plan's
+//      §5) — and the speaker cast with it.
 //   3. `matchRest` — the speakers still without a persona: a persona of exactly their name first
 //      (as every new speaker is cast), then Smart-assign over the library, applied here.
 //
@@ -256,25 +257,25 @@ export function personaNote(description, model) {
   return model ? `${description}\n\nWritten from the book by ${model}.` : description;
 }
 
-/** The design and clone models, checked → the design model's engine. A clone model must clone and
- * still take direction (the plan's step 5: written direction or tags). Both must speak the book's
- * language. */
+/** The design, clone and narrator models, checked → the design model's engine. The clone and
+ * narrator models must clone and still take direction (the plan's step 5: written direction or
+ * tags). All must speak the book's language. */
 function checkedModels(st, cfg, language) {
   const designEngine = vmod.engineOfModel(cfg.design_model);
   if (designEngine === null || !vmod.can(cfg.design_model, "design")) {
     throw badRequest(`${vmod.modelName(cfg.design_model)} can't design a voice from words — set book_voices.design_model to one that can.`);
   }
-  const cloneEngine = vmod.engineOfModel(cfg.clone_model);
-  const directed = vmod.directedBy(cfg.clone_model);
-  if (cloneEngine === null || !vmod.can(cfg.clone_model, "clone") || (directed !== vmod.WORDS && directed !== vmod.TAGS)) {
-    throw badRequest(
-      `${vmod.modelName(cfg.clone_model)} can't keep a voice from its clip and still take direction — set book_voices.clone_model to one that can.`,
-    );
+  const checked = [[designEngine, cfg.design_model]];
+  for (const key of ["clone_model", "narrator_model"]) {
+    const model = cfg[key];
+    const engine = vmod.engineOfModel(model);
+    const directed = vmod.directedBy(model);
+    if (engine === null || !vmod.can(model, "clone") || (directed !== vmod.WORDS && directed !== vmod.TAGS)) {
+      throw badRequest(`${vmod.modelName(model)} can't keep a voice from its clip and still take direction — set book_voices.${key} to one that can.`);
+    }
+    checked.push([engine, model]);
   }
-  for (const [engine, model] of [
-    [designEngine, cfg.design_model],
-    [cloneEngine, cfg.clone_model],
-  ]) {
+  for (const [engine, model] of checked) {
     const vm = vmod.describe(st, engine, model, null);
     if (vm.speaks.length && !vmod.speaksLanguage(vm, language)) {
       throw badRequest(`${vm.name} can't speak ${language} — it speaks ${vm.speaks.join(", ")}.`);
@@ -288,7 +289,8 @@ function checkedModels(st, cfg, language) {
  * left_alone, failed, seconds}`. `descriptions` are step 1's. Each is designed once on
  * `book_voices.design_model`, speaking the speaker's own calm line (`text.auditionLine`; a stock
  * line when they have none long enough); the audition is kept at once as the clip of a voice on
- * `book_voices.clone_model` with the description as its `design_prompt`; a persona named after the
+ * `book_voices.clone_model` — the narrator's on `book_voices.narrator_model` — with the description
+ * as its `design_prompt`; a persona named after the
  * speaker is made of it, its note the description and the model that wrote it; the speaker is cast
  * with it. A speaker already cast is left alone; one whose name is exactly a persona's is cast with
  * that persona instead. A failure is listed and the rest go on — and a voice made for a persona that
@@ -356,7 +358,9 @@ export async function makeVoices(h, projectId, descriptions, { signal = null } =
         { signal },
       );
       // Kept at once: a held audition lasts 10 minutes (the plan's §4).
-      const saved = await vp.savePreview(heard.previewId, { name: personaName, gender: genderOf(d.gender), model: cfg.clone_model });
+      // The narrator keeps its own model: VoxCPM2 read the narration better (round 5).
+      const model = narrator ? cfg.narrator_model : cfg.clone_model;
+      const saved = await vp.savePreview(heard.previewId, { name: personaName, gender: genderOf(d.gender), model });
       voiceId = saved.voice_id;
       const persona = await personasApi.createPersona(
         construct(CreatePersonaRequest, { name: personaName, voice_id: voiceId, language, note: personaNote(description, d.model) }),
@@ -378,7 +382,9 @@ export async function makeVoices(h, projectId, descriptions, { signal = null } =
     }
   }
   out.seconds = seconds(started);
-  log.info(`book_voices: ${out.made.length} voices made on ${cfg.design_model} → ${cfg.clone_model}, ${out.failed.length} failed, ${out.seconds} s`);
+  log.info(
+    `book_voices: ${out.made.length} voices made on ${cfg.design_model} → ${cfg.clone_model} (narrator ${cfg.narrator_model}), ${out.failed.length} failed, ${out.seconds} s`,
+  );
   return out;
 }
 

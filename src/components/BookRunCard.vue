@@ -21,9 +21,10 @@ import { computed } from "vue";
 import { useQuasar } from "quasar";
 import { LuFeatureChip, UiButton, UiProgress, UiTable, UiTag } from "@delebash/ui";
 import {
-  LIVE, PROBLEMS, RUN_TAGS, RUNS_ON_SERVER, STEP_LABELS, planLine, priceText, reviewItems,
+  LIVE, PROBLEMS, RUN_TAGS, RUNS_ON_SERVER, STEP_LABELS, planLine, priceText, problemWords, reviewItems,
   runBanner, runningLine, stepStatusText, stepsDone,
 } from "../services/bookRun.js";
+import { licClass, licTitle } from "../services/engineFacts.js";
 import { clock } from "../services/renderRun.js";
 
 const props = defineProps({
@@ -86,6 +87,9 @@ function narrowModel(row) {
   if (!row.configured) return "No model set";
   return [row.model, row.recipe ? RECIPES[row.recipe] : null].filter(Boolean).join(" · ");
 }
+// A speech step's licence chip, as the Speech engines list shows it; its hover names the licence.
+const licenceHover = (l) => licTitle({ ...l, name: l.licence });
+
 const estimateText = (row) => {
   const e = row.estimate;
   if (!e) return "";
@@ -127,9 +131,9 @@ const numbers = computed(() => (props.run?.steps ?? [])
       </p>
 
       <div v-for="p in problems" :key="p.code" class="jv-banner jv-banner--warn book-run__note">
-        {{ PROBLEMS[p.code].text }}
-        <UiButton v-if="PROBLEMS[p.code].go" intent="ghost" size="small" :label="PROBLEMS[p.code].link"
-          @click="emit('go', ...PROBLEMS[p.code].go)" />
+        {{ problemWords(p).text }}
+        <UiButton v-if="problemWords(p).go" intent="ghost" size="small" :label="problemWords(p).link"
+          @click="emit('go', ...problemWords(p).go)" />
       </div>
       <div v-for="w in warnings" :key="w.code" class="jv-banner jv-banner--info book-run__note">
         {{ PROBLEMS[w.code].text }}
@@ -152,7 +156,9 @@ const numbers = computed(() => (props.run?.steps ?? [])
         <template #label="{ row }">
           <span class="book-run__step">{{ row.label }}</span>
           <span v-if="narrow && row.key !== 'add'" class="jv-hint book-run__runs-on--below"
-            :class="{ 'jv-text-warn': row.kind === 'ai' && !row.configured }">{{ narrowModel(row) }}</span>
+            :class="{ 'jv-text-warn': row.kind === 'ai' && !row.configured }">{{ narrowModel(row) }}
+            <span v-for="l in row.licences" :key="l.model" class="ev-lic" :class="licClass(l.commercial)"
+              :title="licenceHover(l)">Commercial use: {{ l.commercial }}</span></span>
         </template>
         <template #model="{ row }">
           <span v-if="row.kind === 'ai'" class="book-run__runs-on">
@@ -162,7 +168,9 @@ const numbers = computed(() => (props.run?.steps ?? [])
             <span v-else class="jv-text-warn">No model set</span>
             <UiTag v-if="row.recipe && row.configured" intent="ghost">{{ RECIPES[row.recipe] }}</UiTag>
           </span>
-          <span v-else>{{ modelText(row) }}</span>
+          <span v-else class="book-run__runs-on">{{ modelText(row) }}
+            <span v-for="l in row.licences" :key="l.model" class="ev-lic" :class="licClass(l.commercial)"
+              :title="licenceHover(l)">Commercial use: {{ l.commercial }}</span></span>
         </template>
         <template #estimate="{ row }">{{ estimateText(row) }}</template>
         <template #status="{ row }">

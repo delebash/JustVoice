@@ -743,8 +743,9 @@ persona, in the list with the rest:
   (as every new speaker is — a persona you call exactly "Narrator" narrates every book), and no
   new persona is made.
 - **Its voice** is a design kept as a clip: the description designed once on Qwen3-TTS
-  VoiceDesign, speaking one of the speaker's own calm lines, and that take kept as a **VoxCPM2**
-  voice — the same as **📌 Keep take N** on [New design](#new-design). The voice keeps its
+  VoiceDesign, speaking one of the speaker's own calm lines, and that take kept as a **BreezeTTS 2**
+  voice — the narrator's as a **VoxCPM2** voice (since 2026-10-18) — the same as **📌 Keep take N**
+  on [New design](#new-design). The voice keeps its
   description, and its gender when the description gives one. So it stays one person through
   the book and still takes written direction on each line.
 - **Its note** is the description, then a line saying which model wrote it. The Hatter's, from

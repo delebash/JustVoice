@@ -11,7 +11,7 @@
   or ends, `changed` tells Studio to read the book again — its speakers, lines and takes moved.
 -->
 <script setup>
-import { computed, onActivated, ref, watch } from "vue";
+import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { confirmDialog, openPath, pushToast, saveBlob, useAiTasksStore } from "@delebash/ui";
 import BookRunCard from "./BookRunCard.vue";
@@ -19,6 +19,7 @@ import {
   LIVE, bookRunFor, followBookRun, followLive, loadBookRun, priceQuestion, resumeBookRun, runFollowed, startBookRun, stopBookRun,
 } from "../services/bookRun.js";
 import { useCopy } from "../services/copy.js";
+import { openEngineTerms } from "../services/engineTerms.js";
 import { savedMessage } from "../services/exportRun.js";
 import { useApi } from "../stores/api.js";
 
@@ -50,6 +51,9 @@ async function load() {
 }
 watch(() => props.project.id, load, { immediate: true });
 onActivated(load);
+// Accepting an engine's licence (its dialog, from the stop's link) clears the stop.
+onMounted(() => window.addEventListener("jv:health-refresh", load));
+onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", load));
 
 /** Follow a live run in this window (once), and read the book again when it stops. */
 function follow() {
@@ -121,9 +125,11 @@ async function save() {
   load();
 }
 
-// A link: AI Settings here (a tab of it with `arg`), a step of Studio up to Overview.
+// A link: AI Settings here (a tab of it with `arg`), an engine's licence to accept (`arg` its id),
+// a step of Studio up to Overview.
 function go(step, arg = null) {
   if (step === "ai") router.push({ path: "/ai", query: arg ? { tab: arg } : {} });
+  else if (step === "terms") openEngineTerms(arg);
   else emit("go", step, arg);
 }
 // A step's model chip: its card in AI Settings → Routing by feature.

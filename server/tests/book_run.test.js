@@ -142,7 +142,7 @@ afterEach(async () => {
 
 /** Alice's chapter VII imported as a book of its own, in English, with one persona in the library
  * for the speaker who isn't given a voice of their own (the March Hare: 16 lines, under 20). */
-async function aliceVII(dir = undefined) {
+async function aliceVII(dir = undefined, { acceptTerms = true } = {}) {
   const { c, dir: d } = await appClient(dir, { seed: true });
   const epub = readFileSync(path.join(ALICE, KEY.book));
   const file = { file: ["book.epub", epub, "application/epub+zip"] };
@@ -154,6 +154,8 @@ async function aliceVII(dir = undefined) {
   const pid = imp.json().project_id;
   expect((await c.patch(`/v1/projects/${pid}`, { json: { language: "en" } })).status).toBe(200);
   expect((await c.patch("/v1/settings", { json: { book_voices: { min_lines: 20 } } })).status).toBe(200);
+  // The character voices' model, BreezeTTS 2, has a licence to accept first, as on a real install.
+  if (acceptTerms) expect((await c.post("/v1/engines/breeze_tts/terms")).status).toBe(200);
   const gentle = (await c.post("/v1/personas", { json: { name: "Gentle", voice_id: "af_heart", note: "soft and quick" } })).json().id;
   return { c, pid, gentle, dir: d };
 }
@@ -182,7 +184,7 @@ test("alice_vii_from_one_press_to_an_m4b_with_the_time_and_tokens_written_down",
   expect(before.plan.ask_price).toBe(false);
   expect(before.plan.steps.map((s) => s.key)).toEqual(bookRun.STEPS);
   expect(before.plan.steps.find((s) => s.key === "analyze")).toMatchObject({ kind: "ai", model: "gemma-test", cloud: false });
-  expect(before.plan.steps.find((s) => s.key === "design").model).toBe("Qwen3-TTS VoiceDesign → VoxCPM2");
+  expect(before.plan.steps.find((s) => s.key === "design").model).toBe("Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2");
   expect(before.plan.estimate.price).toBe(0);
   expect(before.plan.estimate.tokens_in).toBeGreaterThan(0);
 
@@ -390,6 +392,23 @@ test("every_scanned_name_ignored_and_no_speaker_stops_the_run_it_would_be_one_vo
   // One name back: the run can add them again.
   await c.post(`/v1/projects/${pid}/discover/unignore`, { json: { names: ["Hatter"] } });
   expect(await codes()).not.toContain("all_ignored");
+});
+
+test("the_character_voices_licence_word_is_on_the_plan_and_unaccepted_it_stops_the_run", async () => {
+  // A fresh install: BreezeTTS 2's licence not yet accepted (decided 2026-10-16, its words 2026-10-18).
+  const { c, pid } = await aliceVII(undefined, { acceptTerms: false });
+  const plan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
+  const design = plan.steps.find((s) => s.key === "design");
+  expect(design.licences.map((l) => [l.model, l.name, l.commercial])).toEqual([["breeze_tts", "BreezeTTS 2", "Separate licence"]]);
+  expect(plan.problems).toEqual([{ step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2" }]);
+  const r = await c.post("/v1/book_runs", { json: { project_id: pid } });
+  expect(r.status).toBe(409);
+  expect(r.text).toContain("BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the character voices.");
+  // Accepted once, the stop goes; the licence word stays on the card.
+  expect((await c.post("/v1/engines/breeze_tts/terms")).status).toBe(200);
+  const after = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
+  expect(after.problems).toEqual([]);
+  expect(after.steps.find((s) => s.key === "design").licences.length).toBe(1);
 });
 
 test("what_stops_a_run_starting_is_said_before_it_starts", async () => {

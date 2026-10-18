@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **The characters on BreezeTTS 2, the narrator on VoxCPM2 (2026-10-18)** — **Make the audiobook**
+  now keeps each character's designed voice on BreezeTTS 2, which played every line like the book
+  in the blind listening test, and the narrator's on VoxCPM2, which read the narration better.
+  The narrator has its own setting, `book_voices.narrator_model`. BreezeTTS 2's licence doesn't
+  let you sell what it makes without a separate licence from its makers: the run's card shows
+  *Commercial use: Separate licence* beside it before you start, and until its licence is
+  accepted on your computer the run doesn't start — **BreezeTTS 2's licence ➜** opens it
+  ([Studio → Make the audiobook](studio.md#make-the-audiobook))
 - **Make the audiobook (2026-10-16)** — an audiobook's Overview has one button that turns the book
   into a finished audiobook, unattended: it finds the speakers, merges their names, decides who
   says every line, gives the main speakers voices made from the book and casts the rest from your

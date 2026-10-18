@@ -55,6 +55,18 @@ const FRONTIER_TOKENS = {
 const price = ([i, o]) => Math.round(((i / 1e6) * 4 + (o / 1e6) * 20) * 100) / 100;
 
 /** GET /v1/projects/{id}/book_run's plan — on this computer's model, or a cloud one. */
+// BreezeTTS 2's licence as the server gives it (curated/breeze_tts.js, audio.cpp's licence table).
+const BREEZE_LICENCE = {
+  model: "breeze_tts",
+  name: "BreezeTTS 2",
+  commercial: "Separate licence",
+  licence: "BreezeBlue Research and Non-Commercial License",
+  table: "No",
+  summary: "Not under its free licence: selling anything made with the downloaded model needs a separate written licence from BreezeBlue, and the free licence rules out any creator exception. (Audio made on BreezeBlue’s own paid website can be sold.)",
+  url: "https://huggingface.co/BreezeBlue/Breeze-TTS-2/blob/main/LICENSE",
+  checked: "2026-10-11",
+};
+
 export function mockPlan({ frontier = false, blocked = false, noFfmpeg = false } = {}) {
   const route = frontier ? CLOUD : LOCAL;
   const steps = STEPS.map((key) => {
@@ -73,9 +85,10 @@ export function mockPlan({ frontier = false, blocked = false, noFfmpeg = false }
         estimate: blocked ? null : t ? { tokens_in: t[0], tokens_out: t[1], price: frontier ? price(t) : 0 } : null,
       };
     }
-    const model = { design: "Qwen3-TTS VoiceDesign → VoxCPM2", check: "Qwen3-ASR 1.7B" }[key] ?? null;
+    const model = { design: "Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2", check: "Qwen3-ASR 1.7B" }[key] ?? null;
     const kind = key === "design" || key === "render" ? "speech" : key === "check" ? "recognition" : key === "export" ? "file" : "book";
-    return { key, kind, model, provider: null, cloud: false, configured: true, recipe: null, feature: null, action: null, estimate: null };
+    const licences = key === "design" ? [BREEZE_LICENCE] : [];
+    return { key, kind, model, provider: null, cloud: false, configured: true, recipe: null, feature: null, action: null, estimate: null, licences };
   });
   const totals = Object.values(FRONTIER_TOKENS).reduce((a, t) => [a[0] + t[0], a[1] + t[1]], [0, 0]);
   return {
@@ -91,7 +104,13 @@ export function mockPlan({ frontier = false, blocked = false, noFfmpeg = false }
         unpriced: [],
       },
     ask_price: frontier && !blocked,
-    problems: blocked ? [{ step: "discover", code: "no_model", detail: null }, { step: "design", code: "no_language", detail: null }] : [],
+    problems: blocked
+      ? [
+        { step: "discover", code: "no_model", detail: null },
+        { step: "design", code: "no_language", detail: null },
+        { step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2" },
+      ]
+      : [],
     warnings: noFfmpeg ? [{ step: "export", code: "no_ffmpeg", detail: null }] : [],
   };
 }
@@ -117,7 +136,7 @@ const MODELS = {
   analyze: ["gemma-4-26b-a4b-qat", "local"],
   group_lines: ["gemma-4-26b-a4b-qat", null],
   describe: ["gemma-4-26b-a4b-qat", "local"],
-  design: ["Qwen3-TTS VoiceDesign → VoxCPM2", null],
+  design: ["Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2", null],
   match: ["gemma-4-26b-a4b-qat", null],
   direction: ["gemma-4-26b-a4b-qat", "local"],
   check: ["qwen3-asr-1.7b-q8", null],

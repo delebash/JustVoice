@@ -623,8 +623,14 @@ and the seconds.
    speaking one of the speaker's own lines — the calm one (no *!*) nearest 25
    words; the narrator's, a line of narration; a stock sentence when a speaker
    has none half that long. That take is kept at once as the clip of a
-   **VoxCPM2** voice, with the description as the voice's description — what
-   **📌 Keep take N** does on a persona's [New design](personas.md#new-design).
+   **BreezeTTS 2** voice — the narrator's of a **VoxCPM2** voice — with the
+   description as the voice's description: what **📌 Keep take N** does on a
+   persona's [New design](personas.md#new-design). Two models, because your
+   ears chose two: BreezeTTS 2 played every character's line like the book in
+   the blind listening test, and VoxCPM2 read the narration better on 9
+   passages of 10. BreezeTTS 2's licence doesn't let you sell what it makes
+   without a separate licence from its makers, so the run's card shows its
+   licence word before you start ([Studio → Make the audiobook](studio.md#make-the-audiobook)).
    A persona named after the speaker is made with that voice, its note the
    description and the model that wrote it
    ([Personas → Personas made from the book](personas.md#personas-made-from-the-book)),
@@ -665,7 +671,8 @@ extraction**, thinking off.
 |---|---|---|
 | `min_lines` | 3 | A speaker with at least this many lines in the whole book gets a voice made from the book; the rest are matched from your library. |
 | `design_model` | `qwen3-vd` | The model each voice is designed on (any model that can make a voice from words — Qwen3-TTS VoiceDesign, VoxCPM2 …). |
-| `clone_model` | `voxcpm2` | The model the designed take is kept on. It must clone and still take direction, written or by tags; the design step refuses one that can't — Qwen3-TTS Base, for one, drops direction. |
+| `clone_model` | `breeze_tts` | The model each character's designed take is kept on. It must clone and still take direction, written or by tags; the design step refuses one that can't — Qwen3-TTS Base, for one, drops direction. |
+| `narrator_model` | `voxcpm2` | The model the narrator's designed take is kept on, held to the same rule. Set it to the same model as `clone_model` and the whole book is read by one model. |
 | `speaker_words` | 2000 | How much of a speaker's paragraphs the Local recipe reads, in words. |
 | `narrator_words` | 2000 | How much of the book's opening the Local recipe reads for the narrator, in words. |
 | `audition_words` | 25 | The length, in words, of the line a voice's audition speaks. |

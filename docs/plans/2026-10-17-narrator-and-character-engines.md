@@ -3,7 +3,8 @@
 TASKS "The character voices: BreezeTTS 2, with its licence on the run's card" (go given 2026-10-16,
 waiting on round 5's narrator sample) and TASKS "Round 6b" (2026-10-17: "Narrator: VoxCPM2 narrates,
 and Breeze does only the character voices? … Lean: yes" — the user: "think on it again your rec
-go"). Nothing here is built.
+go"). **Built 2026-10-18** (§5), on the user's "compacted re read docs rules session your rec on
+all go" — the leans of §4 as written.
 
 ## 1. What it is
 
@@ -96,3 +97,28 @@ database (no migrations, the 2026-08 ruling).
 5. **Speed:** Breeze is about two and a half times as slow as VoxCPM2 (4.5 s a take on the card
    against 1.8 s, RESEARCH §10.29). Is that fine for every character line? **Lean:** yes. Your ears
    picked it.
+
+## 5. Built (2026-10-18)
+
+- **N1–N3:** `book_voices.narrator_model` (seed `voxcpm2`) beside `clone_model` (seed now
+  `breeze_tts`) in `BookVoicesSettings` (`server/src/models.js`); `makeVoices` keeps the narrator's
+  take on it (`server/src/book_voices/index.js`), and `checkedModels` holds both models to "clones
+  and takes direction", naming the setting that fails.
+- **N4–N5:** the plan's design step reads "Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2"
+  (the narrator unsaid when it shares the characters' model) and carries `licences`: each model it
+  runs on whose licence isn't a plain "Yes", in the Speech engines list's words (`engineFacts`).
+  The card shows each as that list's chip (`.ev-lic`, `licClass`, `licTitle`) beside the model, at
+  both widths (`src/components/BookRunCard.vue`). The run log names the narrator's model.
+- **N6:** `planRun` stops a run when the characters' model's terms aren't accepted here (problem
+  `terms`, with `engine` and `name`; `server/src/book_run.js`). The card's words and link are
+  `problemWords` (`src/services/bookRun.js`); the link opens the engine's licence through
+  `openEngineTerms`, and accepting it reloads the plan (`jv:health-refresh`,
+  `src/components/StudioBookRun.vue`). Only the characters' model is stopped on: the approved words
+  name the character voices, and today's narrator and design seeds are both "Yes".
+- **Swaps checked first:** two models in a chapter don't swap line by line — the scheduler renders a
+  chapter model by model (`synth_scheduler.js:166`, keyed by model at `voice_model.js:379`).
+- **N7:** tests (`book_voices.test.js`, `book_run.test.js` — a new one for the licence word and
+  the stop; `BookRunCard.test.js` — the chip and the link), the mock (`bookRunMock.js`: the text,
+  the chip, the stop in the blocked state), docs (ai-features, studio, personas,
+  settings-reference, whats-new, code-map). Suites: server 1,360 passed, unit 260 passed; lint and
+  the family guard clean.
