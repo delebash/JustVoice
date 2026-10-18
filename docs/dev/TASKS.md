@@ -474,7 +474,9 @@ BUILT:  2026-10-18 (the user: "compacted re read docs rules session your rec on 
         the spec-literal helper and F5's staged constants take upstream's own versions of fixes we
         made first (#934, #953, #956); Qwen3 knows both `stitch_decode` and `base_model_path`; the
         web UI rebuilt. `build/jv-dev` rebuilt (359 s). Checked against what the app sends: #894
-        keeps `instructions` → `instruction`; #910 is opt-in.
+        keeps `instructions` → `instruction`; #910 is opt-in. The fork's CustomVoice test passes on
+        the merge. Drama 3 in the app and how its makers direct it: RESEARCH §10.33. Its download
+        waits for the user to accept its licence (Fish Audio Community License v1.0).
 OPEN:   after round 5's renders: our fork updated to audio.cpp's upstream main (`fish_drama3`,
         merged upstream 2026-10-15), the dev build rebuilt, only the new models tested (TASKS "An
         audio.cpp update tests only the engines and models it adds"); Drama 3 on this 8 GB card

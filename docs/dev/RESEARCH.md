@@ -4749,6 +4749,33 @@ runtime (`npm run dev`, fork 8461cdce).
 - **The agent's ranking:** guidance first; the direction as the next arm (its vectors extracted
   meanwhile); EDICT last. — *agent's view*.
 
+### 10.33 Round 6 — Fish Audio Drama 3 in our fork and in the app (2026-10-18)
+
+TASKS "Round 6". Our fork's `jv` merged audio.cpp's upstream main of 2026-10-18 (9106c13a).
+
+- **How Drama 3 is directed, by its makers** (fish.audio/blog/fish-audio-drama-3, 2026-10-13):
+  a free-text note in square brackets before the words — "[choked up, crying quietly] I left his
+  jacket by the door.", "[through gritted teeth, keeping his voice down] I asked you to do one
+  thing tonight." — in any language; point cues mid-line ("[shaky breath]", "[small laugh]",
+  "[whispering]"); paired tags around words ("<emphasis>do not open that door.</emphasis>",
+  "<whisper>…</whisper>"). Relative re-takes ("softer and warmer versus previous") are invite-only.
+  Its Hugging Face card documents only the point tags ("[sighs] Fine. If we miss it, it's on you.
+  [laughs] …") and `previous_takes` editing; its benchmark sampled at temperature 1.0, top_p 0.9,
+  top_k 30. Third-party guides (morphic.com, eesel.ai) list seven paired tags — whisper, emphasis,
+  soft, fast, slow, stress, forceful — not confirmed on docs.fish.audio. — *read*.
+- **In the app** (the catalog regenerated at `jv`, locally): engine `fish_drama3`, one model,
+  `fish_drama3-q4k`, 22,302 MB (the Q4 experts / Q8 backbone package, `Jmica/Drama-3-GGUF`);
+  Auto puts it on the CPU ("its files are about 22 GB, more than this card's 8 GB"). Load options
+  include `fish_drama3.disk_experts` (false), `expert_cache_size` (32), `cpu_expert_layers` (4),
+  `pin_experts`, `context_length` (2048). Licence: Fish Audio Community License v1.0, our word
+  **Conditional**, accepted once before its download. audio.cpp marks the family experimental. —
+  *read from the running app*.
+- **Our CustomVoice change survives the merge:** the fork's `qwen3_tts_customvoice_clone_test`
+  passes on the real 1.7B CustomVoice and Base files (CPU build, `build/jv-tests`). — *measured*.
+- **Not yet heard:** the download waits for the licence to be accepted on this computer. The
+  harness arm is `drama3-r6` (`server/scripts/round4_render.js`): the line's direction words in the
+  bracket, experts read from disk, the rest on the card.
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next
