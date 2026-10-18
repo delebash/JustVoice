@@ -4402,7 +4402,7 @@ the research and build something yourself, can we build it with my 8gb card?", t
 cant do the emotion directly maybe we do the emotion in a different method" and "what things can
 work togetther to get us the voice we want".
 
-- **EDICT** (arXiv 2610.11437, demo danny-nus.github.io/EDICT-demopage/, anonymous; no code or
+- **EDICT** (arXiv 2610.11437, demo danny-nus.github.io/EDICT-demopage/, its authors named in the paper — was: anonymous, until 2026-10-17, §10.32; no code or
   weights, none promised). Two stages. **Stage I** edits a reference voice's timbre with a
   *trained* editor (Qwen3-TTS-12Hz-1.7B-Base fine-tuned in full, then preference-trained) into an
   edited codec reference — the part our DSP character-voice plan (§8) covers another way.
@@ -4657,6 +4657,93 @@ again with the option, and each take sent to `/v1/tasks/run`.
     sat beside them on round 5's page); the person's got the same on 11 of 12. — *by ear*.
   - **The person's notes:** "says the word wispered" (8-48 — the narration word in the cut); "says
     intructions" on 8-44 and 8-27, where Whisper hears only the line — unexplained. — *by ear*.
+
+### 10.31 Round 6b steps 2 and 4 — a lead-in before the line; whispers in a mastered chapter (2026-10-17)
+
+TASKS "Round 6b", the go after the ears ("think on it again your rec go"). Through the app's dev
+runtime (`npm run dev`, fork 8461cdce).
+
+- **Priming, rendered:** three engines we can sell, each told the line and also given a lead-in in
+  the line's feeling, said first in the same take: VoxCPM2 (the line's words, cfg 2.7), CosyVoice3
+  (its own instruction sentence, as round 4) and CustomVoice 1.7B with the Hatter's fingerprint (the
+  line's words).
+  - The lead-ins, written for the test: sad "Oh dear. It's no use, it's all gone wrong.", fearful
+    "Oh no. Oh dear, I'm so frightened.", happy "Ha! I knew it, I knew it all along!".
+  - The lines are the five VoxCPM2 left plain or weaker by ear: 7-70 and 7-31 sad, 8-27 and 8-44
+    fearful, 7-117 happy. Seeds 7–9 make 45 takes.
+  - The cut is made 60 ms before the line's first word, as the app's aligner times it (`/v1/align`,
+    Qwen3-ForcedAligner), with a 10 ms fade-in: `npm run round4:render -- --prime`.
+  - **Every cut take reads back as its line alone:** WER ≤ 0.25 on all 45 (median 0). Likeness to
+    the clip is 0.89 for VoxCPM2, 0.92 for CosyVoice3 and 0.91 for CustomVoice. — *measured*.
+  - Median render, lead-in included: VoxCPM2 4.3 s, CosyVoice3 2.1 s, CustomVoice 3.1 s a take.
+    — *measured*.
+- **Whispers in a mastered chapter:** VoxCPM2's whispered takes from round 5's page (8-48, 8-67,
+  seed 8) are placed between their chapter neighbours, read in round 5's narrator voice. They are
+  turned down with the line's own gain (dsp `shape`), joined with the app's pauses
+  (`render_core.concatLines`, 600 / 250 ms) and mastered with the app's ACX preset
+  (`mastering.masterToWav`): `server/scripts/round6b_whisper.js`. The whisper is measured against
+  its neighbours with the app's analyzer (RMS, as its ACX check reads it):
+
+  | Whisper turned down | 8-48: before → after mastering | 8-67: before → after |
+  |---|---|---|
+  | 0 dB | +2.0 → −1.9 dB | −1.5 → −2.6 dB |
+  | −6 dB | −3.9 → −3.7 dB | −7.5 → −6.7 dB |
+  | −12 dB | −9.7 → −7.7 dB | −13.5 → −11.6 dB |
+
+  - **The chapter's mastering narrows a whisper's gap by about 2 dB.** `dynaudnorm=g=15` runs over
+    the whole chapter before `loudnorm` (`mastering.js:130-134`). It pulls an untouched whisper down
+    and lifts a turned-down one. — *measured*.
+  - As made, VoxCPM2's whisper on 8-48 is 2 dB **louder** than the narration around it. — *measured*.
+- **The page:** https://claude.ai/artifact/F5nXrvZyPbTiiMgrk9sXaw (collection `round6b2`).
+  - Part 1: each of the five lines, with the three engines with and without the lead-in, seed 7.
+  - Part 2: both whispered stretches at the three levels.
+  - Your ears decide; waiting. Data: `data/round6b/primed/`, `data/round6b/whisper/` (gitignored).
+
+### 10.32 Sad, fearful and happy on CustomVoice's fingerprint — three ways compared (2026-10-17)
+
+*agent, 2026-10-17* — a research agent, read-only: papers and repos opened, our fork read at
+8461cdce, GGUF headers read locally. For the plan `docs/plans/2026-10-17-sad-fearful-happy.md`.
+
+- **An emotion direction on the x-vector** (arXiv 2606.05367): tested only on 1.7B **Base**, ICL mode
+  with the x-vector swapped in and not renormalised (its repo `src/xvec.py:50-53`; the x-vector's
+  norm 16.4, the directions' 1.2–2.0). Judged only by emotion2vec cosine (angry 0.539 → 0.925, happy
+  0.425 → 0.687, sad 0.540 → 0.761; WavLM likeness −0.02 to −0.05). No fear, no listening test (§6,
+  future work). The repo has no licence (`license: null`). Nobody has tried a direction on
+  CustomVoice. — *read*.
+- **The MIT C engine's "steering vector" is something else:** it is added to the residual stream at
+  talker layers 21–25 (`blog/emotions-on-cloned-voices.md:65`, `qwen_tts_talker.c:803-806`), not to
+  the x-vector. — *read in code*.
+- **No x-vector leaves our fork today:** the runtime has an `ArtifactKind::SpeakerEmbedding`
+  (`include/engine/framework/runtime/session.h:134`), but `qwen3_tts` never emits it. — *read in
+  code*.
+- **CREMA-D** is 16 kHz (the ECAPA resamples linearly, `speaker_encoder.cpp:94-105`). Its intensity
+  levels exist on one sentence only ("It's eleven o'clock"), and per-clip crowd votes
+  (`summaryTable.csv`) let clips heard as another feeling be dropped. ODbL §3.1 allows commercial
+  use. Shipped averaged vectors are most likely a Produced Work (attribution, §4.3); published
+  per-clip vectors may be a Derivative Database (share-alike, §4.4, §4.6). The agent's reading, not
+  legal advice. — *read*.
+- **EDICT** (arXiv 2610.11437, Table 3, Qwen3-TTS-VD, size not given): its per-segment row
+  ("Concat.", each segment from the reference alone, our per-line case) has accuracy 92.66 at
+  **SIM-I 0.658**. Judged by Gemini 3.1 Pro; the 19 listeners appear only in Fig. 4, with no
+  per-emotion split. Its Tables 14–15 show more kept context weakening the instruction. The
+  VoiceDesign 1.7B Q8 GGUF holds the speech-tokenizer encoder (225 tensors, 117 MB) and no ECAPA
+  — *measured*. Its prompt branch has no speaker slot (`talker.cpp:572-627`). — *read*.
+- **Instruct guidance:** BreezeTTS 2's untold prompt is its clone prompt minus the instruction
+  (official `breeze_infer/templates.py:54-55, 95-104`; our fork `breeze_tts/tokenizer_text.cpp:117-126`,
+  `generator.cpp:1077-1085, 1160-1164`). Breeze guides its depth decoder too (`:968-972`).
+  - Guidance on autoregressive logits is established: Koel/Magpie, Chatterbox, Dia and Breeze; our
+    fork has it in Chatterbox (`t3_component.cpp:611-615`), Breeze and Magpie (`runtime.cpp:1210`).
+  - **No Qwen3 port has it:** not official, not upstream audio.cpp, not the C engine, mlx-audio or
+    vLLM-Omni.
+  - CCG-CFG (arXiv 2510.13293, emotion guidance on CosyVoice2): "up to a 12% absolute improvement
+    in emotion-recognition accuracy". Sanchez et al. (arXiv 2306.17806): "High CFG (γ≥1.5) leads to
+    a deterioration" in text models.
+  - The talker steps one sequence with its own cache (`talker.cpp:1175-1235`; sampling `:1925-1938`).
+    A second cache costs 2 × 28 × 8 × 128 × 4 bytes = 224 KB a position. — *read in code*.
+  - Not known: whether Breeze's acting comes from guidance or from its training. Breeze has never
+    been heard here at γ 1.
+- **The agent's ranking:** guidance first; the direction as the next arm (its vectors extracted
+  meanwhile); EDICT last. — *agent's view*.
 
 ## Records not yet distilled
 

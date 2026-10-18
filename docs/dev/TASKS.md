@@ -364,7 +364,10 @@ BUILT:  —
         docs engines.md (The speech margin), settings-reference, whats-new. Asked of the narrator:
         "Breeze reads everything, narrator included" after a narrator sample in round 5.
 OPEN:   `book_voices.clone_model` → Breeze (after round 5's narrator sample); the licence word on
-        the run's card; the run's stop when its licence isn't accepted.
+        the run's card; the run's stop when its licence isn't accepted. The narrator sample: VoxCPM2
+        read better on 9 of 10 (RESEARCH §10.29), and the narrator stays on it (TASKS "Round 6b",
+        2026-10-17) — but the narrator shares `clone_model` today, so it needs its own setting: the
+        plan docs/plans/2026-10-17-narrator-and-character-engines.md, waiting for its go.
 GO:     given 2026-10-16 ("your rec on breeze and license"; after the check, "your rec on all
         go").
 
@@ -387,7 +390,13 @@ NOT:    building the four-stage chain before testing whether one model does it; 
 BUILT:  research: RESEARCH §10.26–10.27. Step 3, standard pieces only (2026-10-17): fork jv
         8461cdce (`qwen3_tts.base_model_path`), the harness arms, 600 takes scored (RESEARCH
         §10.30: keeps the voice, best quality so far, does not act), the page
-        https://claude.ai/artifact/UJjuQupm5aHTzuEhAmNRpZ (collection round6b).
+        https://claude.ai/artifact/UJjuQupm5aHTzuEhAmNRpZ (collection round6b). Steps 2 and 4's
+        whisper, 2026-10-17 (RESEARCH §10.31): 45 primed takes, the lead-in cut with the app's
+        aligner (`round4:render --prime`); the whispers at 0, −6 and −12 dB in a mastered chapter
+        stretch (`server/scripts/round6b_whisper.js`); the page
+        https://claude.ai/artifact/F5nXrvZyPbTiiMgrk9sXaw (collection round6b2). The plans:
+        docs/plans/2026-10-17-sad-fearful-happy.md (instruct guidance first; RESEARCH §10.32) and
+        docs/plans/2026-10-17-narrator-and-character-engines.md.
         Reordered the same day, after the user's "are you really thinking about these solutions and
         looking at what we have already tested" (rounds 2–3 had VoxCPM2 told in fuller words like
         the book on 6 of 7 lines at best of three seeds; Qwen3 VoiceDesign acting 5 of 7 but

@@ -39,10 +39,20 @@
 // arm loads the model through the app first (its memory booking), registers the same id again on
 // the speech runtime with that option added, and sends its takes there (`/v1/tasks/run`); it
 // unloads through the app at the end. No voice is copied: the takes use the voice's own clip.
+//
+// Round 6b step 2 (TASKS "Round 6b") — priming: each told take says a short lead-in in the line's
+// feeling first (`PRIME`), and the lead-in is cut off where the app's aligner (`/v1/align`) times
+// the line's first word. Told takes only, into `<arm>-primed/`:
+//
+//     npm run round4:render -- --out data/round6b/primed --prime --direction <the round-5 dump> \
+//       --arms voxcpm2-r5,cosyvoice3,customvoice-ours --voice <the Hatter's id> \
+//       --runtime http://127.0.0.1:<the speech runtime's port> --lines 7-70,7-31,8-27,8-44,7-117
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { splitWords } from "../src/alignment.js";
+import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
 import { segmentParagraphs, splitIntoParagraphs } from "../src/extraction/segmentation.js";
 import { runAdapter } from "../src/imports/index.js";
 
@@ -149,6 +159,14 @@ const BANK = {
   shouted: ["Get out of here, right now!", "shouting at the top of his voice"],
 };
 
+// Round 6b step 2's lead-ins: said before the line in the same take, in its feeling, then cut off.
+// Written for the test; in the app the direction step would write them.
+const PRIME = {
+  sad: "Oh dear. It's no use, it's all gone wrong.",
+  fearful: "Oh no. Oh dear, I'm so frightened.",
+  happy: "Ha! I knew it, I knew it all along!",
+};
+
 class Exit extends Error {}
 
 /** A model load, asked again while its download outlasts Node's 300 s wait for a reply's headers
@@ -220,6 +238,7 @@ async function main() {
       runtime: { type: "string", default: "" }, // round 5's clip arms: the speech runtime's URL
       "bank-voice": { type: "string", default: "" }, // round 5's clip arms: the voice that acts the clips
       lines: { type: "string", default: "" }, // only these line ids (e.g. 7-95,8-57)
+      prime: { type: "boolean", default: false }, // round 6b step 2: told takes with a lead-in, cut off
     },
   });
   const server = args.server.replace(/\/+$/, "");
@@ -275,34 +294,40 @@ async function main() {
     await load(server, a.engine, a.variant);
     if (a.ours) await registerWithBase(args.runtime, a.variant, baseModelFile(args["data-dir"], a.engine, a.base));
     console.log(`   loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s; voice ${voice.id}`);
-    const dir = path.join(args.out, arm);
+    const armName = args.prime ? `${arm}-primed` : arm;
+    const dir = path.join(args.out, armName);
     mkdirSync(dir, { recursive: true });
     for (const l of lines) {
-      for (const told of [false, true]) {
+      const lead = args.prime ? PRIME[l.emotion] : null;
+      if (args.prime && !lead) throw new Exit(`no lead-in for ${l.emotion} (line ${l.line})`);
+      const text = lead ? `${lead} ${l.text}` : l.text;
+      for (const told of args.prime ? [true] : [false, true]) {
         for (const seed of seeds) {
-          const id = `${arm}/${l.line}-${told ? "told" : "plain"}-${seed}`;
+          const id = `${armName}/${l.line}-${told ? "told" : "plain"}-${seed}`;
           const wav = path.join(dir, `${l.line}-${told ? "told" : "plain"}-${seed}.wav`);
-          if (seen.has(id) && existsSync(wav)) continue;
+          // A primed take is written whole first; the cut (`wav`) comes after the aligner.
+          const rendered = lead ? wav.replace(/\.wav$/, ".full.wav") : wav;
+          if (seen.has(id) && existsSync(rendered)) continue;
           const delivery = told ? (a.clip ? { emotion_clip: bank[l.emotion], emotion_alpha: a.clip } : a.told(l.emotion, l)) : (a.plain ?? null);
           const started = Date.now();
           let error = null;
           try {
             const audio = a.ours
               ? await oursTake(args.runtime, a.variant, {
-                  text: l.text,
+                  text,
                   voiceRef: path.resolve(reference),
                   transcript: a.ours === "icl" ? source.transcript : null,
                   instruct: told ? delivery.instruct : "",
                   seed,
                 })
               : told && a.clip
-                ? await runtimeTake(args.runtime, a.variant, { text: l.text, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), clip: bank[l.emotion], alpha: a.clip, seed })
+                ? await runtimeTake(args.runtime, a.variant, { text, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), clip: bank[l.emotion], alpha: a.clip, seed })
                 : await call(server, "/v1/generate", {
                     method: "POST",
-                    body: { voice: voice.id, text: l.text, language: "en", seed, cache: false, delivery },
+                    body: { voice: voice.id, text, language: "en", seed, cache: false, delivery },
                     raw: true,
                   });
-            writeFileSync(wav, audio);
+            writeFileSync(rendered, audio);
           } catch (e) {
             error = String(e.message || e);
             console.log(`   ${id}: ${error}`);
@@ -310,8 +335,9 @@ async function main() {
           const entry = {
             id, wav: path.relative(args.out, wav), text: l.text, reference_wav: reference,
             emotion_asked: told ? l.emotion : null, emotion_of_line: l.emotion, cue: l.cue,
-            model: arm, variant: a.variant, seed, told, line: l.line, delivery,
+            model: armName, variant: a.variant, seed, told, line: l.line, delivery,
             render_s: (Date.now() - started) / 1000, error,
+            ...(lead ? { primed: lead, full_wav: path.relative(args.out, rendered), cut_at: null } : {}),
           };
           manifest.takes = manifest.takes.filter((t) => t.id !== id);
           manifest.takes.push(entry);
@@ -320,11 +346,48 @@ async function main() {
         }
       }
     }
-    const done = manifest.takes.filter((t) => t.model === arm && !t.error);
+    const done = manifest.takes.filter((t) => t.model === armName && !t.error);
     console.log(`   ${done.length} takes; median ${median(done.map((t) => t.render_s)).toFixed(1)} s each`);
     if (a.pin) await call(server, "/v1/settings", { method: "PATCH", body: { engines: { engine_overrides: { [a.engine]: { placements: { [a.variant]: "auto" } } } } } });
     // The app loads its own registration again next time (the runtime reloads a changed entry).
     if (a.ours) await call(server, "/v1/engines/unload", { method: "POST", body: { kind: "tts" } });
+  }
+  if (args.prime) await cutLeadIns(server, args.out, manifest, save);
+}
+
+/** Round 6b step 2: each primed take's lead-in cut off where the app's aligner (`/v1/align`) times
+ * the line's first word, 60 ms early, with a 10 ms fade-in. The speech model is unloaded first, so
+ * the speech recogniser and its aligner have the card. */
+async function cutLeadIns(server, out, manifest, save) {
+  const todo = manifest.takes.filter((t) => t.primed && !t.error && t.cut_at == null);
+  if (!todo.length) return;
+  console.log(`\ncutting ${todo.length} lead-ins …`);
+  await call(server, "/v1/engines/unload", { method: "POST", body: { kind: "tts" } });
+  for (const t of todo) {
+    const full = readFileSync(path.join(out, t.full_wav));
+    const form = new FormData();
+    form.append("file", new Blob([full], { type: "audio/wav" }), "take.wav");
+    form.append("text", `${t.primed} ${t.text}`);
+    form.append("language", "en");
+    const r = await fetch(`${server}/v1/align`, { method: "POST", body: form, signal: AbortSignal.timeout(900 * 1000) });
+    if (!r.ok) throw new Exit(`align ${t.id} -> ${r.status}: ${(await r.text()).slice(0, 300)}`);
+    const { words } = await r.json();
+    const first = words[splitWords(t.primed).length];
+    const [fmt, offset, size] = parseWavHeader(full);
+    const frame = fmt.channels * 2;
+    const at = Math.max(0, first.start - 0.06);
+    const pcm = Buffer.from(full.subarray(offset + Math.floor(at * fmt.sampleRate) * frame, offset + size));
+    const fade = Math.floor(0.01 * fmt.sampleRate);
+    for (let i = 0; i < fade && (i + 1) * frame <= pcm.length; i++) {
+      for (let c = 0; c < fmt.channels; c++) {
+        const p = i * frame + c * 2;
+        pcm.writeInt16LE(Math.round((pcm.readInt16LE(p) * i) / fade), p);
+      }
+    }
+    writeFileSync(path.join(out, t.wav), writeWavContainer(pcm, fmt.sampleRate, fmt.channels));
+    t.cut_at = Math.round(at * 1000) / 1000;
+    save();
+    console.log(`   ${t.id}: cut at ${t.cut_at} s, before "${first.word}"`);
   }
 }
 
