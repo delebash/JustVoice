@@ -474,6 +474,32 @@ OPEN:   the user's ears on the page; then the narrator's engine (TASKS "The char
         and round 6b.
 GO:     given 2026-10-16 ("your rec on all go").
 
+### The listening pages: each take's buttons name the line's feeling, plus a note (decided 2026-10-17)
+STATE:  DECIDED 2026-10-17 — the user, on round 6b's page: "your options are not good, a little
+        what does that mean, clear what does that mean, for example the first one wake updormose it
+        is supposed to be loud shouted, many are loud but not shouted so how do i rate this, it is
+        confusing your rating system is not letting me tell you waht it is like". Shown: "each take
+        gets buttons named for that line's feeling, plus an optional note" — Shouted: Shouted · Loud,
+        not a shout · Plain · Something else; Whispered: Whispered · Quiet, not a whisper · Plain ·
+        Something else; Angry: Angry, scolding · A bit sharp · Plain · Something else; Sad: Sad,
+        heavy · A bit down · Plain · Something else; Scornful: Scornful, sneering · A bit superior ·
+        Plain · Something else; Fearful: Nervous, timid · A bit unsure · Plain · Something else;
+        Happy: Smug, gleeful · A bit pleased · Plain · Something else. "Under each take is a small
+        optional box: "What you heard, if the buttons don't say it". It's saved with your answers.";
+        "Best take" stays; "The same change goes on the round 5 page, so the two rounds can be
+        compared." The questions: "1. Are these labels right? … 2. Should there be a note box under
+        every take? … 3. Should both pages change, round 5 and round 6b?" The user: "your rec go on
+        all three".
+WHY:    the four steps (No change · A little · Clearly · Like the book) never said what they
+        measured, the page plays no plain take to compare against, "loud but not a shout" had no
+        button, and they had dropped round 4's "wrong" (RESEARCH §10.22, the user's notes).
+NOT:    one scale for every feeling; a required note.
+BUILT:  both pages, 2026-10-17 (version 2 of each): the buttons from the line's feeling, the note
+        box saved with the answers, the totals by the new buttons; checked headless at phone width.
+OPEN:   both pages: https://claude.ai/artifact/JksCTD7KkySRK6tQneVqMf (round 5) and
+        https://claude.ai/artifact/UJjuQupm5aHTzuEhAmNRpZ (round 6b).
+GO:     given 2026-10-17 ("your rec go on all three").
+
 ### Discover's names: the AI suggests, you link — Find same people, Link, Unlink, Kept apart (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — on the Discover mock the user pressed Merge found names: "it says
         Checked just now by gemma-4-26b-a4b-qat · Local, with Merge found names. it should not be
