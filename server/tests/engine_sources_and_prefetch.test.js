@@ -154,7 +154,7 @@ function fakeHub(size, stream = null) {
         if (onProgress) onProgress(size, size);
       }),
   );
-  vi.spyOn(speechCache, "_downloadKwargs").mockReturnValue({ segments: 1, retries: 0 });
+  vi.spyOn(speechCache, "_downloadOptions").mockReturnValue({ segments: 1, retries: 0 });
 }
 
 /** Every path under `root` (recursive) whose last part is `name`. */

@@ -47,6 +47,11 @@
 //     npm run round4:render -- --out data/round6b/primed --prime --direction <the round-5 dump> \
 //       --arms voxcpm2-r5,cosyvoice3,customvoice-ours --voice <the Hatter's id> \
 //       --runtime http://127.0.0.1:<the speech runtime's port> --lines 7-70,7-31,8-27,8-44,7-117
+//
+// Round 6 (TASKS "Round 6") — Fish Audio Drama 3, on our fork's catalog (regenerated with
+// `node scripts/audiocpp-catalog.js --ref jv`) once its licence is accepted, round 5's lines:
+//
+//     npm run round4:render -- --out data/round6 --direction <the round-5 dump> --arms drama3-r6
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -146,6 +151,25 @@ const ARMS = {
   // the x-vector plus the clip and its words (ICL), told the line's words as its instruct.
   "customvoice-ours": { engine: "qwen3", variant: "qwen3-cv-1.7b-q8", base: "qwen3-base-1.7b-q8", ours: "x-vector", told: described },
   "customvoice-ours-icl": { engine: "qwen3", variant: "qwen3-cv-1.7b-q8", base: "qwen3-base-1.7b-q8", ours: "icl", told: described },
+
+  // ── Round 6 (TASKS "Round 6") ──
+  // Fish Audio Drama 3, told the line's words the way its authors direct it: a free-text note in
+  // square brackets before the words ("[choked up, crying quietly] I left his jacket by the door."
+  // — fish.audio/blog/fish-audio-drama-3, 2026-10-13). The app has no notes for it yet, so the note
+  // goes into the line's text (`bracket`), and every take — told and plain — goes straight to the
+  // speech runtime (`direct`): the app strips a [bracket] a model doesn't list
+  // (render_core.performableText), and through it the told takes came out byte-identical to the
+  // plain ones (2026-10-18). On this 8 GB card its routed experts stay on disk and a bounded
+  // cache holds the ones in use (../audio.cpp docs/models/fish_drama3.md, "Disk-backed
+  // experts"); everything else runs on the card.
+  "drama3-r6": {
+    engine: "fish_drama3",
+    variant: "fish_drama3-q4k",
+    bracket: (e, l) => l.direction || WORDS[e] || e,
+    direct: true,
+    pin: "gpu",
+    options: { "fish_drama3.disk_experts": "true", "fish_drama3.cpu_expert_layers": "0" },
+  },
 };
 
 // The emotion clips: a short emotional sentence per emotion, acted by BreezeTTS 2 in another voice.
@@ -289,6 +313,10 @@ async function main() {
       await call(server, "/v1/settings", { method: "PATCH", body: { engines: { engine_overrides: { [a.engine]: { placements: { [a.variant]: a.pin } } } } } });
     }
     const bank = a.clip ? await emotionBank(server, args, rows, path.resolve(args.out, "bank")) : null;
+    // Load options the arm needs (the model row's own, as its Load options set them).
+    if (a.options) {
+      await call(server, `/v1/engines/${a.engine}/models/${a.variant}/runtime-options`, { method: "PUT", body: { options: a.options } });
+    }
     console.log(`\n${arm}: loading ${a.variant} …`);
     const t0 = Date.now();
     await load(server, a.engine, a.variant);
@@ -308,11 +336,22 @@ async function main() {
           // A primed take is written whole first; the cut (`wav`) comes after the aligner.
           const rendered = lead ? wav.replace(/\.wav$/, ".full.wav") : wav;
           if (seen.has(id) && existsSync(rendered)) continue;
-          const delivery = told ? (a.clip ? { emotion_clip: bank[l.emotion], emotion_alpha: a.clip } : a.told(l.emotion, l)) : (a.plain ?? null);
+          // A bracket arm says its note in the text; the manifest keeps the line's own words.
+          const note = told && a.bracket ? a.bracket(l.emotion, l) : null;
+          const said = note ? `[${note}] ${text}` : text;
+          const delivery = note
+            ? { bracket: note }
+            : told
+              ? a.clip
+                ? { emotion_clip: bank[l.emotion], emotion_alpha: a.clip }
+                : a.told(l.emotion, l)
+              : (a.plain ?? null);
           const started = Date.now();
           let error = null;
           try {
-            const audio = a.ours
+            const audio = a.direct
+              ? await directTake(args.runtime, a.variant, { text: said, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), transcript: voiceTranscript(args["data-dir"], voice.id), seed })
+              : a.ours
               ? await oursTake(args.runtime, a.variant, {
                   text,
                   voiceRef: path.resolve(reference),
@@ -324,7 +363,7 @@ async function main() {
                 ? await runtimeTake(args.runtime, a.variant, { text, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), clip: bank[l.emotion], alpha: a.clip, seed })
                 : await call(server, "/v1/generate", {
                     method: "POST",
-                    body: { voice: voice.id, text, language: "en", seed, cache: false, delivery },
+                    body: { voice: voice.id, text: said, language: "en", seed, cache: false, delivery: note ? null : delivery },
                     raw: true,
                   });
             writeFileSync(rendered, audio);
@@ -473,6 +512,32 @@ async function emotionBank(server, args, rows, dir) {
 
 /** One take straight from the speech runtime (`/v1/tasks/run`): the voice's clip, the emotion
  * clip as IndexTTS's emotion reference, at `alpha`. → WAV bytes. */
+/** A copied voice's clip words, from its manifest (the voice list leaves them out). */
+function voiceTranscript(dataDir, voiceId) {
+  const file = path.join(dataDir, "voices", voiceId, "manifest.json");
+  const transcript = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")).transcript : null;
+  if (!transcript) throw new Exit(`voice ${voiceId} has no transcript for its clip`);
+  return transcript;
+}
+
+/** One take sent straight to the speech runtime the app runs, the model loaded through the app
+ * first: the line's text as given (a bracket arm's note included), the voice's clip and its words,
+ * the seed. → WAV bytes. */
+async function directTake(runtime, model, { text, voiceRef, transcript, seed }) {
+  if (!runtime) throw new Exit("a direct arm needs --runtime, the speech runtime's URL");
+  const request = { text, language: "en", voice_ref: voiceRef, reference_text: transcript, options: { seed } };
+  const r = await fetch(`${runtime.replace(/\/+$/, "")}/v1/tasks/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, request }),
+    signal: AbortSignal.timeout(900 * 1000),
+  });
+  if (!r.ok) throw new Exit(`runtime ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  const body = await r.json();
+  if (typeof body.audio !== "string") throw new Exit(`runtime answered no audio: ${JSON.stringify(body).slice(0, 300)}`);
+  return Buffer.from(body.audio, "base64");
+}
+
 async function runtimeTake(runtime, model, { text, voiceRef, clip, alpha, seed }) {
   if (!runtime) throw new Exit("an emotion-clip arm needs --runtime, the speech runtime's URL");
   const r = await fetch(`${runtime.replace(/\/+$/, "")}/v1/tasks/run`, {

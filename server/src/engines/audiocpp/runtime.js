@@ -341,7 +341,7 @@ export async function install({ backend = null, force = false, onProgress = null
   return binary.acquireRuntime(self._runtimeRoot(), FOLDER, release.cfg.TAG, release.binaries(), self._hardware(), {
     gpu: asset.gpu,
     force,
-    dlKwargs: speechCache._downloadKwargs(),
+    dlKwargs: speechCache._downloadOptions(),
     onProgress,
     cancelCheck,
     // `--version` alone proves the DLLs load; this proves the flags we launch with exist.

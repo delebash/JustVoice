@@ -122,7 +122,7 @@ async function fetchOffline(dataDir, engineId, r) {
     mkdirSync(path.dirname(dest), { recursive: true });
     writeFileSync(dest, Buffer.alloc(4));
   });
-  vi.spyOn(speechCache, "_downloadKwargs").mockReturnValue({ segments: 1, retries: 0 });
+  vi.spyOn(speechCache, "_downloadOptions").mockReturnValue({ segments: 1, retries: 0 });
   await speechCache.fetchHfVariant(dataDir, engineId, r.id, r.sources);
 }
 

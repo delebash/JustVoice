@@ -63,7 +63,7 @@ export async function install(runtimeRoot, { onProgress = null, cancelCheck = nu
   const root = home(runtimeRoot);
   mkdirSync(path.dirname(root), { recursive: true });
   const tarball = `${root}.tar.gz`;
-  await download.streamDownload(URL, tarball, { onProgress, cancelCheck, ...speechCache._downloadKwargs() });
+  await download.streamDownload(URL, tarball, { onProgress, cancelCheck, ...speechCache._downloadOptions() });
   const digest = await fileSha256(tarball);
   if (digest !== cfg.SHA256) {
     rmSync(tarball, { force: true });

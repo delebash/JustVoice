@@ -30,7 +30,6 @@ import { Mutex } from "@delebash/core/platform/asyncutil";
 import { getLogger } from "@delebash/core/platform/log";
 import { pyInt, RuntimeError } from "@delebash/core/platform/py";
 import * as download from "@delebash/core/runner/download";
-import * as lifecycle from "@delebash/core/runner/lifecycle";
 import * as kitModels from "@delebash/core/runner/models";
 import { speechCacheRoot } from "./paths.js";
 import * as self from "./speech_cache.js";
@@ -138,14 +137,10 @@ export function variantDiskBytes(dataDir, engineId, variantId) {
   return (man.files || []).reduce((s, f) => s + pyInt(f.size || 0), 0);
 }
 
-/** The kit's per-download settings from the runner config when the shared service is wired;
- * plain defaults otherwise. */
-export function _downloadKwargs() {
-  try {
-    return download.downloadKwargs(lifecycle.getService().config());
-  } catch {
-    return { segments: 8, retries: 3 }; // bare tests / standalone
-  }
+/** Options for the kit's downloader: none — its own connections and retries (no settings since
+ * 2026-10-18). The seam a test replaces to fetch over one connection. */
+export function _downloadOptions() {
+  return {};
 }
 
 // One fetch per variant at a time: a Download and a Load of the same model (or two loads) used
@@ -202,7 +197,7 @@ async function fetchHfVariantLocked(dataDir, engineId, variantId, sources, { onP
   const vdir = variantDir(dataDir, engineId, variantId);
   mkdirSync(vdir, { recursive: true });
   const headers = kitModels.hfDownloadHeaders();
-  const kwargs = self._downloadKwargs();
+  const kwargs = self._downloadOptions();
 
   // Resolve every source first: real sizes give the bar its denominator, and a bad repo/file
   // list fails before any byte moves.

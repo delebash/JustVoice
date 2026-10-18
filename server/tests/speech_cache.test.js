@@ -46,7 +46,7 @@ beforeEach(() => {
     calls.push(url);
     if (onProgress) onProgress(size, size);
   });
-  vi.spyOn(sc, "_downloadKwargs").mockReturnValue({ segments: 1, retries: 0 });
+  vi.spyOn(sc, "_downloadOptions").mockReturnValue({ segments: 1, retries: 0 });
 });
 
 test("fetch_writes_files_and_manifest", async () => {

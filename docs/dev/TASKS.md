@@ -379,6 +379,31 @@ GO:     given 2026-10-16 ("your rec on breeze and license"; after the check, "yo
         computer. Accept it to make the character voices." with the link "BreezeTTS 2's licence
         ➜"? Lean: yes." The user: "compacted re read docs rules session your rec on all go".
 
+### Downloads just work at full speed, with no settings (decided 2026-10-18)
+STATE:  DECIDED 2026-10-18 — the user, of Drama 3's 22 GB download at 8 MB/s: "the download should
+        not take this long why?", then "downloading shouldnt be that hard if we made a mistake in
+        this downloader or the design then we need to redo it … if i click on it in my browser and
+        it downloads fast then the same should be in the all the apps, so think on this and figure
+        out a solution", "realistically a user should never need to touch download settings it
+        should just work at the best possible speed, make it work this way" and "regardless of what
+        file or files are being downloaded from or what server it should just work well". Shown
+        after the fixes: "1. Remove that group from all four apps, along with its four stored
+        settings, so the downloader always picks for itself? Lean: yes … 2. Also remove "how many
+        files download at once" (downloadMaxConcurrent, 4)? … Lean: keep it." The user: "your rec
+        go".
+WHY:    measured (the kit's RESEARCH §9): undici 8's HTTP/2 windows (512 KB a connection) held every
+        download near 8 MB/s on a line that carries 74 MB/s; resume kept only finished chunks.
+NOT:    downloadMaxConcurrent (stays, 4); JustWrite's probe file and docs (its session's, on its
+        user's word).
+BUILT:  kit 1c0ce6f (Chrome's HTTP/2 windows on every kit agent: 7.7 → 74 MB/s; the app's own
+        download 113 MB/s), b345627 (resume from each unfinished chunk's byte), f9148c6 (the
+        settings removed: the engine panel's group and strings, the engine-config API, the stored
+        settings, the seed); JustVoice: `speech_cache._downloadOptions` (the downloader's own
+        defaults; the seam a test replaces). Rows already in a database are ignored until its next
+        reset.
+OPEN:   —
+GO:     given 2026-10-18 ("make it work this way"; the removal: "your rec go").
+
 ### Round 6b — emotion we build ourselves, simplest first (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the user's "if the tts cant do the emotion directly maybe we do
         the emotion in a different method" and "you need to think like this what things can work
@@ -477,6 +502,14 @@ BUILT:  2026-10-18 (the user: "compacted re read docs rules session your rec on 
         keeps `instructions` → `instruction`; #910 is opt-in. The fork's CustomVoice test passes on
         the merge. Drama 3 in the app and how its makers direct it: RESEARCH §10.33. Its download
         waits for the user to accept its licence (Fish Audio Community License v1.0).
+        Shown 2026-10-18: "1. Drama 3's licence (Fish Audio Community License v1.0): will you accept
+        it? … Accept it in AI Settings → Speech engines → Fish Audio Drama 3, or tell me "accept it"
+        and I'll accept it for you. Then I download it, render it, score it and build a listening
+        page. Lean: accept. Testing isn't selling, and it's the only sellable model we haven't heard
+        yet." The user: "think on your rec again go on all finish it". Argued again: one take first to
+        measure speed and memory before the full set (cut to one seed if slow); Drama 3 is heard
+        before guidance's case is judged. Accepted on the user's go; round 5's 50 lines, told and
+        plain, seeds 7–9, into data/round6.
 OPEN:   after round 5's renders: our fork updated to audio.cpp's upstream main (`fish_drama3`,
         merged upstream 2026-10-15), the dev build rebuilt, only the new models tested (TASKS "An
         audio.cpp update tests only the engines and models it adds"); Drama 3 on this 8 GB card
