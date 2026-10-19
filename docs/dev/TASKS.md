@@ -476,7 +476,11 @@ BUILT:  research: RESEARCH §10.26–10.27. Step 3, standard pieces only (2026-1
         whisper, 2026-10-17 (RESEARCH §10.31): 45 primed takes, the lead-in cut with the app's
         aligner (`round4:render --prime`); the whispers at 0, −6 and −12 dB in a mastered chapter
         stretch (`server/scripts/round6b_whisper.js`); the page
-        https://claude.ai/artifact/F5nXrvZyPbTiiMgrk9sXaw (collection round6b2). The plans:
+        https://claude.ai/artifact/F5nXrvZyPbTiiMgrk9sXaw (collection round6b2) — the user's ears
+        2026-10-19 (RESEARCH §10.31): the lead-in gave the full feeling on 3 of 15 takes against 0
+        without (CustomVoice on fearful and happy); a whisper sounded right only at about 12 dB
+        under the narration after mastering; the narration around it was Alice's child voice, not
+        a narrator's (round 5's narration sample too). The plans:
         docs/plans/2026-10-17-sad-fearful-happy.md (instruct guidance first; RESEARCH §10.32) and
         docs/plans/2026-10-17-narrator-and-character-engines.md.
         Reordered the same day, after the user's "are you really thinking about these solutions and

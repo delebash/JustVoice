@@ -4601,7 +4601,9 @@ VII–VIII by Whisper turbo (every line an exact word match) and cut; scored aga
     head" (8-57) and "whispered she is under sentence of execution" (8-48) — the cut follows
     Whisper's segment times, which run loose (`data/round5/human/lines/found.json`). — *measured*.
   - **Narration:** VoxCPM2 (the Alice voice itself) read better on 9 of 10 passages, the same on 1;
-    Breeze's copy on none. A whole book: VoxCPM2 "yes", Breeze's copy "with fixes" (the user in
+    Breeze's copy on none. The Alice voice is a child's ("a young girl around seven to nine years
+    old"), not a narrator's, so the narrator's engine was judged on a child's voice (§10.31,
+    2026-10-19). A whole book: VoxCPM2 "yes", Breeze's copy "with fixes" (the user in
     chat, 2026-10-17 — the page's two answers never saved: their key "r5whole-Narrator 1" has a
     space, which the page's store refuses; fixed in the page's version 3). — *by ear*.
   - **The narrator shares the characters' model today:** `makeVoices` keeps every designed voice on
@@ -4724,7 +4726,30 @@ runtime (`npm run dev`, fork 8461cdce).
 - **The page:** https://claude.ai/artifact/F5nXrvZyPbTiiMgrk9sXaw (collection `round6b2`).
   - Part 1: each of the five lines, with the three engines with and without the lead-in, seed 7.
   - Part 2: both whispered stretches at the three levels.
-  - Your ears decide; waiting. Data: `data/round6b/primed/`, `data/round6b/whisper/` (gitignored).
+  - Data: `data/round6b/primed/`, `data/round6b/whisper/` (gitignored).
+- **"Round 5's narrator voice" is Alice's** (`round6b_whisper.js:28`, voice
+  `voice_57b65ae89e7c419988809f0bba684851`, the one-click run's designed voice for Alice: "Female,
+  a young girl around seven to nine years old, with a clear, bright, and articulate pitch …"). The
+  test book has no narrator voice of its own, and round 5's narration sample read the passages in
+  this voice too (§10.29). So both heard a child's voice as the narrator. The user, 2026-10-19:
+  "is it supposed to be a high pitched kids voice?". — *read in code and the voice's manifest*.
+- **The user's ears** (2026-10-19; collection `round6b2`). The full feeling · weaker · plain ·
+  something else · picked best, over the five lines:
+  - **Priming:** without the lead-in, no engine got the full feeling on any line. With it, the full
+    feeling came on 3 takes.
+    - CustomVoice and its fingerprint: 0 · 1 · 3 · 1 · 0 without; 2 · 1 · 2 · 0 · 2 with — full and
+      picked best on 8-44 (fearful) and 7-117 (happy). Round 6 had nobody full on 7-117.
+    - VoxCPM2: 0 · 3 · 2 · 0 · 2 without; 1 · 1 · 3 · 0 · 0 with (full on 8-44).
+    - CosyVoice3: 0 · 2 · 3 · 0 · 0 without; 0 · 3 · 2 · 0 · 1 with.
+    - The sad lines stayed weaker or plain either way. 7-70's words were "pointing with his tea
+      spoon". The page showed "The engines were told —" on every line: the page builder read the
+      words from a take that had none. The engines got them.
+  - **Whispers:** 8-48 was "something else" at 0, −6 and −12 dB, each with the note "loud but in
+    whispered voice not as loud a narrator but volume still high". On 8-67, 0 and −6 dB were
+    "something else" (the same note), and −12 dB was the full feeling and picked best. After
+    mastering, the gap at −12 dB is −11.6 dB on 8-67 and −7.7 dB on 8-48. So a whisper must sit
+    about 12 dB under the narration after mastering, not 8. All of it was heard against a child's
+    narration (above). — *the user's ears, 2026-10-19*.
 
 ### 10.32 Sad, fearful and happy on CustomVoice's fingerprint — three ways compared (2026-10-17)
 
