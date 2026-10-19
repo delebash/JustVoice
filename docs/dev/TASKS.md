@@ -1083,11 +1083,10 @@ BUILT:  6 and the load faults — 75af433b, kit 1401dc8: an unmeasured model who
         gives it (`qwencleo_asr_q8_0` / `_f16`, in audio.cpp's own words, "QwenCleo-ASR Egyptian
         Arabic"), with the aligner as every Qwen3-ASR model; its `LANGUAGES` `ar-EG` and `en` in
         qwen3_asr.js, as VoiceTut's; Apache-2.0 at its source (RESEARCH §1.6).
-OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the runtime: the fork's
-        dev build and every release bundle (fork work under way). 4 — F5-TTS's memory: upstream's
-        open PR #924 (frees evicted graphs, bounds the Vocos cache) into the fork, then size F5's
-        no_alloc graph contexts for metadata only, as on Windows the 12 GiB pool is committed
-        memory even on the card (fork work under way; measured through the app after).
+OPEN:   — (checked 2026-10-19: 2 — Silero VAD ships beside the executables in the dev build and
+        every release bundle, in the pinned v0.9.2-jv.6: fork 095cae20, release.yml stages it,
+        RESEARCH §10.15 finding 2. 4 — F5-TTS's memory: upstream's PR #924 and our fixes are in
+        jv.6, measured through the app below and in RESEARCH §10.15 finding 4.)
         1 — VieNeu hidden again: it needs SEA-G2P phonemes (a Rust library the release doesn't
         build) and refuses to speak with no voice; the K2 listing waited on this check, and the
         build's answer 13 (its "Can't copy a voice" note) goes with it — IDEAS: SEA-G2P in the
@@ -1262,7 +1261,10 @@ BUILT:  in progress — 1: DONE 2026-10-10 — v0.9.0-jv.5 tagged on the fork (5
         the load finishes; kit 1347b49) (kit TASKS; the plan's §6 "Done 2026-10-09"). Voice training (gap 5):
         researched, measured by ear in two rounds — cloning and a Python-trained LoRA — and moved
         to IDEAS 2026-10-10 (`docs/plans/2026-10-09-voice-training-findings.md`, RESEARCH §9).
-OPEN:   1–4 above, in that order.
+OPEN:   (checked 2026-10-19 — 1–4 are built as above, except:) the Engines tab's paragraph under
+        the table's title, new wording for the user's word (the plan's §5 "Built 2026-10-09"); the
+        kit's KV/context faults, waiting on measurements from two more machines (the user's
+        2026-09-19 ruling).
 GO:     given 2026-10-09 ("do it all your rec go, lets get all the tasks completed").
 
 ### One-click audiobook: one pipeline in JV, run by its own AI or by Claude Code (decided 2026-10-10)
@@ -1432,7 +1434,11 @@ WHY:    round 4 needs every audio.cpp model in the app; the test kit keeps round
 NOT:    building the one-click run before the engines are re-tested the authors' way.
 BUILT:  step 1 under way (the engine list's slices 1–5; slice 6, the v0.9.1 update, waits for
         the DSP sweep because it changes the fork).
-OPEN:   steps 2–5; the DSP reuse sweep's result goes into step 5.
+OPEN:   (checked 2026-10-19 — step 1 is done: slices 1–6, the fork past v0.9.1 at v0.9.2, the pin
+        v0.9.2-jv.6 since 2026-10-16; steps 2–4 are built, TASKS "The test kit and round 4, then
+        the one-click slices".) Step 5: the character voices are under way (rounds 5, 6 and 6b);
+        voice conversion and the Python-only candidates are not started, each with its own plan.
+        The DSP reuse sweep's result goes into step 5.
 GO:     given 2026-10-11 for step 1 ("go ahead and code go").
 
 ### Build the engine list from audio.cpp's own model specs, plus a small curated file (decided 2026-10-11)
@@ -1504,7 +1510,8 @@ BUILT:  2 — the fork entry below, decided. 3 — checked in the code and fixed
         FINDING from 4, for the user's word: with another program holding the card, Auto still
         says "nothing else is on the graphics card" and the admission refuses — no CPU — naming
         the sleeping AI model as "Resident" and saying "unload something first".
-OPEN:   1 (slice 6); the FINDING above.
+OPEN:   the FINDING above, for the user's word. (1 done, checked 2026-10-19: the fork moved past
+        v0.9.1 to v0.9.2, and v0.9.2-jv.6 is the pin since 2026-10-16 — `release.js` TAG.)
 GO:     given 2026-10-13.
 
 ### Every speech engine's licence in plain words, on hover and in the opened engine (decided 2026-10-11)
