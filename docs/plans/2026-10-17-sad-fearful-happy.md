@@ -153,3 +153,9 @@ recs go" (TASKS "Round 6b"). Questions 1–5 decided as their leans.
   - The page is the round 6 page, version 2: https://claude.ai/artifact/6VanH77XsNMb8UaKq1V2F2.
 - **Not done:** D4 (using a direction) waits for the ears on guidance, as §2 says. EDICT is set
   aside.
+- **The ears (2026-10-19), and what followed:** guidance fails its bar, 1 of the 5 sad, fearful and
+  happy lines at γ 2.5 and at 4 (RESEARCH §10.33). So the app doesn't send `guidance_scale`, which
+  stays in the fork, off by default. D4 is set aside on the user's "your rec all go" (TASKS "Round
+  7"). The directions are mostly one arousal axis with sad the weakest, CustomVoice stayed plain on
+  the quiet lines at every γ, and D4 would need a new fork input. The next try is the words each
+  engine is given, a delivery note in place of the book's cue words.

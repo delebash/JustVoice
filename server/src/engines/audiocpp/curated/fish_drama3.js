@@ -3,6 +3,26 @@
 // catalog.md §4). Its makers direct it with a free-text note in square brackets before the words,
 // point cues mid-line and paired tags (RESEARCH §10.33). Round 6 hears it (TASKS "Round 6").
 
+// Its direction, the way round 6 heard it (RESEARCH §10.33, the user's ears 2026-10-19: the best
+// model that can be sold with): one note in square brackets before the words — the line's
+// direction in words, else a word for its emotion — and a space, as its makers write it ("[choked
+// up, crying quietly] I left his jacket by the door."). Its point cues and paired tags are untested.
+export const DIRECTION = {
+  kind: "prefix",
+  one_note: true,
+  tags: {
+    happy: "[happy] ",
+    sad: "[sad] ",
+    angry: "[angry] ",
+    fearful: "[frightened] ",
+    sarcastic: "[sarcastic] ",
+    contemptuous: "[contemptuous] ",
+    whispered: "[whispering] ",
+    shouted: "[shouting] ",
+  },
+  words: "[{text}] ",
+};
+
 // Its licence in plain words — can a person sell an audiobook made with it? Our reading of the
 // Fish Audio Community License Agreement v1.0 (last updated 2026-10-13) at its source, checked
 // 2026-10-18 (RESEARCH §10.33): §III(a) commercial use while the annual gross revenue of you and

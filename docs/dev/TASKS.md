@@ -453,6 +453,42 @@ BUILT:  2026-10-18 — kit: `<LlmUiHosts :task-stack>` (default true; app-struct
 OPEN:   —
 GO:     given 2026-10-18 (as above).
 
+### Round 7 — Drama 3 directed in the app, a delivery note, the narrator's own voice (decided 2026-10-19)
+STATE:  DECIDED 2026-10-19 — after the user's ears on round 6 and the whispers page (RESEARCH
+        §10.31, §10.33), shown: "1. Should I write Drama 3's direction into the app now, as one
+        bracket, the way round 6 tested it? Lean: yes. It would work under `npm run dev` straight
+        away. … 2. Should jv.7 (the release) wait? Lean: wait until a release is actually needed,
+        per your 2026-10-13 word … 3. Should I set D4 aside and test the direction words instead?
+        … Instead: Drama 3, Breeze and VoxCPM2 on the same 13 lines, each given a delivery note in
+        the style of Fish's own examples. The app's own AI would write the notes, beside the
+        cue-word takes you just heard … 4. Should guidance stay in the fork, off by default? Lean:
+        keep it." Then, asked "what voice are you using ofr narrator is is suppusoe dto be a high
+        ptiched kids voice?" — no, Alice's; shown: "1. Should I redo the narration tests with a real
+        narrator voice? First the app's own narrator step designs one for Alice VII, the way the
+        one-click run does. Then, with that voice: redo round 5's narration comparison … redo the
+        two whisper passages at −12 and −18 dB." and "Should I republish the whispers page with
+        these words in place of the '—'?" The user: "your rec all go".
+WHY:    the user's three questions (best to sell with, best we can't, best overall) and the bar:
+        acting that competes with a human. Round 6: Breeze 8 of 13 full, Drama 3 5, every engine
+        told only the book's cue words; the narrator rounds heard a child's voice.
+NOT:    D4 (CREMA-D directions on CustomVoice's fingerprint) — set aside; `guidance_scale` in the
+        app; jv.7 now; the trial direction prompt in the app (it marks 83 % of uncued lines).
+BUILT:  Drama 3's `DIRECTION` (`curated/fish_drama3.js`: one note, the words else the emotion's
+        word, then a space — `applyDirection`'s `one_note`), unit-tested; runs under `npm run dev`
+        with the local engine list; the installed app gets it with jv.7. The whispers page shows
+        what each engine was told (version 2). Round 7 (RESEARCH §10.34): the delivery notes from
+        the app's direction step with a trial prompt (`eval:direction --system`), rendered on
+        Drama 3, Breeze and VoxCPM2 (`data/round7/notes`; VoxCPM2's cue-word takes made again,
+        `data/round7/cue`); the narrator described and designed through the app's own steps in a
+        test copy of chapter VII ("Alice VII (narrator test)", its narrator "Narrator (test)"), the
+        narration sample (`server/scripts/narration_sample.js`) and the whispers at −12 and −18 dB
+        (`round6b_whisper.js --narrator --gains --out`).
+OPEN:   the user's ears on the round 7 page, https://claude.ai/artifact/ASSsCBtrwrZihqNYvKW8TH
+        (collection `round7`). With jv.7: docs/engines.md gets Drama 3's rows (its
+        direction, its licence), and Drama 3's request sends top-k 30 (upstream #978 makes 4097 the
+        default; RESEARCH §10.33).
+GO:     given 2026-10-19 ("your rec all go").
+
 ### Round 6b — emotion we build ourselves, simplest first (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the user's "if the tts cant do the emotion directly maybe we do
         the emotion in a different method" and "you need to think like this what things can work
@@ -563,8 +599,8 @@ GO:     given 2026-10-16 ("your rec, sae the research"; the new order: "go on it
         (the full feeling on 3 of the 5 sad, fearful and happy lines at some γ, nothing worse
         elsewhere, likeness ≥ 0.85) — 1 of the 5 at γ 2.5 and at γ 4; γ 4 was "something else" on
         three takes and lost a shout. So the app doesn't send `guidance_scale`.
-        OPEN: the plan's next step on a fail is D4 (using a direction), its own pieces and its own
-        go — for the user's word, with the rec from the ears.
+        D4 (using a direction), the plan's next step on a fail, was set aside 2026-10-19 (TASKS
+        "Round 7"); `guidance_scale` stays in the fork, off by default.
 
 ### Round 6 — the best engine to sell with: Fish Drama 3, then Qwen3 with an emotion direction (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the field sweep (RESEARCH §10.26), shown: "finish round 5 first.
@@ -603,8 +639,8 @@ BUILT:  2026-10-18 (the user: "compacted re read docs rules session your rec on 
         re-tested on the merge's codec fixes: gain +0.02, UTMOSv2 3.37 (RESEARCH §10.33).
 OPEN:   the user's ears on the round 6 page — done 2026-10-19 (RESEARCH §10.33 "The user's ears"):
         the full feeling on BreezeTTS 2 8 of 13, Drama 3 5 (picked best on 5, as Breeze), VoxCPM2
-        3, CustomVoice's fingerprint 1–2. What follows is for the user's word, with the recs from
-        the ears. As written before the ears: if Drama 3 earns it, its `DIRECTION` in
+        3, CustomVoice's fingerprint 1–2. Decided after the ears (TASKS "Round 7"): Drama 3's
+        `DIRECTION` built, jv.7 waits. As written before the ears: if Drama 3 earns it, its `DIRECTION` in
         `curated/fish_drama3.js` in the form round 6 tested (one note: the words, else the emotion
         word — the app's `prefix` sends two), and a release carrying it (jv.7, its own decision).
         The x-vector emotion direction from CREMA-D: fingerprints D1–D3 built 2026-10-19 (TASKS

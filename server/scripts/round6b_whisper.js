@@ -8,13 +8,15 @@
 // app's analyzer (dsp `analyze`'s RMS, what the app's ACX check reads).
 //
 //     node server/scripts/round6b_whisper.js            # the app on 127.0.0.1:17494
+//     node server/scripts/round6b_whisper.js --narrator <voice id> --gains=-12,-18 --out data/round7/whisper
 //
-// The neighbours are read in round 5's narrator voice (the Alice voice on VoxCPM2, RESEARCH
-// §10.29), seed 7; the whispers are round 5's page takes (the scorers' pick of three). Writes
-// `data/round6b/whisper/<line>-<gain>dB.wav` (mastered) and `results.json`.
+// The neighbours are read in the narrator's voice (`--narrator`; by default round 5's, which was
+// Alice's child voice, RESEARCH §10.31), seed 7; the whispers are round 5's page takes (the scorers'
+// pick of three). Writes `<out>/<line>-<gain>dB.wav` (mastered) and `results.json`.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { parseArgs } from "node:util";
 import * as dsp from "../src/audio/dsp_client.js";
 import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
 import { segmentParagraphs, splitIntoParagraphs } from "../src/extraction/segmentation.js";
@@ -24,9 +26,17 @@ import { concatLines, RenderedLine, TRIM_BELOW_DBFS, TRIM_KEEP_MS } from "../src
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 const SERVER = "http://127.0.0.1:17494";
-const OUT = path.join(ROOT, "data", "round6b", "whisper");
-const NARRATOR = "voice_57b65ae89e7c419988809f0bba684851"; // "Alice", VoxCPM2 — round 5's narrator
-const GAINS = [0, -6, -12];
+const { values: args } = parseArgs({
+  options: {
+    out: { type: "string", default: path.join("data", "round6b", "whisper") },
+    // Round 6b's: "Alice", VoxCPM2 — a child's voice, not a narrator's (RESEARCH §10.31).
+    narrator: { type: "string", default: "voice_57b65ae89e7c419988809f0bba684851" },
+    gains: { type: "string", default: "0,-6,-12" },
+  },
+});
+const OUT = path.resolve(ROOT, args.out);
+const NARRATOR = args.narrator;
+const GAINS = args.gains.split(",").map(Number);
 // Chapter VIII's whispered lines: the take, and the segments around it (offsets from the line).
 const STRETCHES = [
   { line: "8-48", d: 48, take: "data/round5/voxcpm2-r5/8-48-told-8.wav", around: [-1, 1, 2] },

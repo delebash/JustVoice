@@ -1179,8 +1179,11 @@ export function applyDirection(direction, cue) {
     out.directed = true;
   } else if (direction.kind === "prefix") {
     const parts = [];
-    if (emotion && direction.tags[emotion]) parts.push(direction.tags[emotion]);
-    if (words && direction.words) parts.push(direction.words.replace("{text}", words.replace(/[[\]]/g, "")));
+    const note = words && direction.words ? direction.words.replace("{text}", words.replace(/[[\]]/g, "")) : "";
+    // `one_note`: the line's words alone, else its emotion's tag — never both (Drama 3, as round 6
+    // heard it).
+    if (emotion && direction.tags[emotion] && !(direction.one_note && note)) parts.push(direction.tags[emotion]);
+    if (note) parts.push(note);
     if (!parts.length) return out;
     out.prefix = parts.join("");
     out.directed = true;

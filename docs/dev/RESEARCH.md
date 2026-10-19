@@ -4953,6 +4953,61 @@ TASKS "Round 6". Our fork's `jv` merged audio.cpp's upstream main of 2026-10-18 
     on 4 of the 5 quiet ones. Of the Apache models, VoxCPM2 is best at 3 of 13. — *the user's ears,
     2026-10-19*.
 
+### 10.34 Round 7 — a delivery note in place of the cue words; the narrator's own voice (2026-10-19)
+
+TASKS "Round 7". Through `npm run dev` (fork jv 1de98891).
+
+- **The notes come from the app's direction step** (`eval:direction --system <file>`, the Local
+  recipe on gemma-4-26b-a4b-qat, chapters VII–VIII), changing only the prompt's `direction` rule.
+  - Asked for "how the voice sounds saying it, the way a director writes a note for a voice
+    actor", with Fish's two examples, gemma copied the book's cue on most lines ("sighed",
+    "pointing with his tea spoon", "tossing his head contemptuously"). Only 4 of the 13 page lines
+    changed.
+  - Adding "Turn the text's cue into the sound of the voice; never copy the cue" and three
+    made-up examples from outside the book ("he snapped" → "short and sharp, out of patience")
+    changed all 13: e.g. 7-70 "mournful, dejected", 7-31 "sighing, disappointed", 7-117
+    "triumphant, gloating", 8-27 "timid and pleading". Two still name a movement ("dismissive,
+    tossing his head").
+  - The cost: lines the book gives no cue were marked 96 of 117 (82 %); the first trial prompt
+    marked 21 %, and the live prompt was accepted at ≤ 5 % (slice 2, `eval_direction.js`'s
+    header). The "Most lines get nothing" rule is overridden, so the prompt isn't fit for the app
+    as written. — *measured*.
+- **Rendered** (seed 7, the 13 lines, told and plain): Drama 3 (`drama3-r6`, the note as its
+  bracket), BreezeTTS 2 and VoxCPM2, into `data/round7/notes`.
+  - Drama 3's and Breeze's plain takes match round 6's and round 5's sample for sample, so the
+    words are the only change.
+  - VoxCPM2's don't: upstream #950 ("size the step graphs by the request", merged 2026-10-18)
+    changes its takes. So its cue-word takes were made again on today's build
+    (`data/round7/cue`), and their plain takes match.
+  - Median seconds a take: Drama 3 8.2, Breeze 5.2, VoxCPM2 2.2. — *measured*.
+- **Scored** on the 13 lines, cue words → note: emotion gain Breeze +0.07 → +0.15, Drama 3 +0.08 →
+  +0.00, VoxCPM2 −0.03 → +0.00. UTMOSv2: Breeze 3.24 → 3.26, Drama 3 3.31 → 3.25, VoxCPM2 3.07 →
+  3.00. Read-back and likeness are unchanged. emotion2vec misjudged these before (§10.29), so the
+  ears decide. — *measured*.
+- **The narrator's own voice, made the app's way.** The test book's narrator is cast to the
+  library's "Narrator" persona (Kokoro am_echo), so the describe step skips it. So a test copy of
+  chapter VII was imported ("Alice VII (narrator test)"), with its narrator "Narrator (test)".
+  - `book-voices/describe` (Local, gemma, the chapter's opening): "Female, middle-aged, bright and
+    clear pitch with a crisp, storytelling quality. She reads at a rhythmic, engaging pace with a
+    whimsical yet poised manner."
+  - `book-voices/design`: Qwen3 VoiceDesign (`design_model`), its audition kept as the clip on
+    VoxCPM2 (`narrator_model`). Voice `voice_05015321d46549e7b9f1f2cdc925978d`, 42 s.
+  - The narration sample: round 5's 10 passages (the same text), `server/scripts/narration_sample.js`.
+    VoxCPM2 read-back 0.019, UTMOSv2 3.57, 6.3 s a passage. Breeze's copy read-back 0.016,
+    UTMOSv2 4.05, 15.6 s. With Alice's child voice on round 5: 2.70 and 3.05. — *measured*.
+- **The whispers against that narrator** (`round6b_whisper.js --narrator … --gains=-12,-18`).
+  The whisper against its neighbours after mastering:
+  - 8-48: −9.0 dB at −12, −15.1 dB at −18 (against the child narrator, −7.7 at −12).
+  - 8-67: −12.4 dB at −12, −18.2 dB at −18 (−11.6 at −12).
+  - The adult narration is louder against the same whisper. — *measured*.
+- **Drama 3 directed in the app:** `curated/fish_drama3.js` `DIRECTION` — one note in square
+  brackets, the line's words else its emotion's word, then a space (`one_note`), as round 6 heard
+  it. It runs under `npm run dev` (the local engine list), and the installed app gets it with jv.7.
+  — *code + unit test*.
+- **The page:** https://claude.ai/artifact/ASSsCBtrwrZihqNYvKW8TH (collection `round7`). Part 1:
+  6 takes a line (each engine with the cue words and with the note). Part 2: the narration, A/B.
+  Part 3: the whispers at −12 and −18 dB. The ears decide; waiting.
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next

@@ -7,6 +7,7 @@
 // the first download, and a directed VoxCPM2 line goes without the clip's words.
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
+import * as drama3 from "../src/engines/audiocpp/curated/fish_drama3.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
@@ -303,6 +304,11 @@ test("a directed VoxCPM2 line goes without the clip's words; a plain one keeps t
 test("the direction kinds apply as data", () => {
   expect(generated.applyDirection(null, { emotion: "sad", words: "x" }).directed).toBe(false);
   expect(generated.applyDirection({ kind: "prefix", tags: {} }, { emotion: "neutral", words: "" }).directed).toBe(false);
+  // Drama 3's one note, as round 6 heard it: the words alone, else the emotion's word.
+  expect(generated.applyDirection(drama3.DIRECTION, { emotion: "sad", words: "sighed [deeply]" }).prefix).toBe("[sighed deeply] ");
+  expect(generated.applyDirection(drama3.DIRECTION, { emotion: "fearful", words: "" }).prefix).toBe("[frightened] ");
+  expect(generated.applyDirection(drama3.DIRECTION, { emotion: "neutral", words: "" }).directed).toBe(false);
+  expect(generated.directionEmotions(drama3.DIRECTION)).toBeNull(); // any emotion reaches it in words
   expect(generated.coerceOption({ type: "int", min: 1, max: 10 }, "42")).toBe(10);
   expect(generated.coerceOption({ type: "enum", values: ["a"] }, "b")).toBeUndefined();
 });
