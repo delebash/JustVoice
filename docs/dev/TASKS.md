@@ -420,6 +420,27 @@ BUILT:  2026-10-18 — eight screens and the two Render mocks on the kit's `AiTa
 OPEN:   —
 GO:     given 2026-10-18 ("your rec on all keep going finish it all").
 
+### The kit's corner task stack stays out of JustVoice (decided 2026-10-18)
+STATE:  DECIDED 2026-10-18 — the user, of the book run shown twice (its card and the kit's corner
+        stack): "what is the book run showing twice, think on everything adversially, do your rec,
+        finish everthying … all your rec and any bugs or suggestions you find our have go". My rec:
+        keep the 2026-10-05 rule as approved ("The app-wide strip goes. Each task shows on the page
+        that started it. The header's ✨ AI button (running count plus the task panel) and the AI
+        Tasks page stay the places that show everything."), with the kit's own switch.
+WHY:    the kit's stack (kit bc34207, for just-house-paint's tasks that showed no progress anywhere)
+        brought an app-wide display back to JustVoice: Cast's Smart-assign and Export's runs in the
+        corner once you switch Studio steps, a persona's Compose on another persona's page, the book
+        run on every page and twice on its own Overview (RESEARCH "Each task's strip"). No JustVoice
+        task is invisible without it: the ✨ button counts every running task.
+NOT:    `inline: true` on each task (app-structure §8 keeps it for a screen that shows a task's
+        progress its own way for the task's whole life, and a new task would miss it); keeping Cast
+        and Export alive in Studio (their data goes stale, and the book run and the persona page
+        stay).
+BUILT:  2026-10-18 — kit: `<LlmUiHosts :task-stack>` (default true; app-structure §8 names the
+        switch); JustVoice: `MainLayout.vue` mounts `<LlmUiHosts :task-stack="false" />`.
+OPEN:   —
+GO:     given 2026-10-18 (as above).
+
 ### Round 6b — emotion we build ourselves, simplest first (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the user's "if the tts cant do the emotion directly maybe we do
         the emotion in a different method" and "you need to think like this what things can work

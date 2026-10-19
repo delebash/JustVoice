@@ -1797,14 +1797,16 @@ blast radius.
   `chapterRun.useStepStrip` over the same helper. (was: JustVoice's own `PageTaskStrips.vue` over
   `services/pageTasks.js` until 2026-10-18, when the kit took them in; before 2026-10-05 `App.vue`
   showed every non-inline task at the top of every page.) — *code, 2026-10-18*.
-- The kit's floating stack (`AiTaskStack`, under `<LlmUiHosts />`, kit bc34207) shows each running
-  task that no mounted strip claims. The pages sit in one `<KeepAlive>` keyed by route name
-  (`MainLayout.vue`), so a page's strips stay mounted, and their tasks claimed, after you leave it.
-  Inside Studio (`StudioPage.vue`) Discover, Script and Render (grid and chapter page) are kept
-  alive; Cast and Export are plain `v-if`, so switching steps unmounts their strips and a
-  Smart-assign or an export still running moves to the stack until you come back. The book run's task (`bookRun.followBookRun`) has no strip (started
-  with `withAiTask`, not `inline`): its card draws the run itself, so while it runs the stack shows
-  it on every page, its own included. — *code, 2026-10-18; not yet seen on screen*.
+- The kit's corner stack (`AiTaskStack`, under `<LlmUiHosts />`, kit bc34207, 2026-10-18) shows
+  each running task that no mounted strip claims. In JustVoice it would have brought back an
+  app-wide display: the pages sit in one `<KeepAlive>` keyed by route name (`MainLayout.vue`), so
+  a page's strips stay mounted, but inside Studio (`StudioPage.vue`) Cast and Export are plain
+  `v-if` (Discover, Script and Render are kept alive), so a Smart-assign or an export you left
+  moved to the corner; a persona's Compose showed there on another persona's page (the strip's
+  meta is the persona); and the book run's task (`bookRun.followBookRun`, no strip: its card
+  draws the run) showed in the corner on every page, its own Overview included. So JustVoice
+  mounts `<LlmUiHosts :task-stack="false" />` (kit option added 2026-10-18), keeping the
+  2026-10-05 rule. — *code, 2026-10-18*.
 - The kit's task panel (the ✨ button) lists every task whatever `inline` says; `inline` only
   told a global stack to skip a task (`just-core/packages/ui/src/stores/aiTasks.js`, start()).
   — *code, 2026-10-05*.

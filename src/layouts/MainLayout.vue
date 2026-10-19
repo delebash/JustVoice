@@ -692,8 +692,10 @@ onMounted(async () => {
     </q-page-container>
 
     <!-- Every host element the shared UI needs, as ONE tag (Toast + AppDialog were
-         hand-mounted here; the failure mode the installer kills is mounting SOME). -->
-    <LlmUiHosts />
+         hand-mounted here; the failure mode the installer kills is mounting SOME).
+         Without the kit's corner task stack: a page shows only its own tasks, and the
+         ✨ AI button shows them all (decided 2026-10-05; the stack came 2026-10-18). -->
+    <LlmUiHosts :task-stack="false" />
     <!-- The once-ever AI offer — fired right after the first project is
          created or opened on a box with no default provider (the flag
          persists whatever path is taken). -->
