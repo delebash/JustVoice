@@ -555,9 +555,12 @@ GO:     given 2026-10-16 ("your rec, sae the research"; the new order: "go on it
         directions (D3) made: mostly one arousal axis, sad the weakest (RESEARCH §10.32). The
         takes are on the round 6 page, version 2
         (https://claude.ai/artifact/6VanH77XsNMb8UaKq1V2F2), beside Drama 3, Breeze and VoxCPM2.
-        OPEN: the user's ears on guidance (the bar: the full feeling on 3 of the 5 sad, fearful and
-        happy lines at some γ, nothing worse elsewhere, likeness ≥ 0.85); then D4 (using a
-        direction) gets its own pieces, or the app sends `guidance_scale`, each its own go.
+        The user's ears, 2026-10-19 (RESEARCH §10.33 "The user's ears"): guidance fails the bar
+        (the full feeling on 3 of the 5 sad, fearful and happy lines at some γ, nothing worse
+        elsewhere, likeness ≥ 0.85) — 1 of the 5 at γ 2.5 and at γ 4; γ 4 was "something else" on
+        three takes and lost a shout. So the app doesn't send `guidance_scale`.
+        OPEN: the plan's next step on a fail is D4 (using a direction), its own pieces and its own
+        go — for the user's word, with the rec from the ears.
 
 ### Round 6 — the best engine to sell with: Fish Drama 3, then Qwen3 with an emotion direction (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the field sweep (RESEARCH §10.26), shown: "finish round 5 first.
@@ -594,7 +597,10 @@ BUILT:  2026-10-18 (the user: "compacted re read docs rules session your rec on 
         listening page https://claude.ai/artifact/6VanH77XsNMb8UaKq1V2F2 (collection `round6`:
         Drama 3, Breeze, VoxCPM2, CustomVoice + fingerprint on the 13 lines, seed 7). Fish S2 Pro
         re-tested on the merge's codec fixes: gain +0.02, UTMOSv2 3.37 (RESEARCH §10.33).
-OPEN:   the user's ears on the round 6 page. Then, if Drama 3 earns it: its `DIRECTION` in
+OPEN:   the user's ears on the round 6 page — done 2026-10-19 (RESEARCH §10.33 "The user's ears"):
+        the full feeling on BreezeTTS 2 8 of 13, Drama 3 5 (picked best on 5, as Breeze), VoxCPM2
+        3, CustomVoice's fingerprint 1–2. What follows is for the user's word, with the recs from
+        the ears. As written before the ears: if Drama 3 earns it, its `DIRECTION` in
         `curated/fish_drama3.js` in the form round 6 tested (one note: the words, else the emotion
         word — the app's `prefix` sends two), and a release carrying it (jv.7, its own decision).
         The x-vector emotion direction from CREMA-D: fingerprints D1–D3 built 2026-10-19 (TASKS

@@ -4811,7 +4811,9 @@ runtime (`npm run dev`, fork 8461cdce).
     scores as round 6b's on the old one (UTMOSv2 3.18, the rest the same). So by the scorer,
     guidance moves sad, fearful and the whisper a little, costs a little at 4, and does nothing
     for happy or the shout. emotion2vec gave CustomVoice's acting nothing in round 6b where the
-    ears heard five lines act, so the ears decide (the round 6 page, version 2).
+    ears heard five lines act, so the ears decide (the round 6 page, version 2). **By ear it fails
+    the bar:** 1 of the 5 sad, fearful and happy lines at γ 2.5 and at 4 (§10.33, the user's ears,
+    2026-10-19).
 
 ### 10.33 Round 6 — Fish Audio Drama 3 in our fork and in the app (2026-10-18)
 
@@ -4898,6 +4900,33 @@ TASKS "Round 6". Our fork's `jv` merged audio.cpp's upstream main of 2026-10-18 
   per-layer expert counts, a speech-only head), Fish DAC chunked reference encoding to cut the
   card's peak (#960); also Qwen3's speech decoder (7 files). Taking them is jv.7's merge, and the
   rule "an audio.cpp update tests only the engines and models it adds" applies. — *read, 2026-10-19*.
+- **The user's ears on the round 6 page, version 2** (2026-10-19; collection `round6`: 78 answers,
+  a best pick on 12 lines, 4 notes; tallied by the session's `tally_r6.js`). Seed 7, the 13 lines,
+  six takes behind letters. The full feeling · weaker · plain · something else · picked best:
+  - BreezeTTS 2: 8 · 2 · 2 · 1 · 5 (round 5's ears: 9 of 13 full, §10.29).
+  - Fish Audio Drama 3 (top-k 30): 5 · 1 · 6 · 1 · 5.
+  - VoxCPM2: 3 · 4 · 5 · 1 · 1.
+  - CustomVoice with the Hatter's fingerprint, guidance 1 · 2.5 · 4: full 1 · 2 · 1, weaker
+    5 · 3 · 3, plain 6 · 7 · 6, something else 1 · 1 · 3, best 1 · 0 · 0.
+  - **By the line's kind.** Loud lines (shouted, angry, scornful; 6): Breeze full on 5, Drama 3 on
+    3 and picked best on 3, VoxCPM2 on 2. Quiet lines (sad, fearful, happy; 5): Breeze 2 full and 2
+    weaker, picked best on 3; Drama 3 1 full (7-31, sad) and 4 plain; VoxCPM2 1; CustomVoice 0–1.
+    Whispered (2): Drama 3 and Breeze full on one each. The note "loud but whispered style" on four
+    whisper takes (Drama 3, Breeze, VoxCPM2, guidance 4), round 5's finding again (§10.29).
+  - **7-70 (sad) is plain in all six takes.** Its told words were "pointing with his tea spoon",
+    the direction step's pick of an action, not the book's "shook his head mournfully".
+  - **Guidance fails its bar** (the plan's: the full feeling on 3 of the 5 sad, fearful and happy
+    lines at some γ, nothing worse elsewhere). 0 of the 5 at γ 1, 1 at 2.5 (8-44), 1 at 4 (8-44,
+    with 7-31 "something else"). γ 4 was "something else" on three takes (7-3, as at every γ;
+    7-31; 8-48) and lost 7-95's shout, which γ 1 and 2.5 had.
+  - **What every engine was given:** the book's cue words, most of them one word ("sighed",
+    "timidly", "triumphantly", "indignantly"). Drama 3's makers direct with a description of the
+    delivery ("[choked up, crying quietly]"); that was not tested.
+  - **For the user's three questions:** the best overall and the best we can't sell with is
+    BreezeTTS 2. The best we can sell with is Drama 3, under the Fish Audio Community License
+    (under USD 500,000 a year, "Built with Fish Audio" shown). It is strong on loud lines and plain
+    on 4 of the 5 quiet ones. Of the Apache models, VoxCPM2 is best at 3 of 13. — *the user's ears,
+    2026-10-19*.
 
 ## Records not yet distilled
 
