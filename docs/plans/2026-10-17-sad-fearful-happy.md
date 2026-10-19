@@ -126,3 +126,30 @@ renderer are untouched.
 4. **Which γ values?** **Lean:** 2.5 and 4. These are Breeze's range; 1.5 adds takes to listen to
    for a small step.
 5. **Is the bar right (3 of 5 lines at the full feeling)?** **Lean:** as written.
+
+## 7. Built and measured (2026-10-19)
+
+The user's word on the NOT STANDARD pieces: "even on non standard but think adverserily abpout your
+recs go" (TASKS "Round 6b"). Questions 1–5 decided as their leans.
+
+- **G1–G4:** our fork, jv 8d726fa9. `guidance_scale` on Qwen3; the untold pass runs in its own
+  prefill graph and step cache. The CustomVoice clone test checks four things: γ 1 is today's take
+  sample for sample, γ 2.5 differs, a plain request is unchanged, a negative γ is refused.
+- **D1:** jv 1de98891. `return_speaker_embedding` returns a SpeakerEmbedding artifact, 2048 float32
+  on the 1.7B; tested.
+- **D2–D3:** 3,099 CREMA-D clips (voice vote = the feeling asked), fingerprinted through the
+  fingerprint arm's own path. The directions were made pooled and paired per actor. The attack's
+  change: the agreed clips leave the actors unevenly spread, so the directions were made both ways.
+  - The directions hold on unseen actors: angry, fearful and happy by 1.5–1.7 sd; sad and disgusted
+    by 0.7.
+  - They are mostly one arousal axis: angry·happy cos 0.91, and sad points the other way. RESEARCH
+    §10.32.
+- **G5 and the test:** γ 1 was rendered again on today's build, because round 6b's γ 1 came from
+  the build before the merge. All 50 lines at γ 1, 2.5 and 4 were rendered and scored: 900 takes,
+  none failed.
+  - By the scorer, from γ 1 to 4: sad +0.00 → +0.04 and fearful +0.02 → +0.05; the whisper −2.7 →
+    −4.7 dB; happy and the shout don't move.
+  - The cost at γ 4: read-back misses 11 of 300 (7 at γ 1), UTMOSv2 3.04 (3.16).
+  - The page is the round 6 page, version 2: https://claude.ai/artifact/6VanH77XsNMb8UaKq1V2F2.
+- **Not done:** D4 (using a direction) waits for the ears on guidance, as §2 says. EDICT is set
+  aside.

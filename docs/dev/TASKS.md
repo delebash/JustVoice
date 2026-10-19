@@ -549,6 +549,15 @@ GO:     given 2026-10-16 ("your rec, sae the research"; the new order: "go on it
         `customvoice-ours-g4`. Argued again: round 6b's γ 1 takes came from the build before the
         2026-10-18 upstream merge, so γ 1 is rendered again on today's build beside γ 2.5 and 4,
         all 50 lines, told and plain, into `data/round6b/guided/`; the page keeps the 13.
+        Rendered and scored 2026-10-19 (RESEARCH §10.32): by the scorer, sad +0.00 → +0.04 and
+        fearful +0.02 → +0.05 from γ 1 to 4, the whisper −2.7 → −4.7 dB, happy and the shout
+        unmoved; at 4, read-back misses 11 of 300 (7 at γ 1) and UTMOSv2 3.04 (3.16). CREMA-D's
+        directions (D3) made: mostly one arousal axis, sad the weakest (RESEARCH §10.32). The
+        takes are on the round 6 page, version 2
+        (https://claude.ai/artifact/6VanH77XsNMb8UaKq1V2F2), beside Drama 3, Breeze and VoxCPM2.
+        OPEN: the user's ears on guidance (the bar: the full feeling on 3 of the 5 sad, fearful and
+        happy lines at some γ, nothing worse elsewhere, likeness ≥ 0.85); then D4 (using a
+        direction) gets its own pieces, or the app sends `guidance_scale`, each its own go.
 
 ### Round 6 — the best engine to sell with: Fish Drama 3, then Qwen3 with an emotion direction (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the field sweep (RESEARCH §10.26), shown: "finish round 5 first.
@@ -597,7 +606,12 @@ OPEN:   the user's ears on the round 6 page. Then, if Drama 3 earns it: its `DIR
         stuck in silence"), so round 6 heard Drama 3 sampled tighter than its makers sample it.
         Drama 3 rendered again with only that changed (arm `drama3-r6k`, the request option sent;
         our fork not merged — the merge carries 193 files, Qwen3's decoder among them, and is
-        jv.7's), scored beside round 6, before the user listens.
+        jv.7's), scored beside round 6, before the user listens. Result (RESEARCH §10.33): no better
+        acting (+0.09 against +0.10), a weaker shout, lower UTMOSv2, and three takes that babble
+        past the line (the page's first line among them) — so the page keeps the top-k 30 takes.
+        The round 6 page, version 2 (same link, 2026-10-19): on each of the 13 lines, Drama 3,
+        BreezeTTS 2, VoxCPM2 and CustomVoice's fingerprint at guidance 1, 2.5 and 4 (TASKS "Round
+        6b"), six takes A–F; nobody had answered version 1.
         Was: after round 5's renders: our fork updated to audio.cpp's upstream main (`fish_drama3`,
         merged upstream 2026-10-15), the dev build rebuilt, only the new models tested (TASKS "An
         audio.cpp update tests only the engines and models it adds"); Drama 3 on this 8 GB card

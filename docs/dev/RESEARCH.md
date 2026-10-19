@@ -4796,6 +4796,22 @@ runtime (`npm run dev`, fork 8461cdce).
     the weakest and least separable, and it is one of the three this step is for.
   - Not known yet: what CustomVoice does with a moved fingerprint (D4 — the input path doesn't
     exist yet), and whether arousal alone is what the ears hear as sad, fearful or happy.
+- **The guided takes on the card (2026-10-19)** — *measured*, `data/round6b/guided`, all 50 cue
+  lines, told and plain, seeds 7–9, at γ 1, 2.5 and 4 (900 takes, none failed): a plain take is
+  the same file in all three arms for 147 of 150; the three that differ are the longest line's
+  (8-13, about 17 s), the same in the 2.5 and 4 arms and different from γ 1's. The likely reason:
+  the told step cache had grown to a different size by then (guided told takes run longer), and
+  on the card a long take follows the cache's size — not checked further. Median told length
+  1.76 s at γ 1, 1.92 at 2.5, 2.08 at 4 (plain 1.68); median seconds a take 0.8, 1.0, 1.0.
+  - **Scored** (test kit, as round 5; γ 1 · 2.5 · 4): feeling gain +0.01 · +0.01 · +0.03 [−0.02,
+    0.10]; by feeling, sad +0.00 · +0.01 · +0.04 [0.00, 0.15], fearful +0.02 · +0.03 · +0.05,
+    happy −0.02 · −0.01 · −0.02, angry +0.04 · +0.03 · +0.04; whispered −2.7 · −3.5 · −4.7 dB,
+    shouted +0.6 · +0.8 · +0.6 dB; read-back WER 0.039 · 0.034 · 0.066 (over 0.25: 7 · 8 · 11 of
+    300); like the clip, told 0.87 · 0.87 · 0.86; UTMOSv2 3.16 · 3.13 · 3.04. γ 1 on today's build
+    scores as round 6b's on the old one (UTMOSv2 3.18, the rest the same). So by the scorer,
+    guidance moves sad, fearful and the whisper a little, costs a little at 4, and does nothing
+    for happy or the shout. emotion2vec gave CustomVoice's acting nothing in round 6b where the
+    ears heard five lines act, so the ears decide (the round 6 page, version 2).
 
 ### 10.33 Round 6 — Fish Audio Drama 3 in our fork and in the app (2026-10-18)
 
@@ -4867,6 +4883,21 @@ TASKS "Round 6". Our fork's `jv` merged audio.cpp's upstream main of 2026-10-18 
   as two brackets ("[angry][looking angrily] …"), which round 6 didn't test: what was tested is one
   note, the words else the emotion word. Wiring it waits for the ears and for a release with
   Drama 3 (a jv.7, its own decision). — *code, 2026-10-18*.
+- **Drama 3 with no top-k cap** (`data/round6k`, arm `drama3-r6k`, request option `top_k` 4097 —
+  upstream audio.cpp's default since #978, 2026-10-18, "matching Fish's Space … top_k=30 left takes
+  stuck in silence" on long chunked text; nothing else changed): gain +0.09 [0.04, 0.18] (top-k 30:
+  +0.10); heard as asked 0.17 · 0.11; shouted +2.3 dB (+3.6), whispered −3.9 dB (−3.7); like the
+  clip 0.88 · 0.89; UTMOSv2 2.97 (3.09); 5.9 s a take (6.9). Read back: 10 of 300 over 0.25 (7),
+  three of them babbling far past the line (WER 14.5, 10.0, 6.25 — 8-54 plain, 7-95 told, 7-85
+  told, all seed 7), told mean WER 0.136 (0.026). On our short single lines the cap is the better
+  setting; the stall it guards against is long text cut into chunks. So the round 6 page (version
+  2) keeps the top-k 30 takes, and the app's Drama 3 options, when it is wired (jv.7), need this
+  weighed: our lines are short, but a narrator's paragraph is chunked. — *measured, 2026-10-19*.
+- **Upstream since our merge** (to f82b88a9, 2026-10-18, 16 commits, not merged): Drama 3's
+  `top_k` default 4097 and `text_chunk_size` 128 (#978), Drama 3 base/small packages (#976, #959:
+  per-layer expert counts, a speech-only head), Fish DAC chunked reference encoding to cut the
+  card's peak (#960); also Qwen3's speech decoder (7 files). Taking them is jv.7's merge, and the
+  rule "an audio.cpp update tests only the engines and models it adds" applies. — *read, 2026-10-19*.
 
 ## Records not yet distilled
 
