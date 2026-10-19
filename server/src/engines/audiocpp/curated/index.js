@@ -27,6 +27,7 @@ import * as f5_tts from "./f5_tts.js";
 import * as firered_audio from "./firered_audio.js";
 import * as fireredtts3 from "./fireredtts3.js";
 import * as fish_audio from "./fish_audio.js";
+import * as fish_drama3 from "./fish_drama3.js";
 import * as gigaam_asr from "./gigaam_asr.js";
 import * as glm_tts from "./glm_tts.js";
 import * as granite5asr from "./granite5asr.js";
@@ -101,6 +102,7 @@ export const CURATED = {
   firered_audio,
   fireredtts3,
   fish_audio,
+  fish_drama3,
   gigaam_asr,
   glm_tts,
   granite5asr,

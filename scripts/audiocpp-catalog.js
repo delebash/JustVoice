@@ -139,6 +139,7 @@ const EXPOSE_ALL_GGUF_PACKAGE_FAMILIES = new Set([
   "firered_audio",
   "fireredtts3",
   "irodori_tts",
+  "kitten_tts2",
   "kokoro_tts",
   "meanvc2",
   "midashenglm_gen",

@@ -4784,6 +4784,21 @@ TASKS "Round 6". Our fork's `jv` merged audio.cpp's upstream main of 2026-10-18 
   *read from the running app*.
 - **Our CustomVoice change survives the merge:** the fork's `qwen3_tts_customvoice_clone_test`
   passes on the real 1.7B CustomVoice and Base files (CPU build, `build/jv-tests`). — *measured*.
+- **Its licence, our reading** (`curated/fish_drama3.js`, the licence at
+  huggingface.co/fishaudio/drama-3/blob/main/LICENSE, "Fish Audio Community License Agreement,
+  Version 1.0 — Last Updated: October 13, 2026"): §III(a) commercial use "only while Your Annual
+  Revenue is less than USD 500,000", revenue being "the total gross revenue of You and Your
+  Affiliates, in aggregate, from all sources"; §III(b) at or above it, notify business@fish.audio
+  within 30 days, and "any use for a Commercial Purpose requires a separate written license
+  agreement"; §III(c) "no license is granted … to offer a Hosted Service"; §IV(a) "You shall
+  prominently display "Built with Fish Audio" on a related website, user interface, blogpost";
+  §IV(c)(iii) you own the outputs. Our word **Conditional**, as audio.cpp's. The model card's
+  metadata names it "fish-audio-research-license", which the file's own title doesn't match. —
+  *read, 2026-10-18*.
+- **Kitten TTS 2 at `jv`:** upstream #947 moved it to a `v2` folder with BF16, Q8 and Q4 GGUFs and
+  added `kitten_tts2` to the web UI's expose-all families (`catalog.ts`); our port
+  (`scripts/audiocpp-catalog.js`) follows, so a catalog made at `jv` offers all three, as
+  audio.cpp's UI does. — *code, 2026-10-18*.
 - **Not yet heard:** the download waits for the licence to be accepted on this computer. The
   harness arm is `drama3-r6` (`server/scripts/round4_render.js`): the line's direction words in the
   bracket, experts read from disk, the rest on the card.
