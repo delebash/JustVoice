@@ -374,8 +374,14 @@ BUILT:  —
         "…to make the character voices and the narrator's voice." (one stop per model, naming what
         it makes: `book_run.termsUses`, the plan problem's `uses`); test, mock, docs studio and
         whats-new.
-OPEN:   the user's look at the card (#/mock/one-click, and a real book), and at the two new
-        stops' words (today's seeds for both models read "Yes", so neither shows by default).
+        2026-10-19 (shown: "Your database still has the old setting `book_voices.clone_model:
+        voxcpm2`. Your real book's card says "VoiceDesign → VoxCPM2", not Breeze. Should I set it
+        to `breeze_tts`, or do you want to reset? Lean: I set it. It's the old default, not your
+        choice." and "The new words for your look: the two new licence stops and the Language
+        hint above. Lean: keep them." The user: "autocompacted re read rules docs session your rec
+        go"): the dev database's `book_voices.clone_model` set to `breeze_tts` through `PATCH
+        /v1/settings` (the narrator stays `voxcpm2`); the stops' words kept as built.
+OPEN:   the user's look at the card (#/mock/one-click, and a real book).
 GO:     given 2026-10-16 ("your rec on breeze and license"; after the check, "your rec on all
         go"). The narrator plan (docs/plans/2026-10-17-narrator-and-character-engines.md), shown
         2026-10-18: "4. The setting's name: `narrator_model`? Lean: yes. 5. The run's card:
@@ -523,7 +529,26 @@ GO:     given 2026-10-16 ("your rec, sae the research"; the new order: "go on it
         guidance fails … Lean: yes. 3. EDICT: set aside for now? Its own paper loses the voice when
         lines are made one at a time, which is how we make them. Lean: set aside." The user:
         "compacted re read docs rules session your rec on all go" — 3 decided: EDICT set aside.
-        1 and 2 are NOT STANDARD and wait for their word by name.
+        1 and 2 are NOT STANDARD; asked again 2026-10-18 ("Still need your word by name (not
+        standard): instruct guidance G1–G3, and fingerprints D1 plus CREMA-D D2–D3."). The user,
+        2026-10-19: "even on non standard but think adverserily abpout your recs go" — 1 and 2
+        decided, as the plan's leans (γ 2.5 and 4; the bar 3 of 5).
+        Argued again before building: Drama 3 (round 6) is sellable only under USD 500,000 a year
+        and not as a service, so a Qwen3 that acts stays worth building; upstream audio.cpp (to
+        f82b88a9, 2026-10-18) still has no Qwen3 guidance. Attack's change: the directions are made
+        two ways, pooled (the plan's) and paired within each actor, because keeping only the
+        clips the crowd agreed on leaves the actors unevenly spread across the feelings (sad 209
+        clips, neutral 1,040).
+        BUILT 2026-10-19: G1–G4 — fork jv 8d726fa9 (`guidance_scale` on Qwen3: the untold prompt in
+        its own prefill graph and step cache, mixed before the processors; the CustomVoice clone
+        test: 1.0 gives today's take sample for sample, 2.5 differs, a plain request is unchanged,
+        a negative scale is refused). D1 — fork jv 1de98891 (`return_speaker_embedding`: the
+        clip's x-vector as a SpeakerEmbedding artifact, 2048 float32 on 1.7B; tested). D2 — the
+        3,099 CREMA-D clips whose voice vote is the feeling asked for, in `data/crema-d/`. D3 and
+        G5 — `round4_render.js --crema <dir>` and the arms `customvoice-ours-g2.5`,
+        `customvoice-ours-g4`. Argued again: round 6b's γ 1 takes came from the build before the
+        2026-10-18 upstream merge, so γ 1 is rendered again on today's build beside γ 2.5 and 4,
+        all 50 lines, told and plain, into `data/round6b/guided/`; the page keeps the 13.
 
 ### Round 6 — the best engine to sell with: Fish Drama 3, then Qwen3 with an emotion direction (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the field sweep (RESEARCH §10.26), shown: "finish round 5 first.
@@ -563,9 +588,16 @@ BUILT:  2026-10-18 (the user: "compacted re read docs rules session your rec on 
 OPEN:   the user's ears on the round 6 page. Then, if Drama 3 earns it: its `DIRECTION` in
         `curated/fish_drama3.js` in the form round 6 tested (one note: the words, else the emotion
         word — the app's `prefix` sends two), and a release carrying it (jv.7, its own decision).
-        The x-vector emotion direction from CREMA-D (fingerprints D1–D3) still needs its word by
-        name (NOT STANDARD). Done from the list below: the fork update, Drama 3 on this card, Fish
-        S2 Pro's re-test.
+        The x-vector emotion direction from CREMA-D: fingerprints D1–D3 built 2026-10-19 (TASKS
+        "Round 6b"); using a direction (D4) waits for guidance's result. Done from the list below:
+        the fork update, Drama 3 on this card, Fish S2 Pro's re-test.
+        2026-10-19 (the user: "even on non standard but think adverserily abpout your recs go";
+        argued again): upstream audio.cpp moved Drama 3's default `top_k` from 30 to 4097 the day
+        round 6 rendered (#978, f82b88a9's history: "matching Fish's Space … top_k=30 left takes
+        stuck in silence"), so round 6 heard Drama 3 sampled tighter than its makers sample it.
+        Drama 3 rendered again with only that changed (arm `drama3-r6k`, the request option sent;
+        our fork not merged — the merge carries 193 files, Qwen3's decoder among them, and is
+        jv.7's), scored beside round 6, before the user listens.
         Was: after round 5's renders: our fork updated to audio.cpp's upstream main (`fish_drama3`,
         merged upstream 2026-10-15), the dev build rebuilt, only the new models tested (TASKS "An
         audio.cpp update tests only the engines and models it adds"); Drama 3 on this 8 GB card
@@ -708,8 +740,8 @@ STATE:  DECIDED 2026-10-16 — after the gemma acceptances (RESEARCH §10.24), t
         rec: Script's buttons for a chapter wait while the run works on that chapter." The user:
         "your rec go" (after "listening page done").
 WHY:    the leftovers of slices 2–6 named for the user's look at the end of the acceptances.
-NOT:    5 (NOT STANDARD — waits for its word by name); a redo button (7); the character-voice
-        engine (round 4's result — its own rec, shown the same turn, waits for its own go).
+NOT:    a redo button (7); the character-voice engine (round 4's result — its own rec, shown the
+        same turn, waits for its own go).
 BUILT:  2 — the "group" flag carries the whole group (`ScriptFlag.group`); Script asks "Said
         together by June, Marius and Ada — given to Marius. Is that right?". 8 — `DELETE
         /v1/speakers/:id?ignore=1` puts every scanned name that is them (`names.match`: their name
@@ -762,8 +794,16 @@ OPEN:   6 (mock first); 4's calibration after the first frontier run; 1's differ
         which runs without any model … names counted with 0 lines are left out … The model only
         confirms or splits these groups, on the button or in the run." The user: "your rec on all
         go".
+        5 — the port proved, 2026-10-19 (the user: "even on non standard but think adverserily
+        abpout your recs go"): every line in the database (562) and every transcript the take
+        check stored (273), in Whisper's three settings, come out of `whisper_normalizer.js`
+        character for character as from openai-whisper's own `BasicTextNormalizer` (20250625, the
+        same `basic.py` as upstream main) — 2,505 of 2,505. Every Unicode code point, each between
+        two letters: the same except where Python 3.12's Unicode 15.0 and Node's 17.0 differ (1,020
+        to 1,057 characters 15.0 hasn't assigned, and U+1171E, which 16.0 moved from Mn to Mc).
+        RESEARCH §10.11.
 GO:     given 2026-10-16 ("your rec go") for 1–4 and 6–9; the four answers ("your rec on all
-        go").
+        go"); 5 on 2026-10-19 ("even on non standard but think adverserily abpout your recs go").
 
 ### The run's last questions, answered (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — shown, each with its rec: "1. Slice 4's proof test is NOT STANDARD.

@@ -3003,6 +3003,17 @@ Pozotron, Orion QC, RW-Voice-EQ, SwanBench, ViSQOL, Hume, Gemini prices.
     em dashes, brackets, parentheses, fractions, Roman numerals, full-width letters) its output is
     the upstream Python's, character for character. Whisper's *English* normaliser (numbers,
     spellings, contractions) is not ported.
+  - **The port proved against the original (2026-10-19)** — *measured*: openai-whisper 20250625
+    (the take-check kit's venv; its `basic.py` is upstream main's, byte for byte) and the port,
+    each in Whisper's three settings (default, `remove_diacritics`, `split_letters`), over every
+    line in the dev database (562) and every transcript the take check stored (273): 2,505 of
+    2,505 the same. Over every Unicode code point (1,112,064, surrogates out), each written
+    `A<c>b <c>`: the same except 1,020 (default), 1,030 (diacritics) and 1,057 (split) — every
+    one a character Unicode 15.0 (Python 3.12's `unicodedata`) hasn't assigned and Node's ICU
+    (Unicode 17.0) has, plus U+1171E AHOM CONSONANT SIGN MEDIAL RA, which Unicode 16.0 moved from
+    Mn (dropped) to Mc (a space). The port follows the Unicode version of the Node it runs on;
+    neither side is wrong. Scripts: the session's scratchpad (`norm_proof.py`, `norm_proof.js`,
+    `norm_all.py`), not kept.
   - **The word diff is jsdiff** (`diff` on npm, 9.0.0 of 2026-04-13, BSD-3-Clause, ~146 M
     downloads a week, maintained — https://github.com/kpdecker/jsdiff): `diffArrays` over the
     normalised words gives the fewest words added and removed (Myers). In a run of changes the
@@ -4760,6 +4771,31 @@ runtime (`npm run dev`, fork 8461cdce).
     been heard here at γ 1.
 - **The agent's ranking:** guidance first; the direction as the next arm (its vectors extracted
   meanwhile); EDICT last. — *agent's view*.
+- **Built (2026-10-19, the user's word on the NOT STANDARD pieces):** guidance in our fork, jv
+  8d726fa9 (`guidance_scale`; the untold pass has its own prefill graph and step cache, its logits
+  mixed before the repetition penalty; the code predictor follows the told pass); the clip's
+  x-vector out, jv 1de98891 (`return_speaker_embedding`, a SpeakerEmbedding artifact, 2048 float32
+  on the 1.7B). The fork's CustomVoice clone test: γ 1 renders today's take sample for sample, γ
+  2.5 a different one, a plain request is unchanged at any γ. — *tested*.
+- **CREMA-D's directions (2026-10-19)** — *measured*, `round4_render.js --crema data/crema-d`:
+  - **The clips:** 3,099 of 7,442 kept, those whose voice-only crowd vote (`summaryTable.csv`
+    VoiceVote) is the feeling asked for — neutral 1,040, angry 770, fearful 407, disgusted 343,
+    happy 330, sad 209 (91 actors). Fetched from the repo's LFS (248 MB).
+  - **The fingerprints:** Base 1.7B's speaker encoder through CustomVoice 1.7B (as the fingerprint
+    arm runs), each beside a thrown-away two-frame take: 3,100 in about 750 s on the card. Mean
+    length 16.6; the Hatter's 17.1.
+  - **The directions** (an actor's feeling mean minus their own neutral mean, averaged over actors;
+    the pooled means agree, cos 0.94–1.00): angry 2.62 long (72–91 actors), happy 1.28, sad 1.17,
+    fearful 1.13, disgusted 0.79 — 5–16 % of a fingerprint's length.
+  - **They hold on actors they weren't made from:** made from half the actors, the other half's
+    feeling clips sit above their neutral clips along it by angry 1.69, fearful 1.52, happy 1.49,
+    disgusted 0.73 and sad 0.69 standard deviations.
+  - **They are mostly one axis — how roused the voice is:** angry·happy cos 0.91, fearful·happy
+    0.81, angry·fearful 0.70; sad points the other way (angry·sad −0.63, happy·sad −0.54). So a
+    direction moves arousal more than the feeling: "happy" would also push toward angry. Sad is
+    the weakest and least separable, and it is one of the three this step is for.
+  - Not known yet: what CustomVoice does with a moved fingerprint (D4 — the input path doesn't
+    exist yet), and whether arousal alone is what the ears hear as sad, fearful or happy.
 
 ### 10.33 Round 6 — Fish Audio Drama 3 in our fork and in the app (2026-10-18)
 

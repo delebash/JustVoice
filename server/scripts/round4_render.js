@@ -154,6 +154,12 @@ const ARMS = {
   // the x-vector plus the clip and its words (ICL), told the line's words as its instruct.
   "customvoice-ours": { engine: "qwen3", variant: "qwen3-cv-1.7b-q8", base: "qwen3-base-1.7b-q8", ours: "x-vector", told: described },
   "customvoice-ours-icl": { engine: "qwen3", variant: "qwen3-cv-1.7b-q8", base: "qwen3-base-1.7b-q8", ours: "icl", told: described },
+  // Round 6b step 4 (docs/plans/2026-10-17-sad-fearful-happy.md, G5): the x-vector arm with our
+  // fork's instruct guidance (`guidance_scale`, jv 8d726fa9). A plain take ignores the option, so
+  // each arm's plain takes are customvoice-ours's on the same build, sample for sample — rendered
+  // anyway, so every arm's told takes have their own plain twins for the scorer.
+  "customvoice-ours-g2.5": { engine: "qwen3", variant: "qwen3-cv-1.7b-q8", base: "qwen3-base-1.7b-q8", ours: "x-vector", told: described, request: { guidance_scale: "2.5" } },
+  "customvoice-ours-g4": { engine: "qwen3", variant: "qwen3-cv-1.7b-q8", base: "qwen3-base-1.7b-q8", ours: "x-vector", told: described, request: { guidance_scale: "4" } },
 
   // ── Round 6 (TASKS "Round 6") ──
   // Fish Audio Drama 3, told the line's words the way its authors direct it: a free-text note in
@@ -172,6 +178,18 @@ const ARMS = {
     direct: true,
     pin: "gpu",
     options: { "fish_drama3.disk_experts": "true", "fish_drama3.cpu_expert_layers": "0" },
+  },
+  // Drama 3 sampled as Fish's own Drama 3 Space samples it: no top-k cap (`top_k` 4097), top_p
+  // 0.9 kept — upstream audio.cpp's default since #978 (2026-10-18), after round 6 rendered at the
+  // old cap of 30. Everything else as drama3-r6.
+  "drama3-r6k": {
+    engine: "fish_drama3",
+    variant: "fish_drama3-q4k",
+    bracket: (e, l) => l.direction || WORDS[e] || e,
+    direct: true,
+    pin: "gpu",
+    options: { "fish_drama3.disk_experts": "true", "fish_drama3.cpu_expert_layers": "0" },
+    request: { top_k: "4097" },
   },
 };
 
@@ -266,9 +284,11 @@ async function main() {
       "bank-voice": { type: "string", default: "" }, // round 5's clip arms: the voice that acts the clips
       lines: { type: "string", default: "" }, // only these line ids (e.g. 7-95,8-57)
       prime: { type: "boolean", default: false }, // round 6b step 2: told takes with a lead-in, cut off
+      crema: { type: "string", default: "" }, // round 6b step 4 (D3): CREMA-D's fingerprints and directions
     },
   });
   const server = args.server.replace(/\/+$/, "");
+  if (args.crema) return cremaDirections(server, args);
   const seeds = args.seeds.split(",").map((s) => Number.parseInt(s, 10));
   const arms = args.arms.split(",").map((a) => a.trim()).filter(Boolean);
   for (const a of arms) if (!ARMS[a]) throw new Exit(`no arm called ${a} — the arms: ${Object.keys(ARMS).join(", ")}`);
@@ -353,7 +373,7 @@ async function main() {
           let error = null;
           try {
             const audio = a.direct
-              ? await directTake(args.runtime, a.variant, { text: said, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), transcript: voiceTranscript(args["data-dir"], voice.id), seed })
+              ? await directTake(args.runtime, a.variant, { text: said, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), transcript: voiceTranscript(args["data-dir"], voice.id), seed, extra: a.request })
               : a.ours
               ? await oursTake(args.runtime, a.variant, {
                   text,
@@ -361,6 +381,7 @@ async function main() {
                   transcript: a.ours === "icl" ? source.transcript : null,
                   instruct: told ? delivery.instruct : "",
                   seed,
+                  extra: a.request,
                 })
               : told && a.clip
                 ? await runtimeTake(args.runtime, a.variant, { text, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), clip: bank[l.emotion], alpha: a.clip, seed })
@@ -378,6 +399,7 @@ async function main() {
             id, wav: path.relative(args.out, wav), text: l.text, reference_wav: reference,
             emotion_asked: told ? l.emotion : null, emotion_of_line: l.emotion, cue: l.cue,
             model: armName, variant: a.variant, seed, told, line: l.line, delivery,
+            ...(a.request ? { request_options: a.request } : {}),
             render_s: (Date.now() - started) / 1000, error,
             ...(lead ? { primed: lead, full_wav: path.relative(args.out, rendered), cut_at: null } : {}),
           };
@@ -468,21 +490,153 @@ async function registerWithBase(runtime, id, baseFile) {
   console.log(`   registered ${id} with qwen3_tts.base_model_path=${baseFile}`);
 }
 
+/** `/v1/tasks/run` on the speech runtime. While the model is still busy with an earlier take (the
+ * runtime answers 503 `server_busy` once one has run past its 300 s limit, 2026-10-19), it waits
+ * and asks again, for up to 15 minutes, so one stuck take costs only itself, not every take after. */
+async function runtimeRun(runtime, body) {
+  const url = `${runtime.replace(/\/+$/, "")}/v1/tasks/run`;
+  for (let tries = 0; ; tries++) {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(900 * 1000),
+    });
+    if (r.status !== 503 || tries >= 30) return r;
+    const text = await r.text();
+    if (!/server_busy/.test(text)) return new Response(text, { status: r.status });
+    console.log(`   the runtime is still busy with an earlier take — asking again in 30 s`);
+    await new Promise((done) => setTimeout(done, 30_000));
+  }
+}
+
 /** One take from CustomVoice speaking the voice's clip (`/v1/tasks/run`): the x-vector alone, or
- * with the clip's words (ICL); `instruct` when told. → WAV bytes. */
-async function oursTake(runtime, model, { text, voiceRef, transcript, instruct, seed }) {
-  const options = { seed, ...(instruct ? { instruct } : {}), ...(transcript ? {} : { x_vector_only_mode: "true" }) };
+ * with the clip's words (ICL); `instruct` when told; `extra`, the arm's own request options.
+ * → WAV bytes. */
+async function oursTake(runtime, model, { text, voiceRef, transcript, instruct, seed, extra = {} }) {
+  const options = { seed, ...(instruct ? { instruct } : {}), ...(transcript ? {} : { x_vector_only_mode: "true" }), ...extra };
   const request = { text, language: "en", voice_ref: voiceRef, options, ...(transcript ? { reference_text: transcript } : {}) };
-  const r = await fetch(`${runtime.replace(/\/+$/, "")}/v1/tasks/run`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model, request }),
-    signal: AbortSignal.timeout(900 * 1000),
-  });
+  const r = await runtimeRun(runtime, { model, request });
   if (!r.ok) throw new Exit(`runtime ${r.status}: ${(await r.text()).slice(0, 300)}`);
   const body = await r.json();
   if (typeof body.audio !== "string") throw new Exit(`runtime answered no audio: ${JSON.stringify(body).slice(0, 300)}`);
   return Buffer.from(body.audio, "base64");
+}
+
+// CREMA-D's file names: <actor>_<sentence>_<emotion>_<level>.
+const CREMA_FEELINGS = { ANG: "angry", DIS: "disgusted", FEA: "fearful", HAP: "happy", SAD: "sad" };
+
+/**
+ * Round 6b step 4, D2–D3 (docs/plans/2026-10-17-sad-fearful-happy.md): each CREMA-D clip in
+ * `<dir>/agreed.json` (the ones the crowd heard as the feeling asked for) put through CustomVoice
+ * with the Base model's speaker encoder, as the fingerprint arm runs, its x-vector returned
+ * (`return_speaker_embedding`, our fork jv 1de98891) beside a two-frame take that is thrown away.
+ * Writes `<dir>/fingerprints.f32` (one row of float32 per clip, the Hatter's last) with
+ * `fingerprints.json`, then `<dir>/directions.json`: per feeling, the mean fingerprint minus the
+ * neutral one — pooled over every clip (the plan's) and paired within each actor (an actor's
+ * feeling mean minus their own neutral mean, averaged over actors, so who is speaking cancels out
+ * where the filter leaves the actors unevenly spread). The check: a direction made from half the
+ * actors, the other half's feeling and neutral clips projected on it, the gap in standard deviations.
+ */
+async function cremaDirections(server, args) {
+  const dir = path.resolve(args.crema);
+  const names = JSON.parse(readFileSync(path.join(dir, "agreed.json"), "utf8"));
+  const variant = "qwen3-cv-1.7b-q8";
+  const { voices } = await call(server, "/v1/voices");
+  const source = args.voice
+    ? voices.find((v) => v.id === args.voice)
+    : voices.find((v) => /hatter/i.test(v.name) && !/round 4/i.test(v.name) && v.source !== "preset");
+  if (!source) throw new Exit("no Hatter voice — name one with --voice");
+  const clips = [...names.map((n) => path.join(dir, "AudioWAV", `${n}.wav`)), path.join(args["data-dir"], "voices", source.id, "ref.wav")];
+  console.log(`${names.length} CREMA-D clips + ${source.name}'s; loading ${variant} …`);
+  await load(server, "qwen3", variant);
+  await registerWithBase(args.runtime, variant, baseModelFile(args["data-dir"], "qwen3", "qwen3-base-1.7b-q8"));
+  const url = `${args.runtime.replace(/\/+$/, "")}/v1/tasks/run`;
+  const rows = [];
+  let dims = 0;
+  const t0 = Date.now();
+  for (const [i, clip] of clips.entries()) {
+    const options = { seed: 7, max_tokens: "3", x_vector_only_mode: "true", return_speaker_embedding: "true" };
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: variant, request: { text: "Hello.", language: "en", voice_ref: clip, options } }),
+      signal: AbortSignal.timeout(300 * 1000),
+    });
+    if (!r.ok) throw new Exit(`${clip}: runtime ${r.status}: ${(await r.text()).slice(0, 300)}`);
+    const art = ((await r.json()).artifacts || []).find((a) => a.kind === "speaker_embedding" || a.id === "speaker_embedding");
+    if (!art) throw new Exit(`${clip}: the runtime returned no speaker embedding — is the dev build at jv 1de98891 or later?`);
+    const buf = Buffer.from(art.payload, "base64");
+    dims = Number(art.meta.dims);
+    rows.push(new Float32Array(Uint8Array.from(buf).buffer));
+    if ((i + 1) % 250 === 0) console.log(`   ${i + 1}/${clips.length} (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
+  }
+  await call(server, "/v1/engines/unload", { method: "POST", body: { kind: "tts" } });
+  const all = Buffer.concat(rows.map((r) => Buffer.from(r.buffer)));
+  writeFileSync(path.join(dir, "fingerprints.f32"), all);
+  writeFileSync(path.join(dir, "fingerprints.json"), `${JSON.stringify({ dims, rows: [...names, `voice:${source.id}`], model: variant, encoder: "qwen3-base-1.7b-q8", seconds: (Date.now() - t0) / 1000 }, null, 1)}\n`);
+
+  const mean = (vs) => {
+    const m = new Float64Array(dims);
+    for (const v of vs) for (let d = 0; d < dims; d++) m[d] += v[d] / vs.length;
+    return m;
+  };
+  const sub = (a, b) => a.map((x, d) => x - b[d]);
+  const dot = (a, b) => a.reduce((s, x, d) => s + x * b[d], 0);
+  const norm = (a) => Math.sqrt(dot(a, a));
+  const cos = (a, b) => dot(a, b) / (norm(a) * norm(b));
+  const clipsOf = names.map((n, i) => ({ actor: n.split("_")[0], feeling: n.split("_")[2], v: rows[i] }));
+  const paired = (subset, feeling) => {
+    const diffs = [];
+    for (const actor of new Set(subset.map((c) => c.actor))) {
+      const mine = subset.filter((c) => c.actor === actor);
+      const f = mine.filter((c) => c.feeling === feeling).map((c) => c.v);
+      const n = mine.filter((c) => c.feeling === "NEU").map((c) => c.v);
+      if (f.length && n.length) diffs.push(sub(mean(f), mean(n)));
+    }
+    return { direction: mean(diffs), actors: diffs.length };
+  };
+  const neutral = mean(clipsOf.filter((c) => c.feeling === "NEU").map((c) => c.v));
+  const actors = [...new Set(clipsOf.map((c) => c.actor))].sort();
+  const half = new Set(actors.filter((_, i) => i % 2 === 0));
+  const out = {
+    source: "CREMA-D (github.com/CheyneyComputerScience/CREMA-D), ODbL 1.0 / DbCL 1.0; clips whose VoiceVote is the feeling asked for",
+    encoder: "qwen3-base-1.7b-q8 speaker encoder (x-vector), via qwen3-cv-1.7b-q8 + qwen3_tts.base_model_path",
+    dims,
+    fingerprint_norm_mean: clipsOf.reduce((s, c) => s + norm(c.v), 0) / clipsOf.length,
+    hatter_norm: norm(rows.at(-1)),
+    clips: Object.fromEntries(["NEU", ...Object.keys(CREMA_FEELINGS)].map((f) => [f, clipsOf.filter((c) => c.feeling === f).length])),
+    feelings: {},
+  };
+  for (const [code, feeling] of Object.entries(CREMA_FEELINGS)) {
+    const pooled = sub(mean(clipsOf.filter((c) => c.feeling === code).map((c) => c.v)), neutral);
+    const { direction, actors: n } = paired(clipsOf, code);
+    // Held out: the direction from the even actors, the gap measured on the odd actors' clips.
+    const { direction: train } = paired(clipsOf.filter((c) => half.has(c.actor)), code);
+    const unit = train.map((x) => x / norm(train));
+    const test = clipsOf.filter((c) => !half.has(c.actor));
+    const proj = (f) => test.filter((c) => c.feeling === f).map((c) => dot(c.v, unit));
+    const [pf, pn] = [proj(code), proj("NEU")];
+    const avg = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
+    const sd = Math.sqrt(([...pf, ...pn].reduce((s, x) => s + (x - avg([...pf, ...pn])) ** 2, 0)) / (pf.length + pn.length - 1));
+    out.feelings[feeling] = {
+      actors: n,
+      pooled_norm: norm(pooled),
+      paired_norm: norm(direction),
+      cos_pooled_paired: cos(pooled, direction),
+      held_out_gap_sd: (avg(pf) - avg(pn)) / sd,
+      held_out_clips: { [code]: pf.length, NEU: pn.length },
+      paired: Array.from(direction, (x) => Number(x.toPrecision(7))),
+      pooled: Array.from(pooled, (x) => Number(x.toPrecision(7))),
+    };
+  }
+  const keys = Object.keys(out.feelings);
+  out.cos_between = Object.fromEntries(keys.flatMap((a, i) => keys.slice(i + 1).map((b) => [`${a}·${b}`, cos(out.feelings[a].paired, out.feelings[b].paired)])));
+  writeFileSync(path.join(dir, "directions.json"), `${JSON.stringify(out)}\n`);
+  for (const [f, d] of Object.entries(out.feelings)) {
+    console.log(`${f}: ${d.actors} actors · paired |d| ${d.paired_norm.toFixed(3)} (pooled ${d.pooled_norm.toFixed(3)}, cos ${d.cos_pooled_paired.toFixed(2)}) · held-out gap ${d.held_out_gap_sd.toFixed(2)} sd`);
+  }
+  console.log(`fingerprints |v| ${out.fingerprint_norm_mean.toFixed(2)} on average, the Hatter's ${out.hatter_norm.toFixed(2)}; between directions: ${JSON.stringify(Object.fromEntries(Object.entries(out.cos_between).map(([k, v]) => [k, Number(v.toFixed(2))])))}`);
 }
 
 /** The emotion clips, made once: BreezeTTS 2 acting each emotion's sentence in `--bank-voice`'s
@@ -525,16 +679,11 @@ function voiceTranscript(dataDir, voiceId) {
 
 /** One take sent straight to the speech runtime the app runs, the model loaded through the app
  * first: the line's text as given (a bracket arm's note included), the voice's clip and its words,
- * the seed. → WAV bytes. */
-async function directTake(runtime, model, { text, voiceRef, transcript, seed }) {
+ * the seed, and the arm's own request options (`extra`). → WAV bytes. */
+async function directTake(runtime, model, { text, voiceRef, transcript, seed, extra = {} }) {
   if (!runtime) throw new Exit("a direct arm needs --runtime, the speech runtime's URL");
-  const request = { text, language: "en", voice_ref: voiceRef, reference_text: transcript, options: { seed } };
-  const r = await fetch(`${runtime.replace(/\/+$/, "")}/v1/tasks/run`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model, request }),
-    signal: AbortSignal.timeout(900 * 1000),
-  });
+  const request = { text, language: "en", voice_ref: voiceRef, reference_text: transcript, options: { seed, ...extra } };
+  const r = await runtimeRun(runtime, { model, request });
   if (!r.ok) throw new Exit(`runtime ${r.status}: ${(await r.text()).slice(0, 300)}`);
   const body = await r.json();
   if (typeof body.audio !== "string") throw new Exit(`runtime answered no audio: ${JSON.stringify(body).slice(0, 300)}`);
