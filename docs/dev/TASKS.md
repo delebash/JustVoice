@@ -547,7 +547,20 @@ BUILT:  2026-10-18 (the user: "compacted re read docs rules session your rec on 
         measure speed and memory before the full set (cut to one seed if slow); Drama 3 is heard
         before guidance's case is judged. Accepted on the user's go; round 5's 50 lines, told and
         plain, seeds 7–9, into data/round6.
-OPEN:   after round 5's renders: our fork updated to audio.cpp's upstream main (`fish_drama3`,
+        2026-10-18 night (the user: "finish everthying this means do not stop until all tasks are
+        done"): all 300 takes, the note sent straight to the speech runtime (the app strips it),
+        scored — gain +0.10 [0.05, 0.18] (Breeze +0.13), shouted +3.6 dB, whispered −3.7 dB, WER
+        0.026, like the clip 0.88, UTMOSv2 3.09, 6.9 s a take, 17 GB of RAM (RESEARCH §10.33); the
+        listening page https://claude.ai/artifact/6VanH77XsNMb8UaKq1V2F2 (collection `round6`:
+        Drama 3, Breeze, VoxCPM2, CustomVoice + fingerprint on the 13 lines, seed 7). Fish S2 Pro
+        re-tested on the merge's codec fixes: gain +0.02, UTMOSv2 3.37 (RESEARCH §10.33).
+OPEN:   the user's ears on the round 6 page. Then, if Drama 3 earns it: its `DIRECTION` in
+        `curated/fish_drama3.js` in the form round 6 tested (one note: the words, else the emotion
+        word — the app's `prefix` sends two), and a release carrying it (jv.7, its own decision).
+        The x-vector emotion direction from CREMA-D (fingerprints D1–D3) still needs its word by
+        name (NOT STANDARD). Done from the list below: the fork update, Drama 3 on this card, Fish
+        S2 Pro's re-test.
+        Was: after round 5's renders: our fork updated to audio.cpp's upstream main (`fish_drama3`,
         merged upstream 2026-10-15), the dev build rebuilt, only the new models tested (TASKS "An
         audio.cpp update tests only the engines and models it adds"); Drama 3 on this 8 GB card
         with CPU expert offload; the x-vector direction as a fork change — ESD is research-only

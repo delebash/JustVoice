@@ -4799,9 +4799,38 @@ TASKS "Round 6". Our fork's `jv` merged audio.cpp's upstream main of 2026-10-18 
   added `kitten_tts2` to the web UI's expose-all families (`catalog.ts`); our port
   (`scripts/audiocpp-catalog.js`) follows, so a catalog made at `jv` offers all three, as
   audio.cpp's UI does. — *code, 2026-10-18*.
-- **Not yet heard:** the download waits for the licence to be accepted on this computer. The
-  harness arm is `drama3-r6` (`server/scripts/round4_render.js`): the line's direction words in the
-  bracket, experts read from disk, the rest on the card.
+- **Round 6's takes** (`data/round6`, arm `drama3-r6` in `server/scripts/round4_render.js`): round
+  5's 50 lines, told and plain, seeds 7–9, 300 takes. Told = one free-text note before the words,
+  "[<the line's direction words, else the emotion word>] line", sent straight to the speech
+  runtime (`/v1/tasks/run`), because the app strips a bracket a model's notes don't list
+  (`render_core.performableText`) — a first run through the app gave told takes byte-identical to
+  plain (kept in `data/round6-stripped`, not used). Load options `disk_experts=true`,
+  `cpu_expert_layers=0`: about 7.2 GB on the 8 GB card, the runtime's working set 17.4 GB (10.2 GB
+  private), the app's measured price 16 GB + 1 GB margin; a median 6.9 s a take (the first two
+  after a load 32 s, the experts coming off the disk). All 150 told takes differ from their plain
+  twin. — *measured, 2026-10-18*.
+- **Scored** (take-check, whisper turbo, `data/round6/score/out`), against round 5's table (§10.29)
+  and round 6b's (§10.30): emotion gain told − plain **+0.10 [0.05, 0.18]** (BreezeTTS 2 +0.13
+  [0.05, 0.23], VoxCPM2 +0.04, CustomVoice with the fingerprint +0.01); heard as asked 0.20 · 0.09;
+  shouted **+3.6 dB**, whispered **−3.7 dB** (Breeze +5.8 / −8.0; VoxCPM2 +4.7 / +3.5); read-back
+  WER 0.026, 7 of 300 takes over 0.25 (4 told); like the clip 0.88 · 0.90 (Breeze 0.85 · 0.91);
+  UTMOSv2 3.09 (Breeze 2.88, VoxCPM2 2.78, CustomVoice 3.18). By emotion: angry +0.20, sad +0.10,
+  fearful +0.03, happy −0.02, contemptuous 0.00 (emotion2vec hears anger best, §10.29). So on the
+  scorer Drama 3 acts about as Breeze does, with a better-sounding take and the voice kept closer,
+  weaker shout and whisper, slower; it can be sold with under its revenue cap and attribution,
+  Breeze not without a separate licence. The ears decide: page
+  https://claude.ai/artifact/6VanH77XsNMb8UaKq1V2F2 (collection `round6`). — *measured, 2026-10-18*.
+- **Fish S2 Pro again, on the merge's Fish codec fixes (#936, #937)** (`data/round6-fish`, arm
+  `fish-r6`: round 5's lines told the line's direction words through the app, as round 5's arms):
+  gain +0.02 [0.00, 0.05] (round 4's tags, §10.22: 0.00); shouted +2.6 dB, whispered −4.3 dB; WER
+  0.017; like the clip 0.90 · 0.92; UTMOSv2 3.37, the best of any engine here (round 4: 3.30);
+  2.1 s a take. The fixes help how it sounds, not how it acts. — *measured, 2026-10-18*.
+- **Through the app it gets no direction yet:** the catalog at `jv` offers it, but its notes
+  (`curated/fish_drama3.js`) have no `DIRECTION`, so `performableText` drops the note. The app's
+  `prefix` direction (`generated.applyDirection`) would send the emotion's tag and then the words
+  as two brackets ("[angry][looking angrily] …"), which round 6 didn't test: what was tested is one
+  note, the words else the emotion word. Wiring it waits for the ears and for a release with
+  Drama 3 (a jv.7, its own decision). — *code, 2026-10-18*.
 
 ## Records not yet distilled
 

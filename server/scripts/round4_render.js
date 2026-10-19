@@ -112,6 +112,9 @@ const ARMS = {
   cosyvoice3: { engine: "cosyvoice3", variant: "cosyvoice3-q8", told: appWay },
   higgs: { engine: "higgs_audio_tts", variant: "higgs_audio_tts-q8", told: appWay },
   fish: { engine: "fish_audio", variant: "fish_audio-q8", told: appWay },
+  // Round 6: S2 Pro again on our fork's upstream merge (its Fish codec fixes, #936 and #937), told
+  // the line's own direction words through the app, as round 5's arms were.
+  "fish-r6": { engine: "fish_audio", variant: "fish_audio-q8", told: described },
   breeze: { engine: "breeze_tts", variant: "breeze_tts-q8", told: appWay },
   "chatterbox-turbo": { engine: "chatterbox", variant: "chatterbox-turbo-q8", told: appWay },
 
