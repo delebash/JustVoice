@@ -108,7 +108,7 @@ export function mockPlan({ frontier = false, blocked = false, noFfmpeg = false }
       ? [
         { step: "discover", code: "no_model", detail: null },
         { step: "design", code: "no_language", detail: null },
-        { step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2" },
+        { step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2", uses: ["characters"] },
       ]
       : [],
     warnings: noFfmpeg ? [{ step: "export", code: "no_ffmpeg", detail: null }] : [],

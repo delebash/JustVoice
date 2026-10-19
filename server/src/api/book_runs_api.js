@@ -78,13 +78,15 @@ export const BookRunPlanStep = T.Object({
 
 /** Something that stops a run starting (`problems`) or that it will meet (`warnings`). `code`:
  * no_text · no_model · no_language · terms · all_ignored · no_ffmpeg · no_recognition. `terms`
- * names the engine whose licence isn't accepted on this machine (`engine`, `name`). */
+ * names the engine whose licence isn't accepted on this machine (`engine`, `name`) and what its
+ * model would make in the run (`uses`: design · characters · narrator). */
 export const BookRunProblem = T.Object({
   step: T.String(),
   code: T.String(),
   detail: opt(nullable(T.String()), null),
   engine: opt(nullable(T.String()), null),
   name: opt(nullable(T.String()), null),
+  uses: opt(T.Array(T.String()), []),
 });
 
 export const BookRunPlan = T.Object({

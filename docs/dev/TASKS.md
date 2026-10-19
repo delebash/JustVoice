@@ -368,8 +368,14 @@ BUILT:  —
         "Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2" with "Commercial use: Separate
         licence", the stop "BreezeTTS 2's licence isn't accepted on this computer. Accept it to make
         the character voices." with "BreezeTTS 2's licence ➜"; tests, mock, docs.
-OPEN:   the user's look at the card (#/mock/one-click, and a real book). A stop for the narrator's
-        or design model's licence has no approved words — today's seeds are both "Yes".
+        2026-10-18 night (the user: "do your rec … all your rec and any bugs or suggestions you
+        find our have go"): the stop covers the designer's and the narrator's model too, on the
+        approved pattern — "…Accept it to design the voices." / "…to make the narrator's voice." /
+        "…to make the character voices and the narrator's voice." (one stop per model, naming what
+        it makes: `book_run.termsUses`, the plan problem's `uses`); test, mock, docs studio and
+        whats-new.
+OPEN:   the user's look at the card (#/mock/one-click, and a real book), and at the two new
+        stops' words (today's seeds for both models read "Yes", so neither shows by default).
 GO:     given 2026-10-16 ("your rec on breeze and license"; after the check, "your rec on all
         go"). The narrator plan (docs/plans/2026-10-17-narrator-and-character-engines.md), shown
         2026-10-18: "4. The setting's name: `narrator_model`? Lean: yes. 5. The run's card:

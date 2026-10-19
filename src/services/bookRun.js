@@ -151,13 +151,22 @@ export const PROBLEMS = {
   no_recognition: { text: "Speech recognition isn't installed, so the takes won't be checked.", go: ["ai", "speech-engines"], link: "Speech engines ➜" },
 };
 
-/** A problem's words and its link: PROBLEMS', or — for the character voices' model, whose licence
- * isn't accepted on this computer (decided 2026-10-16, its words 2026-10-18) — the engine's own
- * name, and a link that opens its licence to accept. */
+/** What a model whose licence isn't accepted would make, in the stop's words (the server's
+ * `book_run.termsUses`): "design the voices", "make the character voices", "make the character
+ * voices and the narrator's voice". */
+export function termsUses(uses) {
+  const makes = [uses.includes("characters") && "the character voices", uses.includes("narrator") && "the narrator's voice"].filter(Boolean);
+  return [uses.includes("design") && "design the voices", makes.length && `make ${makes.join(" and ")}`].filter(Boolean).join(" and ");
+}
+
+/** A problem's words and its link: PROBLEMS', or — for a voice model whose licence isn't accepted
+ * on this computer (decided 2026-10-16; the character voices' words 2026-10-18, the designer's and
+ * the narrator's on the same pattern) — the engine's own name, what it would make, and a link that
+ * opens its licence to accept. */
 export function problemWords(p) {
   if (p.code === "terms") {
     return {
-      text: `${p.name}'s licence isn't accepted on this computer. Accept it to make the character voices.`,
+      text: `${p.name}'s licence isn't accepted on this computer. Accept it to ${termsUses(p.uses || [])}.`,
       go: ["terms", p.engine],
       link: `${p.name}'s licence ➜`,
     };

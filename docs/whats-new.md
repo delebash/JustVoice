@@ -8,7 +8,9 @@
   The narrator has its own setting, `book_voices.narrator_model`. BreezeTTS 2's licence doesn't
   let you sell what it makes without a separate licence from its makers: the run's card shows
   *Commercial use: Separate licence* beside it before you start, and until its licence is
-  accepted on your computer the run doesn't start — **BreezeTTS 2's licence ➜** opens it
+  accepted on your computer the run doesn't start — **BreezeTTS 2's licence ➜** opens it. The
+  same holds for the models that design the voices and read the narration, if you set ones whose
+  licence you haven't accepted: the stop names what that model would make
   ([Studio → Make the audiobook](studio.md#make-the-audiobook))
 - **Make the audiobook (2026-10-16)** — an audiobook's Overview has one button that turns the book
   into a finished audiobook, unattended: it finds the speakers, merges their names, decides who

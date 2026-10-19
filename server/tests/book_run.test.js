@@ -400,7 +400,7 @@ test("the_character_voices_licence_word_is_on_the_plan_and_unaccepted_it_stops_t
   const plan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
   const design = plan.steps.find((s) => s.key === "design");
   expect(design.licences.map((l) => [l.model, l.name, l.commercial])).toEqual([["breeze_tts", "BreezeTTS 2", "Separate licence"]]);
-  expect(plan.problems).toEqual([{ step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2" }]);
+  expect(plan.problems).toEqual([{ step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2", uses: ["characters"] }]);
   const r = await c.post("/v1/book_runs", { json: { project_id: pid } });
   expect(r.status).toBe(409);
   expect(r.text).toContain("BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the character voices.");
@@ -409,6 +409,23 @@ test("the_character_voices_licence_word_is_on_the_plan_and_unaccepted_it_stops_t
   const after = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
   expect(after.problems).toEqual([]);
   expect(after.steps.find((s) => s.key === "design").licences.length).toBe(1);
+});
+
+test("a_narrators_or_designers_licence_unaccepted_stops_the_run_naming_what_it_would_make", async () => {
+  // The narrator on BreezeTTS 2, the characters on VoxCPM2: the stop names the narrator's voice.
+  const { c, pid } = await aliceVII(undefined, { acceptTerms: false });
+  expect((await c.patch("/v1/settings", { json: { book_voices: { clone_model: "voxcpm2", narrator_model: "breeze_tts" } } })).status).toBe(200);
+  const plan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
+  expect(plan.problems).toEqual([{ step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2", uses: ["narrator"] }]);
+  const r = await c.post("/v1/book_runs", { json: { project_id: pid } });
+  expect(r.status).toBe(409);
+  expect(r.text).toContain("BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the narrator's voice.");
+  // One model for the characters and the narrator: one stop, naming both.
+  await c.patch("/v1/settings", { json: { book_voices: { clone_model: "breeze_tts", narrator_model: "breeze_tts" } } });
+  const both = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan.problems;
+  expect(both.map((p) => p.uses)).toEqual([["characters", "narrator"]]);
+  expect(bookRun.problemText(both[0])).toBe("BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the character voices and the narrator's voice.");
+  expect(bookRun.termsUses(["design", "characters"])).toBe("design the voices and make the character voices");
 });
 
 test("what_stops_a_run_starting_is_said_before_it_starts", async () => {

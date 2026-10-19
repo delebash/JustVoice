@@ -390,12 +390,15 @@ function stepModels(settings) {
   // goes unsaid when it shares the characters' model.
   const narrator = cfg.narrator_model !== cfg.clone_model ? ` · narrator ${modelNameOf(cfg.narrator_model)}` : "";
   const used = [...new Set([cfg.design_model, cfg.clone_model, cfg.narrator_model])].map(speechModelFacts).filter(Boolean);
+  // What each model makes here — a model whose licence isn't accepted on this machine stops the
+  // run, named with what it would make (termsUses).
+  const roles = [["design", cfg.design_model], ["characters", cfg.clone_model], ["narrator", cfg.narrator_model]];
   out.design = {
     model: `${modelNameOf(cfg.design_model)} → ${modelNameOf(cfg.clone_model)}${narrator}`,
     licences: used
       .filter((f) => f.licence)
       .map(({ model, name, licence: l }) => ({ model, name, commercial: l.commercial, licence: l.name, table: l.table, summary: l.summary, url: l.url, checked: l.checked ?? null })),
-    clone: speechModelFacts(cfg.clone_model),
+    gates: used.map((f) => ({ ...f, uses: roles.filter(([, m]) => m === f.model).map(([r]) => r) })),
   };
   const stt = _sttReadiness();
   out.check = { model: stt.display_name, ready: Boolean(stt.ready) };
@@ -407,8 +410,8 @@ function stepModels(settings) {
  * [{key, kind, model, provider, cloud, configured, recipe, action, estimate, licences}], estimate,
  * ask_price, problems, warnings}`. A speech step's `licences`: the models it runs on whose
  * licence isn't a plain "Yes", with their words. `problems` stop it starting (no chapter with
- * text, no language model, the book's language not set, the character voices' model's licence not
- * accepted on this machine, every name the scans found ignored while the book has no
+ * text, no language model, the book's language not set, a voice model's licence — the designer's,
+ * the characters' or the narrator's — not accepted on this machine, every name the scans found ignored while the book has no
  * speaker but the narrator — it would be read in one voice); `warnings` don't (no ffmpeg — it stops before the M4B; no
  * speech recognition — the takes go unchecked). `ask_price`: an AI step runs on a cloud model, so
  * the start must carry `accept_price` (the plan's Q8: "shown before it starts, and the run asks
@@ -425,10 +428,12 @@ export function planRun(h, projectId, { redo = [] } = {}) {
   const unconfigured = Object.keys(AI_STEPS).find((k) => !models[k].configured);
   if (unconfigured) problems.push({ step: unconfigured, code: "no_model", detail: models[unconfigured].detail });
   if (!projectLanguage(project)) problems.push({ step: "design", code: "no_language" });
-  // The character voices' model has a licence to accept on this machine first (decided
-  // 2026-10-16, its words 2026-10-18) — its terms gate its download, and the run would meet it.
-  const clone = models.design.clone;
-  if (clone?.terms && !clone.accepted) problems.push({ step: "design", code: "terms", engine: clone.engine, name: clone.name });
+  // Each model the voices are made on has a licence to accept on this machine first (decided
+  // 2026-10-16; the character voices' words 2026-10-18, the designer's and the narrator's on the
+  // same pattern) — its terms gate its download, and the run would meet it.
+  for (const g of models.design.gates) {
+    if (g.terms && !g.accepted) problems.push({ step: "design", code: "terms", engine: g.engine, name: g.name, uses: g.uses });
+  }
   if (allIgnored(h, project, chapters)) problems.push({ step: "merge", code: "all_ignored" });
   if (!exportAudiobook.haveFfmpeg()) warnings.push({ step: "export", code: "no_ffmpeg" });
   if (!models.check.ready) warnings.push({ step: "check", code: "no_recognition" });
@@ -517,12 +522,19 @@ function allIgnored(h, project, chapters) {
   return !h.all(`select role_label from ${Speaker} where project_id = ?`, [project.id]).some((s) => s.role_label !== "narrator");
 }
 
+/** What a model whose licence isn't accepted would make, in the stop's words: "design the
+ * voices", "make the character voices", "make the character voices and the narrator's voice". */
+export function termsUses(uses) {
+  const makes = [uses.includes("characters") && "the character voices", uses.includes("narrator") && "the narrator's voice"].filter(Boolean);
+  return [uses.includes("design") && "design the voices", makes.length && `make ${makes.join(" and ")}`].filter(Boolean).join(" and ");
+}
+
 /** A problem's words, for an API caller (the screen says its own). */
 export function problemText(p) {
   if (p.code === "no_text") return "This book has no text yet — import it or add its chapters first.";
   if (p.code === "no_model") return p.detail || "No language model is set up — set one in AI Settings first.";
   if (p.code === "no_language") return "Set the book's language on its Overview first — its voices are made in it.";
-  if (p.code === "terms") return `${p.name}'s licence isn't accepted on this computer. Accept it to make the character voices.`;
+  if (p.code === "terms") return `${p.name}'s licence isn't accepted on this computer. Accept it to ${termsUses(p.uses)}.`;
   if (p.code === "all_ignored") return "Every name the scans found is ignored — the book would be read in one voice. Undo some on Discover first.";
   return p.code;
 }

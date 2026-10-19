@@ -141,10 +141,13 @@ selling what it makes carries its licence word beside its name, as the
 reads *Commercial use: Separate licence* — hover it for the licence's own
 words (since 2026-10-18). What stops it starting is said on the card: no
 language model set up, the book's **Language** not set (its voices are made in
-it), the characters' model's licence not yet accepted on this computer —
+it), a voice model's licence not yet accepted on this computer —
 *BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the
 character voices.* with **BreezeTTS 2's licence ➜**, which opens it to accept
-once, as its first download asks (since 2026-10-18) — no text yet, or every
+once, as its first download asks (since 2026-10-18); the same stop names the
+model that designs the voices (*Accept it to design the voices.*) or the
+narrator's (*Accept it to make the narrator's voice.*) when its licence is the
+one waiting — no text yet, or every
 name the scans found ignored while the book has no
 speaker but the narrator — *Every name the scans found is ignored — the book
 would be read in one voice. Undo some on Discover ➜* (since 2026-10-16;
