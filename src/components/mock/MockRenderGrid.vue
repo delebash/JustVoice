@@ -13,10 +13,9 @@
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
-  AiTaskStrip, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
+  AiTaskStrip, AiTaskStrips, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
 } from "@delebash/ui";
 import PagePlayer from "../PagePlayer.vue";
-import PageTaskStrips from "../PageTaskStrips.vue";
 import PlayTransport from "../PlayTransport.vue";
 import { usePagePlayer } from "../../composables/usePagePlayer.js";
 import { CANT_RENDER, partOf } from "../../services/lineStates.js";
@@ -187,7 +186,7 @@ function open(ch) {
                 : 'Join every chapter that can render and measure RMS + peak against the ACX limits, after the master'"
               @click="qc" />
           </div>
-          <PageTaskStrips :features="['acx-qc']" :meta="{ projectId: PROJECT.id }" />
+          <AiTaskStrips :features="['acx-qc']" :meta="{ projectId: PROJECT.id }" />
 
           <UiTable class="jv-table-look mock-render__grid" :data="rows" :columns="COLUMNS" data-key="id" row-hover
             :full-width-row="(r) => (r.task ? 'mock-render__task-row' : false)"

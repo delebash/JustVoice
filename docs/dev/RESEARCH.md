@@ -1792,9 +1792,19 @@ extraction, speakers, smart_assign, project_export, export_jobs, bulk_delete, _s
 (decided 2026-10-05, "a page shows only its own tasks"), the table of each task's page, the
 blast radius.
 
-- Each task's strip is on the page that started it (`PageTaskStrips.vue` over
-  `services/pageTasks.js`, by feature and by the meta the page stamps). (was: `App.vue` showed
-  every non-inline task at the top of every page.) — *code, 2026-10-05*.
+- Each task's strip is on the page that started it: the kit's `AiTaskStrips` over its
+  `useSurfaceTasks`, by feature and by the meta the page stamps; Studio's run banner uses
+  `chapterRun.useStepStrip` over the same helper. (was: JustVoice's own `PageTaskStrips.vue` over
+  `services/pageTasks.js` until 2026-10-18, when the kit took them in; before 2026-10-05 `App.vue`
+  showed every non-inline task at the top of every page.) — *code, 2026-10-18*.
+- The kit's floating stack (`AiTaskStack`, under `<LlmUiHosts />`, kit bc34207) shows each running
+  task that no mounted strip claims. The pages sit in one `<KeepAlive>` keyed by route name
+  (`MainLayout.vue`), so a page's strips stay mounted, and their tasks claimed, after you leave it.
+  Inside Studio (`StudioPage.vue`) Discover, Script and Render (grid and chapter page) are kept
+  alive; Cast and Export are plain `v-if`, so switching steps unmounts their strips and a
+  Smart-assign or an export still running moves to the stack until you come back. The book run's task (`bookRun.followBookRun`) has no strip (started
+  with `withAiTask`, not `inline`): its card draws the run itself, so while it runs the stack shows
+  it on every page, its own included. — *code, 2026-10-18; not yet seen on screen*.
 - The kit's task panel (the ✨ button) lists every task whatever `inline` says; `inline` only
   told a global stack to skip a task (`just-core/packages/ui/src/stores/aiTasks.js`, start()).
   — *code, 2026-10-05*.

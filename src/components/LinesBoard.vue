@@ -13,8 +13,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import PageTaskStrips from "./PageTaskStrips.vue";
-import { withAiTask } from "@delebash/ui";
+import { AiTaskStrips, withAiTask } from "@delebash/ui";
 import { pushToast, saveBlob } from "@delebash/ui";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -263,7 +262,7 @@ watch(selectedProjectId, (id) => {
       <UiButton size="small" :disabled="rerendering" :label="`↻ Re-render ${staleLines.length} stale`" @click="rerenderChanged" />
       <span class="jv-muted">everything else stays cached</span>
     </div>
-    <PageTaskStrips :features="['chapter']" :meta="{ projectId: selectedProjectId }" />
+    <AiTaskStrips :features="['chapter']" :meta="{ projectId: selectedProjectId }" />
 
     <div v-if="!selectedProject" class="jv-banner">
       Import a dialogue CSV (Projects → Import, or the kind picker) to get a game project — its lines appear here.

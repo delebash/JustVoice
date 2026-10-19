@@ -20,11 +20,10 @@
 import { computed, nextTick, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
-  AppModal, UiButton, UiChip, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, confirmDialog, pushToast,
+  AiTaskStrips, AppModal, UiButton, UiChip, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, confirmDialog, pushToast,
   useAiTasksStore,
 } from "@delebash/ui";
 import PagePlayer from "../../components/PagePlayer.vue";
-import PageTaskStrips from "../../components/PageTaskStrips.vue";
 import PlayTransport from "../../components/PlayTransport.vue";
 import { usePagePlayer } from "../../composables/usePagePlayer.js";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../../services/facets.js";
@@ -425,14 +424,14 @@ const blockedBanner = computed(() => {
             <span class="jv-hint">A new take for every line that can render. Old takes are kept.</span>
           </span>
         </div>
-        <PageTaskStrips :features="['render-lines', 'render-scene']" :meta="{ sceneId: chapter.id }">
+        <AiTaskStrips :features="['render-lines', 'render-scene']" :meta="{ sceneId: chapter.id }">
           <template #extra-stats="{ task }">
             <span v-if="loadingText(task.render?.loading)" class="sts-stat">{{ loadingText(task.render.loading) }}</span>
             <UiButton v-else-if="task.render?.current" intent="ghost" size="small" class="sts-stat"
               :label="lineName(task.render.current)" title="Show this line" @click="goToLine(task.render.current.block_id)" />
             <span v-else-if="waitingText(task.render?.waiting)" class="sts-stat">{{ waitingText(task.render.waiting) }}</span>
           </template>
-        </PageTaskStrips>
+        </AiTaskStrips>
         <PlayTransport v-if="player.key === 'chapter'" :player="player" width="long" toggle />
       </div>
     </div>

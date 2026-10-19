@@ -37,7 +37,7 @@
 import { computed, onActivated, onBeforeUnmount, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
-  AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
+  AiTaskStrips, AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
   DownloadBar, UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, pushToast, runAiEndpoint, saveBlob,
 } from "@delebash/ui";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
@@ -45,7 +45,6 @@ import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import PersonaBlendMaker from "../components/PersonaBlendMaker.vue";
 import PersonaCloneMaker from "../components/PersonaCloneMaker.vue";
 import PersonaDesignMaker from "../components/PersonaDesignMaker.vue";
-import PageTaskStrips from "../components/PageTaskStrips.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { setDefaultVariant } from "../services/engineDefaults.js";
@@ -1243,7 +1242,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                 <span class="jv-spacer" />
                 <UiButton intent="ghost" label="⤓ WAV" :disabled="!audio" @click="saveWav" />
               </div>
-              <PageTaskStrips v-if="saved" :features="['compose', 'persona-rewrite']" :meta="{ personaId: saved.id }" />
+              <AiTaskStrips v-if="saved" :features="['compose', 'persona-rewrite']" :meta="{ personaId: saved.id }" />
               <div v-if="audio" class="jv-col">
                 <span class="jv-hint">{{ audio.label }}</span>
                 <audio :src="audio.url" controls autoplay class="jv-audio-inline" />

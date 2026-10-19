@@ -675,9 +675,9 @@ onMounted(async () => {
         </p>
         <!-- No global task stack (decided 2026-10-05: a page shows only its own
              tasks — it put a render on Voices and Smart-assign on Generate).
-             Each task's strip is on the page that started it
-             (PageTaskStrips.vue); the header's ✨ AI button and the AI Tasks
-             page show everything, as in JustWrite. -->
+             Each task's strip is on the page that started it (the kit's
+             AiTaskStrips, since 2026-10-18); the header's ✨ AI button and the
+             AI Tasks page show everything, as in JustWrite. -->
         <!-- Settings' "Run welcome again" emits `reset-onboarding`, and nothing
              was listening (2026-08-15): a route component renders through
              <component :is>, which binds no handlers, so the button was dead

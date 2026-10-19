@@ -3,8 +3,7 @@
 import { ref, onMounted, onActivated, computed, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useApi } from "../stores/api.js";
-import PageTaskStrips from "../components/PageTaskStrips.vue";
-import { pushToast, saveBlob, serverUrl as apiPath, pageFlow } from "@delebash/ui";
+import { AiTaskStrips, pushToast, saveBlob, serverUrl as apiPath, pageFlow } from "@delebash/ui";
 import { confirmDialog, promptDialog } from "@delebash/ui";
 import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/ui";
 import { DIRECTION_OPTIONS, VOICE_KINDS, baseLang, directionCell, tagCount, voiceKind, voiceKindLabel } from "../services/personaFacts.js";
@@ -698,7 +697,7 @@ function voiceTypeVariant(kind) {
       @click="chooseVoiceFile" />
     <input ref="bundleInput" type="file" accept=".zip,application/zip" hidden @change="importVoiceFile" />
   </div>
-  <PageTaskStrips :features="['voice-gender']" />
+  <AiTaskStrips :features="['voice-gender']" />
 
   <!-- ── The test line: one box, above the grid ───────────────────────── -->
   <div class="voices-view__bench">

@@ -28,14 +28,14 @@
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from "vue";
 import {
   AiTaskStrip, AppModal, UiButton, UiCheckbox, UiChip, UiSelect, UiTable, UiTag, UiTextarea,
-  confirmDialog, pushToast, useAiTasksStore,
+  confirmDialog, pushToast,
 } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { useAnalyzeModel } from "../composables/useAnalyzeModel.js";
-import { inRun, onChapterDone, queueChapters, runStripTask, stepRun } from "../services/chapterRun.js";
+import { inRun, onChapterDone, queueChapters, stepRun, useStepStrip } from "../services/chapterRun.js";
 import { addNarrator, narrationOf } from "../services/narrator.js";
 import NarratorNeeded from "./NarratorNeeded.vue";
 import {
@@ -63,7 +63,6 @@ const emit = defineEmits(["back", "open", "go", "changed", "cast-changed"]);
 
 const api = useApi();
 const copy = useCopy();
-const tasks = useAiTasksStore();
 const word = computed(() => copy.value.chapter);
 
 // ── The page ─────────────────────────────────────────────────────────────
@@ -190,7 +189,7 @@ const runningHere = computed(() => inRun(props.project.id, props.sceneId, "analy
 const analyzeWaits = computed(() => !!stepRun(props.project.id, "analyze")?.waiting);
 // This chapter's strip: its task running now, else its last one (2026-10-05 —
 // the first match could be a finished one while another ran).
-const runTask = computed(() => runStripTask(tasks, props.project.id, "analyze", props.sceneId));
+const runTask = useStepStrip("analyze", () => props.project.id, () => props.sceneId);
 // A book with narration needs a narrator before Analyze runs (2026-10-05) — the
 // same question Script's grid asks.
 const narratorAsk = ref(false);

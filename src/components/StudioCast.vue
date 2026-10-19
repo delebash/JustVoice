@@ -30,11 +30,10 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
-  EmptyState, UiButton, UiCheckbox, UiChip, UiInput, UiMultiSelect, UiSelect, UiTable, UiTag, UiTextarea,
+  AiTaskStrips, EmptyState, UiButton, UiCheckbox, UiChip, UiInput, UiMultiSelect, UiSelect, UiTable, UiTag, UiTextarea,
   confirmDialog, languageName, promptDialog, pushToast, withAiTask,
 } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
-import PageTaskStrips from "./PageTaskStrips.vue";
 import CastNewPersonas from "./CastNewPersonas.vue";
 import { andList, castModelChoices, NO_BOOK_LANGUAGE, smartAssignSpeakers, splitByName, voicesForBook } from "../services/newPersonas.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -757,7 +756,7 @@ const GAME_COLUMNS = [
             @click="proposeNewPersonas" />
         </div>
         </div>
-        <PageTaskStrips :features="['smart_assign']" :meta="{ projectId: project.id }" />
+        <AiTaskStrips :features="['smart_assign']" :meta="{ projectId: project.id }" />
         <CastNewPersonas v-if="newAsk" :by-name="newAsk.byName" :proposals="newAsk.proposals" :voices="newAsk.voices" :busy="newBusy"
           @close="newAsk = null" @create="createNewPersonas" />
         <div v-if="castEngineNotice" class="jv-banner jv-banner--warn studio-cast__notice">{{ castEngineNotice }}</div>

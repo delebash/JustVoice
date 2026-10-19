@@ -13,8 +13,7 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import PageTaskStrips from "./PageTaskStrips.vue";
-import { openPath, pushToast, saveBlob } from "@delebash/ui";
+import { AiTaskStrips, openPath, pushToast, saveBlob } from "@delebash/ui";
 import { exportRun, savedMessage } from "../services/exportRun.js";
 import { useCopy } from "../services/copy.js";
 import { masterLabel, projectMaster } from "../services/masterTargets.js";
@@ -189,7 +188,7 @@ async function copyShowNotes() {
         <UiButton intent="secondary" :loading="exportBusy === 'zip'" :disabled="!!exportBusy" :label="`⬇ ${copy.chapter.singular} WAVs (zip)`" @click="exportChapterWavs" />
         <UiButton v-if="project.project_type === 'podcast'" intent="secondary" label="📝 Show notes" title="Draft episode show notes from the segments (LLM)" @click="generateShowNotes" />
       </div>
-      <PageTaskStrips :features="['export-m4b', 'export-chapters', 'show-notes']" :meta="{ projectId: project.id }" />
+      <AiTaskStrips :features="['export-m4b', 'export-chapters', 'show-notes']" :meta="{ projectId: project.id }" />
       <div v-if="showNotes" class="exportp__notes">
         <div class="exportp__h" style="margin-bottom:6px">
           <strong>Show notes</strong>

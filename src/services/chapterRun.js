@@ -25,12 +25,11 @@
 // sees the same run. Pages hear about a finished chapter through
 // `onChapterDone` and re-read what changed.
 
-import { reactive } from "vue";
-import { pushToast, runAiEndpoint, runAiEndpointStream } from "@delebash/ui";
+import { computed, reactive, toValue } from "vue";
+import { pushToast, runAiEndpoint, runAiEndpointStream, useAiTasksStore, useSurfaceTasks } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { proseFromBlocks } from "./attribution.js";
 import { bookRunOn } from "./bookRun.js";
-import { pageTasks } from "./pageTasks.js";
 
 // {projectId: {queue, current, done, failed, steps: {analyze?, discover?}, controller}}
 // steps[kind] = {total, finished, startedAt, spent} — that step's own batch.
@@ -46,8 +45,6 @@ const NO_MODEL = {
 // "speaker_identification", a name the server never had, until 2026-10-16 (the one-click plan's
 // answer 6).
 const FEATURE = { analyze: "speaker_attribution", discover: "speaker_discovery" };
-// A step's strip shows its own tasks: Script's are Analyze and its 🔎 Second look.
-const STRIP_FEATURES = { analyze: ["speaker_attribution", "speaker_second_look"], discover: ["speaker_discovery"] };
 
 // Analyze's second look on its strip (decided 2026-10-06): the count, and what it
 // is and why it runs as the count's tooltip — the same words as docs/studio.md
@@ -110,14 +107,27 @@ export function stepRun(projectId, kind) {
 }
 
 /**
- * A step's strip: its chapter running now, else its last one that finished
- * (a failure stays readable). `sceneId` narrows it to one chapter. The kit
- * lists tasks oldest first, and a finished one lingers — taking the first
- * match showed a finished chapter's DONE while the next one ran (2026-10-05).
+ * A step's strip, for a page's setup: its chapter running now, else its last
+ * one that finished (a failure stays readable). The kit's useSurfaceTasks finds
+ * the step's own tasks in this book — Script's are Analyze and its 🔎 Second
+ * look — and `sceneId` narrows them to one chapter. The kit lists tasks oldest
+ * first, and a finished one lingers — taking the first match showed a finished
+ * chapter's DONE while the next one ran (2026-10-05). `kind`, `projectId` and
+ * `sceneId` may be values, refs or getters; the feature lists stay literal,
+ * since the family guard's check 17 reads them.
  */
-export function runStripTask(tasks, projectId, kind, sceneId = null) {
-  const mine = pageTasks(tasks, STRIP_FEATURES[kind], { projectId, run: true, ...(sceneId ? { sceneId } : {}) });
-  return mine.find((t) => tasks.isRunning(t.id)) || mine[mine.length - 1] || null;
+export function useStepStrip(kind, projectId, sceneId = null) {
+  const tasks = useAiTasksStore();
+  const meta = () => {
+    const scene = toValue(sceneId);
+    return { projectId: toValue(projectId), run: true, ...(scene ? { sceneId: scene } : {}) };
+  };
+  const analyze = useSurfaceTasks(["speaker_attribution", "speaker_second_look"], meta);
+  const discover = useSurfaceTasks(["speaker_discovery"], meta);
+  return computed(() => {
+    const mine = toValue(kind) === "analyze" ? analyze.value : discover.value;
+    return mine.find((t) => tasks.isRunning(t.id)) || mine[mine.length - 1] || null;
+  });
 }
 
 const failKey = (kind, sceneId) => `${kind}:${sceneId}`;

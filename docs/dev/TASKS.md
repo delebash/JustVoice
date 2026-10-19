@@ -404,6 +404,22 @@ BUILT:  kit 1c0ce6f (Chrome's HTTP/2 windows on every kit agent: 7.7 → 74 MB/s
 OPEN:   —
 GO:     given 2026-10-18 ("make it work this way"; the removal: "your rec go").
 
+### A page's task strips are the kit's (decided 2026-10-18)
+STATE:  DECIDED 2026-10-18 — asked: "Switch JustVoice to the kit's `AiTaskStrips` and delete our own
+        copy (`src/components/PageTaskStrips.vue`, `src/services/pageTasks.js`)? Lean: yes. The
+        family rule is "nothing hand-rolled that the kit ships", and keeping both copies lets them
+        drift apart." The user: "your rec on all keep going finish it all".
+WHY:    another session promoted JustVoice's PageTaskStrips / pageTasks into the kit (kit e2e91db) as
+        `AiTaskStrips` / `useSurfaceTasks`; two copies drift.
+NOT:    the dated mentions in this tracker, RESEARCH's history and the plans (they stay as history).
+BUILT:  2026-10-18 — eight screens and the two Render mocks on the kit's `AiTaskStrips`;
+        `chapterRun.useStepStrip` (Studio's run banner, Script's chapter page) over the kit's
+        `useSurfaceTasks`; both copies deleted; the kit's `AiTaskStrips` carries the stacking layout
+        `.jv-task-strips` gave ours. Same tasks, same look. The family check's JustVoice task
+        advisories: 13 → 1 (the book run, RESEARCH "Each task's strip").
+OPEN:   —
+GO:     given 2026-10-18 ("your rec on all keep going finish it all").
+
 ### Round 6b — emotion we build ourselves, simplest first (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the user's "if the tts cant do the emotion directly maybe we do
         the emotion in a different method" and "you need to think like this what things can work

@@ -9,17 +9,25 @@ function held({ task }) {
     task.signal?.addEventListener("abort", () => reject(new Error("aborted")));
   });
 }
-vi.mock("@delebash/ui", () => ({
-  pushToast: vi.fn(),
-  runAiEndpoint: vi.fn((o) => held(o)),
-  runAiEndpointStream: vi.fn((o) => held(o)),
-}));
+// The kit's task store as each test sets it; useSurfaceTasks picks from it as the kit does — every
+// visible task of the features whose meta holds every pair asked for.
+let kitTasks = { visibleTasks: [], isRunning: () => false };
+vi.mock("@delebash/ui", async () => {
+  const { computed, toValue } = await import("vue");
+  return {
+    pushToast: vi.fn(),
+    runAiEndpoint: vi.fn((o) => held(o)),
+    runAiEndpointStream: vi.fn((o) => held(o)),
+    useAiTasksStore: () => kitTasks,
+    useSurfaceTasks: (features, meta) => computed(() => kitTasks.visibleTasks.filter((t) =>
+      toValue(features).includes(t.feature) && Object.entries(toValue(meta)).every(([k, v]) => t.meta?.[k] === v))),
+  };
+});
 vi.mock("../stores/api.js", () => ({
   useApi: () => ({ serverUrl: "", safeRequest: async () => [], request: async () => ({}) }),
 }));
 
-const { cancelRun, inRun, queueChapters, runStripTask, stepRun } = await import("./chapterRun.js");
-const { pageTasks } = await import("./pageTasks.js");
+const { cancelRun, inRun, queueChapters, stepRun, useStepStrip } = await import("./chapterRun.js");
 const { hasNarrator, narrationOf } = await import("./narrator.js");
 const { bookRunOn, loadBookRun } = await import("./bookRun.js");
 
@@ -27,41 +35,38 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
 const chapter = (id) => ({ id, title: id.toUpperCase(), metadata: { source_text: `The text of ${id}.` } });
 
 function store(list, running = []) {
-  return { visibleTasks: list, isRunning: (id) => running.includes(id) };
+  kitTasks = { visibleTasks: list, isRunning: (id) => running.includes(id) };
 }
 const task = (id, sceneId, feature = "speaker_discovery", projectId = "p1") =>
   ({ id, inline: true, feature, meta: { run: true, projectId, sceneId } });
 
-describe("runStripTask", () => {
+describe("useStepStrip", () => {
   it("follows the chapter running now, not a finished one listed first (2026-10-05)", () => {
-    const tasks = store([task("t1", "a"), task("t2", "b"), task("t3", "c")], ["t3"]);
-    expect(runStripTask(tasks, "p1", "discover").id).toBe("t3");
+    store([task("t1", "a"), task("t2", "b"), task("t3", "c")], ["t3"]);
+    expect(useStepStrip("discover", "p1").value.id).toBe("t3");
   });
 
   it("falls back to the step's last one that finished when nothing runs", () => {
-    expect(runStripTask(store([task("t1", "a"), task("t2", "b")]), "p1", "discover").id).toBe("t2");
+    store([task("t1", "a"), task("t2", "b")]);
+    expect(useStepStrip("discover", "p1").value.id).toBe("t2");
   });
 
   it("shows only its own step, one book only, one chapter when asked (2026-10-05)", () => {
-    const tasks = store([task("t1", "a", "speaker_attribution"), task("t2", "b"),
+    store([task("t1", "a", "speaker_attribution"), task("t2", "b"),
       task("t3", "c", "speaker_discovery", "p2"),
       { id: "t4", inline: true, feature: "rewrite", meta: { run: true, projectId: "p1" } }], ["t1", "t2"]);
-    expect(runStripTask(tasks, "p1", "analyze").id).toBe("t1");
-    expect(runStripTask(tasks, "p1", "discover").id).toBe("t2");
-    expect(runStripTask(tasks, "p1", "analyze", "b")).toBeNull();
-    expect(runStripTask(store([]), "p1", "discover")).toBeNull();
+    expect(useStepStrip("analyze", "p1").value.id).toBe("t1");
+    expect(useStepStrip("discover", "p1").value.id).toBe("t2");
+    expect(useStepStrip("analyze", "p1", "b").value).toBeNull();
+    store([]);
+    expect(useStepStrip("discover", "p1").value).toBeNull();
   });
-});
 
-describe("pageTasks", () => {
-  it("picks a page's tasks by feature and by every meta key it stamped", () => {
-    const tasks = store([
-      { id: "a", feature: "smart_assign", meta: { projectId: "p1" } },
-      { id: "b", feature: "smart_assign", meta: { projectId: "p2" } },
-      { id: "c", feature: "show-notes", meta: {} },
-    ]);
-    expect(pageTasks(tasks, ["smart_assign"], { projectId: "p1" }).map((t) => t.id)).toEqual(["a"]);
-    expect(pageTasks(tasks, ["show-notes", "smart_assign"]).map((t) => t.id)).toEqual(["a", "b", "c"]);
+  it("puts Script's second look on Script's strip, never on Discover's", () => {
+    store([task("t1", "a", "speaker_attribution"), task("t2", "a", "speaker_second_look")], ["t2"]);
+    expect(useStepStrip("analyze", "p1").value.id).toBe("t2");
+    expect(useStepStrip(() => "analyze", () => "p1", () => "a").value.id).toBe("t2");
+    expect(useStepStrip("discover", "p1").value).toBeNull();
   });
 });
 

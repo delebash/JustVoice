@@ -17,9 +17,9 @@
 -->
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { AiTaskStrip, UiButton, UiProgress, useAiTasksStore } from "@delebash/ui";
+import { AiTaskStrip, UiButton, UiProgress } from "@delebash/ui";
 import { useCopy } from "../services/copy.js";
-import { cancelRun, runStripTask, stepRun } from "../services/chapterRun.js";
+import { cancelRun, stepRun, useStepStrip } from "../services/chapterRun.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -35,14 +35,13 @@ const STEPS = {
 const me = computed(() => STEPS[props.kind]);
 const other = computed(() => STEPS[props.kind === "discover" ? "analyze" : "discover"]);
 
-const tasks = useAiTasksStore();
 const copy = useCopy();
 const word = computed(() => copy.value.chapter);
 const chapters = (n) => `${n} ${(n === 1 ? word.value.singular : word.value.plural).toLowerCase()}`;
 
 const step = computed(() => stepRun(props.project.id, props.kind));
 const running = computed(() => !!step.value?.running);
-const task = computed(() => runStripTask(tasks, props.project.id, props.kind));
+const task = useStepStrip(() => props.kind, () => props.project.id);
 
 // A second's tick for the elapsed time while the step runs.
 const now = ref(Date.now());

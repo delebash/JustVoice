@@ -19,7 +19,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import {
-  AiTaskStrip, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
+  AiTaskStrip, AiTaskStrips, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
 } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
@@ -29,7 +29,6 @@ import {
 } from "../services/renderRun.js";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import PagePlayer from "./PagePlayer.vue";
-import PageTaskStrips from "./PageTaskStrips.vue";
 import PlayTransport from "./PlayTransport.vue";
 
 const props = defineProps({
@@ -289,7 +288,7 @@ function checkState(s) {
                 : `Join every ${word.singular.toLowerCase()} that can render and measure RMS + peak against the ACX limits, after the master`"
               @click="runQc" />
           </div>
-          <PageTaskStrips :features="['acx-qc']" :meta="{ projectId: project.id }" />
+          <AiTaskStrips :features="['acx-qc']" :meta="{ projectId: project.id }" />
 
           <UiTable class="jv-table-look studio-render__grid" :data="rows" :columns="COLUMNS" data-key="id" row-hover
             :full-width-row="(r) => (r.task ? 'studio-render__task-row' : false)"
