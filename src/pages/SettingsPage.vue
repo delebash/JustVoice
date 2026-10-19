@@ -1802,7 +1802,7 @@ onMounted(() => {
           :accent-chroma="0.08"
           accent-note="Default 166° = forest green."
           :locales="LOCALES"
-          locale-desc="UI language. Engine output language is configured per-voice in the Profile. Full i18next wiring lands with task #97 — the picker persists your preference now and the locale will apply once translations ship."
+          locale-desc="UI language. JustVoice's screens are in English for now; your choice is saved for when they're translated. It doesn't change the language your voices speak."
           @patch="(p) => ui.setAppearance(p)"
         />
       </div>
