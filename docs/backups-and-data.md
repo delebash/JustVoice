@@ -134,6 +134,10 @@ address is kept so the app stays reachable). Downloaded engine models stay on
 disk — remove those from the AI page if you want the space back. Take a backup
 first.
 
+A folder you linked into the data folder (a junction or a symbolic link to
+somewhere else) is removed as a link by the reset and by **Clear** on Settings →
+Storage: what it points to keeps its files.
+
 ## When to use which
 
 - Moving to a new machine, or before risky surgery → **backup**.

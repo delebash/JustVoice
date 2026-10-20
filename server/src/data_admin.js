@@ -10,6 +10,7 @@
 // - `runFactoryReset` IS the factory reset — the one implementation (POST /v1/data/reset).
 
 import { existsSync, rmSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import path from "node:path";
 import { LLM_TABLES } from "@delebash/core/llm";
 import * as lifecycle from "@delebash/core/runner/lifecycle";
@@ -212,7 +213,9 @@ export async function runFactoryReset() {
       path.join(dataDir, "captures"),
     ]) {
       try {
-        rmSync(root, { recursive: true, force: true });
+        // fs.promises.rm, never rmSync: Node 24's recursive rmSync follows an NTFS junction and empties
+        // the folder it points to; rm removes the link alone (the kit's RESEARCH §2, measured 2026-10-20)
+        await rm(root, { recursive: true, force: true });
       } catch (e) {
         log.warning(`factory reset: could not clear ${root}: ${msg(e)}`);
       }

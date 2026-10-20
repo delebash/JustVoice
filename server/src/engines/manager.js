@@ -22,7 +22,8 @@
 // lock are Mutexes held exactly where Python's locks spanned I/O (a slot's terminate / spawn);
 // state read without I/O needs no lock. Lock order: activity → the manager's lock.
 
-import { existsSync, readdirSync, readFileSync, realpathSync, rmdirSync, rmSync, unlinkSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, rmdirSync, unlinkSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -458,7 +459,8 @@ export async function _removeReplacedBuild(buildDir, tag) {
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       if (!existsSync(buildDir)) break;
-      rmSync(buildDir, { recursive: true });
+      // fs.promises.rm: Node 24's recursive rmSync follows an NTFS junction (the kit's)
+      await rm(buildDir, { recursive: true });
       break;
     } catch (e) {
       if (e?.code === "ENOENT") break;

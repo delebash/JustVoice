@@ -8,7 +8,8 @@
 // outright, because nearly every variant comes from the one `audio-cpp/audio.cpp-gguf`
 // repository, so one cached file would have marked them all downloaded.
 
-import { existsSync, rmSync } from "node:fs";
+import { existsSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import { Hono, input } from "@delebash/core/platform";
 import { dirSize } from "@delebash/core/platform/disk_api";
@@ -182,7 +183,9 @@ export function router() {
     if (existsSync(root)) {
       freed = await dirSize(root);
       try {
-        rmSync(root, { recursive: true, force: true });
+        // fs.promises.rm: Node 24's recursive rmSync follows an NTFS junction (a cache linked to
+        // another drive) and empties what it points to; rm removes the link alone (the kit's)
+        await rm(root, { recursive: true, force: true });
       } catch {
         /* ignore_errors */
       }
@@ -192,7 +195,7 @@ export function router() {
 
   /** Delete one model's downloaded file(s) — the per-model 'Delete downloaded model' verb. The
    * engine and its other variants stay. */
-  app.delete("/v1/engines/:id/models/:variant_id", (c) => {
+  app.delete("/v1/engines/:id/models/:variant_id", async (c) => {
     const { id, variant_id: variantId } = c.req.param();
     if (!variantIn(id, variantId)) throw notFound(`variant ${variantId} on engine ${id}`);
     const st = getState();
@@ -206,7 +209,7 @@ export function router() {
     }
     const vdir = String(speechCache.variantDir(st.dataDir, id, variantId));
     try {
-      rmSync(vdir, { recursive: true, force: true });
+      await rm(vdir, { recursive: true, force: true }); // the link alone, never what it points to
     } catch {
       /* ignore_errors */
     }

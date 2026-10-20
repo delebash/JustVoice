@@ -17,6 +17,7 @@
 
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import * as http from "@delebash/core/platform/http";
@@ -97,8 +98,9 @@ export async function install(runtimeRoot, force = false) {
   const staging = `${root}.staging`;
   const unpack = `${root}.unpack`;
   const wheel = `${root}.whl`;
-  rmSync(staging, { recursive: true, force: true });
-  rmSync(unpack, { recursive: true, force: true });
+  // fs.promises.rm, never a recursive rmSync: Node 24's follows an NTFS junction (the kit's)
+  await rm(staging, { recursive: true, force: true });
+  await rm(unpack, { recursive: true, force: true });
   mkdirSync(staging, { recursive: true });
   try {
     writeFileSync(wheel, blob);
@@ -121,9 +123,9 @@ export async function install(runtimeRoot, force = false) {
     if (existsSync(pkg)) copy(pkg, staging);
   } finally {
     rmSync(wheel, { force: true });
-    rmSync(unpack, { recursive: true, force: true });
+    await rm(unpack, { recursive: true, force: true });
   }
-  rmSync(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true });
   renameSync(staging, root);
   const done = paths(runtimeRoot);
   if (!done) throw new RuntimeError("eSpeak NG wheel unpacked without its library or data");

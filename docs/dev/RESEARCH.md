@@ -1778,6 +1778,15 @@ attacked" and the sections after it):
   `--info-ink` 3.12:1 (8.80:1). `--border-field` #8a867f on JustVoice's own `--bg` #f6f5f1 is
   3.32:1 (3.21 on `--surface-3`). So the dark `--on-accent` comes with the dark `--danger`. — *measured,
   2026-10-20* (a node script).
+- **JustVoice's own recursive `rmSync` emptied a linked folder's target** (Electron 44.7, Node 24):
+  a junction to an outside folder inside the speech cache, then **Clear** speech models — the
+  outside file was gone; the same inside `generations/`, then the factory reset — gone. On
+  `fs.promises.rm` both keep it (`server/tests/junction_removers.test.js`, run against the old code
+  first: 2 failed, then 2 passed). Changed: the reset's folders (`data_admin.js`), the speech cache
+  and a model's files (`api/models_api.js`), an old runtime build (`engines/manager.js`), the eSpeak
+  and Japanese dictionary installs. Left on `rmSync`: the OS-temp spools (captures, MCP, exports)
+  and a voice's own folder (`storage/voices.js`), which the app makes itself. — *measured,
+  2026-10-20*.
 - `@internationalized/number` (the kit's UiNumber, a peer since kit 70e6df1) was not in
   JustVoice's packages: in dev it resolved from the kit checkout's own `packages/ui/node_modules`;
   the release installs only `packages/core`. — *code, 2026-10-20*.

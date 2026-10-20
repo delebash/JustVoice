@@ -7,7 +7,9 @@
   old copy**, offers **Move back to the default folder**, and says when the folder is set by
   `JUSTVOICE_DATA_DIR` ([Backup and restore](backups-and-data.md)). Field edges are easier to see
   (3:1 against the page), and in dark mode the buttons' text is dark on the light fills, and
-  warning, error and information text is readable on dark cards
+  warning, error and information text is readable on dark cards. A folder you linked into the data
+  folder is removed as a link by the reset and by **Clear** — the folder it points to keeps its
+  files (they were emptied before)
 - **A restore that is all or nothing, and the headless server on macOS and Linux (2026-10-20)** —
   importing a backup swaps the folders and tables in whole or not at all; it first stops what was
   working on your files (a book's run, a render, an export, a take playing), and a change saved

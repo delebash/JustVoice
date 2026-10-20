@@ -39,6 +39,7 @@
     "@internationalized/number": "^3.6.9",
     "@quasar/extras": "^2.1.0",
     "@vueuse/integrations": "^15.0.0",
+    "dom-accessibility-api": "^0.7.1",
     "quasar": "^2.35.0",
     "sortablejs": "^1.15.7"
   },

@@ -16,6 +16,7 @@
 
 import { createHash } from "node:crypto";
 import { createReadStream, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import path from "node:path";
 import { RuntimeError } from "@delebash/core/platform/py";
 import { extractTarGz } from "@delebash/core/runner/binary";
@@ -70,7 +71,8 @@ export async function install(runtimeRoot, { onProgress = null, cancelCheck = nu
     throw new RuntimeError(`Japanese dictionary checksum mismatch (${digest.slice(0, 12)}…) — refusing it`);
   }
   const staging = `${root}.staging`;
-  rmSync(staging, { recursive: true, force: true });
+  // fs.promises.rm, never a recursive rmSync: Node 24's follows an NTFS junction (the kit's)
+  await rm(staging, { recursive: true, force: true });
   mkdirSync(staging, { recursive: true });
   // Only the dictionary folder's files (at the staging root) and the licences beside them are
   // kept; the Python wrapper and setup files stay behind.
@@ -83,10 +85,10 @@ export async function install(runtimeRoot, { onProgress = null, cancelCheck = nu
   });
   rmSync(tarball, { force: true });
   if (!isFile(path.join(staging, "dicrc"))) {
-    rmSync(staging, { recursive: true, force: true });
+    await rm(staging, { recursive: true, force: true });
     throw new RuntimeError("the Japanese dictionary unpacked without its dicrc");
   }
-  rmSync(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true });
   renameSync(staging, root);
   return root;
 }

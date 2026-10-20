@@ -523,6 +523,11 @@ BUILT:  `@internationalized/number` ^3.6.9; Settings → Storage on the kit's St
         `--warn-bg`, `--warn-ink` (RESEARCH §6); `scripts/start-packaged.js` re-copied (it runs a
         temp copy of the unpacked build). Docs: backups-and-data, whats-new. Checked: the smoke
         gate (every view, zero JS errors) and screenshots of Storage in light and dark on 8741.
+        Then web-0d's tenth note (kit f066ec9): `dom-accessibility-api` ^0.7.1 installed (a kit
+        peer); the recursive removes over folders a user could link moved to `fs.promises.rm` —
+        the reset's folders, the speech cache, a model's files, an old runtime build, the eSpeak
+        and Japanese installs (JustVoice's `rmSync` emptied a linked folder's target, measured;
+        RESEARCH §6); `server/tests/junction_removers.test.js`; backups-and-data says so.
 OPEN:   Change folder, Remove the old copy and Move back show only in the desktop app — not seen;
         the 8741 browser shows the panel without them.
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
