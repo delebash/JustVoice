@@ -70,6 +70,12 @@ export function storageRemoveOldCopy(root) {
   return call("storageRemoveOldCopy", { root });
 }
 
+/** Forget the old copy in `root` (one that isn't found): its record goes, nothing on any drive is
+ *  touched. Resolves the list after (the template's, kit 90c513f). */
+export function storageForgetOldCopy(root) {
+  return call("storageForgetOldCopy", { root });
+}
+
 /** "Use the default folder from now on": the folder this start couldn't use is forgotten. */
 export function storageUseDefault() {
   return call("storageUseDefault");

@@ -37,7 +37,9 @@ app still starts. Settings → Storage always shows the folder actually in use.
 **Moving the data.** Change folder copies everything to the new location and
 switches over — if anything fails, the app keeps using the old folder. The old
 folder keeps its copy until you remove it: Settings → Storage lists it with its
-size and **Remove the old copy** (only what the move copied goes). While the data
+size and **Remove the old copy** (only what the move copied goes). An old copy on a
+drive that isn't there now shows *Not connected*; one that can't be found at all shows
+*Not found* with **Forget…**, which drops it from the list and touches no drive. While the data
 is away from the default folder, **Move back to the default folder** brings it
 back; if the folder it was moved to can't be used at a start, JustVoice starts on
 the default folder and Storage offers **Use the default folder from now on**.

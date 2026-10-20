@@ -13,6 +13,7 @@ import {
   desktopUpdater,
   hasShell,
   pickDirectory,
+  storageForgetOldCopy,
   storageGetRoot,
   storageOldCopies,
   storageRelocate,
@@ -732,6 +733,7 @@ const storageShell = {
   relocate: storageRelocate,
   oldCopies: storageOldCopies,
   removeOldCopy: storageRemoveOldCopy,
+  forgetOldCopy: storageForgetOldCopy,
   useDefault: storageUseDefault,
 };
 // Phase ④ (the speech-catalog redesign): per-store clear verbs in ONE grammar with the kit's rows —

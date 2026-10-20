@@ -527,7 +527,10 @@ BUILT:  `@internationalized/number` ^3.6.9; Settings → Storage on the kit's St
         peer); the recursive removes over folders a user could link moved to `fs.promises.rm` —
         the reset's folders, the speech cache, a model's files, an old runtime build, the eSpeak
         and Japanese installs (JustVoice's `rmSync` emptied a linked folder's target, measured;
-        RESEARCH §6); `server/tests/junction_removers.test.js`; backups-and-data says so.
+        RESEARCH §6); `server/tests/junction_removers.test.js`; backups-and-data says so. Kit
+        90c513f: Storage passes `forgetOldCopy` (`storageForgetOldCopy`, the template's), so a
+        *Not found* old copy can be forgotten; JustVoice sets no `beforeunload`, so the shell's new
+        Leave/Stay box never shows here.
 OPEN:   Change folder, Remove the old copy and Move back show only in the desktop app — not seen;
         the 8741 browser shows the panel without them.
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
