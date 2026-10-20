@@ -21,6 +21,7 @@ import {
   csrfOrigin,
   installFileLog,
   installLogRing,
+  MaintenanceGate,
   makeDiskRouter,
   makeLogsRouter,
   makeShutdownRouter,
@@ -274,6 +275,17 @@ export async function createApp(dataDir = null) {
   // covers only the routes added after it.
   const corsOrigins = settings.cors.origins;
   const corsRegex = settings.cors.origin_regex;
+  // A request from this computer must name it (localhost, an IP, its own name) — a page that renamed
+  // itself to reach this server is refused (DNS rebinding, the kit's bearerAuth). JUSTVOICE_ALLOWED_HOSTS
+  // names more, comma-separated: a reverse proxy's public name, `host.docker.internal` for a container
+  // (the template's FAMILY_TEMPLATE_ALLOWED_HOSTS; decided 2026-10-20).
+  const allowedHosts = (process.env.JUSTVOICE_ALLOWED_HOSTS || "")
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean);
+  // A reverse proxy's public name is a browser's Origin there (https://voice.example.com), the server's own
+  // though the server sees another scheme and host behind the proxy (the template's).
+  const proxyOrigins = allowedHosts.flatMap((h) => [`https://${h}`, `http://${h}`]);
 
   // The MCP "last seen" stamp (mcp/context.js), after every /mcp answer — a guard's refusal too.
   app.use("*", clientIdStamp);
@@ -290,7 +302,7 @@ export async function createApp(dataDir = null) {
     "*",
     csrfOrigin({
       appOrigins: APP_ORIGINS,
-      extraOrigins: corsOrigins,
+      extraOrigins: [...corsOrigins, ...proxyOrigins],
       originRegex: corsRegex,
       typeBase: TYPE_BASE,
       prefixes: GUARDED_PREFIXES,
@@ -322,8 +334,16 @@ export async function createApp(dataDir = null) {
       typeBase: TYPE_BASE,
       loopbackOpenPaths: [SHUTDOWN_PATH],
       prefixes: GUARDED_PREFIXES,
+      allowedHosts,
     }),
   );
+
+  // While a restore or a reset replaces the data, every other window's write is refused (503, Retry-After)
+  // and the ones already running finish first — never a save that lands half-way or is lost (the kit's
+  // MaintenanceGate; the data router closes it; the template's, decided 2026-10-20). The shell's shutdown
+  // always passes.
+  const gate = new MaintenanceGate({ exempt: [SHUTDOWN_PATH] });
+  app.use("*", gate.middleware());
 
   // ── Routes, in app.py's order ──────────────────────────────────────────────
   app.route("/", healthRouter());
@@ -397,7 +417,7 @@ export async function createApp(dataDir = null) {
   app.route("/", captureReadinessRouter());
   app.route("/", capturesRouter());
   // The shared /v1/data backup/restore/reset (JW's donor wiring in data_admin.js).
-  app.route("/", getDataRouter());
+  app.route("/", getDataRouter({ gate }));
   app.route("/", syncRouter()); // /v1/sync/* — the sync product's routes (export, import, folder, pairing)
   // The shared platform log + disk surface (the kit's LogsPanel + Storage read these).
   app.route("/", makeLogsRouter(PRODUCT));

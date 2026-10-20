@@ -12,6 +12,7 @@
 -->
 <script setup>
 import { ref, computed, watch } from "vue";
+import { copyToClipboard } from "quasar";
 import { useApi } from "../stores/api.js";
 import { AiTaskStrips, openPath, pushToast, saveBlob } from "@delebash/ui";
 import { exportRun, savedMessage } from "../services/exportRun.js";
@@ -146,14 +147,14 @@ async function generateShowNotes() {
   }
 }
 
-// Copy the drafted show-notes markdown. `navigator` is NOT in Vue's
-// template global allowlist, so calling navigator.clipboard inline in the
-// template threw a TypeError on click — it has to live in setup scope.
+// Copy the drafted show-notes markdown — Quasar's copy, which works on a page
+// served over plain http too (no navigator.clipboard there; it used to copy
+// nothing and still say "copied").
 async function copyShowNotes() {
   const md = showNotes.value?.markdown;
   if (!md) return;
   try {
-    await navigator.clipboard?.writeText(md);
+    await copyToClipboard(md);
     pushToast({ message: "Show notes copied.", kind: "success", duration: 2000 });
   } catch (e) {
     pushToast({ message: `Copy failed: ${e?.message || e}`, kind: "error" });

@@ -158,11 +158,18 @@ export default defineConfig(() => {
         // native modules can't load from inside the asar archive; the bundled samples stay
         // outside it, as they did before the move
         asarUnpack: [ '**/*.node', 'node_modules/justvoice-server/samples/**' ],
-        // the headless launcher (justvoice-server.cmd) beside the exe
-        extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '..' } ],
+        // the headless launcher — the app's own exe run as Node on its server package (§Q.3): the .cmd
+        // beside the Windows exe, the shell script beside the Linux one and in the Mac app's Resources
+        // (its bundle's root takes no file a signature doesn't seal); the exe never shares the
+        // launcher's name (the template's, 2026-10-20)
         // audiocpp_dsp beside the executable (beforeBuild stages it): extraFiles lands in the
         // app's own folder on Windows and Linux, in Contents/ on macOS
-        win: { target: 'nsis', executableName: 'justvoice', extraFiles: [ { from: dspStage, to: '.' } ] },
+        win: {
+          target: 'nsis',
+          executableName: 'justvoice',
+          extraFiles: [ { from: dspStage, to: '.' } ],
+          extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '..', filter: [ '*.cmd' ] } ]
+        },
         nsis: {
           // no spaces: GitHub renames a spaced asset on upload (spaces → dots), and latest.yml names
           // electron-builder's dashed form — the updater would download a file that isn't there
@@ -189,9 +196,19 @@ export default defineConfig(() => {
           extendInfo: { NSMicrophoneUsageDescription: 'JustVoice records your voice when you clone it.' },
           extraFiles: [ { from: dspStage, to: 'MacOS' } ],
           // already universal (lipo'd when staged), so the same file in both builds is expected
-          x64ArchFiles: 'Contents/MacOS/audiocpp_dsp'
+          x64ArchFiles: 'Contents/MacOS/audiocpp_dsp',
+          extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '.', filter: [ '!*.cmd' ] } ]
         },
-        linux: { target: [ 'AppImage', 'deb' ], category: 'AudioVideo', extraFiles: [ { from: dspStage, to: '.' } ] }
+        linux: {
+          target: [ 'AppImage', 'deb' ],
+          category: 'AudioVideo',
+          extraFiles: [ { from: dspStage, to: '.' } ],
+          extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '..', filter: [ '!*.cmd' ] } ]
+        },
+        // the AppImage on the AppImage project's static runtime: it needs no FUSE 2 library, which
+        // Ubuntu 24.04 doesn't install — the legacy toolset's AppImage stops there with "AppImages
+        // require FUSE to run" (the template's, the kit's RESEARCH §2; decided 2026-10-20)
+        toolsets: { appimage: '1.0.3' }
       }
     }
   }

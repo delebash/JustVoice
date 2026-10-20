@@ -16,7 +16,7 @@ server's token.)*
 | `justvoice.speak` | Generate speech from text with a voice or persona. Returns an **`audio_url`** you fetch — it does not auto-play anywhere. |
 | `justvoice.list_voices` | The voice library, for picking. |
 | `justvoice.list_personas` | The persona library — your finished voices (name, voice, and `has_note`: whether it has a note on how it sounds). |
-| `justvoice.transcribe` | Speech-to-text on an audio file. The `audio_path` is **loopback-only** — a remote client can't point it at server files. |
+| `justvoice.transcribe` | Speech-to-text on an audio file. The `audio_path` is **loopback-only** — a remote client, or one reaching this computer through a reverse proxy here, can't point it at server files. |
 
 `speak` takes `text` and, optionally, `voice` (an id from `list_voices`),
 `persona` (a name from `list_personas`) and `language`. With neither voice nor

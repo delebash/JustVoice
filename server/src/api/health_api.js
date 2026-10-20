@@ -50,5 +50,6 @@ export function engineHealth() {
     current_engine: current,
     current_model: loadedModelName(current),
     engines,
+    dataDir: st.dataDir ?? null,
   });
 }

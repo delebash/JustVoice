@@ -39,6 +39,7 @@ import { badRequest, notFound } from "../errors.js";
 import { mediaFile, storeMediaPath } from "../media_paths.js";
 import { construct, DateTime } from "../models.js";
 import { RefinementFlags, refineTranscript } from "../refinement.js";
+import { closedOnRestore } from "../storage/open_files.js";
 import * as self from "./captures_api.js";
 
 const log = getLogger("justvoice.api.captures_api");
@@ -380,7 +381,7 @@ export function router() {
     const file = row.audio_path ? mediaFile(row.audio_path) : null;
     const size = file ? statSync(file, { throwIfNoEntry: false }) : null;
     if (!size?.isFile()) throw notFound(`audio for capture ${id}`);
-    return c.body(Readable.toWeb(createReadStream(file)), 200, {
+    return c.body(Readable.toWeb(closedOnRestore(createReadStream(file))), 200, {
       "content-type": "audio/wav",
       "content-length": String(size.size),
       "content-disposition": attachment(`${id}.wav`),

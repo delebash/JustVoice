@@ -9,7 +9,8 @@
 // screenshot at each key state.
 //
 // Run it against a running server:
-//   1. JUSTVOICE_DATA_DIR=/tmp/jv-verify npm run server -- --host 127.0.0.1 --port 8745
+//   1. mkdir -p /tmp/jv-verify && JUSTVOICE_DATA_DIR=/tmp/jv-verify npm run server -- --host 127.0.0.1 --port 8745
+//      (a data folder that's named must exist — the server says it's missing, never makes it)
 //   2. JV_BASE=http://127.0.0.1:8745 node scripts/verify-dialogs.js
 //
 // Env: JV_BASE (server URL), JV_CHROME (chromium path), JV_SHOTS (screenshot dir).

@@ -6,7 +6,7 @@
 // the routed page (pages/, each a q-page). Below PHONE_WIDTH the rail is Quasar's mobile drawer,
 // an overlay the title bar's menu button opens. Until 2026-10-09 this was AppShell.vue, a grid.
 import { ref, onMounted, onBeforeUnmount, computed, watch } from "vue";
-import { useQuasar } from "quasar";
+import { copyToClipboard, useQuasar } from "quasar";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useApi } from "../stores/api.js";
@@ -460,7 +460,7 @@ onMounted(async () => {
   onShellEvent("tray:about", () => goView("settings"));
   onShellEvent("tray:copy-url", async (url) => {
     try {
-      await navigator.clipboard.writeText(String(url));
+      await copyToClipboard(String(url));
       pushToast({ message: `Server URL copied — ${url}`, duration: 4000 });
     } catch {
       pushToast({ message: "Copy failed", kind: "error" });

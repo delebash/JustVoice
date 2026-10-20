@@ -11,7 +11,7 @@ need your attention; this page is the operator config under `/v1/settings`.)
 | `logging` | Log level + retention for the server log. |
 | `cache` | The disk-LRU render cache limits (identical renders cost nothing twice). |
 | `limits` | Guardrails — max text length per generation and friends. |
-| `cors` | Allowed origins when serving browsers beyond localhost. |
+| `cors` | Allowed origins when serving browsers beyond localhost. Never `*` — the server refuses it: any web page you opened could then read this server. |
 | `auth` | Bearer tokens; auth is off while the list is empty. Loopback exempt unless required. Even when required, three things still answer from this machine without a token: the health check, the token settings themselves (so you can't lock yourself out), and the desktop app's shutdown when you close its window. |
 | `mastering` | The default loudness target per preset (ACX / iAudio / Podcast / YouTube) — see [Mastering](mastering.md). |
 | `models` | Model source URL overrides per engine/variant, for mirrors or pinned downloads. |

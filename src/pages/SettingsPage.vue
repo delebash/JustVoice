@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script setup>
 import { ref, computed, onActivated, onMounted, watch } from "vue";
+import { copyToClipboard } from "quasar";
 import { useI18n } from "vue-i18n";
 import { useApi } from "../stores/api.js";
 import { pushToast, pageFlow } from "@delebash/ui";
@@ -704,7 +705,8 @@ async function copySnippet(key) {
   const text = MCP_SNIPPETS.value[key];
   if (!text) return;
   try {
-    await navigator.clipboard.writeText(text);
+    // Quasar's copy: it works on a page served over plain http too
+    await copyToClipboard(text);
     pushToast({ message: "Copied to clipboard.", duration: 2000 });
   } catch {
     pushToast({ message: "Couldn't access clipboard — copy manually.", kind: "warning", duration: 3000 });

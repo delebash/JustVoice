@@ -111,6 +111,22 @@ test("mcp_refuses_a_foreign_page_but_not_a_client_without_an_origin", async () =
   expect((await mcpPost(c, initialize)).status).toBe(200);
 });
 
+test("audio_path_is_refused_through_a_proxy", async () => {
+  // A reverse proxy on this computer makes its clients look local: a request carrying a proxy's
+  // forwarding header is not from this computer (the kit's isDirectLoopback; decided 2026-10-20).
+  const { c } = await appClient();
+  const sid = (await mcpPost(c, initialize)).headers["mcp-session-id"];
+  const audio_path = path.join(tmpPath(), "none.wav");
+  const call = async (headers) => {
+    const body = { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "justvoice.transcribe", arguments: { audio_path } } };
+    const r = await mcpPost(c, body, { "mcp-session-id": sid, ...headers });
+    expect(r.status, r.text).toBe(200);
+    return messages(r.text)[0].result.content[0].text;
+  };
+  expect(await call({ "x-forwarded-for": "203.0.113.9" })).toContain("accepted only from this machine");
+  expect(await call({})).toContain("There is no file at");
+});
+
 test("the_settings_curl_snippet_opens_a_session", async () => {
   // Ruling 14: replay Settings → MCP's curl line exactly as the user copies it.
   const vue = readFileSync(path.join(SOURCE_ROOT, "src", "pages", "SettingsPage.vue"), "utf8");

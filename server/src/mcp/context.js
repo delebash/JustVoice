@@ -8,7 +8,7 @@
 // background task — there is no client id and no address.
 
 import { AsyncLocalStorage } from "node:async_hooks";
-import { clientHost, isLoopback } from "@delebash/core/platform/auth";
+import { clientHost, isDirectLoopback } from "@delebash/core/platform/auth";
 import { getLogger } from "@delebash/core/platform/log";
 import { MCPBinding } from "../database/models.js";
 import { getDb } from "../database/session.js";
@@ -22,30 +22,30 @@ const HEADER_KEY = CLIENT_ID_HEADER.toLowerCase();
 
 const current = new AsyncLocalStorage();
 
-/** The context of one HTTP request (a Hono context): its client id (from the header) and the
- * socket's address (none where the request has no socket). */
+/** The context of one HTTP request (a Hono context): its client id (from the header), the
+ * socket's address (none where the request has no socket), and whether it came straight from this
+ * computer — a loopback socket and no proxy's forwarding header (the kit's `isDirectLoopback`: a
+ * reverse proxy on this computer makes every client look like loopback; decided 2026-10-20). */
 export function requestContext(c) {
   return {
     clientId: c.req.header(HEADER_KEY) || null,
     remoteAddr: clientHost(c) || null,
+    local: isDirectLoopback(c),
   };
 }
 
-/** Run `fn` with this request's `{clientId, remoteAddr}` in reach of `currentClientId()` and
- * `currentRemoteAddr()`. */
+/** Run `fn` with this request's `{clientId, remoteAddr, local}` in reach of `currentClientId()`,
+ * `currentRemoteAddr()` and `requestIsLoopback()`. */
 export function runWithRequest(context, fn) {
-  return current.run({ clientId: context?.clientId ?? null, remoteAddr: context?.remoteAddr ?? null }, fn);
+  return current.run({ clientId: context?.clientId ?? null, remoteAddr: context?.remoteAddr ?? null, local: context?.local === true }, fn);
 }
 
 export const currentClientId = () => current.getStore()?.clientId ?? null;
 export const currentRemoteAddr = () => current.getStore()?.remoteAddr ?? null;
 
-/** Is the calling socket on this machine? 127.0.0.0/8, `::1`, or an IPv4-mapped 127.x address
- * (`::ffff:127.0.0.1`, what a dual-stack socket reports) — the kit's one loopback test, the same
- * the bearer auth uses. No request, or an address that does not parse, is not. */
-export const isLoopbackAddress = (addr) => Boolean(addr) && isLoopback(String(addr));
-
-export const requestIsLoopback = () => isLoopbackAddress(currentRemoteAddr());
+/** Did the calling request come straight from this computer (`requestContext`'s `local`)? No
+ * request is not. */
+export const requestIsLoopback = () => current.getStore()?.local === true;
 
 /** Does this path belong to the MCP endpoint? `/mcp` or under `/mcp/` (the query is ignored). */
 export function _isStampedPath(url) {

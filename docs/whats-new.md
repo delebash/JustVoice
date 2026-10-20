@@ -2,6 +2,18 @@
 
 ## v0.1.0
 
+- **A restore that is all or nothing, and the headless server on macOS and Linux (2026-10-20)** —
+  importing a backup swaps the folders and tables in whole or not at all; it first stops what was
+  working on your files (a book's run, a render, an export, a take playing), and a change saved
+  from another window meanwhile is refused instead of lost
+  ([Backup and restore](backups-and-data.md#restore)). `justvoice-server` now comes with the
+  macOS and Linux apps too ([Run modes](run-modes.md#headless)). Copy buttons work in a browser on
+  another computer; the "Can't reach the server" page says three more reasons it didn't start
+  ([Troubleshooting](troubleshooting.md)); Change folder moves the data into a new *JustVoice*
+  folder where you point it, and a data folder you name must exist
+  ([Backup and restore](backups-and-data.md)). The server answers this computer only under its own
+  names (`JUSTVOICE_ALLOWED_HOSTS` adds a reverse proxy's), refuses `*` as a CORS origin, and
+  trusts the system's certificates ([Run modes](run-modes.md#headless))
 - **The characters on BreezeTTS 2, the narrator on VoxCPM2 (2026-10-18)** — **Make the audiobook**
   now keeps each character's designed voice on BreezeTTS 2, which played every line like the book
   in the blind listening test, and the narrator's on VoxCPM2, which read the narration better.

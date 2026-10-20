@@ -8,6 +8,7 @@
 // camelCase. Non-LLM settings sections keep their own (snake) field names.
 
 import { Hono, input } from "@delebash/core/platform";
+import { RequestValidationError } from "@delebash/core/platform/errors";
 import { getState } from "../app_state.js";
 import { construct, Settings, SettingsPatch, SettingsPatchResponse } from "../models.js";
 
@@ -19,16 +20,32 @@ export const sentBody = (c) => {
   return sent !== undefined ? sent : c.req.valid("json");
 };
 
+/** CORS never names every origin: any web page the user opened could then read this server — its
+ * settings, backups and keys (the template's rule after the kit's security review, 2026-10-19; decided
+ * 2026-10-20). A pattern in `cors.origin_regex` is the operator's own to answer for. */
+function refuseEveryOrigin(body) {
+  const origins = body?.cors?.origins;
+  if (!Array.isArray(origins)) return;
+  const i = origins.indexOf("*");
+  if (i >= 0) {
+    throw new RequestValidationError([
+      { loc: ["body", "cors", "origins", i], msg: "Name each origin — '*' would let every web page read this server", type: "value_error" },
+    ]);
+  }
+}
+
 export function router() {
   const app = new Hono();
   app.get("/v1/settings", (c) => c.json(getState().settings.get()));
 
   app.put("/v1/settings", input({ body: Settings }), (c) => {
+    refuseEveryOrigin(c.req.valid("json"));
     const saved = getState().settings.set(c.req.valid("json"));
     return c.json(construct(SettingsPatchResponse, { settings: saved, restart_required: [] }));
   });
 
   app.patch("/v1/settings", input({ body: SettingsPatch }), (c) => {
+    refuseEveryOrigin(sentBody(c));
     const [saved, restart] = getState().settings.patch(sentBody(c));
     return c.json(construct(SettingsPatchResponse, { settings: saved, restart_required: restart }));
   });

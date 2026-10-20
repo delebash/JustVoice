@@ -6,6 +6,7 @@
 -->
 <script setup>
 import { onMounted, ref } from "vue";
+import { copyToClipboard } from "quasar";
 import { webhooksService } from "../services/projects.js";
 import { pushToast } from "@delebash/ui";
 import { confirmDialog } from "@delebash/ui";
@@ -100,10 +101,16 @@ function toggleEvent(evt) {
   else adding.value.events.push(evt);
 }
 
-function copySecret() {
+// Quasar's copy (it works on a page served over plain http too); "copied" only
+// once it was.
+async function copySecret() {
   if (!justCreatedSecret.value) return;
-  navigator.clipboard.writeText(justCreatedSecret.value);
-  pushToast({ kind: "success", title: "Secret copied to clipboard" });
+  try {
+    await copyToClipboard(justCreatedSecret.value);
+    pushToast({ kind: "success", title: "Secret copied to clipboard" });
+  } catch {
+    pushToast({ kind: "warning", title: "Couldn't access clipboard — copy manually." });
+  }
 }
 
 onMounted(refresh);

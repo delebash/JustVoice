@@ -23,6 +23,7 @@ import * as llmBootstrap from "./llm_bootstrap.js";
 import { construct, Settings } from "./models.js";
 import { generationsRoot, lexiconsRoot, personasRoot, projectsRoot, voicesRoot } from "./paths.js";
 import { LexiconStore } from "./storage/lexicons.js";
+import { closeOpenFiles } from "./storage/open_files.js";
 import { PersonaStore } from "./storage/personas.js";
 import { VoiceStore } from "./storage/voices.js";
 import { resetSync, restoreSyncHooks } from "./sync.js";
@@ -67,6 +68,46 @@ export async function _stopAiEnginesBestEffort() {
   } catch (e) {
     log.warning(`engine teardown: engine-registry reset failed: ${msg(e)}`);
   }
+}
+
+/** Wait for `p`, at most 30 s. */
+const atMost30s = (p) => Promise.race([p, new Promise((r) => setTimeout(r, 30_000).unref?.())]);
+
+/**
+ * Before a restore replaces the data folders (the gate is closed: no request writes now): the work
+ * that writes into them or reads from them stops, and is waited for — the book runs, then the render
+ * and export jobs — the files read out to a player are closed, and the engines let go. Windows won't
+ * rename a folder with a file open inside it, so anything left open refuses the restore (409
+ * "files-in-use", nothing changed). Best effort, at most 30 s a kind: a restore never fails on its
+ * teardown (just-house-paint's teardown, the kit's `beforeReplace`; decided 2026-10-20).
+ */
+export async function _stopWorkOnTheFiles() {
+  try {
+    const bookRun = await import("./book_run.js");
+    const runs = [...bookRun._running];
+    for (const id of runs) bookRun.cancelRun(id);
+    await atMost30s(Promise.allSettled(runs.map((id) => bookRun.finished(id))));
+  } catch (e) {
+    log.warning(`restore teardown: book runs: ${msg(e)}`);
+  }
+  try {
+    const renderJobs = await import("./render_jobs.js");
+    const jobs = [...renderJobs._running];
+    for (const id of jobs) renderJobs.cancelJob(id);
+    await atMost30s(Promise.allSettled(jobs.map((id) => renderJobs.finished(id))));
+  } catch (e) {
+    log.warning(`restore teardown: render jobs: ${msg(e)}`);
+  }
+  try {
+    const exportJobs = await import("./api/export_jobs_api.js");
+    const live = [...exportJobs._jobs.values()].filter((j) => j.status === "running");
+    for (const j of live) exportJobs.cancelExportJob(j.id);
+    await atMost30s(Promise.allSettled(live.map((j) => j.task)));
+  } catch (e) {
+    log.warning(`restore teardown: export jobs: ${msg(e)}`);
+  }
+  closeOpenFiles();
+  await _stopAiEnginesBestEffort();
 }
 
 /** The content roots a backup carries (multi-GB model downloads stay out — they re-fetch).
@@ -204,7 +245,9 @@ export async function runFactoryReset() {
   return cleared;
 }
 
-export function getDataRouter() {
+/** The router; `gate` is the app's MaintenanceGate (app.js), which makes a restore all or nothing:
+ * the folders swapped in by rename, the tables after, the folders put back if the tables fail. */
+export function getDataRouter({ gate = null } = {}) {
   return makeDataRouter({
     getDbPath: () => dbSession.cfg.dbPath,
     metadata: [TABLES, LLM_TABLES],
@@ -214,10 +257,12 @@ export function getDataRouter() {
     // computer syncs; the backup's rows keep their sync stamps; this computer keeps its own sync
     // settings and continues as a new device, so the other computers' newer work wins.
     ...restoreSyncHooks,
+    beforeReplace: _stopWorkOnTheFiles,
     // A restore replaces routing/models/engine config under the live app — same clean-slate
     // rule as reset.
     onReplaced: async () => {
       await _stopAiEnginesBestEffort();
     },
+    gate,
   });
 }

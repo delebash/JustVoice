@@ -42,6 +42,24 @@ test("same_origin_mutation_allowed", async () => {
   expect(r.status).toBe(201);
 });
 
+test("a_page_that_renamed_itself_is_refused", async () => {
+  // DNS rebinding: a page whose name now points at this computer is same-origin by CSRF's rule, so the
+  // Host guard refuses it — from this computer only this computer's names, or one JUSTVOICE_ALLOWED_HOSTS
+  // names (the suites name `testserver`), are answered (the kit's bearerAuth; decided 2026-10-20).
+  const { c } = await appClient();
+  const r = await c.post("/v1/projects", { ...project("R"), headers: { origin: "http://evil.example", host: "evil.example" } });
+  expect(r.status).toBe(403);
+  expect(r.json().type.endsWith("/host-not-allowed")).toBe(true);
+});
+
+test("cors_never_names_every_origin", async () => {
+  // "*" would let any web page read this server (decided 2026-10-20); the setting keeps what it had.
+  const { c } = await appClient();
+  const r = await c.patch("/v1/settings", { json: { cors: { origins: ["http://localhost:1430", "*"] } } });
+  expect(r.status, r.text).toBe(422);
+  expect((await c.get("/v1/settings")).json().cors.origins).not.toContain("*");
+});
+
 test("cross_site_read_allowed", async () => {
   // GET is not the CSRF vector (and CORS blocks the page from reading the body).
   const { c } = await appClient();

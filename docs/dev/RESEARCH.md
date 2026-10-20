@@ -1736,6 +1736,42 @@ extraction, speakers, smart_assign, project_export, export_jobs, bulk_delete, _s
     `cmake --build ../audio.cpp/build/jv-dev --target audiocpp_dsp_test` in that environment. —
     *measured, 2026-10-08*.
 
+**The kit's changes of 2026-10-19/20 as JustVoice meets them** (*code + measured 2026-10-20*, on
+kit 609bbb9; the kit's half and its reviews are the kit's register §2 "The servers' guards,
+attacked" and the sections after it):
+
+- The kit's bearerAuth refuses a request from this computer whose Host is not this computer's own
+  name (localhost, `*.localhost`, an IP literal, `os.hostname()`) or one the app allows: 403
+  `host-not-allowed`, *"this server answers to this computer's own names, not testserver"*. It made
+  `csrf.test.js` "same_origin_mutation_allowed" fail (it sent `host: testserver`); the same post
+  with `host: 127.0.0.1` answers 201. JustVoice now reads `JUSTVOICE_ALLOWED_HOSTS` (the template's
+  `<APP>_ALLOWED_HOSTS`, `server/src/app.js`), and the suites set it to `testserver`
+  (`server/tests/helpers.js`). — *measured, 2026-10-20* · a scratch vitest on `appClient`.
+- Windows: a file open inside an asset folder makes the gated restore's rename fail, and the
+  restore answers 409 `files-in-use` with nothing changed — a take's `createReadStream`, read a
+  little and paused, does it. Closed first (`storage/open_files.js`, the restore's `beforeReplace`
+  in `data_admin.js`), the same restore answers 200. — *measured, 2026-10-20* · a scratch vitest
+  against `server/tests/restore_gate.test.js`'s case with a plain stream, then the test itself.
+- What holds files in the asset folders: the two audio routes' read streams
+  (`api/takes_api.js`, `api/captures_api.js`); the book runs, render jobs and export jobs (ffmpeg
+  reads the takes) in the background; the speech runtime. A capture upload spools to the OS's temp
+  folder and is copied in inside its request, which the gate waits for. Every other audio answer
+  is a buffer. — *code, 2026-10-20* (`grep createReadStream|createWriteStream|openSync`).
+- Without a `gate` the kit keeps the old restore (tables, then each folder copied over), so a
+  restore during playback worked; with it the restore is all or nothing, and the gate refuses
+  every other write with 503 while it runs (the template's posture). — *code, the kit's
+  `platform/data_api.js` and `maintenance.js`*.
+- The template's macOS launcher picks the first file in `Contents/MacOS`; JustVoice puts
+  `audiocpp_dsp` there too, so its launcher reads `CFBundleExecutable` from `Info.plist` instead
+  (`build/launcher/justvoice-server`). — *code, 2026-10-20* (`quasar.config.js` mac
+  `extraFiles`).
+- electron-builder 26.15.3 (`src-electron`) takes `toolsets.appimage` `1.0.0`–`1.0.3`; the
+  template sets `1.0.3`, the static runtime that needs no FUSE 2 (Ubuntu 24.04 installs none).
+  Unchecked for JustVoice until a release runs the `linux-user` job. — *code* (`app-builder-lib`
+  `scheme.json`).
+- Health names the data folder (`dataDir`, as JustWrite's and the template's do): the release's
+  `start-packaged.js --default-data` compares the window's and the headless server's. — *code*.
+
 ---
 
 ## 7 · Where an AI task shows

@@ -21,6 +21,7 @@ import * as lineTakes from "../line_takes.js";
 import { mediaFile } from "../media_paths.js";
 import { construct, DateTime } from "../models.js";
 import * as renderJobs from "../render_jobs.js";
+import { closedOnRestore } from "../storage/open_files.js";
 import * as synthScheduler from "../synth_scheduler.js";
 import * as voiceModel from "../voice_model.js";
 import { personaForBlock } from "./_speaker_helpers.js";
@@ -270,7 +271,7 @@ export function router() {
     }
     if (!st?.isFile()) throw notFound(`audio file missing from disk: ${gen.audio_path}`);
     // Starlette's FileResponse: the media type, the length, and an attachment name.
-    return c.body(Readable.toWeb(createReadStream(p)), 200, {
+    return c.body(Readable.toWeb(closedOnRestore(createReadStream(p))), 200, {
       "content-type": "audio/wav",
       "content-length": String(st.size),
       "content-disposition": `attachment; filename="${id}.wav"`,

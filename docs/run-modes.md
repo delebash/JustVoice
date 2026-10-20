@@ -27,7 +27,8 @@ over.
 
 ### Updates
 
-The desktop app checks for a new version each time it starts. **Settings →
+The desktop app checks for a new version when it starts, every 6 hours while it
+runs, and when the computer wakes. **Settings →
 Updates** says where it stands, next to the version you're on:
 
 - *This is the latest version.* — **Check again** asks once more.
@@ -46,17 +47,21 @@ have no updater: update the installed app.
 
 ## Headless
 
-The same server, no window. On Windows the installer puts a command called
-**`justvoice-server`** beside JustVoice in the install folder. From that folder:
+The same server, no window. The app carries a command called **`justvoice-server`**:
+
+- **Windows** — beside JustVoice in the install folder.
+- **Linux** — beside the `justvoice` program the .deb installs. The AppImage holds it
+  inside: run the AppImage once with `--appimage-extract`, and it is in the
+  `squashfs-root` folder that makes.
+- **macOS** — inside the app: `JustVoice.app/Contents/Resources/justvoice-server`.
+
+From there:
 
     justvoice-server serve --host 127.0.0.1 --port 17494 --data-dir <path> --log-level info
 
 It is the same server the desktop app runs, on the same data folder — only without the
-window. On macOS and Linux there is no separate command yet: run the app's own program
-with the environment variable `ELECTRON_RUN_AS_NODE=1`, followed by the path to
-`resources/app.asar/server/src/serve.js` inside the installed app (`Contents/Resources/…`
-in the macOS app bundle) and the same options. From a copy of the source code,
-`npm run server` does it for you (options go after `--`).
+window and with no display needed. A folder you name with `--data-dir` must already exist.
+From a copy of the source code, `npm run server` does it for you (options go after `--`).
 
 The full UI is served at `http://<host>:17494/ui/` — any browser works, which is
 how you run JustVoice on a remote GPU box and drive it from a laptop.
@@ -72,6 +77,15 @@ bearer tokens (Settings → auth) before exposing a host beyond loopback; loopba
 requests are exempt unless you require otherwise. Even then, closing the desktop
 app still shuts its server down cleanly: its shutdown request answers from this
 machine without a token (it never does from anywhere else).
+
+From this computer, the server answers only to this computer's own names — `localhost`,
+an IP address, the computer's name. A web page that renamed itself to reach it is refused
+(*this server answers to this computer's own names, not …*). Behind a reverse proxy on this
+computer, or from a Docker container through `host.docker.internal`, name the extra host in
+**`JUSTVOICE_ALLOWED_HOSTS`** (comma-separated, e.g. `voice.example.com,host.docker.internal`).
+
+The server trusts the operating system's certificates as well as its own, so its downloads
+work on a network that inspects secure connections.
 
 Dev utilities live on the domain CLI, not the server command — from a copy of the
 source code, `node scripts/node24.js server/src/cli.js default-settings` (print the full

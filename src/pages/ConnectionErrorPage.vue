@@ -9,16 +9,22 @@ import { shellServerStatus } from "../services/native.js";
 
 // Why the desktop app's server didn't start, when its shell knows (approved 2026-10-15): another
 // program holds the port (the narrowings review, P6), or another JustVoice server holds the data
-// folder (the shell's words — the kit's platform/data_lock.js).
+// folder (the shell's words — the kit's platform/data_lock.js). Since 2026-10-20 also the template's
+// three: another person signed in to this computer has JustVoice open on the port (the shell never
+// stops it), Windows reserved the port, or the server stopped as it started (its own first error line).
 const detail = ref("");
 onMounted(async () => {
   const status = await shellServerStatus();
   if (status?.dataFolderInUse) detail.value = status.dataFolderInUse;
-  else if (status?.portTaken) {
+  else if (status?.portOtherUser) {
+    detail.value = `Another person signed in to this computer has JustVoice open, on port ${status.portOtherUser}. One copy runs at a time: they can quit theirs (its tray icon), then press Retry.`;
+  } else if (status?.portReserved) {
+    detail.value = `Windows has reserved port ${status.portReserved} for another use (Hyper-V, WSL or Docker), so JustVoice can't use it.`;
+  } else if (status?.portTaken) {
     // Settings → Server can't open while the server is down, so the page sends you to Retry, which
     // starts the server again (decided 2026-10-15, the build's question 1).
     detail.value = `Port ${status.portTaken} is in use by another program — close that program, then press Retry.`;
-  }
+  } else if (status?.serverError) detail.value = `Its server stopped as it started: ${status.serverError}`;
 });
 </script>
 

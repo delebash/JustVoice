@@ -19,11 +19,15 @@ whole library goes with it, and uninstalling means deleting one folder.
 
 To put it somewhere else, in order of precedence:
 
-1. **Settings → Storage → Change folder** (desktop app) — pick a folder;
-   JustVoice moves the existing data there and remembers the choice.
+1. **Settings → Storage → Change folder** (desktop app) — pick where it goes;
+   JustVoice moves the data into a new *JustVoice* folder there and remembers
+   the choice.
 2. **`JUSTVOICE_DATA_DIR`** — an environment variable, for scripted or
    headless setups.
 3. **`justvoice-server serve --data-dir <path>`** — per-run, headless.
+
+The folder you name with 2 or 3 must already exist — JustVoice says it's missing
+rather than making it where a typo pointed.
 
 The only time JustVoice picks for you is when the install directory can't be
 written to (installed under `Program Files`, or run from read-only media). It
@@ -96,6 +100,21 @@ disaster-recovery path, not a merge. A backup made without generated audio
 restores everything else and leaves whatever audio is currently on disk in
 place. Loaded speech engines are unloaded during a restore; load one again from
 the AI page when you need it.
+
+A restore is all or nothing: the backup's folders are swapped in whole, then its
+tables, and if anything fails the old folders go back and nothing has changed.
+While it runs:
+
+- what was working on your files stops first — a book being made into an
+  audiobook, a chapter rendering, an export — and a take or capture that is
+  playing stops;
+- a change saved from another window is refused (*A backup is being restored —
+  your change wasn't saved …*) instead of landing half-way; the app shows the
+  restored data a moment later.
+
+If another program holds a file inside the data folder open (an audio editor, a
+backup or sync tool), the restore is refused and says which folder — close that
+program and import the backup again.
 
 On a computer that syncs, a restore keeps your other computers' newer work, and
 this computer keeps its own sync settings; a backup from another sync library

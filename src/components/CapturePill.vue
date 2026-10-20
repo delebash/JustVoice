@@ -11,6 +11,7 @@
 -->
 <script setup>
 import { computed } from "vue";
+import { copyToClipboard } from "quasar";
 import { Icon, UiButton } from "@delebash/ui";
 
 const props = defineProps({
@@ -53,7 +54,9 @@ const timer = computed(() => {
 async function copyAndDismiss() {
   if (!isError.value || !props.errorMessage) return;
   try {
-    await navigator.clipboard.writeText(props.errorMessage);
+    // Quasar's copy: navigator.clipboard is missing on a page served over plain http (a browser on
+    // another computer), where it falls back to the browser's copy command.
+    await copyToClipboard(props.errorMessage);
   } catch {
     // No clipboard (permissions, an unfocused window) — dismissing still works.
   }

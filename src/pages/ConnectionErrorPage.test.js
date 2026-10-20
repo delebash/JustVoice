@@ -53,6 +53,25 @@ test("another JustVoice server on the data folder: the shell's words, as they ar
   expect(el.textContent).not.toContain("is in use by another program");
 });
 
+test("the template's three (2026-10-20): another person's JustVoice, a reserved port, the server's own error", async () => {
+  status.mockResolvedValue({ url: null, portTaken: 17494, portOtherUser: 17494, dataFolderInUse: null });
+  await mount();
+  expect(el.textContent).toContain("Another person signed in to this computer has JustVoice open, on port 17494.");
+  expect(el.textContent).not.toContain("is in use by another program");
+  app.unmount();
+  el.remove();
+
+  status.mockResolvedValue({ url: null, portTaken: null, portReserved: 17494, dataFolderInUse: null });
+  await mount();
+  expect(el.textContent).toContain("Windows has reserved port 17494 for another use (Hyper-V, WSL or Docker), so JustVoice can't use it.");
+  app.unmount();
+  el.remove();
+
+  status.mockResolvedValue({ url: null, portTaken: null, dataFolderInUse: null, serverError: "the database couldn't be opened" });
+  await mount();
+  expect(el.textContent).toContain("Its server stopped as it started: the database couldn't be opened");
+});
+
 test("nothing known (a browser, or the server simply down): no extra sentence", async () => {
   status.mockResolvedValue(null);
   await mount();

@@ -11,6 +11,10 @@ import * as session from "../src/database/session.js";
 const SANDBOX = mkdtempSync(path.join(tmpdir(), "jv-test-home-"));
 process.env.JUST_AI_HOME = path.join(SANDBOX, "family");
 process.env.LLM_RUNNER_CACHE = path.join(SANDBOX, "user-cache");
+// The suites name the server `testserver` (Starlette's TestClient name): allowed as a reverse proxy's
+// public name would be — the guard against a renamed page (DNS rebinding) refuses every other name
+// from this computer (the template's helpers).
+process.env.JUSTVOICE_ALLOWED_HOSTS = "testserver";
 
 /**
  * One request to a Hono app (`app.request` — no socket, no port), answered the way Fastify's

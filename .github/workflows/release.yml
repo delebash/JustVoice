@@ -87,6 +87,53 @@ jobs:
         # Quasar's CLI run as node (app-structure §Q.6); -P never: publishing is the next step's job
         run: node node_modules/@quasar/app-vite/bin/quasar.js build -m electron -T ${{ matrix.target }} -P never
 
+      # The packaged app started as a user starts it, on a fresh data folder: it must load its window
+      # and answer on its port with its own version before anything is attached (the macOS and Linux
+      # builds are never opened by hand). Linux needs a display (Xvfb) for the window. The template's
+      # three checks (scripts/start-packaged.js; decided 2026-10-20).
+      - name: Start the packaged app
+        working-directory: JustVioce
+        shell: bash
+        run: |
+          if [ "${{ matrix.target }}" = linux ]; then
+            command -v xvfb-run >/dev/null || (sudo apt-get update && sudo apt-get install -y xvfb)
+            xvfb-run -a node scripts/start-packaged.js
+          else
+            node scripts/start-packaged.js
+          fi
+
+      # The server on its own through justvoice-server, as the help tells a user to start it: no window
+      # and no display — it must answer with its version and serve the app's page.
+      - name: Start the server on its own
+        working-directory: JustVioce
+        shell: bash
+        run: node scripts/start-packaged.js --headless
+
+      # No data folder named: the window and the server on its own use the app's default — one folder.
+      - name: The window and the server on its own share one data folder
+        working-directory: JustVioce
+        shell: bash
+        run: |
+          window="node"
+          if [ "${{ matrix.target }}" = linux ]; then window="xvfb-run -a node"; fi
+          # each run's lines shown and kept in a file (Git Bash on Windows has no /dev/stderr to tee to)
+          $window scripts/start-packaged.js --default-data | tee window.log
+          node scripts/start-packaged.js --headless --default-data | tee headless.log
+          a=$(sed -n 's/^data folder used: //p' window.log)
+          b=$(sed -n 's/^data folder used: //p' headless.log)
+          echo "the window: $a"; echo "on its own: $b"
+          test -n "$a" && test "$a" = "$b"
+
+      # the AppImage for the Linux user's check below
+      - name: Keep the AppImage for the Linux user's check
+        if: ${{ matrix.target == 'linux' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: JustVioce/dist/electron/Packaged/*.AppImage
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Publish to the draft release
         working-directory: JustVioce
         shell: bash
@@ -104,3 +151,51 @@ jobs:
           # the updater's feed (latest*.yml) and the blockmaps its downloads are checked against go up
           # with the installers
           gh release upload "$TAG" dist/electron/Packaged/*.exe dist/electron/Packaged/*.dmg dist/electron/Packaged/*.AppImage dist/electron/Packaged/*.deb dist/electron/Packaged/latest*.yml dist/electron/Packaged/*.blockmap --clobber
+
+  # The AppImage opened the way a Linux user opens it — the file itself, no flags — on the current
+  # Ubuntu LTS, which installs no FUSE 2 and whose AppArmor keeps unprivileged programs out of user
+  # namespaces (Chromium's sandbox needs them): the build's own check runs the unpacked folder with
+  # --no-sandbox, this one doesn't. It proves the static AppImage runtime (quasar.config.js
+  # `toolsets.appimage`). The release is a draft until it is published by hand: a failure here is
+  # seen before that (the template's linux-user job; decided 2026-10-20).
+  linux-user:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: JustVioce
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: The Linux build
+        uses: actions/download-artifact@v4
+        with:
+          name: appimage
+          path: JustVioce/dist/electron/Packaged
+
+      - name: Open the AppImage as a user does
+        working-directory: JustVioce
+        shell: bash
+        run: |
+          echo "user namespaces restricted: $(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo n/a)"
+          echo "libfuse.so.2: $(ldconfig -p | grep -c 'libfuse.so.2') found"
+          chmod +x dist/electron/Packaged/*.AppImage
+          command -v xvfb-run >/dev/null || (sudo apt-get update && sudo apt-get install -y xvfb)
+          xvfb-run -a node scripts/start-packaged.js --appimage
+
+      - name: Start the AppImage's server on its own
+        working-directory: JustVioce
+        shell: bash
+        run: node scripts/start-packaged.js --appimage --headless
+
+      - name: The AppImage and its server on its own share one data folder
+        working-directory: JustVioce
+        shell: bash
+        run: |
+          xvfb-run -a node scripts/start-packaged.js --appimage --default-data | tee window.log
+          node scripts/start-packaged.js --appimage --headless --default-data | tee headless.log
+          a=$(sed -n 's/^data folder used: //p' window.log)
+          b=$(sed -n 's/^data folder used: //p' headless.log)
+          echo "the AppImage: $a"; echo "on its own: $b"
+          test -n "$a" && test "$a" = "$b"

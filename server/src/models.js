@@ -235,6 +235,9 @@ export const HealthResponse = T.Object({
   // engine id above is for code (2026-10-06, one wording per fact).
   current_model: opt(nullable(T.String()), null),
   engines: opt(T.Array(EngineHealth), []),
+  // The data folder in use (JustWrite's and the template's extra): the release's start check
+  // compares the window's and the headless server's (scripts/start-packaged.js --default-data).
+  dataDir: opt(nullable(T.String()), null),
 });
 
 export const GpuInfo = T.Object({

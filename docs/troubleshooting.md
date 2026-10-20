@@ -125,14 +125,23 @@ restore, so load one again from the AI page before generating.
 **The window says "Can't reach the JustVoice server".** The app's window
 checks its server as it opens and shows this page if the server hasn't answered
 within a few seconds — usually because it is still starting (the first start
-after an update, or a slow disk). The page keeps asking every 2 seconds and
-opens the app the moment the server answers, so most of the time you only need
+after an update, or a slow disk). The page keeps asking — every 2 seconds at
+first, then less often, up to once a minute, and not while the window is hidden —
+and opens the app the moment the server answers, so most of the time you only need
 to wait; **Retry** asks at once. If it never opens, the server didn't start —
 its log is `logs/justvoice.log` in your data folder. When the app knows why, the
-page says it under the message: another program holds the port (*Port N is in
-use by another program — close that program, then press Retry.* — **Retry** starts
-the server again), or another JustVoice server — a headless one, say — is using the
-same data folder (*… — stop it first.*); see [Run modes](run-modes.md#desktop).
+page says it under the message:
+
+- another program holds the port (*Port N is in use by another program — close
+  that program, then press Retry.* — **Retry** starts the server again);
+- another person signed in to this computer has JustVoice open on the port (*… One
+  copy runs at a time: they can quit theirs (its tray icon), then press Retry.*);
+- Windows has reserved the port for Hyper-V, WSL or Docker (*Windows has reserved
+  port N for another use …*);
+- the server stopped as it started (*Its server stopped as it started: …*, with its
+  own first error line — a database it couldn't open, a data folder it couldn't use);
+- another JustVoice server — a headless one, say — is using the same data folder
+  (*… — stop it first.*); see [Run modes](run-modes.md#desktop).
 
 **The first sound after a quiet spell (Mac).** macOS puts an idle audio session to sleep, so the
 first playback after a long pause could fail or pop. JustVoice keeps the session open with a
