@@ -30,6 +30,10 @@
   --line-strong: #cfccc4;
   /* --border-soft: legacy alias for --line. */
   --border-soft: var(--line);
+  /* a field's edge (inputs, selects, the segmented control's track) — the kit's token contract,
+     the template's value: 3.32:1 on --bg, 3.21:1 on --surface-3, 3.62:1 on --surface (WCAG 1.4.11
+     asks 3:1; --line was 1.3:1) — measured 2026-10-20 */
+  --border-field: #8a867f;
 
   /* Accent — hue-driven. Default hue 166 == JustVoice green #3a7d63 (measured). */
   --accent-hue: 166;
@@ -146,6 +150,20 @@
   --line: #353835;
   --line-strong: #4a4d49;
   --border-soft: var(--line);
+  /* a field's edge: 3.25:1 on --surface-3, 4.04:1 on --bg (the template's; measured 2026-10-20) */
+  --border-field: #787c78;
+  /* near-black on the light dark-theme fills (Material's on-primary, the template's): 6.15:1 on
+     --accent and 5.30:1 on --danger below — white was 2.83:1 on --accent (measured 2026-10-20) */
+  --on-accent: #1a1a1a;
+  /* Danger, info and warning (dark) — the template's values. Without them the light ones stood:
+     danger text was 1.64:1 on --surface, info 3.12:1; now 7.92:1 and 8.80:1 (measured 2026-10-20) */
+  --danger:      oklch(0.660 0.130 var(--danger-hue));
+  --danger-bg:   oklch(0.300 0.050 var(--danger-hue));
+  --danger-ink:  oklch(0.800 0.090 var(--danger-hue));
+  --info-blue:   oklch(0.700 0.110 var(--info-hue));
+  --info-ink:    oklch(0.820 0.070 var(--info-hue));
+  --warn-bg:     #38311f;
+  --warn-ink:    oklch(0.86 0.09 80);
   /* Accent (dark) — hue-driven; default hue 166 == JV dark green #5fa882. */
   --accent:      oklch(0.673 0.093 var(--accent-hue));
   --accent-soft: oklch(0.300 0.032 var(--accent-hue));

@@ -502,6 +502,31 @@ OPEN:   1, 3, 11 and the start checks are untested until a release runs (a tag: 
         they write into (pre-existing; not in the rec).
 GO:     given 2026-10-20 (as above).
 
+### The kit's fifteenth-review changes taken in (built 2026-10-20, under the go above)
+STATE:  BUILT 2026-10-20 — web-0d's ninth note (kit 70e6df1 + 010360f) came after the user's "dont stop
+        your rec for eveyrhting think adversiarly, go"; my recs were built under that go without
+        being shown first, and are listed here and in the report for the user's check.
+WHY:    the kit's UiNumber needs `@internationalized/number`, a peer JustVoice lacked (it resolved
+        from the kit's own node_modules in dev; the release installs only the kit's core); a Change
+        folder move now keeps the old folder, and JustVoice's own Storage copy had no way to remove
+        it, nor sent the window's token; the kit's token contract has `--border-field` and dark
+        `--on-accent`, `--danger-ink`, `--info-ink`, `--warn-*`, which JustVoice lacked.
+NOT:    ServerPanel and AboutPanel (JustVoice keeps its own sections; the `.card` frame is ready).
+BUILT:  `@internationalized/number` ^3.6.9; Settings → Storage on the kit's StoragePanel
+        (`native.js`: relocate with the token, `storageOldCopies`, `storageRemoveOldCopy`,
+        `storageUseDefault`; the speech models and the render cache in its `extra` slot, with the
+        kit's "Clear…"; "AI models cache" kept as JustVoice's word, `kit.storagePanel.modelsCache`);
+        the family's `.card`, `h2`, `.hint`, `.card__actions`, `.card__note` in `app.scss` in
+        JustVoice's card look; tokens: `--border-field` both themes, and in dark `--on-accent`
+        #1a1a1a with the template's `--danger` (near-black on JustVoice's dark danger, which was the
+        light red, measured 2.92:1), `--danger-bg`, `--danger-ink`, `--info-blue`, `--info-ink`,
+        `--warn-bg`, `--warn-ink` (RESEARCH §6); `scripts/start-packaged.js` re-copied (it runs a
+        temp copy of the unpacked build). Docs: backups-and-data, whats-new. Checked: the smoke
+        gate (every view, zero JS errors) and screenshots of Storage in light and dark on 8741.
+OPEN:   Change folder, Remove the old copy and Move back show only in the desktop app — not seen;
+        the 8741 browser shows the panel without them.
+GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
+
 ### Round 7 — Drama 3 directed in the app, a delivery note, the narrator's own voice (decided 2026-10-19)
 STATE:  DECIDED 2026-10-19 — after the user's ears on round 6 and the whispers page (RESEARCH
         §10.31, §10.33), shown: "1. Should I write Drama 3's direction into the app now, as one

@@ -88,6 +88,9 @@
       "chatSectionHint": "pick one as your model — it runs every AI feature",
       "generalUse": "Attributes speakers, cleans up dictation, drafts persona text",
       "slotsFootnote": "One model runs every AI feature — it loads on first use; Load now just skips that first wait."
+    },
+    "storagePanel": {
+      "modelsCache": "AI models cache"
     }
   }
 }

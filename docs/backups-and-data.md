@@ -20,8 +20,8 @@ whole library goes with it, and uninstalling means deleting one folder.
 To put it somewhere else, in order of precedence:
 
 1. **Settings → Storage → Change folder** (desktop app) — pick where it goes;
-   JustVoice moves the data into a new *JustVoice* folder there and remembers
-   the choice.
+   JustVoice copies the data into a new *JustVoice* folder there, restarts on
+   it and remembers the choice.
 2. **`JUSTVOICE_DATA_DIR`** — an environment variable, for scripted or
    headless setups.
 3. **`justvoice-server serve --data-dir <path>`** — per-run, headless.
@@ -34,9 +34,15 @@ written to (installed under `Program Files`, or run from read-only media). It
 then falls back to the standard per-user app-data folder for your OS so the
 app still starts. Settings → Storage always shows the folder actually in use.
 
-**Moving the data.** Change folder copies everything to the new location,
-switches over, and only then removes the old copy — if anything fails, the app
-keeps using the old folder. Your library keeps working afterwards: takes,
+**Moving the data.** Change folder copies everything to the new location and
+switches over — if anything fails, the app keeps using the old folder. The old
+folder keeps its copy until you remove it: Settings → Storage lists it with its
+size and **Remove the old copy** (only what the move copied goes). While the data
+is away from the default folder, **Move back to the default folder** brings it
+back; if the folder it was moved to can't be used at a start, JustVoice starts on
+the default folder and Storage offers **Use the default folder from now on**.
+While `JUSTVOICE_DATA_DIR` names the folder, Storage says so and offers no move.
+Your library keeps working afterwards: takes,
 captures and renders are recorded relative to the data folder, so they're
 found wherever it ends up (and a backup restored on another machine or drive
 resolves the same way).

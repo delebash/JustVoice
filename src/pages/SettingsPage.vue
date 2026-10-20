@@ -6,10 +6,19 @@ import { useI18n } from "vue-i18n";
 import { useApi } from "../stores/api.js";
 import { pushToast, pageFlow } from "@delebash/ui";
 import { confirmDialog } from "@delebash/ui";
-import { AppearancePanel, DataManagement, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore, SETTINGS_SECTION_ORDER } from "@delebash/ui";
+import { AppearancePanel, DataManagement, LogsPanel, SettingsShell, StoragePanel, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, renderHelpMarkdown, serverUrl, useAiTasksStore, SETTINGS_SECTION_ORDER } from "@delebash/ui";
 import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
 import { loadDoc } from "../services/helpDocs.js";
-import { desktopUpdater, hasShell, pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
+import {
+  desktopUpdater,
+  hasShell,
+  pickDirectory,
+  storageGetRoot,
+  storageOldCopies,
+  storageRelocate,
+  storageRemoveOldCopy,
+  storageUseDefault,
+} from "../services/native.js";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -713,138 +722,52 @@ async function copySnippet(key) {
   }
 }
 
-// ── Storage (family section): data root via the shell + disk usage ──
-const storageRoot = ref(null); // { root, default, portable } from the shell
-const isDesktop = ref(false);
-const relocating = ref(false);
-const storageErr = ref("");
-const diskUsage = ref(null);
-const diskBusy = ref("");
-const diskErr = ref("");
-
-async function loadStorageRoot() {
-  // services/native.js — the one place a command name is written.
-  storageRoot.value = await storageGetRoot();
-  isDesktop.value = !!storageRoot.value;
-}
-async function loadDiskUsage() {
-  diskUsage.value = await api.safeRequest("/v1/disk/usage", null);
-}
-// Loading state = an em-dash per row; a real 0 formats as "0 MB" (the kit's
-// fmtBytes returns "" for 0). fmtBytes stays the ONE source for the number.
-function diskSize(n) {
-  if (diskUsage.value == null) return "—";
-  return fmtBytes(n) || "0 MB";
-}
-async function changeFolder() {
-  storageErr.value = "";
-  // The family folder picker (2026-08-14): the `pick_directory` command, the
-  // same call i18n-docgen and JustWrite make. This reached for the dialog
-  // plugin in the renderer instead — one native dialog, two layers.
-  const picked = await pickDirectory({
-    title: "Choose a data folder", defaultPath: storageRoot.value?.root || "",
-  });
-  if (!picked) return;
-  const yes = await confirmDialog({
-    title: "Move all app data?",
-    message: `Everything JustVoice saves — projects, voices, the database, the AI engine and models, and logs — moves to ${picked}. The app restarts when the move finishes.`,
-    confirmLabel: "Move & restart",
-  });
-  if (!yes) return;
-  relocating.value = true;
-  try {
-    await storageRelocate(picked);
-    window.location.reload();
-  } catch (e) {
-    storageErr.value = String(e || "Move failed.");
-    relocating.value = false;
-  }
-}
-async function clearModelsCache() {
-  const size = fmtBytes(diskUsage.value?.modelsCache) || "0 MB";
-  const yes = await confirmDialog({
-    title: "Clear downloaded models?",
-    message: `This frees ${size} of downloaded model files. Your models stay in the catalog and re-download on demand.`,
-    confirmLabel: "Clear models cache",
-  });
-  if (!yes) return;
-  diskBusy.value = "models";
-  diskErr.value = "";
-  try {
-    const res = await api.request("/v1/llm-runner/models-cache/clear", { method: "POST" });
-    if (res?.ok === false) {
-      diskErr.value = res.detail === "unload models first"
-        ? "A model is loaded — unload it first (AI Settings → Unload), then try again."
-        : res.detail || "Couldn't clear the models cache.";
-    }
-  } catch {
-    diskErr.value = "Couldn't clear the models cache.";
-  } finally {
-    diskBusy.value = "";
-    await loadDiskUsage();
-    // Re-stat the shared catalog so cleared models flip to "Download".
-    refreshRunnerModels();
-  }
-}
-// Phase ④ (the speech-catalog redesign): per-store clear verbs in ONE
-// grammar — same confirm-with-size, same refuse-while-loaded story as the
-// LLM models cache above. The sizes ride the shared disk router's extras.
-async function clearSpeechCache() {
-  const size = fmtBytes(diskUsage.value?.extras?.speechCache) || "0 MB";
+// ── Storage (family section): the kit's StoragePanel — where the data folder is, Change folder, the
+// old copy a move leaves and its Remove, Move back, the disk usage (2026-10-20: a move keeps the old
+// folder, which only the kit's panel removes; JustVoice's own copy of the panel went). JustVoice's own
+// rows — the speech models and the render cache, the server's extra disk buckets — ride its `extra` slot.
+const storageShell = {
+  getRoot: storageGetRoot,
+  pickDirectory,
+  relocate: storageRelocate,
+  oldCopies: storageOldCopies,
+  removeOldCopy: storageRemoveOldCopy,
+  useDefault: storageUseDefault,
+};
+// Phase ④ (the speech-catalog redesign): per-store clear verbs in ONE grammar with the kit's rows —
+// the same confirm-with-size, the same refusal while loaded. `run` is the panel's: busy while it runs,
+// the sizes read again after.
+async function clearSpeechCache(usage, run) {
+  const size = fmtBytes(usage?.extras?.speechCache) || "0 MB";
   const yes = await confirmDialog({
     title: "Clear downloaded speech models?",
     message: `This frees ${size} of downloaded speech-model files. The catalog keeps every model; each one re-downloads on demand.`,
     confirmLabel: "Clear speech models",
   });
   if (!yes) return;
-  diskBusy.value = "speech";
-  diskErr.value = "";
-  try {
+  await run("speech", async () => {
     const res = await api.request("/v1/engines/speech-cache/clear", { method: "POST" });
     if (res?.ok === false) {
-      diskErr.value = res.detail === "unload engines first"
-        ? "A speech engine is loaded — unload it first (AI Settings → Speech engines), then try again."
-        : res.detail || "Couldn't clear the speech models.";
+      pushToast({
+        kind: "error",
+        title: res.detail === "unload engines first"
+          ? "A speech engine is loaded — unload it first (AI Settings → Speech engines), then try again."
+          : res.detail || "Couldn't clear the speech models.",
+      });
     }
-  } catch {
-    diskErr.value = "Couldn't clear the speech models.";
-  } finally {
-    diskBusy.value = "";
-    await loadDiskUsage();
-    // Cleared models flip to "Download" on the speech catalog.
-    window.dispatchEvent(new Event("jv:health-refresh"));
-  }
+  });
+  // Cleared models flip to "Download" on the speech catalog.
+  window.dispatchEvent(new Event("jv:health-refresh"));
 }
-async function clearRenderCache() {
-  const size = fmtBytes(diskUsage.value?.extras?.renderCache) || "0 MB";
+async function clearRenderCache(usage, run) {
+  const size = fmtBytes(usage?.extras?.renderCache) || "0 MB";
   const yes = await confirmDialog({
     title: "Clear the render cache?",
     message: `This frees ${size} of cached renders. Nothing is lost — an identical render simply computes again instead of coming back instantly. (Settings → Cache offers scoped clears by age.)`,
     confirmLabel: "Clear render cache",
   });
   if (!yes) return;
-  diskBusy.value = "render";
-  diskErr.value = "";
-  try {
-    await api.request("/v1/cache/clear", { method: "POST" });
-  } catch {
-    diskErr.value = "Couldn't clear the render cache.";
-  } finally {
-    diskBusy.value = "";
-    await loadDiskUsage();
-  }
-}
-async function clearSpawnLogs() {
-  diskBusy.value = "spawn";
-  diskErr.value = "";
-  try {
-    await api.request("/v1/llm-runner/spawn-logs/clear", { method: "POST" });
-  } catch {
-    diskErr.value = "Couldn't clear the engine logs.";
-  } finally {
-    diskBusy.value = "";
-    await loadDiskUsage();
-  }
+  await run("render", () => api.request("/v1/cache/clear", { method: "POST" }));
 }
 
 // ── Server (family section): headless access + bearer tokens ────────
@@ -901,8 +824,6 @@ onMounted(() => {
   loadGpuInfo();
   loadMcpBindings();
   loadAuth();
-  loadStorageRoot();
-  loadDiskUsage();
 });
 </script>
 
@@ -1118,57 +1039,25 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── Storage · Data location + disk usage (family section) ─── -->
+    <!-- ─── Storage · the kit's StoragePanel (family section): where the data folder is, Change folder,
+         the old copy a move leaves, the disk usage; JustVoice's own rows in its extra slot ─── -->
     <div v-show="activeSub === 'storage'" class="jv-section">
-      <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">Data location</h3></div>
-        <p class="jv-muted jv-hint">
-          One folder holds everything JustVoice saves — projects, voices, the database,
-          the AI engine and models, and logs. Delete the folder, delete it all.
-        </p>
-        <div class="settings-grid jv-mt10">
-          <UiField label="Folder" layout="block">
-            <span class="jv-mono jv-note">{{ isDesktop ? (storageRoot?.root || "—") : "headless — set by JUSTVOICE_DATA_DIR" }}</span>
-          </UiField>
-          <UiField v-if="isDesktop" label="Type" layout="block">
-            <span class="jv-hint">{{ storageRoot?.portable ? "Portable — beside the app" : "User folder" }}</span>
-          </UiField>
-        </div>
-        <div class="jv-row jv-mt12" v-if="isDesktop">
-          <UiButton intent="secondary"
-            :label="relocating ? 'Moving your data — the app will restart…' : 'Change folder…'"
-            :disabled="relocating" @click="changeFolder" />
-        </div>
-        <p v-else class="jv-muted jv-note jv-tight-top">Changing the folder is available in the desktop app.</p>
-        <p v-if="storageErr" class="jv-mono jv-danger-note">{{ storageErr }}</p>
-      </div>
-
-      <div class="jv-card jv-mt16">
-        <div class="jv-card__header"><h3 class="jv-card__title">Disk usage</h3></div>
-        <p class="jv-muted jv-hint">Where the data folder's space goes — and what can be reclaimed.</p>
-        <table class="jv-table jv-w560 jv-mt10">
-          <tbody>
-            <tr><td>AI models cache</td><td>{{ diskSize(diskUsage?.modelsCache) }}</td>
-              <td class="jv-w130"><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
-                :label="diskBusy === 'models' ? 'Clearing…' : 'Clear'" @click="clearModelsCache" /></td></tr>
-            <tr><td>Speech models</td><td>{{ diskSize(diskUsage?.extras?.speechCache) }}</td>
-              <td><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
-                :label="diskBusy === 'speech' ? 'Clearing…' : 'Clear'" @click="clearSpeechCache" /></td></tr>
-            <tr><td>Render cache</td><td>{{ diskSize(diskUsage?.extras?.renderCache) }}</td>
-              <td><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
-                :label="diskBusy === 'render' ? 'Clearing…' : 'Clear'" @click="clearRenderCache" /></td></tr>
-            <tr><td>Engine spawn logs</td><td>{{ diskSize(diskUsage?.spawnLogs) }}</td>
-              <td><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
-                :label="diskBusy === 'spawn' ? 'Clearing…' : 'Clear'" @click="clearSpawnLogs" /></td></tr>
-            <tr><td>Engine builds</td><td>{{ diskSize(diskUsage?.engineBuilds) }}</td><td /></tr>
-            <tr><td>Database</td><td>{{ diskSize(diskUsage?.database) }}</td><td /></tr>
-            <tr><td>Server logs</td><td>{{ diskSize(diskUsage?.appLogs) }}</td><td /></tr>
-            <tr><td><b>Total</b></td><td><b>{{ diskSize(diskUsage?.total) }}</b></td><td /></tr>
-            <tr><td>Free disk space</td><td>{{ diskSize(diskUsage?.diskFree) }}</td><td /></tr>
-          </tbody>
-        </table>
-        <p v-if="diskErr" class="jv-mono jv-danger-note">{{ diskErr }}</p>
-      </div>
+      <StoragePanel :data-dir="dataDir" :shell="storageShell" saves="projects, voices, the database">
+        <template #extra="{ usage, size, busy, run }">
+          <span class="lu-storage__label">Speech models</span>
+          <div class="lu-storage__row">
+            <span>{{ size(usage?.extras?.speechCache) }}</span>
+            <UiButton intent="secondary" size="small" :disabled="!!busy"
+              :label="busy === 'speech' ? t('kit.storagePanel.clearing') : t('kit.storage.clearShort')" @click="clearSpeechCache(usage, run)" />
+          </div>
+          <span class="lu-storage__label">Render cache</span>
+          <div class="lu-storage__row">
+            <span>{{ size(usage?.extras?.renderCache) }}</span>
+            <UiButton intent="secondary" size="small" :disabled="!!busy"
+              :label="busy === 'render' ? t('kit.storagePanel.clearing') : t('kit.storage.clearShort')" @click="clearRenderCache(usage, run)" />
+          </div>
+        </template>
+      </StoragePanel>
     </div>
 
     <!-- ─── Backups — the family surface (kit DataManagement over /v1/data;

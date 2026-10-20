@@ -1771,6 +1771,16 @@ attacked" and the sections after it):
   `scheme.json`).
 - Health names the data folder (`dataDir`, as JustWrite's and the template's do): the release's
   `start-packaged.js --default-data` compares the window's and the headless server's. — *code*.
+- JustVoice's dark tokens before the kit's fifteenth review (WCAG contrast, sRGB from OKLCH):
+  white on the dark accent 2.83:1 (#1a1a1a 6.15:1); JustVoice had no dark `--danger`, so its
+  danger buttons were the light red — white 5.95:1, #1a1a1a 2.92:1 (the template's dark red
+  0.660 0.130: #1a1a1a 5.30:1); `--danger-ink` 1.64:1 on the dark surface (the template's 7.92:1);
+  `--info-ink` 3.12:1 (8.80:1). `--border-field` #8a867f on JustVoice's own `--bg` #f6f5f1 is
+  3.32:1 (3.21 on `--surface-3`). So the dark `--on-accent` comes with the dark `--danger`. — *measured,
+  2026-10-20* (a node script).
+- `@internationalized/number` (the kit's UiNumber, a peer since kit 70e6df1) was not in
+  JustVoice's packages: in dev it resolved from the kit checkout's own `packages/ui/node_modules`;
+  the release installs only `packages/core`. — *code, 2026-10-20*.
 
 ---
 
