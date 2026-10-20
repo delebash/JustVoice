@@ -15,7 +15,17 @@
 // and its own tests would not catch it.
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
+import { nextTick } from "vue";
 import { FAMILY_TASK_LINGER, useAiTasksStore } from "@delebash/ui";
+
+// The store speaks a task's end through the kit's announcer, whose region timers live 7 s once
+// Vue's nextTick has run. This file runs in node, where the announcer has no regions and sets none;
+// with a DOM it would, and the ticker test counts live timers — so the announcer is silenced, and
+// that test waits for the tick before counting (web-0d's nineteenth review, 2026-10-20).
+vi.mock("@delebash/ui/common/services/announce.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  announce: vi.fn(),
+}));
 
 const LINGER = { completed: 5000, cancelled: 3000, failed: null };
 
@@ -186,7 +196,7 @@ describe("kit task queue — the capabilities JustVoice's fork had", () => {
     expect(tasks.unseenErrors).toBe(1);
   });
 
-  it("the 500ms ticker STOPS once nothing is running, even with a task still lingering", () => {
+  it("the 500ms ticker STOPS once nothing is running, even with a task still lingering", async () => {
     // The reason the ticker gate counts running tasks instead of order.length. With
     // `failed: null` a row stays until dismissed, so a length-gated ticker would run
     // forever behind it — the runaway JustVoice's own renderTasks comment records
@@ -196,6 +206,8 @@ describe("kit task queue — the capabilities JustVoice's fork had", () => {
     expect(vi.getTimerCount()).toBeGreaterThan(0); // the ticker is up
 
     h.fail(new Error("boom"));
+    await nextTick(); // what the kit's announcer queued has run (silenced above: no timers)
+    await Promise.resolve();
     // Lingering forever (failed: null) means no archive timeout was scheduled either,
     // so a still-running ticker would be the ONLY live timer. There must be none.
     expect(tasks.visibleTasks).toHaveLength(1);
