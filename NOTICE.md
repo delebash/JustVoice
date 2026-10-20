@@ -70,6 +70,21 @@ recogniser's transcript with it (added 2026-10-16).
 - The toasts' kind icons (`ui/src/common/services/toastBridge.js`) are Heroicons paths (MIT License,
   Copyright (c) Tailwind Labs, Inc.) copied from vue-sonner 2.0.9 — MIT License, Copyright (c) 2022
   Yunwei Xiao; the full notice is kept in the file.
+- Which names are marked as right-to-left (`ui/src/common/services/isolate.js`) — the strong
+  left-to-right and right-to-left character ranges of Google Closure Library's
+  `closure/goog/i18n/bidi.js`. Apache License 2.0, Copyright The Closure Library Authors.
+- The info banner's icon (`ui/src/common/iconPaths.js`, `Info`) — Lucide's "info" (lucide-static
+  1.60.0), derived from Feather. ISC License, Copyright (c) 2026 Lucide Icons and Contributors; MIT
+  License, Copyright (c) 2013-present Cole Bemis. Both notices are kept in the file.
+
+### Fonts bundled into the renderer
+
+- **Inter** (`@fontsource/inter` 5.3.0, `src/css/fonts.css`) — Copyright 2016 The Inter Project
+  Authors (github.com/rsms/inter). SIL Open Font License 1.1.
+- **JetBrains Mono** (`@fontsource/jetbrains-mono` 5.3.0, `src/css/fonts.css`) — Copyright 2020 The
+  JetBrains Mono Project Authors (github.com/JetBrains/JetBrainsMono). SIL Open Font License 1.1.
+
+The licence's full text is in each package's `LICENSE`.
 
 ---
 
