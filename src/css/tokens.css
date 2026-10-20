@@ -112,6 +112,16 @@
   --info: var(--info-blue);
   --info-bg: transparent;            /* JV's "info" pill was outline-only */
   --info-ink: var(--info-blue);
+
+  /* The toasts (the kit's --ui-toast-{kind}-ink / -bg / -edge, tokens.contract.css) on JustVoice's
+     own pairs, as the template maps them — they follow the theme with them. Measured 2026-10-20:
+     normal 17.40:1 light / 13.17:1 dark, success 6.30 / 6.92, warning 8.49 / 9.53 (the appearance
+     engine's pair), error 8.11 / 7.20. The info toast keeps the kit's own pair (6.28 / 8.60):
+     --info-bg is transparent here, for the outlined pills. */
+  --ui-toast-normal-ink: var(--ink); --ui-toast-normal-bg: var(--surface); --ui-toast-normal-edge: var(--border-field);
+  --ui-toast-success-ink: var(--success-ink); --ui-toast-success-bg: var(--success-bg);
+  --ui-toast-warning-ink: var(--warn-ink); --ui-toast-warning-bg: var(--warn-bg);
+  --ui-toast-error-ink: var(--danger-ink); --ui-toast-error-bg: var(--danger-bg);
   --r-sm: var(--r-control);
 
   /* Button knobs — overridden at runtime by the appearance engine. Defaults
@@ -160,6 +170,11 @@
   --danger:      oklch(0.660 0.130 var(--danger-hue));
   --danger-bg:   oklch(0.300 0.050 var(--danger-hue));
   --danger-ink:  oklch(0.800 0.090 var(--danger-hue));
+  /* success (dark), the template's: near-black on the light success fill stood at 3.56:1 — the
+     fill was the light one — now 6.15:1; the success toast's pair 6.92:1 (measured 2026-10-20) */
+  --success:     oklch(0.673 0.093 var(--success-hue));
+  --success-bg:  oklch(0.300 0.032 var(--success-hue));
+  --success-ink: oklch(0.780 0.070 var(--success-hue));
   --info-blue:   oklch(0.700 0.110 var(--info-hue));
   --info-ink:    oklch(0.820 0.070 var(--info-hue));
   --warn-bg:     #38311f;

@@ -1776,7 +1776,10 @@ attacked" and the sections after it):
   danger buttons were the light red — white 5.95:1, #1a1a1a 2.92:1 (the template's dark red
   0.660 0.130: #1a1a1a 5.30:1); `--danger-ink` 1.64:1 on the dark surface (the template's 7.92:1);
   `--info-ink` 3.12:1 (8.80:1). `--border-field` #8a867f on JustVoice's own `--bg` #f6f5f1 is
-  3.32:1 (3.21 on `--surface-3`). So the dark `--on-accent` comes with the dark `--danger`. — *measured,
+  3.32:1 (3.21 on `--surface-3`). So the dark `--on-accent` comes with the dark `--danger`. JustVoice
+  had no dark success either: near-black on the light success fill 3.56:1 (the template's dark
+  success 6.15:1). The toasts on JustVoice's pairs: normal 17.40 / 13.17, success 6.30 / 6.92,
+  warning (the appearance engine's pair) 8.49 / 9.53, error 8.11 / 7.20, light / dark. — *measured,
   2026-10-20* (a node script).
 - **JustVoice's own recursive `rmSync` emptied a linked folder's target** (Electron 44.7, Node 24):
   a junction to an outside folder inside the speech cache, then **Clear** speech models — the

@@ -530,7 +530,11 @@ BUILT:  `@internationalized/number` ^3.6.9; Settings → Storage on the kit's St
         RESEARCH §6); `server/tests/junction_removers.test.js`; backups-and-data says so. Kit
         90c513f: Storage passes `forgetOldCopy` (`storageForgetOldCopy`, the template's), so a
         *Not found* old copy can be forgotten; JustVoice sets no `beforeunload`, so the shell's new
-        Leave/Stay box never shows here.
+        Leave/Stay box never shows here. Kit 7680aca: the toasts' `--ui-toast-*` mapped to
+        JustVoice's pairs as the template does (info keeps the kit's pair: `--info-bg` is
+        transparent for the outlined pills), with the template's dark success pair (near-black on
+        the light success fill was 3.56:1 in dark). The kit's new `resourceIsolation` stays unwired:
+        the desktop window's `<audio src>` loads are no-cors cross-site and it would refuse them.
 OPEN:   Change folder, Remove the old copy and Move back show only in the desktop app — not seen;
         the 8741 browser shows the panel without them.
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
