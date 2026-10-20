@@ -24,7 +24,7 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import Busboy from "@fastify/busboy";
-import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { HttpError, RequestValidationError } from "@delebash/core/platform/errors";
 import { getLogger } from "@delebash/core/platform/log";
 import { nullable, opt, shapeRequest, T } from "@delebash/core/platform/models";
@@ -436,7 +436,7 @@ export function router() {
       } catch (e) {
         // The same answer the refine Lab gives when no language model is set up.
         if (e instanceof LLMNotConfiguredError) throw new HttpError(501, msg(e));
-        throw e;
+        throw aiRunHttpError(e) ?? e; // 503 a local model not ready, 502 a provider not reached
       }
       h.update(Capture, { transcript: text, refinement_flags_json: pyJson(flags.toDict()) }, { id });
       return c.json(_row(h.get(Capture, id)));

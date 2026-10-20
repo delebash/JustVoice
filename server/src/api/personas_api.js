@@ -5,7 +5,7 @@
 // people in a book — and one persona can play many. So "used" means the speakers it plays, in
 // which books.
 
-import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { HttpError } from "@delebash/core/platform/errors";
 import { nullable, opt, T } from "@delebash/core/platform/models";
@@ -259,6 +259,8 @@ async function runOrRefuse(action, variables) {
     return await run.runFeature(action, variables);
   } catch (e) {
     if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
+    const ai = aiRunHttpError(e); // 503 a local model not ready, 502 a provider not reached (the kit's)
+    if (ai) throw ai;
     throw new HttpError(502, `LLM call failed: ${errText(e)}`);
   }
 }

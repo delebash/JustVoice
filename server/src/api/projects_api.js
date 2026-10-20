@@ -24,7 +24,7 @@
 
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { attachment, Hono, input } from "@delebash/core/platform";
 import { safeTitle } from "@delebash/core/platform/filename";
 import { RequestValidationError } from "@delebash/core/platform/errors";
@@ -1619,7 +1619,7 @@ export function router() {
       resp = await run.runFeature("show_notes", { script: cpSlice(script, 0, 24000) });
     } catch (e) {
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
-      throw e;
+      throw aiRunHttpError(e) ?? e; // 503 a local model not ready, 502 a provider not reached
     }
     return c.json(
       construct(ShowNotesResponse, {

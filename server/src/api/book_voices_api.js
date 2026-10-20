@@ -5,7 +5,7 @@
 // the library). A step's answer says what it did, what it left alone and what failed, with the
 // model, the recipe, the tokens and the seconds — the numbers the plan's comparison tests read.
 
-import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { getLogger } from "@delebash/core/platform/log";
 import { literal, nullable, opt, T } from "@delebash/core/platform/models";
@@ -92,6 +92,8 @@ async function aiStep(name, fn) {
   } catch (e) {
     if (e instanceof HttpError) throw e;
     if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
+    const ai = aiRunHttpError(e); // 503 a local model not ready, 502 a provider not reached (the kit's)
+    if (ai) throw ai;
     log.warning(`book_voices ${name} failed: ${errText(e)}`);
     throw new HttpError(502, `${name} failed: ${errText(e)}`);
   }

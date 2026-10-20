@@ -8,8 +8,8 @@
 //
 // The family shape (JustWrite's app.js, docgen's): the kit's Hono server with problem+json
 // errors (`createServer`), the kit's CSRF / CORS / bearer-auth middleware in Python's middleware
-// order, a catch-all error envelope, and the kit's `serveStatic` (@hono/node-server's) for the UI
-// with Starlette's StaticFiles answers. Hono runs middleware in the order it is added and covers
+// order, a catch-all error envelope, and the kit's `serveUi` for the UI (`serveStatic` for the
+// legacy reference UI). Hono runs middleware in the order it is added and covers
 // only the routes added after it: the middleware first, then the routers, then the UI.
 
 import path from "node:path";
@@ -28,6 +28,7 @@ import {
   onClose,
   SHUTDOWN_PATH,
   serveStatic,
+  serveUi,
   starletteCors,
 } from "@delebash/core/platform";
 import { purePath } from "@delebash/core/platform/data_paths";
@@ -494,10 +495,10 @@ function mountStatic(app) {
     const toRoot = (c) => c.redirect("/", 307);
     app.get("/ui", toRoot);
     app.get("/ui/", toRoot);
-    app.get("/*", serveStatic({ root: uiDir }));
-    // StaticFiles raised Starlette's own HTTPException, which FastAPI's default handler
-    // answers (not the problem+json handlers).
-    app.on(["POST", "PUT", "PATCH", "DELETE", "OPTIONS"], "/*", (c) => c.json({ detail: "Method Not Allowed" }, 405));
+    // The kit's serveUi (the template's, 2026-10-20): a write there is 405 with Allow, one under
+    // /v1 or /mcp stays the API's 404; ETags and 304; Vite's hashed assets kept, the rest
+    // revalidated. Every route above wins first (Hono runs routes in the order added).
+    serveUi(app, uiDir, { apiPrefixes: GUARDED_PREFIXES });
     log.info(`UI served from ${uiDir}`);
   } else {
     log.warning("UI build not found — headless UI disabled. Run `npm run build:spa` to produce dist/spa/, or set JUSTVOICE_UI_DIR.");

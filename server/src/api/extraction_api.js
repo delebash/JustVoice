@@ -22,7 +22,7 @@
 // response drains — the queue, the stop flag and the "kept" copy are Python's, the thread is
 // gone. API agent 2 ported `RunUsage` first; API agent 3 the rest under the same names.
 
-import { LLMNotConfiguredError, stores } from "@delebash/core/llm";
+import { aiRunHttpError, LLMNotConfiguredError, stores } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { getLogger } from "@delebash/core/platform/log";
 import { literal, nullable, opt, T } from "@delebash/core/platform/models";
@@ -602,6 +602,8 @@ export async function analyzeChapter(h, scene, body, { settings }) {
 function analyzeError(e) {
   if (e instanceof LLMNotConfiguredError) return new HttpError(501, errText(e));
   if (e instanceof AttributionModelError) return new HttpError(502, errText(e));
+  const ai = aiRunHttpError(e); // 503 a local model not ready, 502 a provider not reached (the kit's)
+  if (ai) return ai;
   log.exception("extraction pipeline failed", e);
   return new HttpError(502, `extraction failed: ${errText(e)}`);
 }
@@ -913,6 +915,8 @@ export async function directScene(sceneId, { recipe = null, carry = true } = {})
 function directionError(e) {
   if (e instanceof LLMNotConfiguredError) return new HttpError(501, errText(e));
   if (e instanceof direction.DirectionModelError) return new HttpError(502, errText(e));
+  const ai = aiRunHttpError(e);
+  if (ai) return ai;
   log.exception("direction failed", e);
   return new HttpError(502, `direction failed: ${errText(e)}`);
 }
@@ -1274,6 +1278,8 @@ const candidateOut = (c, extra = {}) => ({ name: c.name, role_hint: c.role_hint,
 function discoverError(e, what) {
   if (e instanceof LLMNotConfiguredError) return new HttpError(501, errText(e));
   if (e instanceof HttpError) return e;
+  const ai = aiRunHttpError(e);
+  if (ai) return ai;
   log.exception(`${what} failed`, e);
   return new HttpError(502, `${what} failed: ${errText(e)}`);
 }
@@ -2141,6 +2147,8 @@ export function router() {
       candidates = await identify.identifySpeakers(body.text, body.known_characters, { settings, runFn, rawOut });
     } catch (e) {
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
+      const ai = aiRunHttpError(e);
+      if (ai) throw ai;
       log.exception("speaker identification failed", e);
       throw new HttpError(502, `identification failed: ${errText(e)}`);
     }

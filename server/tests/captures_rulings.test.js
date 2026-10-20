@@ -41,6 +41,23 @@ test("recleaning_without_a_language_model_answers_501", async () => {
   expect((await c.get(`/v1/captures/${row.id}`)).json().transcript).toBe("um hello world");
 });
 
+test("recleaning_while_the_local_model_isnt_ready_answers_503_not_500", async () => {
+  // The kit's aiRunHttpError (2026-10-20): a local engine or model that isn't ready is a 503 in the
+  // runner's words, a provider that can't be reached a 502 — it was a bare 500.
+  const { c } = await appClient(undefined, { seed: true });
+  vi.spyOn(captures, "_sttTranscribe").mockResolvedValue("um hello world");
+  expect((await c.patch("/v1/settings", { json: { captures: { auto_refine: false } } })).status).toBe(200);
+  const row = (await c.post("/v1/captures", upload(silence(0.5, 16000)))).json();
+  vi.spyOn(run, "runFeature").mockRejectedValue(Object.assign(new Error("the local engine isn't installed"), { localNotReady: true }));
+  let r = await c.post(`/v1/captures/${row.id}/refine`, { json: {} });
+  expect(r.status, r.text).toBe(503);
+  expect(r.json().type.endsWith("/engine-not-ready")).toBe(true);
+  vi.spyOn(run, "runFeature").mockRejectedValue(Object.assign(new Error("connect ECONNREFUSED"), { unreachable: true }));
+  r = await c.post(`/v1/captures/${row.id}/refine`, { json: {} });
+  expect(r.status, r.text).toBe(502);
+  expect((await c.get(`/v1/captures/${row.id}`)).json().transcript).toBe("um hello world");
+});
+
 test("a_capture_records_its_length", async () => {
   const { c } = await appClient();
   vi.spyOn(captures, "_sttTranscribe").mockResolvedValue("hello");

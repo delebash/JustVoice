@@ -535,6 +535,13 @@ BUILT:  `@internationalized/number` ^3.6.9; Settings → Storage on the kit's St
         transparent for the outlined pills), with the template's dark success pair (near-black on
         the light success fill was 3.56:1 in dark). The kit's new `resourceIsolation` stays unwired:
         the desktop window's `<audio src>` loads are no-cors cross-site and it would refuse them.
+        Kit 7e617b7: the built UI through the kit's `serveUi` (405 with Allow, an unknown /v1 or /mcp
+        write still 404, ETags and 304, hashed assets kept; `server/tests/serve_ui.test.js` — no test
+        covered the UI's serving before); the AI routes add the kit's `aiRunHttpError` before their
+        own fallback (503 a local model not ready, 502 a provider not reached; the capture re-clean
+        and the show notes answered 500; `captures_rulings.test.js`). Not taken: the form dialogs'
+        focus back into the field after a 422 (the template's NoteDialog) — each dialog's own change;
+        no JustVoice CSS styles `.q-field__bottom`.
 OPEN:   Change folder, Remove the old copy and Move back show only in the desktop app — not seen;
         the 8741 browser shows the panel without them.
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
