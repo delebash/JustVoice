@@ -532,8 +532,9 @@ BUILT:  Drama 3's `DIRECTION` (`curated/fish_drama3.js`: one note, the words els
         test copy of chapter VII ("Alice VII (narrator test)", its narrator "Narrator (test)"), the
         narration sample (`server/scripts/narration_sample.js`) and the whispers at −12 and −18 dB
         (`round6b_whisper.js --narrator --gains --out`).
-OPEN:   the user's ears on the round 7 page, https://claude.ai/artifact/ASSsCBtrwrZihqNYvKW8TH
-        (collection `round7`). With jv.7: docs/engines.md gets Drama 3's rows (its
+OPEN:   the ears are in (2026-10-20, RESEARCH §10.34): the note helps Breeze and hurts Drama 3;
+        Breeze's narration copy picked 10 of 10; whispers best at −18 dB. What follows waits for
+        the user's word. With jv.7: docs/engines.md gets Drama 3's rows (its
         direction, its licence), and Drama 3's request sends top-k 30 (upstream #978 makes 4097 the
         default; RESEARCH §10.33).
 GO:     given 2026-10-19 ("your rec all go").

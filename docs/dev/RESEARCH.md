@@ -5042,7 +5042,29 @@ TASKS "Round 7". Through `npm run dev` (fork jv 1de98891).
   — *code + unit test*.
 - **The page:** https://claude.ai/artifact/ASSsCBtrwrZihqNYvKW8TH (collection `round7`). Part 1:
   6 takes a line (each engine with the cue words and with the note). Part 2: the narration, A/B.
-  Part 3: the whispers at −12 and −18 dB. The ears decide; waiting.
+  Part 3: the whispers at −12 and −18 dB.
+- **The user's ears on the round 7 page** (2026-10-20; collection `round7`, 114 answers; tallied
+  by the session's `tally_r7.js`). The full feeling · weaker · plain · something else · picked
+  best, on 13 lines:
+  - BreezeTTS 2 with the note: 7 · 4 · 0 · 1 · 6; with the cue words: 6 · 4 · 2 · 0 · 4 (one take
+    of each left unrated, with a note).
+  - Drama 3 with the cue words: 5 · 1 · 6 · 1 · 3 (round 6: 5 · 1 · 6 · 1 · 5); with the note:
+    0 · 6 · 5 · 2 · 0.
+  - VoxCPM2 with the cue words: 0 · 8 · 4 · 1 · 0; with the note: 0 · 7 · 5 · 1 · 0.
+  - **By the line's kind.** Quiet lines (sad, fearful, happy; 5): Breeze with the note full on 3
+    and picked best on 4; with the cue words full on 1, best on none. Loud lines (6): Breeze full
+    on 4 either way, best 3 with the cue words, 2 with the note; Drama 3's cue words full on 3.
+    Whispered (2): Drama 3's cue words (8-48) and Breeze's cue words (8-67) full and picked best.
+  - "Loud but whispered style" on 7 whisper takes, each engine and both ways — the engines whisper
+    at full voice (§10.29, §10.33).
+  - So the note helps Breeze — most on the quiet lines, the gap the rounds have chased — and
+    takes Drama 3's feeling away. VoxCPM2 is weaker either way. The scorer's emotion gain ranked
+    them the same way (Breeze up, Drama 3 down).
+  - **Narration:** BreezeTTS 2's copy picked on all 10 passages. "Would you listen to a whole
+    book read this way?" Breeze's copy: yes; VoxCPM2: "with fixes".
+  - **Whispers in the mastered chapter:** both lines heard as the full feeling at −12 and at −18
+    dB; −18 dB picked best on both (the gap after mastering −15.1 and −18.2 dB). — *the user's
+    ears, 2026-10-20*.
 
 ## Records not yet distilled
 
