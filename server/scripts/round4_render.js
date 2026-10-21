@@ -52,6 +52,12 @@
 // `node scripts/audiocpp-catalog.js --ref jv`) once its licence is accepted, round 5's lines:
 //
 //     npm run round4:render -- --out data/round6 --direction <the round-5 dump> --arms drama3-r6
+//
+// Round 8 (TASKS "Round 7's answers acted on", 3) — BreezeTTS 2 told the app's direction words
+// against a delivery note, on lines from chapters the key doesn't cover; each told way its own run:
+//
+//     npm run round4:render -- --out data/round8/cue --lines-file <cue lines> --told-only \
+//       --arms breeze-r5 --seeds 7,8
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -285,6 +291,10 @@ async function main() {
       lines: { type: "string", default: "" }, // only these line ids (e.g. 7-95,8-57)
       prime: { type: "boolean", default: false }, // round 6b step 2: told takes with a lead-in, cut off
       crema: { type: "string", default: "" }, // round 6b step 4 (D3): CREMA-D's fingerprints and directions
+      // Round 8: lines from chapters the key doesn't cover — [{line, text, emotion, cue, direction}]
+      // in place of the key's cue lines; told takes only (the round pairs two told takes).
+      "lines-file": { type: "string", default: "" },
+      "told-only": { type: "boolean", default: false },
     },
   });
   const server = args.server.replace(/\/+$/, "");
@@ -292,7 +302,7 @@ async function main() {
   const seeds = args.seeds.split(",").map((s) => Number.parseInt(s, 10));
   const arms = args.arms.split(",").map((a) => a.trim()).filter(Boolean);
   for (const a of arms) if (!ARMS[a]) throw new Exit(`no arm called ${a} — the arms: ${Object.keys(ARMS).join(", ")}`);
-  let lines = cueLines(args.direction);
+  let lines = args["lines-file"] ? JSON.parse(readFileSync(args["lines-file"], "utf8")) : cueLines(args.direction);
   if (args.lines) {
     const wanted = new Set(args.lines.split(",").map((s) => s.trim()));
     lines = lines.filter((l) => wanted.has(l.line));
@@ -352,7 +362,7 @@ async function main() {
       const lead = args.prime ? PRIME[l.emotion] : null;
       if (args.prime && !lead) throw new Exit(`no lead-in for ${l.emotion} (line ${l.line})`);
       const text = lead ? `${lead} ${l.text}` : l.text;
-      for (const told of args.prime ? [true] : [false, true]) {
+      for (const told of args.prime || args["told-only"] ? [true] : [false, true]) {
         for (const seed of seeds) {
           const id = `${armName}/${l.line}-${told ? "told" : "plain"}-${seed}`;
           const wav = path.join(dir, `${l.line}-${told ? "told" : "plain"}-${seed}.wav`);

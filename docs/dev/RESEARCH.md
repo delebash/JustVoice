@@ -5087,6 +5087,38 @@ TASKS "Round 7". Through `npm run dev` (fork jv 1de98891).
   - **Whispers in the mastered chapter:** both lines heard as the full feeling at −12 and at −18
     dB; −18 dB picked best on both (the gap after mastering −15.1 and −18.2 dB). — *the user's
     ears, 2026-10-20*.
+  - **Mastering narrows a whisper's gap by about 3 dB** (the same files, `data/round7/whisper/
+    results.json`): before mastering the gaps were −12.1 / −18.1 dB (8-48) and −15.9 / −21.8 dB
+    (8-67); after, −9.0 / −15.1 and −12.4 / −18.2. So "−15 dB" heard after mastering is about
+    −18 dB in the chapter as joined. — *measured*.
+- **Attacked before acting (2026-10-21, TASKS "Round 7's answers acted on"):** the narration test
+  shuffled A and B once, not per passage — Breeze was A on all 10; the same Breeze cue-word files
+  heard in rounds 6 and 7 were rated differently on 3 of 13 lines (the ears' own noise); one fixed
+  cut gave the two whispers different gaps. Hence round 8's paired design below, the narration test
+  with Drama 3 and a long stretch, and whispers set by a gap.
+
+### 10.35 Round 8 — the delivery note against the cue words, paired (set 2026-10-21, before rendering)
+
+TASKS "Round 7's answers acted on", 3. Through `npm run dev`.
+
+- **Lines:** chapters IX and X of Alice (no round has used them). `server/scripts/round8_lines.js`
+  runs the app's own steps through its Lab routes, writing nothing: discover-speakers, analyze-text,
+  then direction-text twice on the same input — the live prompt (the cue words the app writes
+  today) and round 7's note prompt (`data/round8/note_system.txt`, "Turn the text's cue into the
+  sound of the voice; never copy the cue" with three made-up examples). 30 lines the live prompt
+  directed whose two answers differ in words, spread over its emotions.
+- **Takes:** BreezeTTS 2 in round 5–7's voice (the Hatter's, `breeze-r5`), the line's emotion the
+  same both ways, only the words differ; seeds 7 and 8 (`round4_render.js --lines-file
+  --told-only`). 120 takes.
+- **The page:** each pair is one line, one seed, the cue words and the note in shuffled order (A
+  and B drawn per pair): "Which says the line more the way the book means it?" — A · B · no
+  difference. 60 pairs, and 6 of them again later with A and B swapped (the ears' own noise).
+- **The rule, set before listening:** the note wins clearly only when, over the 60 pairs, it is
+  picked more than the cue words with a one-sided sign test p < 0.05 (ties counted for neither —
+  e.g. 32 of 50 decided pairs), **and** at least 4 of the 6 repeated pairs get the same answer
+  both times. Then the note prompt goes to the app (the live direction prompt changed; its
+  over-marking of lines with no cue, 82 % in round 7, fixed first). Otherwise the cue words stay
+  and nothing is built.
 
 ## Records not yet distilled
 
