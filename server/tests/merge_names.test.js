@@ -6,7 +6,7 @@
 // §10.4). Every model call is stubbed: `merge_names.runFeature` (the merge's
 // own call) and `identify.identifySpeakers` (Discover's, on the route).
 import * as llmStores from "@delebash/core/llm/stores";
-import { resolveFeaturePreset } from "@delebash/core/llm";
+import { abortError, resolveFeaturePreset } from "@delebash/core/llm";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import * as identify from "../src/extraction/identify.js";
 import { SpeakerCandidate } from "../src/extraction/identify.js";
@@ -104,6 +104,20 @@ describe("the local recipe", () => {
       "the Cheshire Cat",
       "the Knave",
     ]);
+  });
+
+  test("a run's Stop aborts the merge's call (the kit's signal, 2026-10-21)", async () => {
+    vi.spyOn(mergeNames, "runFeature").mockImplementation(
+      (_action, _variables, _overrides, opts) =>
+        new Promise((_resolve, reject) => {
+          if (!opts?.signal) reject(new Error("the merge's call was given no signal"));
+          else opts.signal.addEventListener("abort", () => reject(abortError(opts.signal)), { once: true });
+        }),
+    );
+    const stop = new AbortController();
+    const merging = mergeBook(collectFound(ALICE_SCANS), { recipe: "local", signal: stop.signal });
+    stop.abort();
+    await expect(merging).rejects.toMatchObject({ name: "AbortError" });
   });
 
   test("no names that share words, no call", async () => {

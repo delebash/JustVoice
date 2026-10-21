@@ -165,13 +165,13 @@ function _isOverflow(e) {
  * splitting, 2026-09-28: `settings.extraction` carries its knobs). `rawOut` receives the run's
  * usage (§16 — the responses carry the numbers).
  */
-export async function identifySpeakers(text, knownNames, { settings, runFn = null, rawOut = null, marks = null } = {}) {
+export async function identifySpeakers(text, knownNames, { settings, runFn = null, rawOut = null, marks = null, signal = null } = {}) {
   let measureFn = null;
   if (runFn === null) {
     // Called through the namespace, so a test standing in for engines/llm/run's functions is
     // heard (Python's tests patch run_mod.measure_feature / run_feature).
     measureFn = (...a) => run.measureFeature(...a);
-    runFn = (...a) => run.runFeature(...a);
+    runFn = (action, variables) => run.runFeature(action, variables, {}, { signal });
   }
   const ext = settings?.extraction ?? construct(ExtractionSettings, {});
   const action = "speaker_attribution.identify";

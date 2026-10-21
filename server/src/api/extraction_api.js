@@ -22,7 +22,7 @@
 // response drains — the queue, the stop flag and the "kept" copy are Python's, the thread is
 // gone. API agent 2 ported `RunUsage` first; API agent 3 the rest under the same names.
 
-import { aiRunHttpError, LLMNotConfiguredError, stores } from "@delebash/core/llm";
+import { aiRunHttpError, isAbortError, LLMNotConfiguredError, stores } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { getLogger } from "@delebash/core/platform/log";
 import { literal, nullable, opt, T } from "@delebash/core/platform/models";
@@ -574,12 +574,12 @@ function sceneRequest(h, scene, body) {
  * force). The model's failures are HttpErrors (501 / 502); a re-cut that would delete takes is
  * refused (409, `_persistAttribution`) and saves nothing.
  */
-export async function analyzeChapter(h, scene, body, { settings }) {
+export async function analyzeChapter(h, scene, body, { settings, signal = null }) {
   const { request, text, style, lineIds, segments } = sceneRequest(h, scene, construct(AnalyzeSceneRequest, body));
   const rawOut = {};
   let rows;
   try {
-    rows = await pipeline.analyzeScene({ settings, request, rawOut, marks: style, segments });
+    rows = await pipeline.analyzeScene({ settings, request, rawOut, marks: style, segments, signal });
   } catch (e) {
     throw analyzeError(e);
   }
@@ -598,8 +598,9 @@ export async function analyzeChapter(h, scene, body, { settings }) {
 }
 
 /** The pipeline's refusals as the routes answer them: 501 unconfigured, 502 the model's own
- * words, 502 "extraction failed: …" for anything else. */
+ * words, 502 "extraction failed: …" for anything else; a Stop stays a Stop. */
 function analyzeError(e) {
+  if (isAbortError(e)) return e;
   if (e instanceof LLMNotConfiguredError) return new HttpError(501, errText(e));
   if (e instanceof AttributionModelError) return new HttpError(502, errText(e));
   const ai = aiRunHttpError(e); // 503 a local model not ready, 502 a provider not reached (the kit's)
@@ -859,7 +860,7 @@ export function _persistDirection(h, scene, lines, answers, { model, recipe, mod
  * chapters before. The model's answer, then the carry (unless `carry` is false), is written by
  * `_persistDirection` in one transaction.
  */
-export async function directScene(sceneId, { recipe = null, carry = true } = {}) {
+export async function directScene(sceneId, { recipe = null, carry = true, signal = null } = {}) {
   const h = session.getDb();
   const scene = sceneById(h, sceneId);
   if (scene === null) throw notFound(`scene ${sceneId}`);
@@ -892,6 +893,7 @@ export async function directScene(sceneId, { recipe = null, carry = true } = {})
       earlier: use === "frontier" ? _earlierChapters(h, scene) : [],
       recipe: use,
       settings: state.settings.get(),
+      signal,
     });
   } catch (e) {
     throw directionError(e);
@@ -913,6 +915,7 @@ export async function directScene(sceneId, { recipe = null, carry = true } = {})
 /** The direction step's refusals as the routes answer them: 501 unconfigured, 502 the model's own
  * words, 502 "direction failed: …" for anything else. */
 function directionError(e) {
+  if (isAbortError(e)) return e; // a Stop, not a failure
   if (e instanceof LLMNotConfiguredError) return new HttpError(501, errText(e));
   if (e instanceof direction.DirectionModelError) return new HttpError(502, errText(e));
   const ai = aiRunHttpError(e);
@@ -1276,6 +1279,7 @@ const candidateOut = (c, extra = {}) => ({ name: c.name, role_hint: c.role_hint,
 
 /** A model call behind Discover failed: 501 unconfigured, 502 with the provider's words. */
 function discoverError(e, what) {
+  if (isAbortError(e)) return e; // a Stop, not a failure
   if (e instanceof LLMNotConfiguredError) return new HttpError(501, errText(e));
   if (e instanceof HttpError) return e;
   const ai = aiRunHttpError(e);
@@ -1292,14 +1296,14 @@ function discoverError(e, what) {
  * in `named_cast`); the scan replaces the chapter's last one. A model failure is an HttpError
  * (501 / 502).
  */
-export async function discoverChapter(h, scene, text = null, { settings, runFn = null } = {}) {
+export async function discoverChapter(h, scene, text = null, { settings, runFn = null, signal = null } = {}) {
   const body = text ?? _sceneText(h, scene);
   const cast = _resolveCast(scene.id, h);
   const rawOut = {};
   let candidates;
   try {
     const style = resolveMarks(dget(_projectMeta(h, scene.project_id), "speech_marks"), body);
-    candidates = await identify.identifySpeakers(body, cast, { settings, rawOut, marks: style, ...(runFn ? { runFn } : {}) });
+    candidates = await identify.identifySpeakers(body, cast, { settings, rawOut, marks: style, signal, ...(runFn ? { runFn } : {}) });
   } catch (e) {
     throw discoverError(e, "identification");
   }
@@ -1377,7 +1381,7 @@ export const MergeSpeakersResponse = T.Object({
  * (`names.match`) is listed in `in_book`. The merge itself, and its two recipes, is
  * `extraction/merge_names.js`. A model failure is an HttpError (501 / 502).
  */
-export async function mergeFoundNames(h, projectId, { runFn = null } = {}) {
+export async function mergeFoundNames(h, projectId, { runFn = null, signal = null } = {}) {
   const project = projectById(h, projectId);
   if (project === null) throw notFound(`project ${projectId}`);
   const ignored = new Set(projectIgnored(project).map((n) => names.norm(n)));
@@ -1401,7 +1405,7 @@ export async function mergeFoundNames(h, projectId, { runFn = null } = {}) {
   const rawOut = {};
   let merged;
   try {
-    merged = await mergeNames.mergeBook(mergeNames.collectFound(scans), { recipe, rawOut, ...(runFn ? { runFn } : {}) });
+    merged = await mergeNames.mergeBook(mergeNames.collectFound(scans), { recipe, rawOut, signal, ...(runFn ? { runFn } : {}) });
   } catch (e) {
     throw discoverError(e, "merging names");
   }
@@ -1501,7 +1505,7 @@ export function _severalSpeakAsks(h, scene, characters) {
  * speak them (`_severalSpeakAsks`): never a line you set. A chapter Analyze never read is refused
  * (409) — its lines have no speaker because nothing decided them yet.
  */
-export async function giveGroupLines(h, scene, { settings }) {
+export async function giveGroupLines(h, scene, { settings, signal = null }) {
   const blocks = blocksOf(h, scene.id);
   const meta = _sceneMeta(scene);
   if (!(truthy(dget(meta, "analyzed_at")) || blocks.some((b) => PIPELINE_SOURCES.has(b.source)))) {
@@ -1538,7 +1542,7 @@ export async function giveGroupLines(h, scene, { settings }) {
   for (const b of asks) {
     const row = { paragraph_idx: _paragraphOf(paragraphs, b), text: b.text };
     try {
-      answers.push([b.id, await groupLines.askLine(row, paragraphs, { castText, resolve, narratorId, words: cfg.second_look_words, usage }), b.speaker_id || null]);
+      answers.push([b.id, await groupLines.askLine(row, paragraphs, { castText, resolve, narratorId, words: cfg.second_look_words, usage, signal }), b.speaker_id || null]);
     } catch (e) {
       throw discoverError(e, "giving lines with no single speaker");
     }
@@ -1584,8 +1588,8 @@ export function router() {
    * checking the client is still there: Cancel has to mean cancel. **Except in the second look
    * (decided 2026-10-06):** a cancel there keeps the main pass — the worker hands over a copy
    * of the rows as the second look starts and after each line (`onStep`), and a cancel saves
-   * that copy and stops the look before its next line. A cancel during the main pass still
-   * writes nothing.
+   * that copy and stops the look. A cancel during the main pass still writes nothing. Either way
+   * the model's call in progress is aborted (the kit's signal, 2026-10-21).
    */
   app.post("/v1/scenes/:scene_id/analyze/stream", input({ body: AnalyzeSceneRequest }), (c) => {
     const h = session.getDb();
@@ -1599,6 +1603,8 @@ export function router() {
     let stop = false;
     let gone = false;
     let finished = false;
+    // The client gone aborts the model's call in progress, not only the look's next line.
+    const cancel = new AbortController();
     // The chapter as the second look last left it whole — what a cancel during the second look
     // saves. null until the second look starts.
     const kept = { rows: null };
@@ -1622,6 +1628,7 @@ export function router() {
           segments,
           onStep,
           stop: () => stop,
+          signal: cancel.signal,
         });
         const usage = rawOut.usage || {};
         q.put({
@@ -1643,7 +1650,9 @@ export function router() {
           usage: Object.keys(usage).length ? usage : null,
         });
       } catch (e) {
-        if (e instanceof LLMNotConfiguredError || e instanceof AttributionModelError) {
+        if (gone && isAbortError(e)) {
+          log.info(`analyze stream: cancelled — the model's call for scene ${sceneId} stopped`);
+        } else if (e instanceof LLMNotConfiguredError || e instanceof AttributionModelError) {
           q.put({ error: errText(e) }); // written for the user; never cut
         } else {
           log.exception("extraction stream failed", e);
@@ -1672,14 +1681,15 @@ export function router() {
       }
     };
 
-    // The client going away is Python's cancelled generator: the look stops before its next
-    // line, the kept copy (if the second look had started) is saved, and nothing else is.
+    // The client going away is Python's cancelled generator: the model's call is aborted, the
+    // kept copy (if the second look had started) is saved, and nothing else is.
     // (The stream's onAbort: it runs only when the client goes mid-stream; `finished` still
     // guards a client gone after the last frame.)
     const onAbort = () => {
       if (finished) return;
       gone = true;
       stop = true;
+      cancel.abort();
       if (kept.rows !== null) {
         saveOnCancel(kept.rows);
         kept.rows = null;

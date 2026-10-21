@@ -126,13 +126,13 @@ export function _parseAssignmentObject(text) {
  * One Smart-assign call (async) → `{assignments, note, usage}`: the model proposes, for each
  * speaker in `characters`, one of `voices` ({speaker_id: voice_id}). Ids the model invented, or
  * that aren't among those sent, are dropped. Throws the kit's LLMNotConfiguredError, or the call's
- * own error.
+ * own error; `signal` aborts the call (the kit's AbortError).
  */
-export async function smartAssign(characters, voices) {
+export async function smartAssign(characters, voices, { signal = null } = {}) {
   // The template row owns the wording ({{speakers}}/{{personas}} — ruling 9; the book's
   // speakers matched to personas, 2026-09-29); code computes the variable VALUES. No token cap
   // (caps ruling 2026-08-07).
-  const resp = await run.runFeature("smart_assign", { speakers: _formatCharacters(characters), personas: _formatVoices(voices) });
+  const resp = await run.runFeature("smart_assign", { speakers: _formatCharacters(characters), personas: _formatVoices(voices) }, {}, { signal });
 
   const raw = _parseAssignmentObject(resp.text);
   const charIds = new Set(characters.map((ch) => ch.id));

@@ -13,6 +13,7 @@
 // routes, every step's function, the render job, the take check and the export job.
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { abortError } from "@delebash/core/llm";
 import { sleep } from "@delebash/core/platform/asyncutil";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import * as captures from "../src/api/captures_api.js";
@@ -27,6 +28,7 @@ import * as run from "../src/engines/llm/run.js";
 import * as exportAudiobook from "../src/export_audiobook.js";
 import * as identify from "../src/extraction/identify.js";
 import { SpeakerCandidate } from "../src/extraction/identify.js";
+import * as mergeNames from "../src/extraction/merge_names.js";
 import { bare } from "../src/extraction/names.js";
 import { mediaFile } from "../src/media_paths.js";
 import * as renderCore from "../src/render_core.js";
@@ -43,6 +45,32 @@ let calls;
 let hang;
 /** A line whose every read-back hears nothing — the take check flags it. */
 let deafTo;
+/** A step's key: its next model call is held until the run's Stop aborts it (`held` hears it start). */
+let holdIn;
+let held;
+
+/** The step a model call belongs to. */
+function stepOfAction(action) {
+  if (action.startsWith("speaker_attribution.")) return "analyze";
+  if (action.startsWith("speaker_merge.")) return "merge";
+  if (action === "speaker_group") return "group_lines";
+  if (action === VOICE_ACTIONS.speaker || action === VOICE_ACTIONS.narrator) return "describe";
+  if (action === "smart_assign") return "match";
+  if (action.startsWith("direction.")) return "direction";
+  return null;
+}
+
+/** A held call: it ends only when its signal aborts, as the kit's run does. A call given no
+ * signal fails at once — the step fails, and the test says which. */
+function heldUntilAborted(signal) {
+  held();
+  if (!signal) return Promise.reject(new Error("the model's call was given no signal"));
+  return new Promise((_resolve, reject) => {
+    const stop = () => reject(abortError(signal));
+    if (signal.aborted) stop();
+    else signal.addEventListener("abort", stop, { once: true });
+  });
+}
 
 const labels = (x) => [x.name, ...(x.aliases || [])].map(bare);
 const keyNameOf = (speaker) => KEY.cast.find((k) => labels(k).some((l) => labels(speaker).includes(l)))?.name ?? null;
@@ -60,8 +88,12 @@ const usage = { prompt_tokens: 1000, completion_tokens: 50, model: "gemma-test" 
 const answer = (obj) => ({ text: JSON.stringify(obj), ...usage });
 
 /** One fake model for every AI step of the run, answering as a model should. */
-async function fakeModel(action, variables) {
+async function fakeModel(action, variables, _overrides = {}, { signal = null } = {}) {
   calls[action] = (calls[action] ?? 0) + 1;
+  if (holdIn !== null && stepOfAction(action) === holdIn) {
+    holdIn = null;
+    return heldUntilAborted(signal);
+  }
   if (hang) await hang;
   if (action.startsWith("speaker_attribution.")) {
     // Analyze: each [D#] the key's speaker, "unknown" where several speak.
@@ -103,11 +135,17 @@ beforeEach(() => {
   calls = {};
   hang = null;
   deafTo = null;
+  holdIn = null;
+  held = () => {};
   vi.spyOn(run, "runFeature").mockImplementation(fakeModel);
   vi.spyOn(run, "measureFeature").mockResolvedValue(null);
   // Discover: gemma's scan of VII, its call's numbers on the run.
   vi.spyOn(identify, "identifySpeakers").mockImplementation(async (_text, _cast, opts) => {
     calls.discover = (calls.discover ?? 0) + 1;
+    if (holdIn === "discover") {
+      holdIn = null;
+      return heldUntilAborted(opts?.signal);
+    }
     if (opts?.rawOut) opts.rawOut.usage = { ...usage, duration_ms: 5, pieces: 1 };
     return ALICE_SCANS.find((x) => x.title === VII).candidates.map((x) => new SpeakerCandidate(x));
   });
@@ -373,6 +411,52 @@ test("a_frontier_route_shows_its_price_and_the_run_asks_once", { timeout: 60000 
   expect(unknown.estimate.price).toBeNull();
   expect(unknown.estimate.unpriced).toEqual(["an-unpriced-cloud-model"]);
   expect(unknown.ask_price).toBe(true);
+});
+
+test("stop_ends_the_language_models_call_at_once_on_every_ai_step", { timeout: 120000 }, async () => {
+  // The kit's signal (2026-10-21): Stop aborts the call in progress — it no longer waits for the
+  // model to answer (minutes on a long chapter on the local model). Each AI step in turn: held in
+  // its model call, stopped, resumed; the step is left to do again and the run finishes.
+  const { c, pid } = await aliceVII();
+  // Alice VII's names share no words, so the merge asks no model: it is held a level up, and
+  // merge_names.test.js holds its call itself.
+  const realMerge = mergeNames.mergeBook;
+  vi.spyOn(mergeNames, "mergeBook").mockImplementation(async (found, opts) => {
+    if (holdIn !== "merge") return realMerge(found, opts);
+    holdIn = null;
+    return heldUntilAborted(opts?.signal);
+  });
+  let runId = null;
+  for (const key of ["discover", "merge", "analyze", "group_lines", "describe", "match", "direction"]) {
+    const inCall = new Promise((resolve) => {
+      held = resolve;
+    });
+    holdIn = key;
+    if (runId === null) runId = (await c.post("/v1/book_runs", { json: { project_id: pid } })).json().id;
+    else expect((await c.post(`/v1/book_runs/${runId}/resume`)).status).toBe(200);
+    const first = await Promise.race([inCall.then(() => "in the call"), bookRun.finished(runId).then((r) => `ended ${r.status}`)]);
+    expect(first, `${key}: its model call`).toBe("in the call");
+    bookRun.cancelRun(runId);
+    const r = await bookRun.finished(runId);
+    expect(r.status, `${key}: ${JSON.stringify(r.error)}`).toBe("cancelled");
+    expect(stepOf(r, key).status, key).toBe("pending");
+  }
+  expect((await c.post(`/v1/book_runs/${runId}/resume`)).status).toBe(200);
+  const done = await settle(c, runId);
+  expect(done.status, JSON.stringify(done.error)).toBe("completed");
+});
+
+test("discovers_scan_hands_the_signal_to_its_model_call", async () => {
+  // Discover's call is faked above it in the run; here the scan itself runs, on the fake model.
+  vi.mocked(identify.identifySpeakers).mockRestore();
+  vi.spyOn(run, "runFeature").mockImplementation(async (action, _variables, _overrides, opts) => {
+    expect(action).toBe("speaker_attribution.identify");
+    return heldUntilAborted(opts?.signal);
+  });
+  const stop = new AbortController();
+  const scan = identify.identifySpeakers("“Hello,” said Alice.", [], { settings: null, signal: stop.signal });
+  stop.abort();
+  await expect(scan).rejects.toMatchObject({ name: "AbortError" });
 });
 
 test("every_scanned_name_ignored_and_no_speaker_stops_the_run_it_would_be_one_voice", async () => {

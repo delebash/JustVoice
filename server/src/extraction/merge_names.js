@@ -77,7 +77,7 @@ export const FRONTIER_USER_TEMPLATE = `Every name the scan found, in the order t
 Return only the JSON object.`;
 
 /** The engine door, called through this module so a test can stand in for it. */
-export const runFeature = (action, variables, overrides) => run.runFeature(action, variables, overrides);
+export const runFeature = (action, variables, overrides, opts) => run.runFeature(action, variables, overrides, opts);
 
 /** The recipe the merge runs — "frontier" when the Frontier card's preset is Frontier (the kit's
  * `presetRecipe`: the preset's own setting, else its provider's kind), else "local". The same rule
@@ -258,8 +258,8 @@ export function personOf(found, { idx, chosen }) {
  * "frontier". `runFn(action, variables)` is the model seam (tests stand in for it); `rawOut.usage`
  * receives the call's usage — none when no call ran.
  */
-export async function mergeBook(found, { recipe = "local", runFn = null, rawOut = null } = {}) {
-  const call = runFn || ((action, variables) => self.runFeature(action, variables));
+export async function mergeBook(found, { recipe = "local", runFn = null, rawOut = null, signal = null } = {}) {
+  const call = runFn || ((action, variables) => self.runFeature(action, variables, {}, { signal }));
   let persons;
   let ask = null;
   let groupOf = null;

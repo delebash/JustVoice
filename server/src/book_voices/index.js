@@ -23,7 +23,7 @@
 // Nothing replaces a voice or persona you made: a speaker already cast is left alone, and a
 // speaker is cast only while it has no persona.
 
-import { LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
+import { isAbortError, LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
 import { getLogger } from "@delebash/core/platform/log";
 import { cpLen, errText, isJsonObject, pySorted, strip } from "@delebash/core/platform/py";
 import { jsonLoads } from "@delebash/core/platform/pyjson";
@@ -171,7 +171,7 @@ export function bookTargets(h, projectId, minLines) {
  * failed Local call is listed and the rest go on; no language model set throws the kit's
  * LLMNotConfiguredError. Writes nothing.
  */
-export async function describeVoices(h, projectId, { recipe = null } = {}) {
+export async function describeVoices(h, projectId, { recipe = null, signal = null } = {}) {
   const started = performance.now();
   const project = projectOf(h, projectId);
   const cfg = settingsOf();
@@ -206,11 +206,16 @@ export async function describeVoices(h, projectId, { recipe = null } = {}) {
 
   if (chosen === "frontier") {
     const nameOf = new Map(h.all(`select id, name from ${Speaker} where project_id = ?`, [projectId]).map((r) => [r.id, r.name]));
-    const resp = await run.runFeature(ACTIONS.cast, {
-      book,
-      speakers: everyone.map((t) => speakerLine(t.speaker)).join("\n"),
-      manuscript: bookManuscript(chapters, nameOf),
-    });
+    const resp = await run.runFeature(
+      ACTIONS.cast,
+      {
+        book,
+        speakers: everyone.map((t) => speakerLine(t.speaker)).join("\n"),
+        manuscript: bookManuscript(chapters, nameOf),
+      },
+      {},
+      { signal },
+    );
     counted(resp);
     const answer = parseObject(resp.text) ?? {};
     // By id, as asked; a model that keyed by name is read too.
@@ -220,9 +225,9 @@ export async function describeVoices(h, projectId, { recipe = null } = {}) {
     const ask = async (target, action, variables) => {
       let resp;
       try {
-        resp = await run.runFeature(action, variables);
+        resp = await run.runFeature(action, variables, {}, { signal });
       } catch (e) {
-        if (e instanceof LLMNotConfiguredError) throw e;
+        if (e instanceof LLMNotConfiguredError || isAbortError(e)) throw e;
         log.warning(`book_voices: no description for ${target.speaker.name}: ${errText(e)}`);
         out.failed.push({ ...entryOf(target), error: errText(e) });
         return;
@@ -403,7 +408,7 @@ function genderWord(raw) {
  * this book yet, and its matches are cast here (`applyAssignments`, never over a persona). Throws
  * the kit's LLMNotConfiguredError when there are speakers to match and no language model.
  */
-export async function matchRest(h, projectId) {
+export async function matchRest(h, projectId, { signal = null } = {}) {
   const started = performance.now();
   const project = projectOf(h, projectId);
   const language = strip(String(projectMeta(project).language || ""));
@@ -442,7 +447,7 @@ export async function matchRest(h, projectId) {
         pronouns: s.pronouns,
         role: s.role_label === "narrator" ? "narrator" : null,
       }));
-      const r = await smartAssignApi.smartAssign(characters, pool);
+      const r = await smartAssignApi.smartAssign(characters, pool, { signal });
       applied = smartAssignApi.applyAssignments(h, r.assignments, { onlyUncast: true });
       out.note = r.note;
       out.usage = r.usage;

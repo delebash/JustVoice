@@ -21,7 +21,7 @@
 // the emotion becomes its own tag (render_core's `value_map`); a sliders-only model, or a line with
 // no voice yet, gets nothing. Writing it is extraction_api's `_persistDirection`.
 
-import { LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
+import { isAbortError, LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
 import { getLogger } from "@delebash/core/platform/log";
 import { B, cpLen, errText, isDict, RuntimeError, splitWs, strip, truthy } from "@delebash/core/platform/py";
 import { jsonRawDecode, pyStrOf } from "@delebash/core/platform/pyjson";
@@ -46,7 +46,7 @@ export const actionOf = (recipe) => `${FEATURE}.${recipe}`;
 
 /** The engine doors, called through this module so a test can stand in for them (as
  * pipeline.runFeature / measureFeature). */
-export const runFeature = (action, variables, overrides) => run.runFeature(action, variables, overrides);
+export const runFeature = (action, variables, overrides, opts) => run.runFeature(action, variables, overrides, opts);
 export const measureFeature = (action, variables, overrides) => run.measureFeature(action, variables, overrides);
 
 // ── The prompts (seeded by seed_feature_prompts; what runs is the live row) ─────────────────
@@ -371,7 +371,7 @@ const _tooBig = "A paragraph of this chapter is too long for the model to read, 
  * answers for the lines it owns. A refusal as too big, or a reply cut off at the context, halves the
  * piece.
  */
-export async function directChapter({ segments, cast = [], earlier = [], recipe = null, settings = null, overrides = {}, maxContext = null }) {
+export async function directChapter({ segments, cast = [], earlier = [], recipe = null, settings = null, overrides = {}, maxContext = null, signal = null }) {
   const use = RECIPES.includes(recipe) ? recipe : self.directionRecipe();
   const action = actionOf(use);
   const ext = settings?.extraction ?? construct(ExtractionSettings, {});
@@ -428,11 +428,11 @@ export async function directChapter({ segments, cast = [], earlier = [], recipe 
     let cutOff = false;
     let refused = null;
     try {
-      resp = await self.runFeature(action, varsFor(segs), overrides);
+      resp = await self.runFeature(action, varsFor(segs), overrides, { signal });
       cutOff = (resp?.finish_reason || "") === "length";
     } catch (e) {
-      // Not configured → the route's 501 with the actionable message.
-      if (e instanceof LLMNotConfiguredError) throw e;
+      // Not configured → the route's 501 with the actionable message; a Stop stays a Stop.
+      if (e instanceof LLMNotConfiguredError || isAbortError(e)) throw e;
       if (!_isOverflow(e)) throw new DirectionModelError(modelFailureMessage(e), { cause: e });
       [cutOff, refused] = [true, e];
     }

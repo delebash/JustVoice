@@ -14,9 +14,12 @@
 // 2026-10-08): its fake deltas are SimpleNamespaces with no `reasoning` attribute, which the
 // pipeline's stream reader reads, so the run ends in an error frame. Here a missing field is just
 // undefined and the test passes as written.
-import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { abortError, LLMNotConfiguredError } from "@delebash/core/llm";
+import { sleep } from "@delebash/core/platform/asyncutil";
 import { strip, isDict } from "@delebash/core/platform/py";
 import { afterEach, expect, test, vi } from "vitest";
+import { Block, Scene } from "../src/database/models.js";
+import * as session from "../src/database/session.js";
 import * as pipeline from "../src/extraction/pipeline.js";
 import { appClient, closeApps } from "./app_helpers.js";
 import { bookJson } from "./jw_fixtures.js";
@@ -104,6 +107,53 @@ test("stream_emits_deltas_then_a_done_frame_with_rows_and_usage", async () => {
   expect(done).not.toHaveProperty("__rows__");
 
   expect(frames.at(-1)).toBe("[DONE]");
+});
+
+test("cancel_stops_the_models_call_at_once_and_writes_nothing", async () => {
+  // The kit's signal (2026-10-21): the client gone aborts the model's call in progress; before,
+  // the model answered to the end and only the second look's next line was skipped.
+  const { app, c } = await appClient(undefined, { seed: true });
+  const sceneId = await _sceneId(c);
+  const h = session.getDb();
+  const chapter = () => [h.get(Scene, sceneId).metadata_json, h.all(`select id, speaker_id, source from ${Block} where scene_id = ? order by position`, [sceneId])];
+  const before = chapter();
+  let entered;
+  const inCall = new Promise((resolve) => {
+    entered = resolve;
+  });
+  let stopped;
+  const callStopped = new Promise((resolve) => {
+    stopped = resolve;
+  });
+  useStream(async (_action, _variables, _overrides, opts) => {
+    entered();
+    if (!opts?.signal) throw new Error("the model's call was given no signal");
+    return (async function* fakeStream() {
+      yield { done: false, text: "[", progress: null };
+      await new Promise((_resolve, reject) => {
+        opts.signal.addEventListener(
+          "abort",
+          () => {
+            stopped();
+            reject(abortError(opts.signal));
+          },
+          { once: true },
+        );
+      });
+    })();
+  });
+  const r = await app.request(
+    `/v1/scenes/${sceneId}/analyze/stream`,
+    { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: '"Hi," said Mara.' }) },
+    { incoming: { socket: { remoteAddress: "127.0.0.1" } } },
+  );
+  expect(r.status).toBe(200);
+  await inCall;
+  await r.body.cancel(); // the window's Cancel: the client goes
+  const outcome = await Promise.race([callStopped.then(() => "stopped"), sleep(3000).then(() => "still answering")]);
+  expect(outcome).toBe("stopped");
+  await sleep(50);
+  expect(chapter()).toEqual(before);
 });
 
 test("stream_surfaces_no_llm_as_an_error_frame", async () => {

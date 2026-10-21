@@ -26,9 +26,11 @@ export function jvLlmConfig() {
   return buildLlmConfig(PREFER_LOCAL_FEATURES);
 }
 
-/** Run one feature action → the kit's LLMResponse. */
-export async function runFeature(action, variables, overrides = {}) {
-  return runAction(stores.getPromptStore(), jvLlmConfig(), { action, variables, ...overrides });
+/** Run one feature action → the kit's LLMResponse. `signal` (the kit's, 2026-10-21): a run's
+ * Stop or a client gone aborts the model's request, and the run rejects with the kit's AbortError
+ * (`isAbortError`). */
+export async function runFeature(action, variables, overrides = {}, { signal = null } = {}) {
+  return runAction(stores.getPromptStore(), jvLlmConfig(), { action, variables, ...overrides }, { signal });
 }
 
 /** runFeature's streaming sibling (lane 2A, 2026-08-08): the kit's streamAction over the same
@@ -36,8 +38,8 @@ export async function runFeature(action, variables, overrides = {}) {
  * `progress`, a final `done` with usage). Resolution + the local-model ensure run eagerly, so
  * callers get LLMNotConfiguredError before any frame: `for await (const d of await
  * streamFeature(…))`. */
-export async function streamFeature(action, variables, overrides = {}) {
-  return streamAction(stores.getPromptStore(), jvLlmConfig(), { action, variables, ...overrides });
+export async function streamFeature(action, variables, overrides = {}, { signal = null } = {}) {
+  return streamAction(stores.getPromptStore(), jvLlmConfig(), { action, variables, ...overrides }, { signal });
 }
 
 /** How big runFeature's prompt would be, and the context it must fit — the kit's

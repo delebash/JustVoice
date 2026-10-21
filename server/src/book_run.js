@@ -565,8 +565,9 @@ export async function finished(runId) {
   return runStatus(runId);
 }
 
-/** Stop: the run stops at the next chapter or line, its render or export job with it; what is
- * done is kept, and Resume picks up there. A run with no live runner goes "cancelled" at once. */
+/** Stop: the run stops at once — a language model's call in progress is aborted (2026-10-21), a
+ * render or export job stops at its next line; what is done is kept, and Resume picks up there
+ * (the chapter a step was on is done again). A run with no live runner goes "cancelled" at once. */
 export function cancelRun(runId) {
   const h = _db();
   const row = h.get(BookRun, runId);
@@ -847,14 +848,14 @@ class RunCtx {
 const STEP_FNS = {
   async discover(ctx) {
     await ctx.eachChapter("discover", async (scene) => {
-      const got = await extraction.discoverChapter(ctx.h, scene, null, { settings: ctx.settings });
+      const got = await extraction.discoverChapter(ctx.h, scene, null, { settings: ctx.settings, signal: ctx.signal });
       return { usage: got.usage };
     });
   },
 
   async merge(ctx) {
     const st = ctx.steps.merge;
-    const out = await extraction.mergeFoundNames(ctx.h, ctx.projectId);
+    const out = await extraction.mergeFoundNames(ctx.h, ctx.projectId, { signal: ctx.signal });
     ctx.count("merge", out.usage, out.recipe);
     st.people = out.people.map((p) => ({ name: p.name, description: p.description ?? null, aliases: p.aliases ?? [], lines: p.lines ?? null }));
     st.left_out = out.left_out.map((p) => p.name);
@@ -882,21 +883,21 @@ const STEP_FNS = {
 
   async analyze(ctx) {
     await ctx.eachChapter("analyze", async (scene) => {
-      const out = await extraction.analyzeChapter(ctx.h, scene, { text: extraction._sceneText(ctx.h, scene) }, { settings: ctx.settings });
+      const out = await extraction.analyzeChapter(ctx.h, scene, { text: extraction._sceneText(ctx.h, scene) }, { settings: ctx.settings, signal: ctx.signal });
       return { usage: out.usage, recipe: pipeline.routeRecipe(out.route_used) };
     });
   },
 
   async group_lines(ctx) {
     await ctx.eachChapter("group_lines", async (scene) => {
-      const out = await extraction.giveGroupLines(ctx.h, scene, { settings: ctx.settings });
+      const out = await extraction.giveGroupLines(ctx.h, scene, { settings: ctx.settings, signal: ctx.signal });
       return { usage: out.asked ? out.usage : null };
     });
   },
 
   async describe(ctx) {
     const st = ctx.steps.describe;
-    const out = await bookVoices.describeVoices(ctx.h, ctx.projectId);
+    const out = await bookVoices.describeVoices(ctx.h, ctx.projectId, { signal: ctx.signal });
     ctx.count("describe", out.usage, out.recipe);
     // Held for the next step: nothing in the book stores them (RESEARCH §10.20).
     st.descriptions = out.descriptions;
@@ -923,7 +924,7 @@ const STEP_FNS = {
 
   async match(ctx) {
     const st = ctx.steps.match;
-    const out = await bookVoices.matchRest(ctx.h, ctx.projectId);
+    const out = await bookVoices.matchRest(ctx.h, ctx.projectId, { signal: ctx.signal });
     ctx.count("match", out.usage);
     st.assigned = out.assigned.map((a) => a.name);
     st.unmatched = out.unmatched.map((u) => u.name);
@@ -932,7 +933,7 @@ const STEP_FNS = {
 
   async direction(ctx) {
     await ctx.eachChapter("direction", async (scene) => {
-      const out = await extraction.directScene(scene.id);
+      const out = await extraction.directScene(scene.id, { signal: ctx.signal });
       return { usage: out.usage, recipe: out.recipe };
     });
   },

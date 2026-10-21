@@ -24,6 +24,7 @@
 // join the run's usage, and a cancel stops the look before its next line — the stream then
 // saves the chapter as it stood (extraction_api).
 
+import { isAbortError } from "@delebash/core/llm";
 import { getLogger } from "@delebash/core/platform/log";
 import { cpSlice, errText, isDict, pyRound, splitWs, strip, strRepr, truthy, ValueError } from "@delebash/core/platform/py";
 import { jsonLoads, pyFloatOf, pyStrOf } from "@delebash/core/platform/pyjson";
@@ -63,8 +64,8 @@ Who speaks the marked line ⟦{{line}}⟧? Return only the JSON object.`;
 
 /** The engine door, called through this module so a test can stand in for it (Python's tests
  * patch `second_look.run_feature` / `stream_feature`). */
-export const runFeature = (action, variables, overrides) => run.runFeature(action, variables, overrides);
-export const streamFeature = (action, variables, overrides) => run.streamFeature(action, variables, overrides);
+export const runFeature = (action, variables, overrides, opts) => run.runFeature(action, variables, overrides, opts);
+export const streamFeature = (action, variables, overrides, opts) => run.streamFeature(action, variables, overrides, opts);
 
 /**
  * The cast as the second look reads it: id, name, other names AND who they are. The main
@@ -155,7 +156,8 @@ export function parse(text) {
  * `onDelta(text)`: when set, each call streams and its text is passed on, as the main call's
  * is; `onThinking(text)` gets a thinking model's reasoning. `onStep(done, total, rows)`: called
  * as the look starts and after each line — points where `rows` is whole, so a caller can keep a
- * copy. `stop()`: asked before each line; true ends the look there. The calls' tokens and time
+ * copy. `stop()`: asked before each line; true ends the look there. `signal`: aborts the call
+ * being made (the kit's AbortError goes up, 2026-10-21). The calls' tokens and time
  * are added to `rawOut.usage` when the main call left one.
  */
 export async function secondLook(
@@ -176,6 +178,7 @@ export async function secondLook(
     onStep = null,
     stop = null,
     onThinking = null,
+    signal = null,
   },
 ) {
   const skipSet = skip instanceof Set ? skip : new Set(skip);
@@ -210,6 +213,7 @@ export async function secondLook(
         usage,
         onDelta,
         onThinking,
+        signal,
       });
       if (got === "none") rows[i].second_look_asked = true;
     } finally {
@@ -238,14 +242,14 @@ function _addUsage(usage, promptTokens, completionTokens) {
 /** One question; the reply's text. Streams when `onDelta` is set — the prompt-eval frames are
  * dropped: the strip shows "reading prompt" only before a run's first token (decided
  * 2026-10-06). */
-async function _ask(variables, usage, onDelta, onThinking = null) {
+async function _ask(variables, usage, onDelta, onThinking = null, signal = null) {
   if (onDelta === null) {
-    const resp = await self.runFeature(ACTION, variables);
+    const resp = await self.runFeature(ACTION, variables, {}, { signal });
     _addUsage(usage, resp?.prompt_tokens ?? 0, resp?.completion_tokens ?? 0);
     return resp?.text || "";
   }
   const parts = [];
-  for await (const delta of await self.streamFeature(ACTION, variables)) {
+  for await (const delta of await self.streamFeature(ACTION, variables, {}, { signal })) {
     if (delta.done) _addUsage(usage, delta.prompt_tokens, delta.completion_tokens);
     else if (delta.reasoning) {
       if (onThinking !== null) onThinking(delta.reasoning);
@@ -267,7 +271,7 @@ async function _ask(variables, usage, onDelta, onThinking = null) {
 export async function lookAt(
   row,
   paragraphs,
-  { castText, before, after, resolve, castNames, floor, useFloor, cfg, report, usage, onDelta = null, onThinking = null },
+  { castText, before, after, resolve, castNames, floor, useFloor, cfg, report, usage, onDelta = null, onThinking = null, signal = null },
 ) {
   const variables = {
     cast: castText,
@@ -278,8 +282,9 @@ export async function lookAt(
   };
   let text;
   try {
-    text = await _ask(variables, usage, onDelta, onThinking);
+    text = await _ask(variables, usage, onDelta, onThinking, signal);
   } catch (e) {
+    if (isAbortError(e)) throw e; // a Stop, not a failed line
     // An extra: a failure leaves the line as it was.
     report.failed += 1;
     log.warning(`second look failed on ${strRepr(cpSlice(row.text, 0, 60))}: ${errText(e)}`);

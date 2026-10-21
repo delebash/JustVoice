@@ -179,7 +179,8 @@ Croquet-Ground · 12:15 so far · 64,132 tokens in* — and each step's **Status
 says *Done · 2 chapters*, *Running · 212 of 454 lines* or *Waiting*. It runs on
 the server: it goes on if you leave the page, close the window, or run the
 server headless, and the AI tasks panel shows it too (its Cancel is **Stop**).
-**Stop** stops it at the next chapter or line; what is done is kept. While it
+**Stop** stops it at once — the language model's answer in progress is cut off, a render
+stops at its next line; what is done is kept, and Resume does the chapter it was on again. While it
 works on a chapter, that chapter's own buttons on Script and Discover wait —
 Analyze, Review, ✎ Edit text, Delete, ticking it — and its row on Script shows
 the step in place of its Analyzed date (*Render every line…*), so the run and
@@ -843,8 +844,8 @@ keeps the lines already answered; the one being asked is dropped.
 pass runs, Analyze writes nothing and the chapter keeps its previous analysis.
 Cancelled during the second look, the chapter is saved as it stood: the main
 pass's speakers and any line the second look had already named; the rest stay
-blank, and the second look stops before its next line. Script reloads the
-chapter once the save is done.
+blank, and the question being asked is dropped — the model stops answering at once
+(since 2026-10-21). Script reloads the chapter once the save is done.
 
 **When the model can't answer, Analyze says so.** If the model call fails,
 that chapter's row says **failed** with the reason; nothing is saved and the

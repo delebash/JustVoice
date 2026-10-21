@@ -10,7 +10,7 @@
 // The dataclasses keep their Python field names: `AttributionRow` IS the wire row
 // (`AttributionRowResponse(**row.__dict__)` in extraction_api), so one name per field.
 
-import { getLlmRegistry, LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
+import { getLlmRegistry, isAbortError, LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
 import * as llmDb from "@delebash/core/llm/db";
 import { literal, nullable, opt, T } from "@delebash/core/platform/models";
 import { getLogger } from "@delebash/core/platform/log";
@@ -43,8 +43,8 @@ const WS = `[${PY_WS}]`;
 
 /** The engine doors, called through this module so a test can stand in for them (Python's
  * tests patch `pipeline.run_feature` / `stream_feature` / `measure_feature`). */
-export const runFeature = (action, variables, overrides) => run.runFeature(action, variables, overrides);
-export const streamFeature = (action, variables, overrides) => run.streamFeature(action, variables, overrides);
+export const runFeature = (action, variables, overrides, opts) => run.runFeature(action, variables, overrides, opts);
+export const streamFeature = (action, variables, overrides, opts) => run.streamFeature(action, variables, overrides, opts);
 export const measureFeature = (action, variables, overrides) => run.measureFeature(action, variables, overrides);
 
 /**
@@ -449,7 +449,7 @@ function _oneParagraphTooBig(tokens, context) {
  * context (finish_reason "length"), halves the piece and runs both halves. Only a single
  * paragraph that still does not fit fails.
  */
-async function _attributeInPieces(request, settings, pick, paragraphs, segments, promptCast, promptCorrections, { onDelta, onProgress, rawOut, onThinking = null }) {
+async function _attributeInPieces(request, settings, pick, paragraphs, segments, promptCast, promptCorrections, { onDelta, onProgress, rawOut, onThinking = null, signal = null }) {
   const t0 = performance.now() / 1000;
   const ext = settings?.extraction ?? construct(ExtractionSettings, {});
   const leadIn = ext.split_lead_in_paragraphs;
@@ -522,7 +522,7 @@ async function _attributeInPieces(request, settings, pick, paragraphs, segments,
   /** One model call → [reply text, finish_reason]. */
   const call = async (variables) => {
     if (onDelta === null) {
-      const resp = await self.runFeature(action, variables, callKwargs);
+      const resp = await self.runFeature(action, variables, callKwargs, { signal });
       usage.prompt_tokens += Math.trunc(Number(resp?.prompt_tokens || 0));
       usage.completion_tokens += Math.trunc(Number(resp?.completion_tokens || 0));
       usage.model = resp?.model || usage.model;
@@ -532,7 +532,7 @@ async function _attributeInPieces(request, settings, pick, paragraphs, segments,
     // delta carries the usage and why it ended.
     const parts = [];
     let finish = "";
-    for await (const delta of await self.streamFeature(action, variables, callKwargs)) {
+    for await (const delta of await self.streamFeature(action, variables, callKwargs, { signal })) {
       if (delta.done) {
         usage.prompt_tokens += Math.trunc(Number(delta.prompt_tokens || 0));
         usage.completion_tokens += Math.trunc(Number(delta.completion_tokens || 0));
@@ -639,7 +639,8 @@ function hashable(x) {
  * `onDelta(text)` as it arrives, and `onProgress(0..1)` gets the builtin engine's prompt-eval
  * frames. Inputs, outputs, parsing, floor and rawOut are IDENTICAL either way. The second look
  * streams through the same `onDelta`; `onStep(done, total, rows)` hears it start and finish
- * each line, and `stop()` ends it before its next line.
+ * each line, and `stop()` ends it before its next line. `signal` (a run's Stop, a client gone)
+ * aborts the model's call itself; the run rejects with the kit's AbortError (2026-10-21).
  */
 export async function analyzeScene({
   settings,
@@ -652,6 +653,7 @@ export async function analyzeScene({
   onStep = null,
   stop = null,
   onThinking = null,
+  signal = null,
 }) {
   request = construct(AnalyzeRequest, request);
   // ── 1. Segment ───────────────────────────────────────────────
@@ -693,10 +695,11 @@ export async function analyzeScene({
         onProgress,
         rawOut,
         onThinking,
+        signal,
       });
     } catch (e) {
-      // Not configured → the API layer's 501 with the actionable message.
-      if (e instanceof LLMNotConfiguredError || e instanceof AttributionModelError) throw e;
+      // Not configured → the API layer's 501 with the actionable message; a Stop stays a Stop.
+      if (e instanceof LLMNotConfiguredError || e instanceof AttributionModelError || isAbortError(e)) throw e;
       // A failed call stops the run with the provider's reason. Swallowing it turned every
       // failure into a chapter of "unknown" lines with no message (pass 10).
       log.warning(`speaker_attribution LLM call failed: ${errText(e)}`);
@@ -796,6 +799,7 @@ export async function analyzeScene({
       onStep,
       stop,
       onThinking,
+      signal,
     });
   }
   return rows;

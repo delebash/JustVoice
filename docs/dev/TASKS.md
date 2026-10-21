@@ -546,6 +546,42 @@ OPEN:   Change folder, Remove the old copy and Move back show only in the deskto
         the 8741 browser shows the panel without them.
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
 
+### Round 7's answers acted on, and Stop ends the language model's call (decided 2026-10-21)
+STATE:  DECIDED 2026-10-21 — after the user's ears on round 7 and "think on these rec adverserially",
+        shown: "1. Should Breeze become the default narrator, with Drama 3 added to a narration test
+        that includes a long passage and shuffles A and B per passage? Lean: yes to both." "2. Should
+        Drama 3's narration be heard before deciding what to fix in VoxCPM2? Lean: yes." "3. Should
+        round 8 be a paired note-against-cue test for Breeze, on about 30 new lines with two seeds and
+        repeated pairs, with nothing built until it shows a clear win? Lean: yes." "4. Should whispers
+        be set by a target gap under the narration (a setting, −15 dB by default, shown on the line),
+        not a fixed cut? Lean: yes." Then, on the kit's 5488e5c: "5. Should Stop and Cancel stop the
+        AI model's call at once, by passing the kit's signal through JustVoice's AI calls? Lean: yes,
+        starting with the book run's Stop and Analyze, where the wait is longest. What arguing against
+        it changed: one test per path first, showing the call really stops, so a half-plumbed path
+        can't pass silently." The user: "think on things adverserily your rec go".
+WHY:    round 7 (RESEARCH §10.34): Breeze's narration copy picked on 10 passages of 10, but A was
+        always Breeze and the passages were short; the note's lead over the cue words (7 against 6
+        full) is inside the 3-line noise of the same Breeze files heard twice; a fixed −18 dB cut left
+        the two whispers 15.1 and 18.2 dB under. Stop waited for the model's answer — minutes on a
+        long chapter on the built-in model.
+NOT:    VoxCPM2's fixes before Drama 3's narration is heard (2); the delivery note in the app before
+        round 8 shows a clear win (3); a fixed whisper cut (4). For 5, the routes that keep their
+        answer after the client goes: a reload would then lose work that is kept today.
+BUILT:  5 (2026-10-21): `runFeature` / `streamFeature` take the kit's `{ signal }` (`engines/llm/
+        run.js`); the book run hands its Stop to every AI step — Discover, the merge, Analyze (with
+        its second look), the lines with no single speaker, the descriptions, the match, direction —
+        and Analyze's stream aborts its call when the client goes. A cancel stays a cancel on the way
+        up (`isAbortError` before each wrapper that turned errors into 502s or skipped lines). Tests:
+        `book_run.test.js` holds each step's call until Stop and fails by name a step whose call got
+        no signal (checked by taking direction's out); `merge_names.test.js`, Discover's scan, and
+        `extraction_stream.test.js` (the call stops, the chapter is unchanged). Docs: studio.md,
+        whats-new.
+OPEN:   1 and 3's renders wait for the graphics card (house-paint's app, open by the user, holds it).
+        5's other AI routes (Discover's and the merge's own routes, Script's 🔎 Second look, group
+        lines, direction, the voices' describe, Smart-assign, personas, the refine Lab, captures,
+        show notes): each needs its own check of what it keeps when the client goes.
+GO:     given 2026-10-21 ("think on things adverserily your rec go").
+
 ### Round 7 — Drama 3 directed in the app, a delivery note, the narrator's own voice (decided 2026-10-19)
 STATE:  DECIDED 2026-10-19 — after the user's ears on round 6 and the whispers page (RESEARCH
         §10.31, §10.33), shown: "1. Should I write Drama 3's direction into the app now, as one

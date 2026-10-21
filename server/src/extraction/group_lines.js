@@ -21,7 +21,7 @@
 // Analyze gave a speaker is asked too when the narration right beside it says several people speak
 // it (`severalSpeak`); the answer marks it only when it names several.
 
-import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { getLogger } from "@delebash/core/platform/log";
 import { B, cpSlice, errText, strip, strRepr } from "@delebash/core/platform/py";
 import { pyStrOf } from "@delebash/core/platform/pyjson";
@@ -81,7 +81,7 @@ export function severalSpeak(characters) {
 }
 
 /** The engine door, called through this module so a test can stand in for it. */
-export const runFeature = (action, variables, overrides) => run.runFeature(action, variables, overrides);
+export const runFeature = (action, variables, overrides, opts) => run.runFeature(action, variables, overrides, opts);
 
 /**
  * The answer as the line's outcome → `{speaker, group}`. `group` is the cast members the answer
@@ -108,14 +108,14 @@ export function decide(answer, resolve, narratorId) {
  * `words` the text either side (`settings.extraction.second_look_words`). `usage` gathers the
  * tokens.
  */
-export async function askLine(row, paragraphs, { castText, resolve, narratorId, words, usage }) {
+export async function askLine(row, paragraphs, { castText, resolve, narratorId, words, usage, signal = null }) {
   const variables = { cast: castText, chapter: around(paragraphs, row.paragraph_idx, row.text, words), line: strip(row.text) };
   let resp;
   try {
-    resp = await self.runFeature(ACTION, variables);
+    resp = await self.runFeature(ACTION, variables, {}, { signal });
   } catch (e) {
-    // No model at all stops the step; any other failure is this line's alone.
-    if (e instanceof LLMNotConfiguredError) throw e;
+    // No model at all stops the step, as a Stop does; any other failure is this line's alone.
+    if (e instanceof LLMNotConfiguredError || isAbortError(e)) throw e;
     log.warning(`group line failed on ${strRepr(cpSlice(row.text, 0, 60))}: ${errText(e)}`);
     return null;
   }

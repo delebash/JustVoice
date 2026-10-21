@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **Stop stops the language model at once (2026-10-21)** — **Stop** on **Make the audiobook**, and
+  **Cancel** on Analyze, now end the language model's answer in progress instead of waiting for it
+  (minutes on a long chapter on the built-in model). What was done is kept; Resume does the chapter
+  the run was on again ([Studio → Make the audiobook](studio.md#make-the-audiobook))
 - **Change folder keeps the old copy until you remove it (2026-10-20)** — Settings → Storage is
   the family's own panel now: after a move it lists the old folder with its size and **Remove the
   old copy**, offers **Move back to the default folder**, and says when the folder is set by
