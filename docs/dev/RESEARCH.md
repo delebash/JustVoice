@@ -5119,6 +5119,31 @@ TASKS "Round 7's answers acted on", 3. Through `npm run dev`.
   both times. Then the note prompt goes to the app (the live direction prompt changed; its
   over-marking of lines with no cue, 82 % in round 7, fixed first). Otherwise the cue words stay
   and nothing is built.
+- **What ran (2026-10-21):** discover found 6 people in IX and 7 in X; the live prompt directed 51 of
+  135 spoken lines in IX and 49 of 116 in X; the note prompt marked 133 of 135 and 66 of 116. 86
+  lines had both, in different words; 30 kept — neutral 5, happy 5, angry 5, fearful 5, shouted 5,
+  sad 4, whispered 1. Many notes reword the cue (“angrily” → “angry”, “with a sigh” → “sighing”),
+  some differ (“in a low, weak voice” → “low, weak, trembling”), two say only “neutral”. 120
+  BreezeTTS 2 takes, every one told the words its list holds (checked): median 7.1 s (cue words),
+  6.9 s (note). — *measured*.
+
+### 10.36 The narrator again: BreezeTTS 2 against Drama 3, with a long stretch (2026-10-21)
+
+TASKS "Round 7's answers acted on", 1 (and 2: Drama 3 heard before VoxCPM2 is fixed). Through
+`npm run dev`.
+
+- **Takes:** round 7's narrator voice (`Narrator (test)`, designed by the app's own describe and
+  design steps) copied to BreezeTTS 2 (round 7's copy) and to Drama 3 (`fish_drama3-q4k`, disk
+  experts, both pinned to the card for the run), seed 7, no direction:
+  `narration_sample.js --engines breeze_tts:breeze_tts-q8,fish_drama3:fish_drama3-q4k --opening
+  300` into `data/round8/narration`. The 10 passages are round 5's and 7's; the opening is chapter
+  VII's first 13 paragraphs whole (311 words, quotes and all), each rendered on its own and joined
+  with the app's pause between lines. (A first try took the narration lines alone: “said the
+  March Hare. said Alice angrily. …” — fragments, not a stretch of the book; kept beside it as
+  `opening-lines.wav` for Breeze.)
+- **The page:** round 8's part 2 — A and B drawn per passage (round 7 drew them once), "the better
+  reading" A · B · no difference, and for the opening "Would you listen to a whole book read the way
+  narrator A reads this?" per narrator.
 
 ## Records not yet distilled
 

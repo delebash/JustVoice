@@ -9,10 +9,9 @@
 //
 // Needs a running JustVoice (127.0.0.1:17494). The passages are the book's first 10 narration lines
 // of at least 25 words. A copy is made once per model (`POST /v1/voices/{id}/copy`) and reused by
-// name. `--opening <words>` adds the chapter's opening narration as the book plays it: its narration
-// lines in order, each rendered on its own, until that many words, joined with the app's pause
-// between lines (`render_core.concatLines`) — how a long stretch holds up (TASKS "Round 7's answers
-// acted on", 1). Writes `<out>/<engine>/<n>.wav`, `<out>/<engine>/opening.wav` and
+// name. `--opening <words>` adds the chapter's opening read by the narrator: its first paragraphs
+// whole, each rendered on its own, until that many words, joined with the app's pause between lines
+// (`render_core.concatLines`) — how a long stretch holds up (TASKS "Round 7's answers acted on", 1). Writes `<out>/<engine>/<n>.wav`, `<out>/<engine>/opening.wav` and
 // `<out>/manifest.json`; a take already on disk is kept.
 // Round 5 ran this from the session's scratchpad with Alice's voice — a child's, not a narrator's
 // (RESEARCH §10.31); this one takes the narrator's voice.
@@ -61,10 +60,17 @@ const scenes = await call(`/v1/projects/${project.id}/scenes`);
 const script = await call(`/v1/scenes/${scenes[0].id}/script`);
 const narration = script.lines.filter((l) => !l.spoken).map((l) => l.text);
 const passages = narration.filter((t) => words(t) >= 25).slice(0, 10);
+// The opening: the chapter's first paragraphs whole, quotes and all, read by the narrator — a
+// stretch of the book, not its narration lines alone (those run "said the Hatter. said Alice.").
+const paragraphs = [];
+for (const l of script.lines) {
+  if (paragraphs.length && paragraphs.at(-1).paragraph === l.paragraph) paragraphs.at(-1).text += ` ${l.text}`;
+  else paragraphs.push({ paragraph: l.paragraph, text: l.text });
+}
 const opening = [];
-for (const t of narration) {
+for (const { text } of paragraphs) {
   if (opening.reduce((n, x) => n + words(x), 0) >= OPENING_WORDS) break;
-  opening.push(t);
+  opening.push(text);
 }
 const { voices } = await call("/v1/voices");
 const source = voices.find((v) => v.id === args.voice);
