@@ -1915,7 +1915,15 @@ export function router() {
   /** The direction step on one chapter, written onto its lines (`directScene`). */
   app.post("/v1/scenes/:scene_id/direction", input({ body: DirectSceneRequest }), async (c) => {
     const body = c.req.valid("json");
-    return c.json(await directScene(c.req.param("scene_id"), { recipe: body.recipe, carry: body.carry }));
+    // Cancel means cancel (decided 2026-10-21): a client that leaves stops the model's call, and
+    // the lines keep their last direction.
+    const signal = c.req.raw.signal;
+    try {
+      return c.json(await directScene(c.req.param("scene_id"), { recipe: body.recipe, carry: body.carry, signal }));
+    } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
+      throw e;
+    }
   });
 
   /** No scene id — the same step over any text, writing nothing (the twin of analyze-text):
@@ -2107,8 +2115,16 @@ export function router() {
     const body = c.req.valid("json");
     const scene = sceneById(h, sceneId);
     if (scene === null) throw notFound(`scene ${sceneId}`);
-    const got = await discoverChapter(h, scene, body.text, { settings: getState().settings.get() });
-    return c.json(construct(DiscoverSpeakersResponse, { scene_id: sceneId, ...got }));
+    // Cancel means cancel, as Analyze's (decided 2026-10-21): a client that leaves stops the
+    // model's call, and the chapter keeps its last scan.
+    const signal = c.req.raw.signal;
+    try {
+      const got = await discoverChapter(h, scene, body.text, { settings: getState().settings.get(), signal });
+      return c.json(construct(DiscoverSpeakersResponse, { scene_id: sceneId, ...got }));
+    } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
+      throw e;
+    }
   });
 
   /** Discover's Ignore: the name is remembered for the project, and every chapter that names it
@@ -2225,7 +2241,15 @@ export function router() {
     const sceneId = c.req.param("scene_id");
     const scene = sceneById(h, sceneId);
     if (scene === null) throw notFound(`scene ${sceneId}`);
-    return c.json(construct(GroupLinesResponse, await giveGroupLines(h, scene, { settings: getState().settings.get() })));
+    // Cancel means cancel (decided 2026-10-21): a client that leaves stops the model's call, and
+    // nothing is given.
+    const signal = c.req.raw.signal;
+    try {
+      return c.json(construct(GroupLinesResponse, await giveGroupLines(h, scene, { settings: getState().settings.get(), signal })));
+    } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
+      throw e;
+    }
   });
   return app;
 }

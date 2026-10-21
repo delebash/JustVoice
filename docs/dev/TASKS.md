@@ -546,6 +546,39 @@ OPEN:   Change folder, Remove the old copy and Move back show only in the deskto
         the 8741 browser shows the panel without them.
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
 
+### Round 8 again, whispers before mastering with your words, Cancel on four more routes (decided 2026-10-21)
+STATE:  DECIDED 2026-10-21 — after round 8's first run was stopped for low memory, shown: "1. Should I
+        restart `npm run dev` and finish round 8 and the narration test (about an hour on the card)?
+        Lean: yes. I'd unload the language model as soon as chapter X's lines are picked, before any
+        rendering. I'd also keep a watch running so the session never looks idle, since jobs only get
+        stopped while it's idle." "2. Should the whisper setting hold the gap before mastering or after
+        it? … Lean: before mastering, default −18 dB. That reproduces line 8-48 exactly as you picked
+        it." "3. What words should the whisper setting use, in Settings and on the line in Render?
+        Labels are yours. My suggestion, only for you to change: **Whispers under the narration** (in
+        dB) in Settings, and **Whisper · 18 dB under the narration** on the line." "4. Should Cancel
+        also stop the model on Discover's scan, direction, group lines and the match? Today those keep
+        their answer even after a Cancel, so closing the window or reloading mid-call would lose that
+        call's work. Lean: yes for those four, the same rule Analyze already has. Lean: no for a
+        dictation's re-clean, and for Analyze's other route …, whose callers I haven't traced." The
+        user: "try again keep going your rec".
+WHY:    the entry below; its renders were stopped at 3.5 GB of free memory.
+NOT:    Cancel stopping a dictation's re-clean or the non-stream Analyze route; the gap after
+        mastering (mastering twice).
+BUILT:  2 and 3 (2026-10-21): the branch `whisper-gap` merged (ff7747ff) — −18 dB before mastering;
+        Settings → Generation pipeline **Whispers under the narration** (a slider 0–30 dB, 18 the
+        default; stored as `whisper_gap_db` −18), and Render's said cell marks a whispered line with
+        no volume of its own *Whisper · 18 dB under the narration* (the setting's number). The
+        Settings row's description and the mark's tooltip are mine, in the docs' words. Docs:
+        studio, whats-new. 4: Discover's scan, direction, the lines with no single speaker and the
+        match pass `c.req.raw.signal` and answer 499; nothing is written (`ai_cancel_routes.test.js`).
+        Docs: studio (Discover's Cancel), whats-new. Lint, unit 261, server 1384 (2 skipped), smoke
+        passed against the running app.
+OPEN:   1: round 8's lines picked (86 candidates, 30 kept over seven feelings); its 120 BreezeTTS 2
+        takes rendering, then the narration with Drama 3 and the page. The smoke gate against the
+        running app woke its language model (warm-on-boot) mid-render and free memory fell to 0.4 GB
+        — unloaded at once; never gate against the app while it renders.
+GO:     given 2026-10-21 ("try again keep going your rec").
+
 ### Round 7's answers acted on, and Stop ends the language model's call (decided 2026-10-21)
 STATE:  DECIDED 2026-10-21 — after the user's ears on round 7 and "think on these rec adverserially",
         shown: "1. Should Breeze become the default narrator, with Drama 3 added to a narration test

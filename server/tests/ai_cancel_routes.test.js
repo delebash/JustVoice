@@ -7,7 +7,7 @@
 // call was given no signal answers before the client leaves, and its test fails by name.
 import { abortError } from "@delebash/core/llm";
 import { afterEach, expect, test, vi } from "vitest";
-import { Block } from "../src/database/models.js";
+import { Block, Scene, Speaker } from "../src/database/models.js";
 import * as session from "../src/database/session.js";
 import * as run from "../src/engines/llm/run.js";
 import * as mergeNames from "../src/extraction/merge_names.js";
@@ -134,6 +134,42 @@ test("a book's show notes, its voices' descriptions and the merge of its names",
   const model = holdTheModel();
   vi.spyOn(mergeNames, "mergeBook").mockImplementation((_found, opts) => heldCall(opts?.signal, model));
   await leaveMidCall(app, model, "POST", `/v1/projects/${pid}/speakers/merge`);
+});
+
+test("Cancel means cancel on Discover's scan, direction, the lines with no single speaker and the match", async () => {
+  // Decided 2026-10-21: these keep their answer, so a client that leaves now loses the call's work —
+  // the rule Analyze has. Each is left mid-call, and nothing is written.
+  const { app, c } = await appClient(undefined, { seed: true });
+  const { pid, sceneId, mara } = await book(c);
+  const h = session.getDb();
+  const chapter = () => [h.get(Scene, sceneId).metadata_json, h.all(`select speaker_id, direction from ${Block} where scene_id = ? order by position`, [sceneId])];
+
+  // Discover's scan: the chapter keeps no scan.
+  let before = chapter();
+  await leaveMidCall(app, holdTheModel(), "POST", `/v1/scenes/${sceneId}/discover-speakers`, { text: "“Hello,” said Mara. The rain kept on." });
+  expect(chapter()).toEqual(before);
+
+  // Direction, on a chapter whose every line has a speaker: no line gets one.
+  vi.restoreAllMocks();
+  h.run(`update ${Block} set speaker_id = ? where scene_id = ?`, [mara.id, sceneId]);
+  before = chapter();
+  await leaveMidCall(app, holdTheModel(), "POST", `/v1/scenes/${sceneId}/direction`, {});
+  expect(chapter()).toEqual(before);
+
+  // The lines with no single speaker, on an analyzed chapter whose spoken line has none: it stays blank.
+  vi.restoreAllMocks();
+  h.run(`update ${Scene} set metadata_json = ? where id = ?`, ['{"analyzed_at": "2026-10-21T00:00:00"}', sceneId]);
+  h.run(`update ${Block} set speaker_id = null, source = 'llm' where scene_id = ?`, [sceneId]);
+  before = chapter();
+  await leaveMidCall(app, holdTheModel(), "POST", `/v1/scenes/${sceneId}/group-lines`);
+  expect(chapter()).toEqual(before);
+
+  // The match: Mara, still without a persona, stays so.
+  vi.restoreAllMocks();
+  expect((await c.patch(`/v1/projects/${pid}`, { json: { language: "en" } })).status).toBe(200);
+  expect((await c.post("/v1/personas", { json: { name: "Gentle", voice_id: "af_heart", note: "soft and quick" } })).status).toBe(201);
+  await leaveMidCall(app, holdTheModel(), "POST", `/v1/projects/${pid}/book-voices/match`);
+  expect(h.get(Speaker, mara.id).persona_id).toBeNull();
 });
 
 test("Script's 🔎 Second look stops the question it is asking", async () => {

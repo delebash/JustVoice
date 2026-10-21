@@ -124,8 +124,16 @@ export function router() {
 
   /** Step 3: the speakers still without a persona, matched from the library and cast. */
   app.post("/v1/projects/:project_id/book-voices/match", async (c) => {
-    const out = await aiStep("match", () => matchRest(session.getDb(), c.req.param("project_id")));
-    return c.json(construct(MatchRestResponse, out));
+    // Cancel means cancel (decided 2026-10-21): a client that leaves stops the model's call, and
+    // nothing is cast.
+    const signal = c.req.raw.signal;
+    try {
+      const out = await aiStep("match", () => matchRest(session.getDb(), c.req.param("project_id"), { signal }));
+      return c.json(construct(MatchRestResponse, out));
+    } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
+      throw e;
+    }
   });
   return app;
 }

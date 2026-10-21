@@ -243,7 +243,10 @@ chapter. It creates nothing on its own.
    chapter at a time — but each page shows only its own: start a scan while
    Script is analyzing and it waits, saying *🔍 Discover · 2 chapters — waiting
    for Script to finish*, then runs. A chapter Script is analyzing can still be
-   ticked here; it is scanned after. **Cancel** stops only the scan.
+   ticked here; it is scanned after. **Cancel** stops only the scan: the chapter
+   being read stops at once and keeps its last scan, the chapters already
+   scanned keep theirs (since 2026-10-21; closing the window or reloading
+   mid-chapter is a cancel too).
 3. **The narrator comes first.** A book with narration needs a narrator, and
    nothing makes one on its own — so while the book has none, the first row of
    **Speakers found** is **Narrator**: *reads everything outside quote marks*,
@@ -1253,13 +1256,18 @@ grid, Render says the scene-break pause when the chapter has one.
 **A whispered line sits under the narration.** The speech models whisper in a
 whispering voice but at speaking volume, so a line whose emotion is *whispered*
 is set a fixed amount under the chapter's narration when the chapter is joined:
-`generation.whisper_gap_db`, 18 dB by default (RMS, measured on the lines with
-their silence at either end trimmed; a chapter with no narration is measured on
-its other lines). A whisper already quieter than that is brought up, by 12 dB at
-most. As with the pauses, the take itself is not changed and nothing renders
-again; a take's ▶ on its own plays it as rendered. A line with a volume of its
-own keeps it — set one to undo a line wrongly marked as whispered, or change its
-emotion. `null` leaves every whisper as rendered. In Render, the exported
+**Whispers under the narration** (Settings → Generation pipeline; 18 dB by
+default, `generation.whisper_gap_db` −18), as RMS measured on the lines with their
+silence at either end trimmed; a chapter with no narration is measured on its
+other lines. Mastering narrows the gap by about 3 dB, so 18 dB in the chapter as
+joined is about 15 dB in the finished file (since 2026-10-21). A whisper already
+quieter than that is brought up, by 12 dB at most. Render marks each such line
+*Whisper · 18 dB under the narration* beside how it is said, so a line wrongly
+marked as whispered shows. As with the pauses, the take itself is not changed and
+nothing renders again; a take's ▶ on its own plays it as rendered. A line with a
+volume of its own keeps it, and loses the mark — set one to undo a wrong whisper,
+or change its emotion. `null` (through the API) leaves every whisper as rendered.
+In Render, the exported
 audiobook and ACX QC alike; the direct render API joins the lines it is sent as
 they are. The whisper's emotion is the line's model's own — BreezeTTS 2, VoxCPM2
 and Drama 3 keep it; a model that takes tags (Chatterbox Turbo) keeps a tag

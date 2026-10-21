@@ -67,6 +67,9 @@ const PAUSE_SETTING_MS = ref(600);
 const SCENE_BREAK_MS = ref(2000);
 // Between two lines of one paragraph (`paragraph_next`, 2026-10-07).
 const PARAGRAPH_MS = ref(250);
+// How far under the narration a whispered line is set when the chapter is joined, in dB
+// (`whisper_gap_db`, decided 2026-10-21); null when Settings leaves whispers as rendered.
+const WHISPER_UNDER_DB = ref(18);
 
 // ── The page ─────────────────────────────────────────────────────────
 const page = ref(null);
@@ -91,6 +94,10 @@ async function loadPause() {
   if (Number.isFinite(brk)) SCENE_BREAK_MS.value = brk;
   const para = s?.generation?.pause_within_paragraph_ms;
   if (Number.isFinite(para)) PARAGRAPH_MS.value = para;
+  if (s?.generation && "whisper_gap_db" in s.generation) {
+    const gap = s.generation.whisper_gap_db;
+    WHISPER_UNDER_DB.value = Number.isFinite(gap) ? -gap : null;
+  }
 }
 // What each model takes — the persona page's own source (its knobs, its tag
 // sets, the app's emotion words), read once.
@@ -523,6 +530,13 @@ const personaMs = (l) => personaOf(l)?.default_delivery?.models?.[modelOf(l)] ||
 const lineMs = (l) => l.override?.models?.[modelOf(l)] || {};
 const lineHas = (l, key) => Object.hasOwn(lineMs(l), key);
 const wordValue = (l, key) => (lineHas(l, key) ? lineMs(l)[key] : personaMs(l)[key]) || "";
+// A whispered line with no volume of its own is set under the narration in the chapter (the
+// server's `_levelWhispers`): "Whisper · 18 dB under the narration" (the user's words, 2026-10-21).
+function whisperMark(l) {
+  if (WHISPER_UNDER_DB.value == null || wordValue(l, "emotion") !== "whispered") return "";
+  if (l.override?.gain_db != null) return "";
+  return `Whisper · ${WHISPER_UNDER_DB.value} dB under the narration`;
+}
 // Emotion / register: the persona's value is saved as none; "" = none on this line.
 function setWord(l, key, v) {
   const model = modelOf(l);
@@ -743,6 +757,9 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
               <span v-else-if="personaOf(row).directed_by === 'tags'" class="studio-render-ch__tags">
                 <UiTag v-for="t in standingTags(row)" :key="t" intent="ghost">{{ t }}</UiTag>
               </span>
+              <UiTag v-if="whisperMark(row)" intent="ghost"
+                title="Set this far under the narration when the chapter is joined (Settings → Generation pipeline). A volume of the line's own wins.">{{
+                  whisperMark(row) }}</UiTag>
             </span>
             <span v-else class="jv-muted">—</span>
           </template>

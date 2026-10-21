@@ -192,7 +192,15 @@ const settings = ref({
   models:    {},
   engines:   { default_tts_engine: "kokoro" },
   app:       { primary_use_case: "unset", secondary_use_cases: [], onboarding_shown: false },
-  generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, pause_between_lines_ms: 600, pause_within_paragraph_ms: 250, pause_at_scene_break_ms: 2000, normalize_audio: true },
+  generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, pause_between_lines_ms: 600, pause_within_paragraph_ms: 250, pause_at_scene_break_ms: 2000, whisper_gap_db: -18, normalize_audio: true },
+});
+// Whispers under the narration (decided 2026-10-21): stored as the gap (−18 dB), shown as how far
+// under (18 dB).
+const whisperUnder = computed({
+  get: () => -(settings.value.generation.whisper_gap_db ?? 0),
+  set: (v) => {
+    settings.value.generation.whisper_gap_db = -v;
+  },
 });
 const serverReachable = ref(false);
 
@@ -1313,6 +1321,31 @@ onMounted(() => {
             :marks="[{ value: 0, label: 'none' }, { value: 2000, label: 'default' }, { value: 6000, label: 'long' }]"
             class="setting-row__slider"
             aria-label="Pause at a scene break"
+            @change="saveDebounced"
+          />
+        </div>
+
+        <!-- Whispers under the narration (2026-10-21) -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Whispers under the narration</div>
+              <div class="setting-row__desc">
+                The speech models whisper at speaking volume, so a whispered line is set this far
+                under the chapter's narration when the chapter is joined — in Render, the exported
+                audiobook and ACX QC. Mastering narrows it by about 3 dB. A line's own volume still
+                wins. Changing it renders nothing again.
+              </div>
+            </div>
+            <span class="setting-row__value">{{ whisperUnder }} dB</span>
+          </div>
+          <UiSlider
+            v-model="whisperUnder"
+            :min="0" :max="30" :step="1"
+            width="long" :show-number="false"
+            :marks="[{ value: 18, label: 'default' }]"
+            class="setting-row__slider"
+            aria-label="Whispers under the narration"
             @change="saveDebounced"
           />
         </div>

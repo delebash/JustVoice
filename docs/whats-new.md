@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **Whispers under the narration (2026-10-21)** — the speech models whisper at speaking volume, so a
+  whispered line is now set a fixed amount under the chapter's narration when the chapter is
+  joined: **Whispers under the narration** in Settings → Generation pipeline, 18 dB by default
+  (about 15 dB once the chapter is mastered, the gap you picked in the listening test). Render
+  marks each such line *Whisper · 18 dB under the narration*; a line with a volume of its own keeps
+  it. Nothing renders again ([Studio → Render](studio.md#render))
 - **The narrator on BreezeTTS 2 too (2026-10-21)** — **Make the audiobook** now keeps the
   narrator's designed voice on BreezeTTS 2 as well: with the narrator's own voice it read the
   narration better than VoxCPM2 on all 10 passages of the blind listening test. One model now reads
@@ -14,7 +20,10 @@
   the run was on again ([Studio → Make the audiobook](studio.md#make-the-audiobook)). So does
   **Cancel** on Script's 🔎 Second look, and leaving any AI request whose answer nothing keeps —
   Smart-assign, a persona's Compose and Rewrite, a speaker's Rewrite as them, the voices' gender
-  guess and descriptions, the merge of the scanned names, show notes and the Labs' runs
+  guess and descriptions, the merge of the scanned names, show notes and the Labs' runs. Cancel means
+  cancel, as on Analyze, on Discover's scan, direction, the lines with no single speaker and matching
+  the rest from your library too: the call stops and nothing of it is kept — closing the window or
+  reloading mid-call counts as a cancel there
 - **Change folder keeps the old copy until you remove it (2026-10-20)** — Settings → Storage is
   the family's own panel now: after a move it lists the old folder with its size and **Remove the
   old copy**, offers **Move back to the default folder**, and says when the folder is set by
