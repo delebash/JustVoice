@@ -26,6 +26,7 @@ import { getLogger } from "@delebash/core/platform/log";
 import { nullable, opt, T } from "@delebash/core/platform/models";
 import { pySorted, strip, truthy } from "@delebash/core/platform/py";
 import * as appState from "../app_state.js";
+import * as dspClient from "../audio/dsp_client.js";
 import { writeWavContainer } from "../audio/wav.js";
 import * as session from "../database/session.js";
 import { Block, Project, Scene, Speaker } from "../database/models.js";
@@ -192,11 +193,58 @@ export async function _resolveSceneToLines(sceneId, st, { strict = false } = {})
   const joins = lineTakes.paragraphJoins(played);
   lines.forEach((line, i) => {
     const block = played[i];
+    // What a whisper is set under, and a line whose own volume wins over it (2026-10-21).
+    line.narration = speakers.get(block.speaker_id)?.role_label === "narrator";
+    line.own_volume = "gain_db" in lineTakes.lineOverride(block);
     if ("pause_after_ms" in lineTakes.lineOverride(block)) return;
     if (ends.has(block.id)) line.scene_break_after = true;
     else if (joins.has(block.id)) line.paragraph_next = true;
   });
   return lines;
+}
+
+/** A line whose emotion is "whispered" (its model's — Breeze, VoxCPM2 and Drama 3 keep it). */
+const whispered = (line) => line.delivery?.emotion === "whispered";
+
+/**
+ * The chapter's whispers set `gapDb` under its narration (decided 2026-10-21, TASKS "Round 7's
+ * answers acted on", 4) → `concatLines`' `level`. The engines whisper at speaking volume (RESEARCH
+ * §10.29), and one fixed cut left two whispers 15 and 18 dB under (§10.34), so each whispered line
+ * without a volume of its own is brought to the narration's level plus the gap: RMS over the
+ * trimmed lines (the dsp analyzer, what round 7 measured), the narration's from its lines' energy
+ * together. A chapter with no narration is measured on its other lines. Joins only, like the
+ * pauses: the line's audio and its cache are untouched, so changing the setting renders nothing.
+ * A book's chapters only — the direct render API's lines (no block) are joined as sent.
+ */
+export function _levelWhispers(lines, gapDb) {
+  if (gapDb == null || !lines.some((l) => l.block_id)) return null;
+  const moved = lines.flatMap((l, i) => (whispered(l) && !l.own_volume ? [i] : []));
+  if (!moved.length) return null;
+  let ref = lines.flatMap((l, i) => (l.narration && !whispered(l) ? [i] : []));
+  if (!ref.length) ref = lines.flatMap((l, i) => (whispered(l) ? [] : [i]));
+  if (!ref.length) return null;
+  return async (fitted, sr, ch) => {
+    const rms = async (pcm) => (await dspClient.loudness(writeWavContainer(pcm, sr, ch))).rms_dbfs;
+    // The narration's RMS: each line's power weighted by its length.
+    let power = 0;
+    let frames = 0;
+    for (const i of ref) {
+      const n = fitted[i].length / (2 * ch);
+      const level = await rms(fitted[i]);
+      if (n && Number.isFinite(level)) {
+        power += n * 10 ** (level / 10);
+        frames += n;
+      }
+    }
+    if (!frames) return;
+    const target = 10 * Math.log10(power / frames) + gapDb;
+    for (const i of moved) {
+      const level = await rms(fitted[i]);
+      if (!Number.isFinite(level)) continue;
+      const gain = Math.max(-24, Math.min(12, target - level));
+      if (Math.abs(gain) >= 0.1) fitted[i] = await dspClient.shape(fitted[i], sr, ch, { gainDb: gain });
+    }
+  };
 }
 
 /** The chapter's lines as one audio, `gapMs` apart (async) — Settings' pause at a scene break
@@ -217,7 +265,7 @@ export async function _join(st, lines, rendered, gapMs) {
     const pause = own(line);
     return pause != null ? new RenderedLine({ ...rl, effectiveDelivery: { ...(rl.effectiveDelivery || {}), pause_after: pause } }) : rl;
   });
-  return renderCore.concatLines(joined, gapMs);
+  return renderCore.concatLines(joined, gapMs, { level: self._levelWhispers(lines, gen.whisper_gap_db) });
 }
 
 /** A line's delivery as render_core reads it: `line.delivery.model_dump(exclude_none=True)`,
