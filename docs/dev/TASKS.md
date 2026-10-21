@@ -576,6 +576,13 @@ BUILT:  5 (2026-10-21): `runFeature` / `streamFeature` take the kit's `{ signal 
         no signal (checked by taking direction's out); `merge_names.test.js`, Discover's scan, and
         `extraction_stream.test.js` (the call stops, the chapter is unchanged). Docs: studio.md,
         whats-new.
+        1 (2026-10-21): `book_voices.narrator_model` defaults to `breeze_tts` (models.js) — one
+        model reads the book, so the plan's design row says "Qwen3-TTS VoiceDesign → BreezeTTS 2"
+        and the licence stop names the character voices and the narrator's voice (tests, the run
+        card's mock). A database already made keeps its setting until a reset. Docs: ai-features,
+        settings-reference, personas, studio, whats-new. `server/scripts/narration_sample.js` takes
+        `--engines` (a copy of the voice per model) and `--opening <words>` (the chapter's opening
+        narration, line by line, joined with the app's pause) for the test with Drama 3.
 OPEN:   1 and 3's renders wait for the graphics card (house-paint's app, open by the user, holds it).
         5's other AI routes (Discover's and the merge's own routes, Script's 🔎 Second look, group
         lines, direction, the voices' describe, Smart-assign, personas, the refine Lab, captures,

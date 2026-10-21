@@ -744,7 +744,7 @@ persona, in the list with the rest:
   new persona is made.
 - **Its voice** is a design kept as a clip: the description designed once on Qwen3-TTS
   VoiceDesign, speaking one of the speaker's own calm lines, and that take kept as a **BreezeTTS 2**
-  voice — the narrator's as a **VoxCPM2** voice (since 2026-10-18) — the same as **📌 Keep take N**
+  voice, the narrator's too (a **VoxCPM2** voice from 2026-10-18 to 2026-10-21) — the same as **📌 Keep take N**
   on [New design](#new-design). The voice keeps its
   description, and its gender when the description gives one. So it stays one person through
   the book and still takes written direction on each line.

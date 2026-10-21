@@ -108,9 +108,9 @@ test("the_feature_its_three_rows_and_its_settings_are_seeded", async () => {
     expect(DEFAULT_TEST_SAMPLES.some((s) => s.actions.includes(key))).toBe(true);
   }
   // The decided defaults: N = 3 over the whole book (Q1); the characters on BreezeTTS 2 (round 4's
-  // ears) and the narrator on VoxCPM2 (round 5's narration sample).
+  // ears) and the narrator too (round 7's narration sample, 2026-10-21; VoxCPM2 before).
   const s = construct(Settings, {}).book_voices;
-  expect([s.min_lines, s.design_model, s.clone_model, s.narrator_model]).toEqual([3, "qwen3-vd", "breeze_tts", "voxcpm2"]);
+  expect([s.min_lines, s.design_model, s.clone_model, s.narrator_model]).toEqual([3, "qwen3-vd", "breeze_tts", "breeze_tts"]);
 
   const { c } = await appClient(undefined, { seed: true });
   const rows = Object.fromEntries((await c.get("/v1/ai/prompts")).json().prompts.map((p) => [p.key, p]));
@@ -292,9 +292,9 @@ test("each_description_is_designed_once_kept_as_a_voxcpm2_clip_and_made_a_person
   const st = getState();
   const voice = st.voices.get(out.made[0].voice_id);
   expect([voice.engine, voice.model, voice.source, voice.name, voice.gender]).toEqual(["breeze_tts", "breeze_tts", "designed", "Hatter", "male"]);
-  // The narrator's on VoxCPM2, its own model (book_voices.narrator_model).
+  // The narrator's on its own model (book_voices.narrator_model) — BreezeTTS 2 by default.
   const narratorVoice = st.voices.get(out.made[1].voice_id);
-  expect([narratorVoice.engine, narratorVoice.model, narratorVoice.source]).toEqual(["voxcpm2", "voxcpm2", "designed"]);
+  expect([narratorVoice.engine, narratorVoice.model, narratorVoice.source]).toEqual(["breeze_tts", "breeze_tts", "designed"]);
   expect(voice.design_prompt).toBe("Male, middle-aged, sharp and eccentric.");
   expect(voice.transcript).toBe(HATTER_CALM);
   expect(existsSync(st.voices.refWavPath(voice.id))).toBe(true);

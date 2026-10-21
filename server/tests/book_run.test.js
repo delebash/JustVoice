@@ -222,7 +222,7 @@ test("alice_vii_from_one_press_to_an_m4b_with_the_time_and_tokens_written_down",
   expect(before.plan.ask_price).toBe(false);
   expect(before.plan.steps.map((s) => s.key)).toEqual(bookRun.STEPS);
   expect(before.plan.steps.find((s) => s.key === "analyze")).toMatchObject({ kind: "ai", model: "gemma-test", cloud: false });
-  expect(before.plan.steps.find((s) => s.key === "design").model).toBe("Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2");
+  expect(before.plan.steps.find((s) => s.key === "design").model).toBe("Qwen3-TTS VoiceDesign → BreezeTTS 2");
   expect(before.plan.estimate.price).toBe(0);
   expect(before.plan.estimate.tokens_in).toBeGreaterThan(0);
 
@@ -484,10 +484,11 @@ test("the_character_voices_licence_word_is_on_the_plan_and_unaccepted_it_stops_t
   const plan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
   const design = plan.steps.find((s) => s.key === "design");
   expect(design.licences.map((l) => [l.model, l.name, l.commercial])).toEqual([["breeze_tts", "BreezeTTS 2", "Separate licence"]]);
-  expect(plan.problems).toEqual([{ step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2", uses: ["characters"] }]);
+  // The narrator on BreezeTTS 2 too, by default since 2026-10-21: one stop names both.
+  expect(plan.problems).toEqual([{ step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2", uses: ["characters", "narrator"] }]);
   const r = await c.post("/v1/book_runs", { json: { project_id: pid } });
   expect(r.status).toBe(409);
-  expect(r.text).toContain("BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the character voices.");
+  expect(r.text).toContain("BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the character voices and the narrator's voice.");
   // Accepted once, the stop goes; the licence word stays on the card.
   expect((await c.post("/v1/engines/breeze_tts/terms")).status).toBe(200);
   const after = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;

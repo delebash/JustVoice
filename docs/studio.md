@@ -119,7 +119,7 @@ through every step of Studio by itself, in this order:
 | Analyze — who speaks each line | each chapter, as Script's Analyze does ([How Analyze reads a chapter](#how-analyze-reads-a-chapter)) | the language model |
 | Lines with no single speaker | gives each line several people say to one of them, or the narrator, marked to check ([below](#lines-with-no-single-speaker)) | the language model |
 | Describe the voices | writes each main speaker's voice, and the narrator's, from the book | the language model |
-| Design the voices | designs each one once and keeps it as a persona, cast with its speaker ([Personas made from the book](personas.md#personas-made-from-the-book)) | Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2 |
+| Design the voices | designs each one once and keeps it as a persona, cast with its speaker ([Personas made from the book](personas.md#personas-made-from-the-book)) | Qwen3-TTS VoiceDesign → BreezeTTS 2 (the narrator too, unless `book_voices.narrator_model` names another) |
 | Match the rest from your library | casts everyone else with a persona you have | the language model |
 | Direction | how each spoken line should be said, where the book gives a reason ([Can be directed](#can-be-directed)) | the language model |
 | Render every line | a take for every line that has none | each speaker's persona |
@@ -143,11 +143,11 @@ words (since 2026-10-18). What stops it starting is said on the card: no
 language model set up, the book's **Language** not set (its voices are made in
 it), a voice model's licence not yet accepted on this computer —
 *BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the
-character voices.* with **BreezeTTS 2's licence ➜**, which opens it to accept
-once, as its first download asks (since 2026-10-18); the same stop names the
-model that designs the voices (*Accept it to design the voices.*) or the
-narrator's (*Accept it to make the narrator's voice.*) when its licence is the
-one waiting — no text yet, or every
+character voices and the narrator's voice.* with **BreezeTTS 2's licence ➜**,
+which opens it to accept once, as its first download asks (since 2026-10-18);
+the same stop names the model that designs the voices (*Accept it to design the
+voices.*), or only the narrator's (*Accept it to make the narrator's voice.*)
+when the narrator has a model of its own and its licence is the one waiting — no text yet, or every
 name the scans found ignored while the book has no
 speaker but the narrator — *Every name the scans found is ignored — the book
 would be read in one voice. Undo some on Discover ➜* (since 2026-10-16;

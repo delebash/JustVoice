@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **The narrator on BreezeTTS 2 too (2026-10-21)** — **Make the audiobook** now keeps the
+  narrator's designed voice on BreezeTTS 2 as well: with the narrator's own voice it read the
+  narration better than VoxCPM2 on all 10 passages of the blind listening test. One model now reads
+  the whole book; `book_voices.narrator_model` still gives the narrator its own
+  ([AI features → Voices from the book](ai-features.md#voices-from-the-book)). A database you
+  already have keeps its setting until you reset it or change it
 - **Stop stops the language model at once (2026-10-21)** — **Stop** on **Make the audiobook**, and
   **Cancel** on Analyze, now end the language model's answer in progress instead of waiting for it
   (minutes on a long chapter on the built-in model). What was done is kept; Resume does the chapter

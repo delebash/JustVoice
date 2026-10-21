@@ -387,7 +387,7 @@ function stepModels(settings) {
   }
   const cfg = settings.book_voices;
   // "Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2" (decided 2026-10-18); the narrator
-  // goes unsaid when it shares the characters' model.
+  // goes unsaid when it shares the characters' model, as it does by default since 2026-10-21.
   const narrator = cfg.narrator_model !== cfg.clone_model ? ` · narrator ${modelNameOf(cfg.narrator_model)}` : "";
   const used = [...new Set([cfg.design_model, cfg.clone_model, cfg.narrator_model])].map(speechModelFacts).filter(Boolean);
   // What each model makes here — a model whose licence isn't accepted on this machine stops the

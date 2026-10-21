@@ -85,7 +85,7 @@ export function mockPlan({ frontier = false, blocked = false, noFfmpeg = false }
         estimate: blocked ? null : t ? { tokens_in: t[0], tokens_out: t[1], price: frontier ? price(t) : 0 } : null,
       };
     }
-    const model = { design: "Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2", check: "Qwen3-ASR 1.7B" }[key] ?? null;
+    const model = { design: "Qwen3-TTS VoiceDesign → BreezeTTS 2", check: "Qwen3-ASR 1.7B" }[key] ?? null;
     const kind = key === "design" || key === "render" ? "speech" : key === "check" ? "recognition" : key === "export" ? "file" : "book";
     const licences = key === "design" ? [BREEZE_LICENCE] : [];
     return { key, kind, model, provider: null, cloud: false, configured: true, recipe: null, feature: null, action: null, estimate: null, licences };
@@ -108,7 +108,7 @@ export function mockPlan({ frontier = false, blocked = false, noFfmpeg = false }
       ? [
         { step: "discover", code: "no_model", detail: null },
         { step: "design", code: "no_language", detail: null },
-        { step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2", uses: ["characters"] },
+        { step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2", uses: ["characters", "narrator"] },
       ]
       : [],
     warnings: noFfmpeg ? [{ step: "export", code: "no_ffmpeg", detail: null }] : [],
@@ -136,7 +136,7 @@ const MODELS = {
   analyze: ["gemma-4-26b-a4b-qat", "local"],
   group_lines: ["gemma-4-26b-a4b-qat", null],
   describe: ["gemma-4-26b-a4b-qat", "local"],
-  design: ["Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2", null],
+  design: ["Qwen3-TTS VoiceDesign → BreezeTTS 2", null],
   match: ["gemma-4-26b-a4b-qat", null],
   direction: ["gemma-4-26b-a4b-qat", "local"],
   check: ["qwen3-asr-1.7b-q8", null],
