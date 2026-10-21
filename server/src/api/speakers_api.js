@@ -10,7 +10,7 @@
 // The narrator is a speaker holding the "narrator" role, one per book; no book gets one on its
 // own (+ Add Narrator, or a book's own "Narrator" character).
 
-import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { nullable, opt, T } from "@delebash/core/platform/models";
 import { pySorted, splitWs, strip } from "@delebash/core/platform/py";
@@ -280,10 +280,12 @@ export function router() {
     const who = strip(s.description || "");
     if (!who) throw new HttpError(400, `${s.name} has nothing under Who they are — write it on Cast to rewrite as them.`);
     if (!strip(body.text)) throw new HttpError(400, "rewrite requires non-empty text");
+    const signal = c.req.raw.signal; // a client that leaves stops the model's call (2026-10-21)
     let resp;
     try {
-      resp = await run.runFeature("persona_rewrite", { personality: who, text: body.text });
+      resp = await run.runFeature("persona_rewrite", { personality: who, text: body.text }, {}, { signal });
     } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
       throw new HttpError(502, `LLM call failed: ${errText(e)}`);
     }

@@ -5,7 +5,7 @@
 // the library). A step's answer says what it did, what it left alone and what failed, with the
 // model, the recipe, the tokens and the seconds — the numbers the plan's comparison tests read.
 
-import { aiRunHttpError, LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { getLogger } from "@delebash/core/platform/log";
 import { literal, nullable, opt, T } from "@delebash/core/platform/models";
@@ -90,7 +90,7 @@ async function aiStep(name, fn) {
   try {
     return await fn();
   } catch (e) {
-    if (e instanceof HttpError) throw e;
+    if (e instanceof HttpError || isAbortError(e)) throw e;
     if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
     const ai = aiRunHttpError(e); // 503 a local model not ready, 502 a provider not reached (the kit's)
     if (ai) throw ai;
@@ -105,8 +105,14 @@ export function router() {
   /** Step 1: each main speaker's and the narrator's voice description. Writes nothing. */
   app.post("/v1/projects/:project_id/book-voices/describe", input({ body: nullable(DescribeVoicesRequest) }), async (c) => {
     const body = c.req.valid("json") ?? construct(DescribeVoicesRequest, {});
-    const out = await aiStep("describe", () => describeVoices(session.getDb(), c.req.param("project_id"), { recipe: body.recipe }));
-    return c.json(construct(DescribeVoicesResponse, out));
+    const signal = c.req.raw.signal; // a client that leaves stops the model's call (2026-10-21)
+    try {
+      const out = await aiStep("describe", () => describeVoices(session.getDb(), c.req.param("project_id"), { recipe: body.recipe, signal }));
+      return c.json(construct(DescribeVoicesResponse, out));
+    } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
+      throw e;
+    }
   });
 
   /** Step 2: design each voice once, keep its audition as its clip, make its persona, cast it. */

@@ -7,7 +7,7 @@
 
 import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
-import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { HttpError } from "@delebash/core/platform/errors";
 import { nullable, opt, T } from "@delebash/core/platform/models";
@@ -432,10 +432,12 @@ export function router() {
     const voices = c.req.valid("json").voices;
     if (!voices.length) return c.json(construct(GenderGuessResponse, { guesses: {} }));
     const lines = voices.map((v) => `- ${v.name}${v.description ? ` — ${v.description}` : ""}`);
+    const signal = c.req.raw.signal; // a client that leaves stops the model's call (2026-10-21)
     let resp;
     try {
-      resp = await run.runFeature("voice_gender", { voices: lines.join("\n") });
+      resp = await run.runFeature("voice_gender", { voices: lines.join("\n") }, {}, { signal });
     } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
       throw e;
     }

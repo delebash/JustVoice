@@ -583,10 +583,28 @@ BUILT:  5 (2026-10-21): `runFeature` / `streamFeature` take the kit's `{ signal 
         settings-reference, personas, studio, whats-new. `server/scripts/narration_sample.js` takes
         `--engines` (a copy of the voice per model) and `--opening <words>` (the chapter's opening
         narration, line by line, joined with the app's pause) for the test with Drama 3.
+        5, the request routes that keep nothing of an answer nobody waits for (2026-10-21): Script's
+        🔎 Second look (its answer after a cancel was already dropped), Smart-assign (casts nothing
+        when the client is gone), the voices' describe, the merge, a persona's Compose and Rewrite,
+        a speaker's Rewrite, the gender guess, show notes, the refine Lab and the three Lab text
+        routes — each passes `c.req.raw.signal` (@hono/node-server 2.1.4 aborts it when the
+        connection closes before the answer, as `clientGone` watches) and answers 499, the kit's
+        /v1/ai/run answer (web-0d: the kit's catch-all stays as it is, so each route handles it).
+        `ai_cancel_routes.test.js` leaves each mid-call; a route without the signal fails by name
+        (checked on the gender guess).
+        4 is built on the branch `whisper-gap` (e07c4039, pushed; not on main): at the chapter's
+        join (`concatLines`' `level`), a whispered line without its own volume is set
+        `generation.whisper_gap_db` under the narration's RMS over the trimmed lines (a chapter with
+        no narration: its other lines; a boost at most +12 dB); scene chapters only; tests
+        `whisper_gap.test.js`; docs studio and settings-reference.
 OPEN:   1 and 3's renders wait for the graphics card (house-paint's app, open by the user, holds it).
-        5's other AI routes (Discover's and the merge's own routes, Script's 🔎 Second look, group
-        lines, direction, the voices' describe, Smart-assign, personas, the refine Lab, captures,
-        show notes): each needs its own check of what it keeps when the client goes.
+        4 waits for two answers: the gap you picked (−15.1 and −18.2 dB) was measured after
+        mastering, which narrows a whisper's gap by about 3 dB (before: −18.1 and −21.8) — does the
+        setting hold the gap before mastering (the branch's lean, −18) or after; and the words for
+        its Settings field and for the mark on a whispered line in Render.
+        5's routes that keep their answer when the client goes — Discover's chapter scan, Analyze
+        without the stream, the lines with no single speaker, direction, the match, a capture's
+        re-clean: a signal there would make a reload lose what is kept today; for the user.
 GO:     given 2026-10-21 ("think on things adverserily your rec go").
 
 ### Round 7 — Drama 3 directed in the app, a delivery note, the narrator's own voice (decided 2026-10-19)

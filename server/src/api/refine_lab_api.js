@@ -11,7 +11,7 @@
 // (explicit composed system + the worked examples for the current toggles as history), with the
 // column's overrides riding like any feature's.
 
-import { aiRunHttpError, LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { HttpError } from "@delebash/core/platform/errors";
 import { getLogger } from "@delebash/core/platform/log";
@@ -103,6 +103,7 @@ export function router() {
     const flags = _currentFlags();
     if (!Object.hasOwn(overrides, "system")) overrides.system = composeRefinementSystem(flags);
     const t0 = performance.now();
+    const signal = c.req.raw.signal; // a client that leaves stops the model's call (2026-10-21)
     let resp;
     try {
       resp = await run.runFeature(
@@ -112,8 +113,10 @@ export function router() {
           history: refinementHistory(flags),
           ...overrides,
         },
+        { signal },
       );
     } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, msg(e));
       const ai = aiRunHttpError(e); // 503 a local model not ready, 502 a provider not reached (the kit's)
       if (ai) throw ai;

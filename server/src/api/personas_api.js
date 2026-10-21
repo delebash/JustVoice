@@ -5,7 +5,7 @@
 // people in a book — and one persona can play many. So "used" means the speakers it plays, in
 // which books.
 
-import { aiRunHttpError, LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { HttpError } from "@delebash/core/platform/errors";
 import { nullable, opt, T } from "@delebash/core/platform/models";
@@ -253,11 +253,15 @@ function _requirePersonaWithNote(personaId) {
 /** A run's usage, as RunUsage. */
 const usageOf = (resp) => ({ prompt_tokens: resp.prompt_tokens, completion_tokens: resp.completion_tokens, model: resp.model });
 
-/** run_feature with the persona routes' error answers: 501 unconfigured, 502 anything else. */
-async function runOrRefuse(action, variables) {
+/** run_feature with the persona routes' error answers: 501 unconfigured, 502 anything else; a
+ * client that leaves stops the model's call (its request's signal, 2026-10-21) → null, answered
+ * 499 as the kit's /v1/ai/run does. */
+async function runOrRefuse(c, action, variables) {
+  const signal = c.req.raw.signal;
   try {
-    return await run.runFeature(action, variables);
+    return await run.runFeature(action, variables, {}, { signal });
   } catch (e) {
+    if (signal.aborted && isAbortError(e)) return null;
     if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
     const ai = aiRunHttpError(e); // 503 a local model not ready, 502 a provider not reached (the kit's)
     if (ai) throw ai;
@@ -543,7 +547,8 @@ export function router() {
   app.post("/v1/personas/:id/compose", async (c) => {
     const id = c.req.param("id");
     const persona = _requirePersonaWithNote(id);
-    const resp = await runOrRefuse("compose", { personality: strip(persona.note) });
+    const resp = await runOrRefuse(c, "compose", { personality: strip(persona.note) });
+    if (resp === null) return c.body(null, 499); // the client is gone
     return c.json(construct(ComposeResponse, { text: strip(resp.text), persona_id: id, note: null, usage: usageOf(resp) }));
   });
 
@@ -558,7 +563,8 @@ export function router() {
     const body = c.req.valid("json");
     const persona = _requirePersonaWithNote(id);
     if (!strip(body.text)) throw new HttpError(400, "rewrite requires non-empty text");
-    const resp = await runOrRefuse("persona_rewrite", { personality: strip(persona.note), text: body.text });
+    const resp = await runOrRefuse(c, "persona_rewrite", { personality: strip(persona.note), text: body.text });
+    if (resp === null) return c.body(null, 499); // the client is gone
     return c.json(
       construct(RewriteResponse, {
         original: body.text,

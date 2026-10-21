@@ -1772,6 +1772,8 @@ export function router() {
 
     const q = new Queue();
     let stop = false;
+    // The client gone aborts the question being asked, whose answer was dropped anyway (2026-10-21).
+    const cancel = new AbortController();
 
     const resolve = (raw) => {
       const handle = pipeline.resolveSpeaker(raw, promptCast);
@@ -1800,6 +1802,7 @@ export function router() {
             usage,
             onDelta: (t) => q.put({ delta: t }),
             onThinking: (t) => q.put({ thinking: t }),
+            signal: cancel.signal,
           });
           if (stop) break; // the answer landed after the cancel — dropped
           _saveSecondLook(blockId, row, outcome);
@@ -1815,7 +1818,8 @@ export function router() {
           ...report,
         });
       } catch (e) {
-        if (e instanceof LLMNotConfiguredError) q.put({ error: errText(e) });
+        if (stop && isAbortError(e)) log.info(`second look stream: cancelled — the model's call for scene ${sceneId} stopped`);
+        else if (e instanceof LLMNotConfiguredError) q.put({ error: errText(e) });
         else {
           log.exception("second look stream failed", e);
           q.put({ error: cpSlice(errText(e), 0, 200) });
@@ -1825,9 +1829,10 @@ export function router() {
       }
     };
 
-    // The client going away stops the look before its next line.
+    // The client going away stops the look, and the model's call in progress.
     const onAbort = () => {
       stop = true;
+      cancel.abort();
       q.put(null);
     };
     worker();
@@ -1883,10 +1888,13 @@ export function router() {
       second_look: body.second_look,
     };
     const rawOut = {};
+    // A client that leaves stops the model's call (the kit's signal, 2026-10-21).
+    const signal = c.req.raw.signal;
     let rows;
     try {
-      rows = await pipeline.analyzeScene({ settings, request, rawOut });
+      rows = await pipeline.analyzeScene({ settings, request, rawOut, signal });
     } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       throw analyzeError(e);
     }
     return c.json(
@@ -1935,6 +1943,7 @@ export function router() {
       maxTokens: body.maxTokens,
     };
     const overrides = Object.fromEntries(Object.entries(all).filter(([, v]) => v !== null));
+    const signal = c.req.raw.signal; // a client that leaves stops the model's call
     let result;
     try {
       result = await direction.directChapter({
@@ -1945,8 +1954,10 @@ export function router() {
         settings: getState().settings.get(),
         overrides,
         maxContext: body.max_context,
+        signal,
       });
     } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       throw directionError(e);
     }
     const answers = body.carry ? direction.carry(lines, result.answers) : result.answers;
@@ -2149,13 +2160,15 @@ export function router() {
       samplers: body.samplers.length ? body.samplers : null,
     };
     const overrides = Object.fromEntries(Object.entries(all).filter(([, v]) => v !== null));
-    const runFn = (action, variables) => run.runFeature(action, variables, overrides);
+    const signal = c.req.raw.signal; // a client that leaves stops the model's call
+    const runFn = (action, variables) => run.runFeature(action, variables, overrides, { signal });
     const settings = getState().settings.get();
     const rawOut = {};
     let candidates;
     try {
       candidates = await identify.identifySpeakers(body.text, body.known_characters, { settings, runFn, rawOut });
     } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
       const ai = aiRunHttpError(e);
       if (ai) throw ai;
@@ -2192,7 +2205,14 @@ export function router() {
    */
   app.post("/v1/projects/:project_id/speakers/merge", async (c) => {
     const h = session.getDb();
-    return c.json(construct(MergeSpeakersResponse, await mergeFoundNames(h, c.req.param("project_id"))));
+    // It writes nothing, so a client that leaves stops the model's call (2026-10-21).
+    const signal = c.req.raw.signal;
+    try {
+      return c.json(construct(MergeSpeakersResponse, await mergeFoundNames(h, c.req.param("project_id"), { signal })));
+    } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
+      throw e;
+    }
   });
 
   /**

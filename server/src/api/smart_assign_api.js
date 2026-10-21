@@ -14,7 +14,7 @@
 // run's voices step runs for the speakers left without a voice of their own (book_voices). Until
 // then the renderer cast each match with PATCH /v1/speakers/{id}.
 
-import { LLMNotConfiguredError } from "@delebash/core/llm";
+import { isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { getLogger } from "@delebash/core/platform/log";
 import { nullable, opt, T } from "@delebash/core/platform/models";
@@ -26,7 +26,6 @@ import * as run from "../engines/llm/run.js";
 import { HttpError } from "../errors.js";
 import { construct } from "../models.js";
 import { RunUsage } from "./extraction_api.js";
-import { clientGone } from "./generate_api.js";
 
 const log = getLogger("justvoice.api.smart_assign_api");
 const errText = (e) => e?.message ?? String(e);
@@ -172,18 +171,20 @@ export function router() {
   app.post("/v1/llm/smart-assign", input({ body: SmartAssignRequest }), async (c) => {
     const body = c.req.valid("json");
     if (!body.characters.length || !body.voices.length) throw new HttpError(400, "smart-assign requires non-empty characters AND voices");
-    const gone = clientGone(c);
+    // The client gone: the model's call stops, and nothing is cast (the kit's signal, 2026-10-21).
+    const signal = c.req.raw.signal;
 
     let out;
     try {
-      out = await smartAssign(body.characters, body.voices);
+      out = await smartAssign(body.characters, body.voices, { signal });
     } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
       log.warning(`smart_assign LLM call failed: ${errText(e)}`);
       throw new HttpError(502, `smart-assign failed: ${errText(e)}`);
     }
     // A Smart-assign cancelled while the model answered casts nothing, as when the page cast.
-    const applied = body.apply && !gone.aborted ? applyAssignments(session.getDb(), out.assignments) : {};
+    const applied = body.apply && !signal.aborted ? applyAssignments(session.getDb(), out.assignments) : {};
     return c.json(construct(SmartAssignResponse, { ...out, applied }));
   });
   return app;

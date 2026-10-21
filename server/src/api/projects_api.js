@@ -24,7 +24,7 @@
 
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { aiRunHttpError, LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { attachment, Hono, input } from "@delebash/core/platform";
 import { safeTitle } from "@delebash/core/platform/filename";
 import { RequestValidationError } from "@delebash/core/platform/errors";
@@ -1614,10 +1614,12 @@ export function router() {
 
     // The template row owns the wording (user half = {{script}}); the cap on the script sample
     // stays code-side (a computed VALUE).
+    const signal = c.req.raw.signal; // a client that leaves stops the model's call (2026-10-21)
     let resp;
     try {
-      resp = await run.runFeature("show_notes", { script: cpSlice(script, 0, 24000) });
+      resp = await run.runFeature("show_notes", { script: cpSlice(script, 0, 24000) }, {}, { signal });
     } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
       throw aiRunHttpError(e) ?? e; // 503 a local model not ready, 502 a provider not reached
     }
