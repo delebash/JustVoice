@@ -597,7 +597,11 @@ BUILT:  5 (2026-10-21): `runFeature` / `streamFeature` take the kit's `{ signal 
         `generation.whisper_gap_db` under the narration's RMS over the trimmed lines (a chapter with
         no narration: its other lines; a boost at most +12 dB); scene chapters only; tests
         `whisper_gap.test.js`; docs studio and settings-reference.
-OPEN:   1 and 3's renders wait for the graphics card (house-paint's app, open by the user, holds it).
+OPEN:   1 and 3's renders: started 2026-10-21 16:07 under `npm run dev`, stopped by Claude Code for low
+        memory (3.5 GB free; the app's gemma held 12.5 GB; its window and server survived, the model
+        was unloaded). `data/round8/direction.json` has chapter IX whole (51 lines given cue words,
+        133 a note) and chapter X's speakers; `round8_lines.js` picks up from there. Not restarted —
+        it waits for the user.
         4 waits for two answers: the gap you picked (−15.1 and −18.2 dB) was measured after
         mastering, which narrows a whisper's gap by about 3 dB (before: −18.1 and −21.8) — does the
         setting hold the gap before mastering (the branch's lean, −18) or after; and the words for
