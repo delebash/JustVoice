@@ -577,8 +577,10 @@ OPEN:   1: round 8's lines picked (86 candidates, 30 kept over seven feelings); 
         takes rendered (every take told its own words, checked); the narration: Breeze's 10
         passages and Drama 3's 1–9 rendered, then Claude Code stopped the background jobs for low
         memory again at 17:20 (Drama 3's disk experts map ~17 GB; the session was idle between
-        notifications). Left: Drama 3's passage 10 and both openings (about 7 minutes on the card),
-        then the page (scratchpad `r8_page.js`, `r8-page/`). Not restarted — it waits for the user. The smoke gate against the
+        notifications). On the user's "yes your rec go" the rest ran in the foreground: Drama 3's
+        passage 10 and both openings. The listening page (scratchpad `r8_page.js`, `r8-page/`;
+        answers in its collection `round8`) is published at
+        https://claude.ai/artifact/BRqk8AFBaw9Lk7bZ646evj — waiting on the user's ears. The smoke gate against the
         running app woke its language model (warm-on-boot) mid-render and free memory fell to 0.4 GB
         — unloaded at once; never gate against the app while it renders.
 GO:     given 2026-10-21 ("try again keep going your rec").

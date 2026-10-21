@@ -19,6 +19,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import * as dspClient from "../src/audio/dsp_client.js";
 import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
 import { concatLines, RenderedLine } from "../src/render_core.js";
 
@@ -120,4 +121,5 @@ for (const [engine, variant] of ENGINES) {
     console.log(engine, "opening", ((Date.now() - t0) / 1000).toFixed(1), "s");
   }
 }
+await dspClient.stop(); // the join started the dsp program, which would keep node running
 console.log("done");

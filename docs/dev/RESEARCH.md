@@ -5144,6 +5144,11 @@ TASKS "Round 7's answers acted on", 1 (and 2: Drama 3 heard before VoxCPM2 is fi
 - **The page:** round 8's part 2 — A and B drawn per passage (round 7 drew them once), "the better
   reading" A · B · no difference, and for the opening "Would you listen to a whole book read the way
   narrator A reads this?" per narrator.
+- **What ran (2026-10-21):** render time per passage, on the card — BreezeTTS 2 10–28 s (median
+  15.4 s), Drama 3 18–95 s (median 29.3 s), the same text. The opening (311 words): BreezeTTS 2
+  115.7 s of audio in 132 s, Drama 3 119.7 s in 256 s. Drama 3's disk experts map ~17 GB of RAM
+  while loaded: with JustVoice's chat model also up, free memory went under 4 GB twice and Claude
+  Code stopped the session's background jobs. Load one model at a time. — *measured*.
 
 ## Records not yet distilled
 
