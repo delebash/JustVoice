@@ -859,28 +859,35 @@ function _pauseMs(line, key) {
  * chapter's highest rate and channel count before joining, so no line loses quality (until
  * 2026-10-02 a mismatched line was appended raw — a 48 kHz VoxCPM2 line beside 24 kHz ones
  * played at half speed, an octave low).
+ *
+ * `level(fitted, sr, ch)` (async, optional) sees every line trimmed and fitted before the join and
+ * may replace entries — the chapter's whispers set under its narration (2026-10-21).
  */
-export async function concatLines(lines, silenceMs = 250) {
+export async function concatLines(lines, silenceMs = 250, { level = null } = {}) {
   if (!lines.length) throw new ValueError("no lines");
   const sr = Math.max(...lines.map((l) => l.sampleRate));
   const ch = Math.max(...lines.map((l) => l.channels));
-  const parts = [];
-  const silence = (ms) => Buffer.alloc(2 * Math.trunc((ms / 1000) * sr) * ch);
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (i > 0) {
-      const after = _pauseMs(lines[i - 1], "pause_after");
-      const before = _pauseMs(line, "pause_before");
-      const gap = after === null && before === null ? silenceMs : (after || 0) + (before || 0);
-      if (gap > 0) parts.push(silence(gap));
-    }
-    // Trimmed, then brought to the chapter's rate and channels — one request per line.
-    parts.push(
+  // Trimmed, then brought to the chapter's rate and channels — one request per line.
+  const fitted = [];
+  for (const line of lines) {
+    fitted.push(
       await dspClient.fit(line.pcm, line.sampleRate, line.channels, sr, ch, {
         trimBelowDbfs: TRIM_BELOW_DBFS,
         trimKeepMs: TRIM_KEEP_MS,
       }),
     );
+  }
+  if (level !== null) await level(fitted, sr, ch);
+  const parts = [];
+  const silence = (ms) => Buffer.alloc(2 * Math.trunc((ms / 1000) * sr) * ch);
+  for (let i = 0; i < lines.length; i++) {
+    if (i > 0) {
+      const after = _pauseMs(lines[i - 1], "pause_after");
+      const before = _pauseMs(lines[i], "pause_before");
+      const gap = after === null && before === null ? silenceMs : (after || 0) + (before || 0);
+      if (gap > 0) parts.push(silence(gap));
+    }
+    parts.push(fitted[i]);
   }
   return new RenderedLine({ pcm: Buffer.concat(parts), sampleRate: sr, channels: ch, effectiveDelivery: {} });
 }

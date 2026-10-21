@@ -307,6 +307,10 @@ export const GenerationSettings = T.Object({
   // The silence between two lines cut from one paragraph (decided 2026-10-07). Joins lines
   // only, like the scene break; a line's own pause still wins.
   pause_within_paragraph_ms: opt(T.Integer(), 250), // 0-3000 in the UI
+  // How far under the chapter's narration a whispered line is set, in dB RMS, when the chapter
+  // is joined (decided 2026-10-21): the engines whisper at speaking volume. Joins lines only,
+  // like the pauses; a line's own volume wins. null = whispers as rendered.
+  whisper_gap_db: opt(nullable(T.Number({ minimum: -40, maximum: 0 })), -18),
   // The language a voice speaks when nothing else decides it — today, a Kokoro blend of
   // voices in different languages (engines/blending.blend_language). BCP-47.
   default_voice_language: opt(T.String(), "en-US"),
@@ -1441,6 +1445,10 @@ export const ChapterLine = T.Object({
   scene_break_after: opt(T.Boolean(), false),
   // Scene mode: the next line is from the same paragraph, and this line has no pause.
   paragraph_next: opt(T.Boolean(), false),
+  // Scene mode: the narrator's line — what a whispered line is set under (2026-10-21).
+  narration: opt(T.Boolean(), false),
+  // Scene mode: the line sets a volume of its own, which wins over a whisper's level.
+  own_volume: opt(T.Boolean(), false),
 });
 
 export const BetweenLines = T.Object({

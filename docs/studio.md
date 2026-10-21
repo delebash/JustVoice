@@ -1250,6 +1250,21 @@ type in or write with ✎ Edit text run on in the scene before them; merging the
 last line of a scene into the next line removes that break. Under the chapter
 grid, Render says the scene-break pause when the chapter has one.
 
+**A whispered line sits under the narration.** The speech models whisper in a
+whispering voice but at speaking volume, so a line whose emotion is *whispered*
+is set a fixed amount under the chapter's narration when the chapter is joined:
+`generation.whisper_gap_db`, 18 dB by default (RMS, measured on the lines with
+their silence at either end trimmed; a chapter with no narration is measured on
+its other lines). A whisper already quieter than that is brought up, by 12 dB at
+most. As with the pauses, the take itself is not changed and nothing renders
+again; a take's ▶ on its own plays it as rendered. A line with a volume of its
+own keeps it — set one to undo a line wrongly marked as whispered, or change its
+emotion. `null` leaves every whisper as rendered. In Render, the exported
+audiobook and ACX QC alike; the direct render API joins the lines it is sent as
+they are. The whisper's emotion is the line's model's own — BreezeTTS 2, VoxCPM2
+and Drama 3 keep it; a model that takes tags (Chatterbox Turbo) keeps a tag
+instead, and its whispers are left as rendered.
+
 ### The chapter grid
 
 One row per chapter: **Lines**, **Rendered** (*12 of 40 lines* — the lines
