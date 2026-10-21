@@ -574,7 +574,11 @@ BUILT:  2 and 3 (2026-10-21): the branch `whisper-gap` merged (ff7747ff) — −
         Docs: studio (Discover's Cancel), whats-new. Lint, unit 261, server 1384 (2 skipped), smoke
         passed against the running app.
 OPEN:   1: round 8's lines picked (86 candidates, 30 kept over seven feelings); its 120 BreezeTTS 2
-        takes rendering, then the narration with Drama 3 and the page. The smoke gate against the
+        takes rendered (every take told its own words, checked); the narration: Breeze's 10
+        passages and Drama 3's 1–9 rendered, then Claude Code stopped the background jobs for low
+        memory again at 17:20 (Drama 3's disk experts map ~17 GB; the session was idle between
+        notifications). Left: Drama 3's passage 10 and both openings (about 7 minutes on the card),
+        then the page (scratchpad `r8_page.js`, `r8-page/`). Not restarted — it waits for the user. The smoke gate against the
         running app woke its language model (warm-on-boot) mid-render and free memory fell to 0.4 GB
         — unloaded at once; never gate against the app while it renders.
 GO:     given 2026-10-21 ("try again keep going your rec").
