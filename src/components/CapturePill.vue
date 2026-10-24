@@ -125,9 +125,11 @@ function onKey(event) {
   background: var(--danger);
   cursor: pointer;
 }
+/* Keyboard focus: a white ring inside a dark one, so it shows on any ground the window floats over
+   (WCAG technique C40, "Creating a two-color focus indicator"); the pill's own shadow stays. */
 .capture-pill--error:focus-visible {
   outline: 2px solid #fff;
-  outline-offset: 2px;
+  box-shadow: 0 0 0 4px #18181b, var(--shadow-3);
 }
 .capture-pill__label {
   max-width: 48ch;

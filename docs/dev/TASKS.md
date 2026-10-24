@@ -497,7 +497,7 @@ BUILT:  2026-10-20 — server: `JUSTVOICE_ALLOWED_HOSTS` to bearerAuth and the C
         scripts' comments. Tests: csrf (a renamed host; `*`), mcp_rulings (`audio_path` through a
         proxy), restore_gate (a playing take doesn't refuse a restore), the connection page's three.
 OPEN:   1, 3, 11 and the start checks are untested until a release runs (a tag: the user's word).
-        8 waits for the app to run. FINDING: the factory reset runs under the gate but stops only the
+        8: looked 2026-10-24 (TASKS "More feelings than nine …", 5). FINDING: the factory reset runs under the gate but stops only the
         engines, not the book runs, render and export jobs — `runFactoryReset` deletes the folders
         they write into (pre-existing; not in the rec).
 GO:     given 2026-10-20 (as above).
@@ -545,6 +545,27 @@ BUILT:  `@internationalized/number` ^3.6.9; Settings → Storage on the kit's St
 OPEN:   Change folder, Remove the old copy and Move back show only in the desktop app — not seen;
         the 8741 browser shows the panel without them.
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
+
+### More feelings than nine, after round 8; the dictation pill's ring on any ground (decided 2026-10-24)
+STATE:  DECIDED 2026-10-24 — shown: "4. Should the app get more feelings than its nine, at least
+        relieved, curious and surprised, so it stops telling a voice "fearful" for a curious line? -
+        Lean: yes, after round 8's results, matched to what each engine can be told." "5.
+        CapturePill's focus ring shows only once, but it's 2 px white, so it disappears on a light
+        background. Should it get a second, dark ring outside the white one, as WCAG technique C40
+        recommends? - Lean: yes, a one-line style change." The user: "your rec go while i listen to
+        the pages".
+WHY:    4: on round 8's lines the app's direction step called relief happy and wondering, curiosity
+        and surprise fearful (`models.js` EMOTION_VALUES has nine), and every engine is told that
+        word; the user, listening: "happy is not the feeling of relief". 5: the look the 2026-10-20
+        rec waited for (TASKS "The kit's changes of 2026-10-19/20", 8): the ring shows once (the
+        pill's own shadow beats the kit's zero-specificity ring), but white on a light window is
+        invisible.
+NOT:    4 built before round 8 is scored.
+BUILT:  5 — `CapturePill.vue`: outline 2px white, box-shadow 0 0 0 4px #18181b (C40's form,
+        https://www.w3.org/WAI/WCAG22/Techniques/css/C40), the pill's shadow kept; seen focused by
+        Tab on a light ground, headless against the running dev app. Docs: whats-new.
+OPEN:   4 — after round 8's results: what each engine can be told (RESEARCH), then the list.
+GO:     given 2026-10-24 ("your rec go while i listen to the pages").
 
 ### dots.tts through the scorer on round 4's lines; your ears only if it beats VoxCPM2 (decided 2026-10-24)
 STATE:  DECIDED 2026-10-24 — the user asked "did we test everyone that we should have we never tested

@@ -2,6 +2,9 @@
 
 ## v0.1.0
 
+- **The dictation pill's focus ring shows on any background (2026-10-24)** — when a failed
+  dictation's pill has keyboard focus, its white ring now sits inside a dark one, so it shows over
+  light windows as well as dark
 - **Whispers under the narration (2026-10-21)** — the speech models whisper at speaking volume, so a
   whispered line is now set a fixed amount under the chapter's narration when the chapter is
   joined: **Whispers under the narration** in Settings → Generation pipeline, 18 dB by default
