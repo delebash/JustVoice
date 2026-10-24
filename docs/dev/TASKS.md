@@ -580,7 +580,16 @@ OPEN:   1: round 8's lines picked (86 candidates, 30 kept over seven feelings); 
         notifications). On the user's "yes your rec go" the rest ran in the foreground: Drama 3's
         passage 10 and both openings. The listening page (scratchpad `r8_page.js`, `r8-page/`;
         answers in its collection `round8`) is published at
-        https://claude.ai/artifact/BRqk8AFBaw9Lk7bZ646evj — waiting on the user's ears. The smoke gate against the
+        https://claude.ai/artifact/BRqk8AFBaw9Lk7bZ646evj — waiting on the user's ears. Version 2
+        (2026-10-24): each row names the line's feeling, which version 1 left out against TASKS "The
+        listening pages" — the user: "you dont say what i am supposed ot be listening for angry sad
+        ect". Version 3 (2026-10-24): each take has the buttons named for its line's feeling and a note
+        box (TASKS "The listening pages"), which version 1 dropped — the user: "you also fogort all the
+        other things we added to the page like loud but whisp not quiet ect you are not givinng me
+        enought choices". The 2026-10-17 table names buttons for 43 of the 66 pairs; the app's neutral
+        lines and the five whose feeling is not the book's (relief as happy; wondering, curiosity and
+        surprise as fearful) show Plain · Something else until the user gives their words. The takes,
+        the order and the saved answers are unchanged. The smoke gate against the
         running app woke its language model (warm-on-boot) mid-render and free memory fell to 0.4 GB
         — unloaded at once; never gate against the app while it renders.
 GO:     given 2026-10-21 ("try again keep going your rec").
@@ -636,18 +645,10 @@ BUILT:  5 (2026-10-21): `runFeature` / `streamFeature` take the kit's `{ signal 
         `generation.whisper_gap_db` under the narration's RMS over the trimmed lines (a chapter with
         no narration: its other lines; a boost at most +12 dB); scene chapters only; tests
         `whisper_gap.test.js`; docs studio and settings-reference.
-OPEN:   1 and 3's renders: started 2026-10-21 16:07 under `npm run dev`, stopped by Claude Code for low
-        memory (3.5 GB free; the app's gemma held 12.5 GB; its window and server survived, the model
-        was unloaded). `data/round8/direction.json` has chapter IX whole (51 lines given cue words,
-        133 a note) and chapter X's speakers; `round8_lines.js` picks up from there. Not restarted —
-        it waits for the user.
-        4 waits for two answers: the gap you picked (−15.1 and −18.2 dB) was measured after
-        mastering, which narrows a whisper's gap by about 3 dB (before: −18.1 and −21.8) — does the
-        setting hold the gap before mastering (the branch's lean, −18) or after; and the words for
-        its Settings field and for the mark on a whispered line in Render.
-        5's routes that keep their answer when the client goes — Discover's chapter scan, Analyze
-        without the stream, the lines with no single speaker, direction, the match, a capture's
-        re-clean: a signal there would make a reload lose what is kept today; for the user.
+OPEN:   — all settled by the entry above ("Round 8 again …"): 1 and 3's renders finished and
+        round 8's page is published; 4's two answers given (before mastering, −18 dB; the user's
+        labels); 5's routes: Cancel stops Discover's scan, direction, the lines with no single speaker
+        and the match; a dictation's re-clean and Analyze without the stream keep their answer.
 GO:     given 2026-10-21 ("think on things adverserily your rec go").
 
 ### Round 7 — Drama 3 directed in the app, a delivery note, the narrator's own voice (decided 2026-10-19)
