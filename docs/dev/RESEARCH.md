@@ -5172,6 +5172,18 @@ TASKS "dots.tts through the scorer on round 4's lines". Through `npm run dev`.
   the voice and the words — speaker similarity told 0.80 or more (round 4's lowest among the arms
   that acted: Higgs 0.82) and WER told 0.05 or less (round 4's worst arm: 0.049). Otherwise it stops
   at the scores.
+- **What ran (2026-10-24):** 300 takes, none failed; on the card a median 2.4 s a take and 2.5 s
+  more for the edit (`data/round9`, scores `data/round9/score/out`). Emotion gain **+0.09 [0.02,
+  0.24]**; heard as asked 0.23 told · 0.12 not; shouted +4.0 dB [3.0, 5.0], whispered −0.4 dB
+  [−1.4, 0.3]; WER told 0.017; speaker similarity 0.82 told · 0.91 not; UTMOSv2 2.89. **It passes the
+  rule** — but all of the gain is anger (+0.42 [0.22, 0.73] on 6 lines); sad, fearful, happy and
+  contemptuous moved by nothing (−0.03 to 0.00), and a whispered line comes out no quieter. Against
+  round 4 (§10.22): above VoxCPM2 (+0.06) and IndexTTS in words (+0.10 is within its interval),
+  under Breeze (+0.20) and Higgs (+0.24). — *measured*.
+- **The page:** https://claude.ai/artifact/CazRBhwcSGgHRHZjqx3PQE (collection `round9`; builder
+  scratchpad `r9_page.js`, template from round 6's version 2 plus round 8's "Anything off" row):
+  round 5's 13 lines, seed 7, four takes — dots.tts told, its own take before the edit, BreezeTTS 2
+  and VoxCPM2 from round 4, told the same word.
 
 ## Records not yet distilled
 

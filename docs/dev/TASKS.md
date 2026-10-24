@@ -561,8 +561,11 @@ WHY:    of the models we can sell with that fit the 8 GB card and can be told a 
 NOT:    CosyVoice3 and the Chatterboxes again (scored in round 4: +0.06, +0.01, +0.02); dots.tts's
         `instruction_tts` template (upstream documents no instruction format); DramaBox and MOSS-TTS
         v1.5 (more than the card); ElevenLabs as a bar (the user's account, its own question).
-OPEN:   the rule is RESEARCH §10.37, set before rendering; then the takes, the scores, and the
-        page only if the rule says so.
+OPEN:   rendered and scored 2026-10-24 (RESEARCH §10.37): it passes the rule (+0.09 [0.02, 0.24],
+        WER 0.017, likeness 0.82), all of it anger. Its page is published,
+        https://claude.ai/artifact/CazRBhwcSGgHRHZjqx3PQE — waiting on the user's ears.
+BUILT:  `round4_render.js --arms dots-edit` (bf6e95d1); the Edit model at
+        `data/round9/models/DotTTS-Edit-GGUF/` (sha256 checked against audio.cpp's catalog).
 GO:     given 2026-10-24 ("your rec all go").
 
 ### Round 8 again, whispers before mastering with your words, Cancel on four more routes (decided 2026-10-21)
