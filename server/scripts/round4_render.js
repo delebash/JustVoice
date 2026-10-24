@@ -58,6 +58,14 @@
 //
 //     npm run round4:render -- --out data/round8/cue --lines-file <cue lines> --told-only \
 //       --arms breeze-r5 --seeds 7,8
+//
+// Round 9 (TASKS "dots.tts through the scorer on round 4's lines", RESEARCH §10.37) — DotTTS SOAR
+// copies the voice through the app; each told take is the line's untold take (same seed) remade by
+// DotTTS Edit with `<emo desc="a … tone">`, sent to the speech runtime with Edit registered under
+// the app's SOAR id (the app lists no Edit model — a speech editor, not a voice):
+//
+//     npm run round4:render -- --out data/round9 --arms dots-edit \
+//       --runtime http://127.0.0.1:<the speech runtime's port> [--edit-model <its GGUF>]
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -197,6 +205,20 @@ const ARMS = {
     options: { "fish_drama3.disk_experts": "true", "fish_drama3.cpu_expert_layers": "0" },
     request: { top_k: "4097" },
   },
+  // ── Round 9 (RESEARCH §10.37) ──
+  // DotTTS takes a feeling only through its Edit model, as a second pass over a take: the text
+  // wrapped in `<emo desc="…">` in the authors' form (doteBench's "a happy and excited tone", arXiv
+  // 2608.02673 Fig. 1), told the word round 4 told every engine. Every untold take is made first
+  // (`edit`), then each is remade — one model on the card at a time.
+  "dots-edit": {
+    engine: "dots_tts",
+    variant: "dots_tts-dotsttssoar-q8",
+    edit: true,
+    told: (emotion) => {
+      const word = WORDS[emotion] ?? emotion;
+      return { emotion, emo_desc: `${/^[aeiou]/.test(word) ? "an" : "a"} ${word} tone` };
+    },
+  },
 };
 
 // The emotion clips: a short emotional sentence per emotion, acted by BreezeTTS 2 in another voice.
@@ -295,6 +317,8 @@ async function main() {
       // in place of the key's cue lines; told takes only (the round pairs two told takes).
       "lines-file": { type: "string", default: "" },
       "told-only": { type: "boolean", default: false },
+      // Round 9: DotTTS Edit's GGUF (audio.cpp's catalog entry dots_tts_edit_q8_0).
+      "edit-model": { type: "string", default: path.join(ROOT, "data", "round9", "models", "DotTTS-Edit-GGUF", "dots-tts-edit-q8_0.gguf") },
     },
   });
   const server = args.server.replace(/\/+$/, "");
@@ -358,65 +382,72 @@ async function main() {
     const armName = args.prime ? `${arm}-primed` : arm;
     const dir = path.join(args.out, armName);
     mkdirSync(dir, { recursive: true });
-    for (const l of lines) {
-      const lead = args.prime ? PRIME[l.emotion] : null;
-      if (args.prime && !lead) throw new Exit(`no lead-in for ${l.emotion} (line ${l.line})`);
-      const text = lead ? `${lead} ${l.text}` : l.text;
-      for (const told of args.prime || args["told-only"] ? [true] : [false, true]) {
-        for (const seed of seeds) {
-          const id = `${armName}/${l.line}-${told ? "told" : "plain"}-${seed}`;
-          const wav = path.join(dir, `${l.line}-${told ? "told" : "plain"}-${seed}.wav`);
-          // A primed take is written whole first; the cut (`wav`) comes after the aligner.
-          const rendered = lead ? wav.replace(/\.wav$/, ".full.wav") : wav;
-          if (seen.has(id) && existsSync(rendered)) continue;
-          // A bracket arm says its note in the text; the manifest keeps the line's own words.
-          const note = told && a.bracket ? a.bracket(l.emotion, l) : null;
-          const said = note ? `[${note}] ${text}` : text;
-          const delivery = note
-            ? { bracket: note }
-            : told
-              ? a.clip
-                ? { emotion_clip: bank[l.emotion], emotion_alpha: a.clip }
-                : a.told(l.emotion, l)
-              : (a.plain ?? null);
-          const started = Date.now();
-          let error = null;
-          try {
-            const audio = a.direct
-              ? await directTake(args.runtime, a.variant, { text: said, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), transcript: voiceTranscript(args["data-dir"], voice.id), seed, extra: a.request })
-              : a.ours
-              ? await oursTake(args.runtime, a.variant, {
-                  text,
-                  voiceRef: path.resolve(reference),
-                  transcript: a.ours === "icl" ? source.transcript : null,
-                  instruct: told ? delivery.instruct : "",
-                  seed,
-                  extra: a.request,
-                })
-              : told && a.clip
-                ? await runtimeTake(args.runtime, a.variant, { text, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), clip: bank[l.emotion], alpha: a.clip, seed })
-                : await call(server, "/v1/generate", {
-                    method: "POST",
-                    body: { voice: voice.id, text: said, language: "en", seed, cache: false, delivery: note ? null : delivery },
-                    raw: true,
-                  });
-            writeFileSync(rendered, audio);
-          } catch (e) {
-            error = String(e.message || e);
-            console.log(`   ${id}: ${error}`);
+    // An edit arm makes every untold take first, then remakes each with the Edit model.
+    const passes = a.edit ? [[false], [true]] : [args.prime || args["told-only"] ? [true] : [false, true]];
+    for (const [pass, passTold] of passes.entries()) {
+      if (a.edit && pass === 1) await registerEdit(args.runtime, a.variant, path.resolve(args["edit-model"]));
+      for (const l of lines) {
+        const lead = args.prime ? PRIME[l.emotion] : null;
+        if (args.prime && !lead) throw new Exit(`no lead-in for ${l.emotion} (line ${l.line})`);
+        const text = lead ? `${lead} ${l.text}` : l.text;
+        for (const told of passTold) {
+          for (const seed of seeds) {
+            const id = `${armName}/${l.line}-${told ? "told" : "plain"}-${seed}`;
+            const wav = path.join(dir, `${l.line}-${told ? "told" : "plain"}-${seed}.wav`);
+            // A primed take is written whole first; the cut (`wav`) comes after the aligner.
+            const rendered = lead ? wav.replace(/\.wav$/, ".full.wav") : wav;
+            if (seen.has(id) && existsSync(rendered)) continue;
+            // A bracket arm says its note in the text; the manifest keeps the line's own words.
+            const note = told && a.bracket ? a.bracket(l.emotion, l) : null;
+            const said = note ? `[${note}] ${text}` : text;
+            const delivery = note
+              ? { bracket: note }
+              : told
+                ? a.clip
+                  ? { emotion_clip: bank[l.emotion], emotion_alpha: a.clip }
+                  : a.told(l.emotion, l)
+                : (a.plain ?? null);
+            const started = Date.now();
+            let error = null;
+            try {
+              const audio = a.direct
+                ? await directTake(args.runtime, a.variant, { text: said, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), transcript: voiceTranscript(args["data-dir"], voice.id), seed, extra: a.request })
+                : a.ours
+                ? await oursTake(args.runtime, a.variant, {
+                    text,
+                    voiceRef: path.resolve(reference),
+                    transcript: a.ours === "icl" ? source.transcript : null,
+                    instruct: told ? delivery.instruct : "",
+                    seed,
+                    extra: a.request,
+                  })
+                : told && a.edit
+                  ? await editTake(args.runtime, a.variant, { text: l.text, source: path.join(dir, `${l.line}-plain-${seed}.wav`), desc: delivery.emo_desc, seed })
+                : told && a.clip
+                  ? await runtimeTake(args.runtime, a.variant, { text, voiceRef: path.join(args["data-dir"], "voices", voice.id, "ref.wav"), clip: bank[l.emotion], alpha: a.clip, seed })
+                  : await call(server, "/v1/generate", {
+                      method: "POST",
+                      body: { voice: voice.id, text: said, language: "en", seed, cache: false, delivery: note ? null : delivery },
+                      raw: true,
+                    });
+              writeFileSync(rendered, audio);
+            } catch (e) {
+              error = String(e.message || e);
+              console.log(`   ${id}: ${error}`);
+            }
+            const entry = {
+              id, wav: path.relative(args.out, wav), text: l.text, reference_wav: reference,
+              emotion_asked: told ? l.emotion : null, emotion_of_line: l.emotion, cue: l.cue,
+              model: armName, variant: a.variant, seed, told, line: l.line, delivery,
+              ...(a.request ? { request_options: a.request } : {}),
+              render_s: (Date.now() - started) / 1000, error,
+              ...(lead ? { primed: lead, full_wav: path.relative(args.out, rendered), cut_at: null } : {}),
+            };
+            manifest.takes = manifest.takes.filter((t) => t.id !== id);
+            manifest.takes.push(entry);
+            seen.add(id);
+            save();
           }
-          const entry = {
-            id, wav: path.relative(args.out, wav), text: l.text, reference_wav: reference,
-            emotion_asked: told ? l.emotion : null, emotion_of_line: l.emotion, cue: l.cue,
-            model: armName, variant: a.variant, seed, told, line: l.line, delivery,
-            ...(a.request ? { request_options: a.request } : {}),
-            render_s: (Date.now() - started) / 1000, error,
-            ...(lead ? { primed: lead, full_wav: path.relative(args.out, rendered), cut_at: null } : {}),
-          };
-          manifest.takes = manifest.takes.filter((t) => t.id !== id);
-          manifest.takes.push(entry);
-          seen.add(id);
-          save();
         }
       }
     }
@@ -424,7 +455,7 @@ async function main() {
     console.log(`   ${done.length} takes; median ${median(done.map((t) => t.render_s)).toFixed(1)} s each`);
     if (a.pin) await call(server, "/v1/settings", { method: "PATCH", body: { engines: { engine_overrides: { [a.engine]: { placements: { [a.variant]: "auto" } } } } } });
     // The app loads its own registration again next time (the runtime reloads a changed entry).
-    if (a.ours) await call(server, "/v1/engines/unload", { method: "POST", body: { kind: "tts" } });
+    if (a.ours || a.edit) await call(server, "/v1/engines/unload", { method: "POST", body: { kind: "tts" } });
   }
   if (args.prime) await cutLeadIns(server, args.out, manifest, save);
 }
@@ -498,6 +529,39 @@ async function registerWithBase(runtime, id, baseFile) {
   });
   if (!r.ok) throw new Exit(`runtime load ${r.status}: ${(await r.text()).slice(0, 400)}`);
   console.log(`   registered ${id} with qwen3_tts.base_model_path=${baseFile}`);
+}
+
+/** Register DotTTS Edit's GGUF on the speech runtime under the app's id for its SOAR model (`id`),
+ * offline — the only mode Edit runs in (../audio.cpp docs/models/dots_tts.md); the runtime reloads an
+ * entry whose file changed. The app's booking for SOAR covers it: the two files are the same size. */
+async function registerEdit(runtime, id, editFile) {
+  if (!runtime) throw new Exit("an edit arm needs --runtime, the speech runtime's URL");
+  if (!existsSync(editFile)) throw new Exit(`no Edit model at ${editFile}`);
+  const url = runtime.replace(/\/+$/, "");
+  const listed = await (await fetch(`${url}/v1/models?include_session_options=true`)).json();
+  const entry = listed.data.find((m) => m.id === id);
+  if (!entry) throw new Exit(`the speech runtime has no model ${id} — is the app's runtime at ${url}?`);
+  const body = { id: entry.id, family: entry.family, task: entry.task, mode: "offline", path: editFile, session_options: entry.session_options || {} };
+  const r = await fetch(`${url}/v1/models/load`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(900 * 1000),
+  });
+  if (!r.ok) throw new Exit(`runtime load ${r.status}: ${(await r.text()).slice(0, 400)}`);
+  console.log(`   registered ${id} as DotTTS Edit (${editFile})`);
+}
+
+/** One told take from DotTTS Edit: the untold take (`source`) remade with the line wrapped in
+ * `<emo desc="…">`; the runtime derives the source and target words from the tags. → WAV bytes. */
+async function editTake(runtime, model, { text, source, desc, seed }) {
+  if (!existsSync(source)) throw new Exit(`no untold take to edit: ${source}`);
+  const request = { text: `<emo desc="${desc}">${text}</emo>`, language: "en", options: { template_name: "edit", source_audio: path.resolve(source), seed } };
+  const r = await runtimeRun(runtime, { model, request });
+  if (!r.ok) throw new Exit(`runtime ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  const body = await r.json();
+  if (typeof body.audio !== "string") throw new Exit(`runtime answered no audio: ${JSON.stringify(body).slice(0, 300)}`);
+  return Buffer.from(body.audio, "base64");
 }
 
 /** `/v1/tasks/run` on the speech runtime. While the model is still busy with an earlier take (the

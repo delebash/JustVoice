@@ -546,6 +546,25 @@ OPEN:   Change folder, Remove the old copy and Move back show only in the deskto
         the 8741 browser shows the panel without them.
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
 
+### dots.tts through the scorer on round 4's lines; your ears only if it beats VoxCPM2 (decided 2026-10-24)
+STATE:  DECIDED 2026-10-24 — the user asked "did we test everyone that we should have we never tested
+        things like fish audio did we?", then "what ones did you not run that we could sell fit on
+        card and can be directed and why?". Shown: "2. Should I put dots.tts through the scorer on
+        round 4's 50 lines, and send it to your ears only if it beats VoxCPM2 (the best Apache model
+        you've heard)? - Lean: yes. It's about half an hour on the card, run in the foreground, and
+        the Edit pass is checked for keeping the voice. - Arguing against it: its makers' own 33% is
+        low, and the edit remakes the audio, so it may lose the voice. That's why it's scored first
+        and your ears come only if it wins." The user: "your rec all go".
+WHY:    of the models we can sell with that fit the 8 GB card and can be told a feeling on a copied
+        voice, dots.tts (Apache-2.0) is the only one never tried: round 4 left it out because its
+        feeling comes only through a second pass, its Edit model (`<emo desc="…">`).
+NOT:    CosyVoice3 and the Chatterboxes again (scored in round 4: +0.06, +0.01, +0.02); dots.tts's
+        `instruction_tts` template (upstream documents no instruction format); DramaBox and MOSS-TTS
+        v1.5 (more than the card); ElevenLabs as a bar (the user's account, its own question).
+OPEN:   the rule is RESEARCH §10.37, set before rendering; then the takes, the scores, and the
+        page only if the rule says so.
+GO:     given 2026-10-24 ("your rec all go").
+
 ### Round 8 again, whispers before mastering with your words, Cancel on four more routes (decided 2026-10-21)
 STATE:  DECIDED 2026-10-21 — after round 8's first run was stopped for low memory, shown: "1. Should I
         restart `npm run dev` and finish round 8 and the narration test (about an hour on the card)?
@@ -588,8 +607,16 @@ OPEN:   1: round 8's lines picked (86 candidates, 30 kept over seven feelings); 
         other things we added to the page like loud but whisp not quiet ect you are not givinng me
         enought choices". The 2026-10-17 table names buttons for 43 of the 66 pairs; the app's neutral
         lines and the five whose feeling is not the book's (relief as happy; wondering, curiosity and
-        surprise as fearful) show Plain · Something else until the user gives their words. The takes,
-        the order and the saved answers are unchanged. The smoke gate against the
+        surprise as fearful) show Plain · Something else until the user gives their words. Version 4
+        (2026-10-24), the user: "you dont even have a fearful option, review the page adverseriouly
+        and add options that make sense that i can choose from you have to simple of options it
+        doesnt help" — each row shows "The book says" (the cue words) and "The app asked for" (its
+        feeling) apart; each take's buttons come from the book's words for that line (e.g. Very
+        curious, eager · A bit curious · Plain · A different feeling); "Anything off", any that
+        apply: Too much, overdone · Volume wrong · Odd sound or glitch · Words wrong or missing; after
+        A or B, How much better: A little · Clearly. Version 3's 16 take ratings stay saved and show
+        as "Earlier: …"; "Loud but in whisper style" left out (the user: "just dont add the whisper
+        that i just talked about"). The takes, the order and the saved answers are unchanged. The smoke gate against the
         running app woke its language model (warm-on-boot) mid-render and free memory fell to 0.4 GB
         — unloaded at once; never gate against the app while it renders.
 GO:     given 2026-10-21 ("try again keep going your rec").

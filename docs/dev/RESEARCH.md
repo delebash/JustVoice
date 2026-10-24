@@ -5150,6 +5150,29 @@ TASKS "Round 7's answers acted on", 1 (and 2: Drama 3 heard before VoxCPM2 is fi
   while loaded: with JustVoice's chat model also up, free memory went under 4 GB twice and Claude
   Code stopped the session's background jobs. Load one model at a time. — *measured*.
 
+### 10.37 Round 9 — dots.tts told a feeling through its Edit model (set 2026-10-24, before rendering)
+
+TASKS "dots.tts through the scorer on round 4's lines". Through `npm run dev`.
+
+- **Takes:** round 4's 50 cue lines of Alice VII–VIII and its voice (the Hatter's clip, copied to
+  DotTTS SOAR q8, `dots_tts-dotsttssoar-q8`), seeds 7, 8, 9. **Not told:** SOAR's take through the
+  app (`/v1/generate`, uncached). **Told:** that same take (same line, same seed) remade by DotTTS
+  Edit q8 (`dots-tts-edit-q8_0.gguf` from audio.cpp's catalog entry `dots_tts_edit_q8_0`, sha256
+  checked) with `template_name=edit`, `source_audio` the untold take, and the text
+  `<emo desc="a … tone">line</emo>` — the word round 4 told every engine ("shouting", "sad",
+  "frightened" …) in the authors' form (doteBench's `<emo desc="a happy and excited tone">`, arXiv
+  2608.02673 Fig. 1); `use_xvector` left on its default (`auto`: off for a pure `emo` edit). The
+  app has no Edit model (a speech editor, not a voice — `generated.js` keeps it off the speech
+  list), so the told takes go to the speech runtime the app runs, Edit registered there under the
+  app's SOAR id (`round4_render.js --arms dots-edit`).
+- **Scored** by the test kit as round 4 (`take-check score --device cuda --quality-seeds 7
+  --whisper-model turbo`), beside round 4's table (§10.22).
+- **The rule, set before rendering:** dots.tts goes to the user's ears only if (a) its emotion gain,
+  told − not, is above VoxCPM2's +0.06 with its 95 % interval above 0, and (b) the edited takes keep
+  the voice and the words — speaker similarity told 0.80 or more (round 4's lowest among the arms
+  that acted: Higgs 0.82) and WER told 0.05 or less (round 4's worst arm: 0.049). Otherwise it stops
+  at the scores.
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next
