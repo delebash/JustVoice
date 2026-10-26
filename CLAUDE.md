@@ -134,7 +134,7 @@ whatever unit test you write for it.
 which was the same documented-but-not-runnable failure the browser-lookup note
 below describes. JustWrite and i18n-docgen have that harness (against the built
 app); when JustVoice picks it up, docgen's is the donor and
-`scripts/e2e.js`, `verify_all.js` and `shots.js` retire with it — they are
+`scripts/e2e.js` and `verify_all.js` retire with it — they are
 browser-driven, banned as an acceptance surface on 2026-08-02.
 
 **Browser lookup has one door — `scripts/lib/smoke-common.js`.** Import `findChrome()` or

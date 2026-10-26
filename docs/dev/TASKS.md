@@ -915,7 +915,7 @@ OPEN:   the user's ears on the round 6 page — done 2026-10-19 (RESEARCH §10.3
         (checked 2026-10-16, RESEARCH §10.26), so the directions come from CREMA-D (open data
         licences, commercial use allowed; no whisper or shout); both on round 5's lines and
         four-step page. The fork's upstream merge is ready on branch `jv-up`
-        (`../audio.cpp-up`, ea1e8c61 — F5's conflict kept ours, audio.cpp's web UI rebuilt from
+        (ea1e8c61, since merged into `jv`; its worktree removed 2026-10-26 — F5's conflict kept ours, audio.cpp's web UI rebuilt from
         the merged sources); it also carries upstream's Fish codec fixes (#936, #937), so Fish S2
         Pro is re-tested with it.
         Order, decided 2026-10-16: shown "which comes first after round 5, round 6b or Fish Drama
@@ -2258,7 +2258,7 @@ STATE:  DECIDED 2026-10-11 — after rounds 1–2 (RESEARCH §10.6: VoxCPM2 keep
 WHY:    the only engines in our build that copy a voice and take emotion in one request.
 NOT:    wiring them on `main` — with no way to hide an engine, they'd ship; IndexTTS's licence
         (no outputs used to improve an AI model; Bilibili's terms) is unruled.
-BUILT:  branch `test/round3-engines` (1b5bff4, worktree `../JustVioce-round3`); rendered and
+BUILT:  branch `test/round3-engines` (1b5bff4, on GitHub; its worktree removed 2026-10-26); rendered and
         scored 2026-10-11 — IndexTTS 2.5 like the book on 12 of 21 tries, CosyVoice3 4 of 21,
         both the clip's person (RESEARCH §10.6).
 OPEN:   neither is removed: both come in through the engine list ("access to all engines",
@@ -2463,8 +2463,8 @@ STATE:  DECIDED 2026-10-08 — every family app moves to Quasar (the kit's TASKS
         as well you have a go on that". The order of work and its status: the kit's
         `docs/plans/2026-10-08-sync-and-quasar-program.md`, step Q5; the layout: the kit's
         `docs/app-structure.md` §Q.
-BUILT:  2026-10-08, on branch `quasar` (worktree `../justvoice-quasar` — this checkout runs your
-        app, so the move stays off main until you merge): `quasar.config.js` (the kit UI alias;
+BUILT:  2026-10-08, on branch `quasar` (in a worktree, since merged and removed 2026-10-26 — this
+        checkout ran your app, so the move stayed off main until you merged): `quasar.config.js` (the kit UI alias;
         dev ports 1430 / HMR 1431; the audio.cpp dev build moved from `scripts/dev.js` into
         Quasar's `beforeDev` hook — a failed build still stops `npm run dev`, and
         JUSTVOICE_AUDIOCPP_BUILD still reaches the server; electron-builder with the old
@@ -7536,7 +7536,7 @@ GO: needed.
 ## Known deviations, recorded so they aren't re-litigated
 
 - **No real-webview end-to-end harness** — deferred by your word above. When it
-  is picked up, docgen's harness is the donor, and `scripts/shots.js`,
+  is picked up, docgen's harness is the donor, and
   `scripts/verify_all.js` and `scripts/e2e.js` retire or get replaced with it:
   they are browser-driven, which was banned as an acceptance surface on
   2026-08-02.

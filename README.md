@@ -36,8 +36,8 @@ Read the docs in this order:
 ### Desktop app
 
 ```bash
-git clone https://github.com/delebash/justvoice-new.git
-cd justvoice-new
+git clone https://github.com/delebash/JustVoice.git
+cd JustVoice
 npm install
 npm run dev
 ```
