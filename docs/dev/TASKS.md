@@ -642,7 +642,10 @@ OPEN:   1: round 8's lines picked (86 candidates, 30 kept over seven feelings); 
         as "Earlier: …"; "Loud but in whisper style" left out (the user: "just dont add the whisper
         that i just talked about"). The takes, the order and the saved answers are unchanged. The smoke gate against the
         running app woke its language model (warm-on-boot) mid-render and free memory fell to 0.4 GB
-        — unloaded at once; never gate against the app while it renders.
+        — unloaded at once; never gate against the app while it renders. 2026-10-27: 47 answers
+        saved, all before version 4 — A/B picked on 20 of the 66 pairs, pairs 1–27 touched, 28–66
+        and Part 2 untouched. The user: "i will just start over with the new form". The old answers
+        stay saved (not cleared, not filled in from the notes); a pick left unchanged counts.
 GO:     given 2026-10-21 ("try again keep going your rec").
 
 ### Round 7's answers acted on, and Stop ends the language model's call (decided 2026-10-21)
