@@ -18,8 +18,8 @@
 // The server finds the build through JUSTVOICE_AUDIOCPP_BUILD (the bin folder) —
 // server/src/engines/audiocpp/dev_build.js reads it; a packaged app ignores it.
 import { execFileSync, spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { copyFileSync, existsSync, readdirSync, readFileSync, readlinkSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -134,6 +134,97 @@ function copyCudaRuntime(cuda) {
   }
 }
 
+const sameFile = (a, b) => (WIN ? resolve(a).toLowerCase() === resolve(b).toLowerCase() : resolve(a) === resolve(b));
+
+/** Every live process: `{pid, ppid, exe, created}` (epoch seconds) — Windows' table through
+ *  PowerShell (CIM), Linux's /proc, macOS's ps (the reading engines/leftovers.js did until round E). */
+export function processTable() {
+  if (WIN) {
+    const ps = "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-CimInstance Win32_Process | ForEach-Object { "
+      + "[pscustomobject]@{p=$_.ProcessId;q=$_.ParentProcessId;e=$_.ExecutablePath;"
+      + "t=$(if($_.CreationDate){$_.CreationDate.ToUniversalTime().ToString('o')}else{$null})} } | ConvertTo-Json -Compress";
+    const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+    const rows = JSON.parse(out.trim() || "[]");
+    return (Array.isArray(rows) ? rows : [rows]).map((x) => ({ pid: Number(x.p), ppid: Number(x.q), exe: x.e || null, created: x.t ? Date.parse(x.t) / 1000 : 0 }));
+  }
+  if (process.platform === "linux") {
+    const boot = Number(/^btime\s+(\d+)/m.exec(readFileSync("/proc/stat", "utf8"))?.[1] ?? 0);
+    const out = [];
+    for (const name of readdirSync("/proc")) {
+      if (!/^\d+$/.test(name)) continue;
+      try {
+        const stat = readFileSync(`/proc/${name}/stat`, "utf8");
+        const rest = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+        let exe = null;
+        try {
+          exe = readlinkSync(`/proc/${name}/exe`);
+        } catch {} // another user's
+        out.push({ pid: Number(name), ppid: Number(rest[1]), exe, created: boot + Number(rest[19]) / 100 });
+      } catch {} // gone meanwhile
+    }
+    return out;
+  }
+  const now = Date.now() / 1000;
+  const out = [];
+  for (const line of sh("ps", ["-axo", "pid=,ppid=,etime=,command="]).split("\n")) {
+    const m = /^\s*(\d+)\s+(\d+)\s+(\S+)\s+(\S+)/.exec(line);
+    if (!m) continue;
+    const [d, hms] = m[3].includes("-") ? m[3].split("-") : [0, m[3]];
+    const parts = hms.split(":").map(Number);
+    while (parts.length < 3) parts.unshift(0);
+    out.push({ pid: Number(m[1]), ppid: Number(m[2]), exe: m[4], created: now - (Number(d) * 86400 + parts[0] * 3600 + parts[1] * 60 + parts[2]) });
+  }
+  return out;
+}
+
+/** Wait up to `ms` for `pids` to end (a stopped program can hold its exe for a moment). */
+function waitGone(pids, ms = 5000) {
+  const alive = (pid) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch (e) {
+      return e?.code === "EPERM";
+    }
+  };
+  const nap = new Int32Array(new SharedArrayBuffer(4));
+  const deadline = Date.now() + ms;
+  while (pids.some(alive) && Date.now() < deadline) Atomics.wait(nap, 0, 0, 100);
+}
+
+/**
+ * Before the build replaces its programs (decided D5): a program running from the dev build's bin
+ * folder — its speech server, its DSP program — holds its exe. One whose JustVoice (the process that
+ * started it) still runs means the app is open: the build waits, "Close the running JustVoice
+ * first." One whose JustVoice is gone — a crashed session's, or its pid since taken by a newer
+ * process — is stopped (until round E, dev_build.js `--stop-leftovers` on engines/leftovers.js).
+ * `table` and `kill` are seams. → the pids stopped.
+ */
+export function guardRunningBuild({ table = processTable(), kill = (pid) => process.kill(pid, "SIGKILL"), bin = BIN } = {}) {
+  const byPid = new Map(table.map((p) => [p.pid, p]));
+  const ours = table.filter((p) => p.exe && sameFile(dirname(p.exe), bin));
+  const live = ours.filter((p) => {
+    const parent = byPid.get(p.ppid);
+    return parent !== undefined && !(parent.created > p.created + 1);
+  });
+  if (live.length) {
+    for (const p of live) console.log(`[audio.cpp] ${basename(p.exe)} (pid ${p.pid}) is still running for an open JustVoice`);
+    throw new BuildError("Close the running JustVoice first.");
+  }
+  const stopped = [];
+  for (const p of ours) {
+    try {
+      kill(p.pid);
+      stopped.push(p.pid);
+    } catch {} // gone, or not ours to stop
+  }
+  if (stopped.length) {
+    waitGone(stopped);
+    console.log(`[audio.cpp] stopped ${stopped.length} audio.cpp program(s) left by a closed JustVoice`);
+  }
+  return stopped;
+}
+
 function describe() {
   const git = (...a) => sh("git", ["-C", CHECKOUT, ...a]);
   let commit = "";
@@ -151,6 +242,7 @@ function describe() {
 export function prepareAudioCppDevBuild() {
   if (!existsSync(join(CHECKOUT, "CMakeLists.txt"))) return null;
   const vs = WIN ? visualStudio() : null;
+  if (existsSync(BIN)) guardRunningBuild();
   const cuda = existsSync(join(BUILD, "CMakeCache.txt")) ? configuredCuda() : configure(vs);
   if (!cuda && WIN && cudaToolkit() && vs?.toolset) {
     // Configured once as a CPU build (no CUDA toolkit or MSVC toolset then) — it never

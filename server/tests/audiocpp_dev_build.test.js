@@ -107,3 +107,35 @@ test("the_catalogs_offer_what_the_dev_build_reads", () => {
   for (const l of ["he", "ru", "zh", "ja"]) expect(cb.VARIANTS[0].languages).toContain(l);
   expect(kokoro.build().STATIC_VOICES.length).toBe(54);
 });
+
+// ── the wrapper's check before it builds (decided D5) ─────────────────────
+
+/** A process table: the app's server, the programs it runs from the dev build, and an orphan. */
+function table(bin) {
+  return [
+    { pid: 100, ppid: 1, exe: "C:\node\electron.exe", created: 1000 },
+    { pid: 101, ppid: 100, exe: path.join(bin, devBuild.SERVER_EXE), created: 1010 },
+    { pid: 102, ppid: 100, exe: path.join(bin, "audiocpp_dsp.exe"), created: 1011 },
+    { pid: 200, ppid: 4242, exe: path.join(bin, devBuild.SERVER_EXE), created: 900 }, // its JustVoice is gone
+    { pid: 300, ppid: 100, exe: "C:\elsewhere\audiocpp_server.exe", created: 1020 },
+  ];
+}
+
+test("the_wrapper_stops_what_a_closed_justvoice_left_and_refuses_while_one_runs_its_build", async () => {
+  const { guardRunningBuild } = await import("../../scripts/audiocpp-dev.js");
+  const bin = path.join(tmpPath("jv-dev-guard-"), "bin");
+  const killed = [];
+  vi.spyOn(console, "log").mockImplementation(() => {});
+  // the app still runs the build's server and its DSP program: nothing is stopped, the build waits
+  expect(() => guardRunningBuild({ table: table(bin), kill: (pid) => killed.push(pid), bin })).toThrow("Close the running JustVoice first.");
+  expect(killed).toEqual([]);
+  // the app closed: only the orphans of this build go — never another folder's program
+  const closed = table(bin).filter((p) => p.ppid !== 100 || p.pid === 300);
+  expect(guardRunningBuild({ table: closed, kill: (pid) => killed.push(pid), bin })).toEqual([200]);
+  expect(killed).toEqual([200]);
+  // a pid its JustVoice's went to after it started is a closed JustVoice too
+  const recycled = [{ pid: 100, ppid: 1, exe: "C:\other.exe", created: 5000 }, { pid: 101, ppid: 100, exe: path.join(bin, devBuild.SERVER_EXE), created: 1010 }];
+  expect(guardRunningBuild({ table: recycled, kill: () => {}, bin })).toEqual([101]);
+  // nothing of the build running: nothing to do
+  expect(guardRunningBuild({ table: [table(bin)[0]], kill: () => {}, bin })).toEqual([]);
+});
