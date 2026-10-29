@@ -202,7 +202,7 @@ test("Qwen3's decoder stays 16-bit by default; its two measured options stay on 
   const r = row("qwen3", "qwen3-cv-1.7b-q8");
   const shown = runtimeOptions.describe("qwen3", r);
   expect(shown.filter((o) => o.featured).map((o) => [o.key, o.label, o.value])).toEqual([
-    ["qwen3_tts.perf_mode", "Attention", "off"],
+    ["qwen3_tts.perf_mode", "Speed mode", "off"],
     ["qwen3_tts.conv_weight_type", "Decoder weights", "f16"],
   ]);
   expect(shown.find((o) => o.key === "qwen3_tts.conv_weight_type").choices).toContainEqual({ value: "f16", label: "16-bit" });

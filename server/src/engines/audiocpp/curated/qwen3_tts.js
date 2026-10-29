@@ -41,10 +41,14 @@ export const OLD_OPTION_NAMES = {
 // the user couldn't tell 16-bit decoder weights from 32-bit by ear (2026-10-04), so 16-bit is
 // the default, where audio.cpp's own is 32-bit.
 export const LOAD_OPTIONS = {
+  // "Speed mode": since the merge of upstream v0.9.3 it sets more than attention — audio.cpp's
+  // `cuda_perf` adds its other CUDA speed-ups to flash attention (decided 2026-10-29).
   perf_mode: {
-    label: "Attention",
-    choices: { off: "Exact", flash_attention: "Flash attention" },
-    hint: "Flash attention: about 9 % faster and 0.2 GB less at the peak; the same seed gives a different take.",
+    label: "Speed mode",
+    choices: { off: "Exact", flash_attention: "Flash attention", cuda_perf: "All speed-ups (CUDA)" },
+    hint:
+      "Flash attention: about 9 % faster and 0.2 GB less at the peak; the same seed gives a different take. " +
+      "All speed-ups (CUDA): flash attention plus audio.cpp's other CUDA speed-ups — not measured here yet; it can change the take and the memory.",
   },
   conv_weight_type: {
     label: "Decoder weights",

@@ -249,6 +249,11 @@ test("flash_attention_is_offered_on_every_qwen3_row", () => {
     expect(perf, r.id).toBeTruthy();
     expect(perf.choices.map(([c]) => c), r.id).toEqual(["off", "flash_attention", "cuda_perf"]);
     expect(perf.hint, r.id).not.toMatch(/8-bit|Q8/);
+    // It sets more than attention now: "Speed mode", audio.cpp's cuda_perf in our words (decided 2026-10-29).
+    expect(perf.label, r.id).toBe("Speed mode");
+    expect(perf.choices, r.id).toEqual([["off", "Exact"], ["flash_attention", "Flash attention"], ["cuda_perf", "All speed-ups (CUDA)"]]);
+    expect(perf.hint, r.id).toContain("Flash attention: about 9 % faster");
+    expect(perf.hint, r.id).toContain("All speed-ups (CUDA): flash attention plus audio.cpp's other CUDA speed-ups — not measured here yet; it can change the take and the memory.");
     expect(offered.map((o) => o.key), r.id).toContain("qwen3_tts.conv_weight_type");
   }
 });

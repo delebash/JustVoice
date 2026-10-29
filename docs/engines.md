@@ -350,7 +350,7 @@ Under the row:
   graphics card for the AI model*. After a failed card load, **Try the card
   again**. See [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu).
 - **Load options** — the options JustVoice measured stay on their own line
-  (Qwen3-TTS's **Attention** and **Decoder weights**, Chatterbox
+  (Qwen3-TTS's **Speed mode** and **Decoder weights**, Chatterbox
   Multilingual's **Checkpoint**), followed by *Read when the model loads — a
   change reloads it.* The rest fold under **Load options (N)**. See
   [Load options](#load-options).
@@ -474,12 +474,13 @@ files a model needs are JustVoice's to give.
 
 The ones JustVoice measured stay on the row itself:
 
-- **Attention** (Qwen3-TTS) — *Exact* or *Flash attention*: about 9 % faster
-  and 0.2 GB less at the peak, and the same seed gives a different take
-  (measured on the 8-bit row). Every row offers it, at any precision. A third
-  choice, *cuda_perf* (audio.cpp's own name), adds audio.cpp's other speed-ups
-  for the graphics card on top of flash attention — it may change the audio and
-  the memory taken; JustVoice hasn't measured it.
+- **Speed mode** (Qwen3-TTS) — *Exact*, *Flash attention* or *All speed-ups
+  (CUDA)*. Flash attention: about 9 % faster and 0.2 GB less at the peak, and
+  the same seed gives a different take (measured on the 8-bit row). All
+  speed-ups (CUDA) is flash attention plus audio.cpp's other speed-ups for an
+  NVIDIA card; JustVoice hasn't measured it yet, and it can change the take and
+  the memory taken. Every row offers it, at any precision. (It was called
+  **Attention** until 2026-10-29, when it began to set more than attention.)
 - **Decoder weights** (Qwen3-TTS) — *16-bit* (the default) or *32-bit*. 16-bit
   takes about 0.5 GB less at the peak; at the same seed the two measure slightly
   apart, but in a listening test no difference could be heard, so 16-bit became

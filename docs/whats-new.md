@@ -6,8 +6,9 @@
   engines list now has what audio.cpp added since: Gradium Phonon, LFM3-Audio (speech and speech
   recognition), Ming 3.0 TTS, Ming 3.0 Audio Tiny (speech and speech recognition), XTTS v2 and a
   smaller Fish Audio Drama 3 download, each with JustVoice's reading of its licence
-  ([Speech engines → Commercial use, in plain words](engines.md#commercial-use-in-plain-words)). Qwen3-TTS's **Attention** load option is on every
-  row, not just the 8-bit ones, with audio.cpp's third choice, *cuda_perf*. They load with
+  ([Speech engines → Commercial use, in plain words](engines.md#commercial-use-in-plain-words)). Qwen3-TTS's **Attention** load option is now **Speed mode**, on
+  every row, not just the 8-bit ones, with a third choice, *All speed-ups (CUDA)* — flash attention
+  plus audio.cpp's other speed-ups for an NVIDIA card, not yet measured by JustVoice. They load with
   `npm run dev` now, and in the installed app once the next speech runtime release ships
 - **The dictation pill's focus ring shows on any background (2026-10-24)** — when a failed
   dictation's pill has keyboard focus, its white ring now sits inside a dark one, so it shows over

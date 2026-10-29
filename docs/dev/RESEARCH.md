@@ -316,8 +316,8 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   positional limits unchecked). — *code + tests, 2026-10-04* · `capability_details.py`; audit
   §13.5. **Load options:** every session option a model's spec lists (`seed_audiocpp_catalog.json`
   `options.session`), typed as the spec types it, at audio.cpp's default — except file paths and
-  what the app sets for the row — with Qwen3's `perf_mode` (every row; `cuda_perf` under audio.cpp's
-  own name, no word of ours yet) and `conv_weight_type` (16-bit by default) kept on the row with
+  what the app sets for the row — with Qwen3's `perf_mode` (every row; "Speed mode", `cuda_perf` "All
+  speed-ups (CUDA)" — decided 2026-10-29; was: "Attention") and `conv_weight_type` (16-bit by default) kept on the row with
   their measured words (curated `LOAD_OPTIONS`). (was: those two Qwen3 options alone — until
   2026-10-15, the adoption plan's E4; `perf_mode` on the 8-bit rows only — until JustVoice
   `ea2f01fc`, 2026-10-29.) — *code + tests, 2026-10-15; 2026-10-29* ·
