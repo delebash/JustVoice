@@ -584,7 +584,7 @@ async function proposeNewPersonas() {
   const voices = voicesForBook(props.voices, book).filter((v) => onCastModels(v.model));
   if (rest.length && !voices.length) {
     pushToast({ kind: "warning", duration: 6000,
-      message: `No installed voice speaks ${languageName(book) || book} — install a speech model on AI Settings → Speech engines.` });
+      message: `No installed voice speaks ${languageName(book) || book} — install a speech model on AI Settings → Speech.` });
     if (!byName.length) return;
   }
   let proposals = [];

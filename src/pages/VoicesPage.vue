@@ -193,7 +193,7 @@ function voiceLocality(v) {
 }
 
 // Engines whose speech runtime isn't installed yet — their static voices
-// can't preview until Install runs on Speech engines. Tag + sort last so they
+// can't preview until Install runs on the Speech tab. Tag + sort last so they
 // never read as "the default voice" (user-hit: an uninstalled engine's
 // stock voice listed first).
 const engineMeta = computed(() => {
@@ -386,10 +386,10 @@ async function previewVoice(v) {
       if (mi) {
         const ok = await confirmDialog({
           title: "Install the speech runtime first",
-          message: `"${v.name}" plays on the ${mi[1]} engine, and the speech runtime every engine runs on isn't installed yet. Open Speech engines to install it?`,
-          confirmLabel: "Open Speech engines",
+          message: `"${v.name}" plays on the ${mi[1]} engine, and the speech runtime every engine runs on isn't installed yet. Open AI Settings → Speech to install it?`,
+          confirmLabel: "Open Speech",
         });
-        if (ok) window.location.hash = "#engines";
+        if (ok) window.location.hash = "#/ai?tab=runtime-audiocpp";
         return;
       }
       const m = String(e?.message || "").match(/engine_not_loaded:([\w.-]+)/);
@@ -670,10 +670,10 @@ function voiceTypeVariant(kind) {
     <UiChip
       as="a"
       :selected="!!loadedTtsEngine"
-      href="#engines"
+      href="#/ai?tab=runtime-audiocpp"
       :title="loadedTtsEngine
         ? `${loadedTtsEngine.name || loadedTtsEngine.id} is loaded — previews play instantly. Click to manage engines.`
-        : 'No voice model loaded — the first preview will offer to load one. Click to manage speech engines.'"
+        : 'No voice model loaded — the first preview will offer to load one. Click to open AI Settings → Speech.'"
     >{{ loadedTtsEngine ? `● ${loadedTtsEngine.name || loadedTtsEngine.id} loaded` : "○ no voice model loaded" }}</UiChip>
     <div class="jv-filters-fold" :class="{ 'is-open': filtersOpen }">
     <div class="voices-view__chips">
@@ -788,7 +788,7 @@ function voiceTypeVariant(kind) {
         <span
           v-if="needsInstall(row)"
           class="jv-locality jv-locality--online"
-          :title="`${row._model || row.engine} runs on the speech runtime, which isn't installed yet — install it on AI Settings → Speech engines before this voice can play`"
+          :title="`${row._model || row.engine} runs on the speech runtime, which isn't installed yet — install it on AI Settings → Speech before this voice can play`"
         >needs the speech runtime</span>
       </template>
 
@@ -815,7 +815,7 @@ function voiceTypeVariant(kind) {
 
       <template #actions="{ row }">
         <span class="jv-table__actions">
-          <!-- The row menu — the Speech engines rows' pattern (`.ev-kebab`). -->
+          <!-- The row menu — the old Speech engines rows' pattern (`.ev-kebab`). -->
           <UiMenu label="Voice actions" :title="`${row.name} — actions`" trigger-class="ev-kebab" content-class="ev-menu" align="end">
             <template #trigger>⋯</template>
             <UiMenuItem class="ev-menu-item" @select="newPersonaFrom(row)">🎭 New persona from this voice</UiMenuItem>
@@ -834,9 +834,9 @@ function voiceTypeVariant(kind) {
       icon="Sparkle"
       title="No voices registered"
       message="Load a speech model to see its built-in voices, or make one — clone, design or blend — on a persona's page."
-      action-label="Open Speech engines"
+      action-label="Open Speech"
       compact
-      @action="$router && $router.push?.('#engines'); window.location.hash = '#engines'"
+      @action="$router && $router.push?.({ path: '/ai', query: { tab: 'runtime-audiocpp' } })"
     />
     <p v-else class="jv-muted" style="padding: 24px 0; text-align: center; font-style: italic;">
       No voices match "{{ search }}" or filter "{{ TYPE_FILTERS.find((f) => f.id === typeFilter)?.label || typeFilter }}".

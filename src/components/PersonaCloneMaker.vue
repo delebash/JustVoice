@@ -328,8 +328,8 @@ async function keep() {
       <div v-if="runtimeMissing" class="jv-banner jv-banner--warn">
         <strong>The speech runtime isn't installed.</strong>
         <div class="jv-inline-row">
-          <UiButton intent="secondary" size="small" label="Open Speech engines"
-            @click="router.push({ path: '/ai', query: { tab: 'speech-engines' } })" />
+          <UiButton intent="secondary" size="small" label="Open Speech"
+            @click="router.push({ path: '/ai', query: { tab: 'runtime-audiocpp' } })" />
         </div>
       </div>
 

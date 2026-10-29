@@ -69,7 +69,7 @@ test("before a run: one start, each step's model, nothing to pay on this compute
   expect(cells(0)).toEqual(["Discover the speakers", "Built-in provider — llama.cpp · gemma-4-26b-a4b-qat"]);
   expect(cells(3)).toEqual(["Analyze — who speaks each line", "Built-in provider — llama.cpp · gemma-4-26b-a4b-qatLocal"]);
   expect(cells(6)).toEqual(["Design the voices", "Qwen3-TTS VoiceDesign → BreezeTTS 2 Commercial use: Separate licence"]);
-  // Breeze's licence word, as the Speech engines list shows it, its hover the licence's words.
+  // Breeze's licence word, as the Speech tab shows it, its hover the licence's words.
   const chip = el.querySelector(".book-run__steps .ev-lic");
   expect(chip.className).toBe("ev-lic ev-lic--separate");
   expect(chip.title).toContain("BreezeBlue Research and Non-Commercial License · JustVoice's reading, checked 2026-10-11");

@@ -218,7 +218,7 @@ async function onSave() {
         <input type="password" v-model="draft.apiKey" autocomplete="off" placeholder="sk-… (blank for local)" />
       </div>
       <div class="pf-f">
-        <label title="Self-hosted = runs on your machine or network — free and private. Lists under Local on the Speech engines tab; its voices badge as self-hosted, not online·metered.">Where it runs</label>
+        <label title="Self-hosted = runs on your machine or network — free and private. Lists under Self-hosted servers on the Speech tab; its voices badge as self-hosted, not online·metered.">Where it runs</label>
         <UiCheckbox v-model="draft.self_hosted">self-hosted (my machine / network — free)</UiCheckbox>
       </div>
     </div>

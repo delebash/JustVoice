@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
   SpeechProvidersPanel — the external speech-provider CRUD, mounted INSIDE the
-  Speech engines tab (user QC ruling 2026-08-06: the standalone "TTS providers"
+  Speech tab, under the kit's models (round E; user QC ruling 2026-08-06: the standalone "TTS providers"
   tab made no sense — one speech surface with the normal Local/Online pair,
   like the LLM providers tab one tab over). Two mounts, one save path:
     scope="selfhosted" → the Local half's "servers you run" rows

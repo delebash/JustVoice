@@ -35,7 +35,7 @@ export const chromeLaunchOptions = () => kitChromeLaunchOptions({ env: "JV_CHROM
 // The tabs that should always be reachable for an audiobook project — the
 // smoke gate clicks each one, `npm run screenshots` pictures each one. ENGINES
 // left the nav with the 2026-08-06 sidebar fold (8b7e05a — engines live under
-// AI Settings → Speech engines now); AI SETTINGS replaces it here. CHAPTERS left
+// AI Settings → Speech now); AI SETTINGS replaces it here. CHAPTERS left
 // with Studio Slice 4 (2026-10-04) — chapters are managed in Studio · Script,
 // and their lines rendered in Studio · Render. GENERATE left 2026-10-05 (a
 // persona's page and Voices' test line speak a line).

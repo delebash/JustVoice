@@ -84,7 +84,7 @@ const takes = ref([]);       // [{n, url, previewId}]
 const chosen = ref(null);
 const busy = ref(false);
 const blocker = computed(() => {
-  if (!model.value) return "No model here can design a voice — install Qwen3 VoiceDesign or VoxCPM2 on AI Settings → Speech engines.";
+  if (!model.value) return "No model here can design a voice — install Qwen3 VoiceDesign or VoxCPM2 on AI Settings → Speech.";
   if (runtimeMissing.value) return "Install the speech runtime first.";
   if (!description.value.trim()) return "Describe the voice you want.";
   return "";
@@ -184,8 +184,8 @@ async function keepTake() {
       <div v-if="runtimeMissing" class="jv-banner jv-banner--warn">
         <strong>The speech runtime isn't installed.</strong>
         <div class="jv-inline-row">
-          <UiButton intent="secondary" size="small" label="Open Speech engines"
-            @click="router.push({ path: '/ai', query: { tab: 'speech-engines' } })" />
+          <UiButton intent="secondary" size="small" label="Open Speech"
+            @click="router.push({ path: '/ai', query: { tab: 'runtime-audiocpp' } })" />
         </div>
       </div>
 

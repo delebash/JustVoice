@@ -148,7 +148,7 @@ export const PROBLEMS = {
   // Every scanned name ignored, no speaker but the narrator (decided 2026-10-16).
   all_ignored: { text: "Every name the scans found is ignored — the book would be read in one voice.", go: ["discover"], link: "Undo some on Discover ➜" },
   no_ffmpeg: { text: "ffmpeg isn't installed, so the run will stop before the M4B. Install ffmpeg and restart the server, then Resume.", go: null, link: "" },
-  no_recognition: { text: "Speech recognition isn't installed, so the takes won't be checked.", go: ["ai", "speech-engines"], link: "Speech engines ➜" },
+  no_recognition: { text: "Speech recognition isn't installed, so the takes won't be checked.", go: ["ai", "runtime-audiocpp"], link: "Speech ➜" },
 };
 
 /** What a model whose licence isn't accepted would make, in the stop's words (the server's

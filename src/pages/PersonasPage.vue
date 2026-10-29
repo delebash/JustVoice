@@ -479,7 +479,7 @@ onActivated(() => { if (mounted) loadAll(); mounted = true; });
       </template>
       <template #more="{ row }">
         <span @click.stop>
-          <!-- The row menu — the kit's UiMenu, the Speech engines rows'
+          <!-- The row menu — the kit's UiMenu, the old Speech engines rows'
                pattern (`.ev-kebab` / `.ev-menu`); the portal escapes the
                table's overflow. -->
           <UiMenu label="Persona actions" trigger-class="ev-kebab" content-class="ev-menu" align="end">

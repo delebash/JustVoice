@@ -38,7 +38,7 @@ const props = defineProps({
   // (key, knob) → the ↺'s title.
   resetTitle: { type: Function, default: (_key, k) => k?.reset || "Back to the default" },
   pausePlaceholder: { type: String, default: "—" },
-  // Every control greyed (Speech engines, while its model is busy).
+  // Every control greyed (the Speech tab's load options, while its model loads).
   disabled: { type: Boolean, default: false },
   // Fold the advanced knobs (false inside the fold itself).
   foldAdvanced: { type: Boolean, default: true },

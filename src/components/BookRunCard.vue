@@ -87,7 +87,7 @@ function narrowModel(row) {
   if (!row.configured) return "No model set";
   return [row.model, row.recipe ? RECIPES[row.recipe] : null].filter(Boolean).join(" · ");
 }
-// A speech step's licence chip, as the Speech engines list shows it; its hover names the licence.
+// A speech step's licence chip, as the Speech tab shows it; its hover names the licence.
 const licenceHover = (l) => licTitle({ ...l, name: l.licence });
 
 const estimateText = (row) => {
