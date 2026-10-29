@@ -374,6 +374,12 @@ Each slice: its own test red then green while building; the full suites, the bui
     jv.6 pin — 125 families against HEAD's 122). Not this session's. Rec: round E builds on HEAD's catalog (the pin's);
     whether that file is kept or thrown away is yours. Attack: a catalog ahead of its pin lists models the pinned
     build can't load — the bug RESEARCH §1.4 records. Changed: nothing.
+    Re-attacked while building (2026-10-29): the three families only it has are `fish_drama3`, `open_wake_word` and
+    `plapre` — Fish Audio Drama 3 is the model the listening rounds use (RESEARCH §10.33, 23 GB downloaded here), and
+    the dev build (`npm run dev`, the fork's `jv`) runs it. Throwing the file away would take Drama 3 out of the app.
+    Changed: keep it as it is — the row producer reads the catalog on disk, so round E changes nothing here (the
+    KittenTTS 2 hashes for its revision `be39e32c` stay); its proper home is a fork release pinned with it, which is
+    a release and waits for your word.
 
 ## 6 · Blast radius
 
