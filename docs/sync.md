@@ -38,8 +38,9 @@ it to something like "Studio PC"), and how often JustVoice syncs on its own whil
 5 minutes unless you change it; 0 means only when you press **Sync now**).
 
 The line at the top tells you when this computer last synced, and with which one — for example
-*"Synced 2 min ago · from Studio PC"*. **Devices** lists every computer this one has synced with,
-and how: by hand, the cloud folder, or the network.
+*"Synced 2 min ago · from Studio PC"*. Under it, **Changes waiting** counts what you changed on this
+computer that no other computer or the cloud folder has yet. **Devices** lists every computer this
+one has synced with, and how: by hand, the cloud folder, or the network.
 
 A computer you no longer use stays in the cloud folder until you press **Remove** on its row (the
 rows synced through the cloud folder have one). JustVoice syncs first, so nothing that computer
