@@ -1,10 +1,15 @@
 # SPDX-License-Identifier: MIT
 name: Release
 
+# Started only by hand (the user, 2026-10-28: nothing builds by itself): the Actions page's "Run workflow" or
+# `gh workflow run release.yml -f tag=v<version>` — the tag must already be on origin.
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g. v2.4.0). Must already exist on origin."
+        required: true
+        type: string
 
 # No concurrency group — release builds must never cancel each other.
 
@@ -35,6 +40,7 @@ jobs:
       # ../just-core/packages/ui), so all three are checked out side by side.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.tag }}
           path: JustVioce
       - uses: actions/checkout@v4
         with:
@@ -139,7 +145,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag }}
         run: |
           PRE=""
           case "$TAG" in *-*) PRE="--prerelease" ;; esac
@@ -164,6 +170,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.tag }}
           path: JustVioce
       - uses: actions/setup-node@v4
         with:

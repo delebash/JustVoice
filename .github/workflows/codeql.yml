@@ -1,11 +1,9 @@
 # SPDX-License-Identifier: MIT
 name: CodeQL
 
+# Run by hand only (the user, 2026-10-28: "i dont ever want an automatic build of anything i only want stuff to build
+# when i say so") — the Actions page's "Run workflow", or `gh workflow run codeql.yml`.
 on:
-  schedule:
-    # Every Monday at 03:17 UTC
-    - cron: "17 3 * * 1"
-  # Allow manual trigger for ad-hoc scans
   workflow_dispatch:
 
 concurrency:
