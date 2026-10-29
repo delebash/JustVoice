@@ -530,88 +530,9 @@ export class AudioCppSlot {
     });
   }
 
-  /**
-   * Speak once now, so a Load means loaded and its memory is measured — audio.cpp loads lazily
-   * on a build without `model_management`, and allocates a model's working buffers on its
-   * first line on any build. `calibrateChars` > 0: this model has no price on the card yet,
-   * so the warm-up is a FULL-LENGTH piece (`CALIBRATION_TEXT` cut to that length, never longer
-   * than audio.cpp's own budget for the family; speech recognition gets its 30 s chunk of
-   * silence) and what the process holds after it is this model's peak (audit 2026-10-04
-   * §13.3). Returns whether it calibrated. A model that speaks only from a clip (Chatterbox
-   * Multilingual, Qwen3 Base, Pocket TTS French) warms on its first real line instead.
-   *
-   * A failure fails the Load with audio.cpp's own words (audit §5 B4).
-   */
+  /** The warm-up after a Load (`warmModel`) on this slot's server. */
   async _warm(calibrateChars = 0) {
-    const spec = this._row.audiocpp;
-    const { family, task } = spec;
-    const n = calibrateChars ? Math.min(calibrateChars, self.familyBudget(family) ?? calibrateChars) : 0;
-    const text = n ? calibrationText(n) : "Ready.";
-    const model = this._row.id;
-    const srv = this._srv();
-    if (family === "kokoro_tts") {
-      await srv.speech({ model, input: text, voice: "af_heart", language: "en-us", seed: 1 });
-    } else if (family === "kitten_tts") {
-      await srv.speech({ model, input: text, voice: "Leo" });
-    } else if (family === "pocket_tts") {
-      // In its default preset, alba. Pocket TTS French has none — it clones only (TASKS "Slice
-      // 4's gaps" 2) — so it can't warm up, and its first line sets its price (§7 answer 5):
-      // until 2026-10-16 it spoke alba, which the French download doesn't have, and the load failed.
-      const voice = spec.voices?.[spec.default_voice];
-      if (!voice) return false;
-      await srv.speech({ model, input: text, voice, seed: 1 });
-    } else if (family === "qwen3_tts" && task === "vdes") {
-      // Designed from words, so it needs no clip (it had no warm-up until 2026-10-04).
-      await srv.speech({ model, input: text, language: "English", seed: 1, instructions: "A calm, clear narrator." });
-    } else if (family === "qwen3_tts" && task === "tts" && !spec.clone) {
-      await srv.speech({ model, input: text, language: "English", seed: 1, options: { speaker: "Ryan" } });
-    } else if (family === "qwen3_asr") {
-      const seconds = calibrateChars ? CALIBRATION_AUDIO_S : 1 / 3;
-      await srv.transcribe({ model, language: "English", audio: _silencePath(seconds) });
-      return Boolean(calibrateChars);
-    } else if (family === "voxcpm2") {
-      // Designed, so it needs no clip. Without a warm-up the load measured nothing (197 ->
-      // 197 MB) and the memory ledger booked 0 MB for a multi-GB model.
-      await srv.speech({ model, input: `(A calm, clear voice)${text}`, seed: 1 });
-    } else if (family === "chatterbox_turbo") {
-      // Its built-in voice needs no clip, so a Load books its memory now rather than on the first
-      // line.
-      await srv.speech({ model, input: text, seed: 1 });
-    } else if (spec.generated) {
-      return await this._warmGenerated(text, n, calibrateChars);
-    } else {
-      return false;
-    }
-    return Boolean(n);
-  }
-
-  /**
-   * A generated model's warm-up (the adoption plan's slice 2, M1). A recogniser hears silence, as
-   * Qwen3-ASR does. A speech model that can speak without a clip speaks the piece — in its default
-   * built-in voice (the spec's own), in its one voice, or from a description — through the same
-   * request a line takes, so a first load measures its memory as the seven engines described by
-   * our own files have always done theirs (`_warm`). A
-   * model that speaks only from a clip can't: its price is saved after its first line instead
-   * (§7 answer 5; manager.load). Returns whether it calibrated.
-   */
-  async _warmGenerated(text, n, calibrateChars) {
-    const spec = this._row.audiocpp;
-    const srv = this._srv();
-    if (this.kind === "stt") {
-      const seconds = calibrateChars ? CALIBRATION_AUDIO_S : 1 / 3;
-      await srv.transcribe({ model: this._row.id, audio: _silencePath(seconds) });
-      return Boolean(calibrateChars);
-    }
-    let body;
-    if (spec.default_voice) {
-      body = { voice_id: spec.default_voice, text, seed: 1 };
-    } else if (spec.design) {
-      body = { text, seed: 1, delivery: { instruct: spec.design_example || WARM_DESCRIPTION } };
-    } else {
-      return false;
-    }
-    await srv.speech(self.toSpeechRequest(this._row, body));
-    return Boolean(n);
+    return self.warmModel(this._srv(), this._row, this.kind, calibrateChars);
   }
 
   // -- /synth --
@@ -672,12 +593,11 @@ export class AudioCppSlot {
     let [p, temp] = this._audioPath(body);
     let out;
     try {
-      let req;
       if (this._row.audiocpp.family !== "qwen3_asr") {
         // Every other recogniser audio.cpp has (generated.js): the audio at 16 kHz mono, as
         // audio.cpp's own page sends a recogniser's (webui +page.svelte, stagedPath) — several
         // (OWSM, CrisperWhisper, MOSS-Transcribe-Diarize, Hviske v6) refuse any other rate
-        // without libsoxr, which the release doesn't carry; and the language as its spec takes it.
+        // without libsoxr, which the release doesn't carry.
         const wav = readFileSync(p);
         const at16k = await self.asAudio16kMono(wav);
         if (at16k !== wav) {
@@ -686,13 +606,8 @@ export class AudioCppSlot {
           if (temp) rmSync(p, { force: true });
           [p, temp] = [fwd(name), true];
         }
-        req = self.generatedTranscribeRequest(this._row, body, p);
-      } else {
-        req = { model: this._row.id, audio: p };
-        const lang = String(get(body, "language") || "").split("-")[0].toLowerCase();
-        if (has(ASR_LANGUAGE, lang)) req.language = ASR_LANGUAGE[lang]; // anything else: detected
       }
-      out = await this._srv().transcribe(req, self._transcribeTimeout(p));
+      out = await this._srv().transcribe(self.transcribeRequest(this._row, body, p), self._transcribeTimeout(p));
     } finally {
       if (temp) rmSync(p, { force: true });
     }
@@ -735,11 +650,22 @@ export function plainTranscript(row, out) {
   return parts.length ? parts.join(" ") : strip(out?.text || "");
 }
 
-/** How long a transcription may take (seconds): the request timeout setting, or three times
- * the recording — speech recognition runs at about 2x real time on the CPU, so a fixed 600 s
+/** A transcription request for a recogniser's row (`/v1/audio/transcriptions/details` JSON):
+ * `audio` the recording's path on this computer, and the language as the model takes it —
+ * Qwen3-ASR's name for one of its 30 (anything else: detected), every other recogniser's in its
+ * spec's form (`generatedTranscribeRequest`). */
+export function transcribeRequest(row, body, audio) {
+  if (row.audiocpp.family !== "qwen3_asr") return self.generatedTranscribeRequest(row, body, audio);
+  const req = { model: row.id, audio };
+  const lang = String(get(body, "language") || "").split("-")[0].toLowerCase();
+  if (has(ASR_LANGUAGE, lang)) req.language = ASR_LANGUAGE[lang]; // anything else: detected
+  return req;
+}
+
+/** How long a transcription may take (seconds): the request timeout setting (`floor`), or three
+ * times the recording — speech recognition runs at about 2x real time on the CPU, so a fixed 600 s
  * timed out recordings longer than ~20 minutes (audit §5 D9). */
-export function _transcribeTimeout(p) {
-  const floor = runtime.requestTimeout();
+export function _transcribeTimeout(p, floor = runtime.requestTimeout()) {
   let seconds;
   try {
     // Python's `wave`: PCM (or extensible) only; frames = data bytes / block size.
@@ -859,6 +785,90 @@ export function calibrationText(chars) {
   }
   head = rstrip(head, " ,;.");
   return head.length < n ? `${head}.` : `${head.slice(0, -1)}.`;
+}
+
+/**
+ * Speak once now on `srv` (the server holding `row`'s model — a variant row; `kind` "tts" |
+ * "stt"), so a Load means loaded and its memory is measured — audio.cpp loads lazily on a build
+ * without `model_management`, and allocates a model's working buffers on its first line on any
+ * build. `calibrateChars` > 0: this model has no price on the card yet, so the warm-up is a
+ * FULL-LENGTH piece (`CALIBRATION_TEXT` cut to that length, never longer than audio.cpp's own
+ * budget for the family; speech recognition gets its 30 s chunk of silence) and what the process
+ * holds after it is this model's peak (audit 2026-10-04 §13.3). Returns whether it calibrated. A
+ * model that speaks only from a clip (Chatterbox Multilingual, Qwen3 Base, Pocket TTS French)
+ * warms on its first real line instead. The slot's Load and the kit's (kit_hooks.js `warm`) both
+ * run it.
+ *
+ * A failure fails the Load with audio.cpp's own words (audit §5 B4).
+ */
+export async function warmModel(srv, row, kind, calibrateChars = 0) {
+  const spec = row.audiocpp;
+  const { family, task } = spec;
+  const n = calibrateChars ? Math.min(calibrateChars, self.familyBudget(family) ?? calibrateChars) : 0;
+  const text = n ? calibrationText(n) : "Ready.";
+  const model = row.id;
+  if (family === "kokoro_tts") {
+    await srv.speech({ model, input: text, voice: "af_heart", language: "en-us", seed: 1 });
+  } else if (family === "kitten_tts") {
+    await srv.speech({ model, input: text, voice: "Leo" });
+  } else if (family === "pocket_tts") {
+    // In its default preset, alba. Pocket TTS French has none — it clones only (TASKS "Slice
+    // 4's gaps" 2) — so it can't warm up, and its first line sets its price (§7 answer 5):
+    // until 2026-10-16 it spoke alba, which the French download doesn't have, and the load failed.
+    const voice = spec.voices?.[spec.default_voice];
+    if (!voice) return false;
+    await srv.speech({ model, input: text, voice, seed: 1 });
+  } else if (family === "qwen3_tts" && task === "vdes") {
+    // Designed from words, so it needs no clip (it had no warm-up until 2026-10-04).
+    await srv.speech({ model, input: text, language: "English", seed: 1, instructions: "A calm, clear narrator." });
+  } else if (family === "qwen3_tts" && task === "tts" && !spec.clone) {
+    await srv.speech({ model, input: text, language: "English", seed: 1, options: { speaker: "Ryan" } });
+  } else if (family === "qwen3_asr") {
+    const seconds = calibrateChars ? CALIBRATION_AUDIO_S : 1 / 3;
+    await srv.transcribe({ model, language: "English", audio: _silencePath(seconds) });
+    return Boolean(calibrateChars);
+  } else if (family === "voxcpm2") {
+    // Designed, so it needs no clip. Without a warm-up the load measured nothing (197 ->
+    // 197 MB) and the memory ledger booked 0 MB for a multi-GB model.
+    await srv.speech({ model, input: `(A calm, clear voice)${text}`, seed: 1 });
+  } else if (family === "chatterbox_turbo") {
+    // Its built-in voice needs no clip, so a Load books its memory now rather than on the first
+    // line.
+    await srv.speech({ model, input: text, seed: 1 });
+  } else if (spec.generated) {
+    return await warmGenerated(srv, row, kind, text, n, calibrateChars);
+  } else {
+    return false;
+  }
+  return Boolean(n);
+}
+
+/**
+ * A generated model's warm-up (the adoption plan's slice 2, M1). A recogniser hears silence, as
+ * Qwen3-ASR does. A speech model that can speak without a clip speaks the piece — in its default
+ * built-in voice (the spec's own), in its one voice, or from a description — through the same
+ * request a line takes, so a first load measures its memory as the seven engines described by
+ * our own files have always done theirs (`warmModel`). A
+ * model that speaks only from a clip can't: its price is saved after its first line instead
+ * (§7 answer 5; manager.load). Returns whether it calibrated.
+ */
+async function warmGenerated(srv, row, kind, text, n, calibrateChars) {
+  const spec = row.audiocpp;
+  if (kind === "stt") {
+    const seconds = calibrateChars ? CALIBRATION_AUDIO_S : 1 / 3;
+    await srv.transcribe({ model: row.id, audio: _silencePath(seconds) });
+    return Boolean(calibrateChars);
+  }
+  let body;
+  if (spec.default_voice) {
+    body = { voice_id: spec.default_voice, text, seed: 1 };
+  } else if (spec.design) {
+    body = { text, seed: 1, delivery: { instruct: spec.design_example || WARM_DESCRIPTION } };
+  } else {
+    return false;
+  }
+  await srv.speech(self.toSpeechRequest(row, body));
+  return Boolean(n);
 }
 
 // ─── Our request → audio.cpp's (plan §3.4) ──────────────────────────────────
