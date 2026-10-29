@@ -16,7 +16,7 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { getLogger } from "@delebash/core/platform/log";
 import { RuntimeError, isJsonObject } from "@delebash/core/platform/py";
-import { pyJson, pyClone } from "@delebash/core/platform/pyjson";
+import { pyJson, pyJsonParse, pyClone } from "@delebash/core/platform/pyjson";
 import { openDatabase } from "@delebash/core/platform/sql";
 import * as session from "../database/session.js";
 import { construct, floatify, modelDump, Settings, SettingsPatch } from "../models.js";
@@ -121,6 +121,51 @@ export function readSettingsReadOnly(dataDir) {
     }
   }
   return settingsFromLegacy(settingsPath(dataDir)) ?? construct(Settings, {});
+}
+
+/** The stored row as it is (no defaults filled, no key the schema dropped left out), or null when
+ * there is none or it doesn't parse. Whole-number floats stay floats (`pyJsonParse`). */
+function storedRow(h) {
+  const row = h.get("settings", ROW_ID);
+  if (!row) return null;
+  try {
+    const data = pyJsonParse(row.data);
+    return isJsonObject(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One value of the stored row by its dotted key ("engines.speech_runtime.backend"), as stored —
+ * a setting the schema no longer has too (`construct` leaves those out) — or undefined. For a
+ * setting that moved elsewhere (the kit's `retireSettings`).
+ */
+export function storedSetting(h, key) {
+  let at = storedRow(h);
+  for (const part of String(key).split(".")) {
+    if (!isJsonObject(at) || !Object.hasOwn(at, part)) return undefined;
+    at = at[part];
+  }
+  return at;
+}
+
+/** Remove one value from the stored row by its dotted key — and the section it leaves empty — the
+ * rest of the row as it was. Nothing stored there: the row is left as it is. */
+export function deleteStoredSetting(h, key) {
+  const data = storedRow(h);
+  const parts = String(key).split(".");
+  const trail = [data];
+  for (const part of parts.slice(0, -1)) {
+    const at = trail.at(-1);
+    if (!isJsonObject(at) || !isJsonObject(at[part])) return;
+    trail.push(at[part]);
+  }
+  const last = trail.at(-1);
+  if (!isJsonObject(last) || !Object.hasOwn(last, parts.at(-1))) return;
+  delete last[parts.at(-1)];
+  for (let i = trail.length - 1; i > 0 && !Object.keys(trail[i]).length; i--) delete trail[i - 1][parts[i - 1]];
+  h.update("settings", { data: pyJson(data) }, { id: ROW_ID });
 }
 
 /** In-memory + SQLite-backed settings store. */
