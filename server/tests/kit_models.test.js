@@ -45,7 +45,7 @@ test("every model version our engines offer is one row, its files pinned, its ma
 });
 
 test("a small file Git stores itself carries the SHA-256 its family file gives it, at its revision", () => {
-  // catalog.json gives such a file Git's blob id (40 hex), all Hugging Face lists for it
+  // seed_audiocpp_catalog.json gives such a file Git's blob id (40 hex), all Hugging Face lists for it
   const gitIds = new Map();
   for (const fam of Object.values(generated.CATALOG.families)) {
     for (const p of fam.packages || []) for (const f of p.source?.files || []) if (/^[0-9a-f]{40}$/.test(f.sha256 || "")) gitIds.set(`${p.source.repo}\u0000${p.source.revision}\u0000${f.path}`, f);

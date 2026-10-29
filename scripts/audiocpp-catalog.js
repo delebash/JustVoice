@@ -4,8 +4,9 @@
 // engine-catalog.md §2; docs/plans/2026-10-13-adopt-everything-audiocpp.md §2, slice 1): every
 // model family audio.cpp has, read at a ref of our fork's checkout beside this repo
 // (../audio.cpp), plus each package file's size and hash at the pinned model revision on
-// Hugging Face. Writes server/src/engines/audiocpp/catalog.json, which is committed — run this
-// whenever our fork moves (the kit's pinned build, runner/config.js DEFAULT_AUDIOCPP_BUILD), and the
+// Hugging Face. Writes server/src/engines/audiocpp/seed_audiocpp_catalog.json, which is committed
+// (seed data: the kit's family guard allows a quoted SHA-256 only in a seed file — named
+// catalog.json until 2026-10-29) — run this whenever our fork moves (the kit's pinned build, runner/config.js DEFAULT_AUDIOCPP_BUILD), and the
 // diff shows exactly what the update brings.
 //
 //   node scripts/audiocpp-catalog.js                 the pinned tag (the kit's DEFAULT_AUDIOCPP_BUILD)
@@ -43,7 +44,7 @@ export const MODEL_REVISION = "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const CHECKOUT = resolve(ROOT, "..", "audio.cpp");
-export const OUT = join(ROOT, "server", "src", "engines", "audiocpp", "catalog.json");
+export const OUT = join(ROOT, "server", "src", "engines", "audiocpp", "seed_audiocpp_catalog.json");
 
 const git = (...args) => execFileSync("git", ["-C", CHECKOUT, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 const show = (ref, path) => git("show", `${ref}:${path}`);

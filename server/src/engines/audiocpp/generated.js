@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // The speech engines built from audio.cpp's own files (docs/plans/2026-10-11-audiocpp-engine-
-// catalog.md §3–4). Every speech family in `catalog.json` (scripts/audiocpp-catalog.js) becomes an
+// catalog.md §3–4). Every speech family in `seed_audiocpp_catalog.json` (scripts/audiocpp-catalog.js) becomes an
 // engine here — an engine module (ID, NAME, VARIANTS, STATIC_VOICES …) the catalog discovers — and
 // each of its runnable models a capability row (capability_details.js). What a spec can't say — how
 // a line's direction reaches the model, what we found by testing — comes from our own file per
@@ -33,7 +33,7 @@ import { EMOTION_VALUES } from "../../models.js";
 import { CURATED } from "./curated/index.js";
 import { shippedHas } from "./kit_settings.js";
 
-export const CATALOG = JSON.parse(readFileSync(new URL("./catalog.json", import.meta.url), "utf8"));
+export const CATALOG = JSON.parse(readFileSync(new URL("./seed_audiocpp_catalog.json", import.meta.url), "utf8"));
 
 /** The audio.cpp families whose models run in an engine of ours (their file's `ENGINE`: Kokoro's,
  * Qwen3-TTS's, Chatterbox's and Turbo's …) — and the families of those models' companions (Qwen3's
@@ -551,7 +551,7 @@ export function languagesOf(m, pkgId = null) {
 function companionPackages(m) {
   return Object.entries(m.curated?.SESSION_FILES || {}).map(([option, { family, package: id }]) => {
     const pkg = CATALOG.families[family]?.packages.find((p) => p.id === id);
-    if (!pkg) throw new Error(`${m.family}: its companion ${family}/${id} isn't in catalog.json`);
+    if (!pkg) throw new Error(`${m.family}: its companion ${family}/${id} isn't in seed_audiocpp_catalog.json`);
     return { option, pkg };
   });
 }
@@ -691,7 +691,7 @@ export function needOf(row) {
 // the family holding its name, the engine's own facts; its `MODELS` are its catalog entries'
 // packages as our models, in our ids. What audio.cpp's files give — the downloads (repository,
 // revision, files, sizes), precisions, built-in voices and their default, languages, the task a
-// model registers as, its memory estimate, its piece budget — is read here from `catalog.json`.
+// model registers as, its memory estimate, its piece budget — is read here from `seed_audiocpp_catalog.json`.
 
 // A precision's rank in a list ordered by precision (`ENGINE.order`): the 8-bit rows first.
 const PRECISION_RANK = { q8: 0, bf16: 1, f16: 1, orig: 2 };
@@ -727,7 +727,7 @@ function ownModel(engineId, family, note) {
   const fam = CATALOG.families[family];
   const cur = CURATED[family];
   const entry = fam.entries.find((e) => e.id === note.entry);
-  if (!entry) throw new Error(`${family}: our notes name the catalog entry ${note.entry}, which catalog.json doesn't have`);
+  if (!entry) throw new Error(`${family}: our notes name the catalog entry ${note.entry}, which seed_audiocpp_catalog.json doesn't have`);
   const kind = entry.task === "asr" ? "stt" : "tts";
   // Its capability row: our notes' (`model`), else the rule a model of an engine's gets.
   const modelId = note.model ?? `${engineId}-${slug(entry.id)}`;
@@ -795,7 +795,7 @@ function ownModel(engineId, family, note) {
     const companions = [];
     for (const c of cur.COMPANIONS || []) {
       const cpkg = CATALOG.families[c.family].packages.find((p) => p.id === c.packages[pkg.precision]);
-      if (!cpkg) throw new Error(`${family}: no ${c.role} at ${pkg.precision} in catalog.json`);
+      if (!cpkg) throw new Error(`${family}: no ${c.role} at ${pkg.precision} in seed_audiocpp_catalog.json`);
       const cfiles = cpkg.source.files.map((f) => f.path);
       const csize = cpkg.source.files.reduce((n, f) => n + (f.size_bytes || 0), 0);
       const same = sources.find((s) => s.hf_repo === cpkg.source.repo && s.revision === cpkg.source.revision);

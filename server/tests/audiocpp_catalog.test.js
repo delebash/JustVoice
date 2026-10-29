@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // The speech engine list built from audio.cpp's own files (scripts/audiocpp-catalog.js →
-// engines/audiocpp/catalog.json; docs/plans/2026-10-11-audiocpp-engine-catalog.md slice 1;
+// engines/audiocpp/seed_audiocpp_catalog.json; docs/plans/2026-10-11-audiocpp-engine-catalog.md slice 1;
 // docs/plans/2026-10-13-adopt-everything-audiocpp.md slice 1). The file must match the pin — the
 // model revision the script pins and, built at a release tag, the build the kit pins (its runner/
 // config.js DEFAULT_AUDIOCPP_BUILD; engines/audiocpp/release.js held both until round E, 2026-10-29)
@@ -8,7 +8,9 @@
 // a status, a model to register, its files' sizes, and a licence verdict in audio.cpp's own words —
 // and every package audio.cpp's own web UI offers must be in it, by its own rule.
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import { DEFAULT_AUDIOCPP_BUILD } from "@delebash/core/runner/config";
 import {
@@ -23,9 +25,9 @@ import {
   withPresetValues,
   workflowForEntry,
 } from "../../scripts/audiocpp-catalog.js";
-import { generatedEngines } from "../src/engines/audiocpp/generated.js";
+import { CATALOG, generatedEngines } from "../src/engines/audiocpp/generated.js";
 
-const catalog = JSON.parse(readFileSync(new URL("../src/engines/audiocpp/catalog.json", import.meta.url), "utf8"));
+const catalog = JSON.parse(readFileSync(new URL("../src/engines/audiocpp/seed_audiocpp_catalog.json", import.meta.url), "utf8"));
 const speech = Object.values(catalog.families).filter((f) => (f.tasks || []).some((t) => t === "tts" || t === "clone"));
 const VERDICTS = ["Yes", "Conditional", "No", "Unclear"];
 
@@ -33,6 +35,27 @@ test("the catalog was built at the pinned model revision, from a commit it recor
   expect(catalog.generated_from.model_repo).toBe(MODEL_REPO);
   expect(catalog.generated_from.model_revision).toBe(MODEL_REVISION);
   expect(catalog.generated_from.audiocpp_commit).toMatch(/^[0-9a-f]{40}$/);
+});
+
+test("the catalog is read from its seed file, and nothing names the old catalog.json", () => {
+  // The kit's family guard takes a quoted SHA-256 outside a seed file for a violation; the catalog
+  // is seed data, so its name carries the seed_ prefix (renamed 2026-10-29).
+  const seed = new URL("../src/engines/audiocpp/seed_audiocpp_catalog.json", import.meta.url);
+  expect(CATALOG).toEqual(JSON.parse(readFileSync(seed, "utf8")));
+  expect(existsSync(new URL("../src/engines/audiocpp/catalog.json", import.meta.url))).toBe(false);
+  const root = fileURLToPath(new URL("../..", import.meta.url));
+  const files = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? (e.name === "node_modules" ? [] : files(path.join(dir, e.name))) : e.name.endsWith(".js") ? [path.join(dir, e.name)] : [],
+    );
+  // A quoted path to the old name (a URL to it, or its name in a join) — not audio.cpp's own
+  // models_catalog.json, and not this test, which checks the old file is gone.
+  const named = /["'](?:[^"'\n]*\/)?catalog\.json["']/;
+  const self = fileURLToPath(import.meta.url);
+  const readers = ["server/src", "server/tests", "scripts"]
+    .flatMap((d) => files(path.join(root, d)))
+    .filter((f) => path.resolve(f) !== path.resolve(self) && named.test(readFileSync(f, "utf8")));
+  expect(readers.map((f) => path.relative(root, f).replaceAll("\\", "/"))).toEqual([]);
 });
 
 // Built at a release tag, the catalog is the pinned release's — the kit's pinned build since round
@@ -69,7 +92,7 @@ test("every speech entry names a task and a package the family has, with sized f
 
 test("every package audio.cpp's web UI offers is in the catalog, with its files", () => {
   // The acceptance of the adoption plan's slice 1: each entry's downloads by audio.cpp's own rule
-  // (installChoices) are packages of its family in catalog.json.
+  // (installChoices) are packages of its family in the catalog.
   let offered = 0;
   for (const f of Object.values(catalog.families)) {
     for (const e of f.entries) {

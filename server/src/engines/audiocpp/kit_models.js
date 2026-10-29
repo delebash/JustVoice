@@ -6,7 +6,7 @@
 //
 // A row is `{runtime, id, name, kind, license, files, peakVramMb, minRamMb, refSpeed, spec}`
 // (the kit's llm/seed.js seedRuntimeModels): its files pinned by repository, revision, path, SHA-256
-// and size — each one's hash and size from catalog.json, a small file Git stores itself (catalog.json
+// and size — each one's hash and size from seed_audiocpp_catalog.json, a small file Git stores itself (the catalog
 // has only Git's id for it) its family file's `SMALL_FILES`, a Pocket TTS preset voice's its family
 // file's `VOICE_FILES` — each in a slot, the main file's "model"; its memory on
 // the card before a load measures it audio.cpp's estimate (`min_vram_gb`); its CPU speed our
@@ -64,7 +64,7 @@ function pinOf(repo, revision, file) {
   const known = catalogFiles().get(key(repo, revision, file));
   if (known && !SHA256.test(String(known.sha256 ?? ""))) {
     const sha256 = smallFiles().get(key(repo, revision, file));
-    if (!sha256) throw new Error(`${file} (${repo}@${revision}) has only Git's id in catalog.json and no SHA-256 in our family files`);
+    if (!sha256) throw new Error(`${file} (${repo}@${revision}) has only Git's id in seed_audiocpp_catalog.json and no SHA-256 in our family files`);
     return { sha256, bytes: known.bytes };
   }
   if (known) return known;
@@ -73,7 +73,7 @@ function pinOf(repo, revision, file) {
     const name = file.split("/").pop().replace(/\.safetensors$/, "");
     return { sha256: voice, bytes: CURATED.pocket_tts.VOICES[name]?.file_bytes };
   }
-  throw new Error(`${file} (${repo}@${revision}) has no SHA-256 in catalog.json or our family files`);
+  throw new Error(`${file} (${repo}@${revision}) has no SHA-256 in seed_audiocpp_catalog.json or our family files`);
 }
 
 /** The slot a variant's file goes in: "model" for its main file, a companion's role for its file, a

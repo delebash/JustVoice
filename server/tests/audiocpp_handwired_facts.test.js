@@ -2,7 +2,7 @@
 // The adoption plan's slice 1 acceptance, as slice 4 leaves it (docs/plans/2026-10-13-adopt-
 // everything-audiocpp.md §5): the seven engines described by our own files — Kokoro, KittenTTS,
 // Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Qwen3-ASR — take their voices, languages and
-// downloads from audio.cpp's specs, with our fork's additions (catalog.json). Where they still
+// downloads from audio.cpp's specs, with our fork's additions (seed_audiocpp_catalog.json). Where they still
 // differ from the specs the difference is written here, with why, so a difference that appears or
 // goes fails this test. (Slice 1 wrote this beside the hand-written manifests slice 4 replaced.)
 import { expect, test } from "vitest";

@@ -274,7 +274,7 @@ podcast: show/episode/segment.
 ## 3. Engines — the capability matrix
 
 Built by `server/src/engines/audiocpp/generated.js` from audio.cpp's catalog
-(`catalog.json`) and each family's notes (`audiocpp/curated/<family>.js`) — the seven
+(`seed_audiocpp_catalog.json`) and each family's notes (`audiocpp/curated/<family>.js`) — the seven
 below by `ownEngine` from their families' `ENGINE` / `MODELS` / `VOICES` notes since the
 adoption plan's slice 4 (2026-10-16; until then hand-written `engines/<id>/manifest.js`
 files). Since the 2026-10-01 switch (`docs/plans/2026-10-01-audiocpp-switch.md`) an
@@ -284,7 +284,7 @@ them; there is no per-engine program. **Cloning is not Chatterbox-only.**
 ### 3a. What each MODEL is — every shipped variant
 
 Every variant is an audio.cpp package (two for speech recognition: its aligner rides as a
-companion, `COMPANIONS`) at the repository and commit `catalog.json` pins it to —
+companion, `COMPANIONS`) at the repository and commit `seed_audiocpp_catalog.json` pins it to —
 `audio-cpp/audio.cpp-gguf` at `release.js` `MODEL_REVISION`, or our own conversions in our fork's
 catalog (`qwen3-cv-0.6b-q8`, gap 4, `docs/plans/2026-10-02-gap-4-customvoice-0.6b.md`; Turbo and
 Nano, gap 1), or QwenCleo-ASR's own. Our ids are `<the note's id>-<precision>` (Kitten's
@@ -410,7 +410,7 @@ variant row carries an `audiocpp` block.
 2026-10-11; plan `docs/plans/2026-10-11-audiocpp-engine-catalog.md`):
 `scripts/audiocpp-catalog.js` (`npm run catalog:audiocpp`) reads the pinned fork
 tag's `model_specs/`, web-UI catalog and control list, and licence table, plus
-Hugging Face file sizes, into `server/src/engines/audiocpp/catalog.json` —
+Hugging Face file sizes, into `server/src/engines/audiocpp/seed_audiocpp_catalog.json` —
 re-run it when the pin moves. `engines/audiocpp/generated.js` turns each
 uncovered family into manifest-shaped engines (wip and unsupported hidden — decided
 2026-10-11, answer 3; AuK, OuteTTS, VieNeu and Index-Echo kept out by their files' `NOT_OFFERED`): every
