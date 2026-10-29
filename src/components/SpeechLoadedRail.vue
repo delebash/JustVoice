@@ -6,7 +6,8 @@
   ({modelId, placement, kind, reason}): the model's name, where it runs (the kit's placement word, the
   reason under it on hover), and Unload through the kit's POST …/models/:id/unload, then the tab reads
   again. Back from the Speech engines tab's rail, which went with round E; its words and look are
-  that rail's (.ev-rail), sized to its content.
+  that rail's (.ev-rail), sized to its content, its text at design-law's 12.5px floor or above —
+  where it runs the canonical quiet line (.jv-hint).
 -->
 <script setup>
 import { computed } from "vue";
@@ -58,7 +59,7 @@ async function unload(l) {
       <span class="k">{{ t(`kit.aiTabs.kinds.${s.kind}`) }}</span>
       <div v-if="s.loaded">
         <div class="nm">{{ s.name }}</div>
-        <div v-if="where(s.loaded)" class="sub" :title="s.loaded.reason || undefined">{{ where(s.loaded) }}</div>
+        <div v-if="where(s.loaded)" class="jv-hint" :title="s.loaded.reason || undefined">{{ where(s.loaded) }}</div>
       </div>
       <div v-else><div class="nm">— nothing loaded</div></div>
       <UiButton v-if="s.loaded" intent="secondary" size="small" :label="t('kit.runtimes.model.unload')"

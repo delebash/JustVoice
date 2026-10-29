@@ -6,6 +6,7 @@
 // Delete — and a model's facts — its chips, and its load options saved through our route, the model
 // loaded again through the kit's Load service (loadRuntimeModel) when the server let it go — and the Loaded now rail above the
 // models, with Unload through the kit's route.
+import { readFileSync } from "node:fs";
 import { h, nextTick } from "vue";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -182,8 +183,9 @@ test("Loaded now: what each kind holds, where it runs, and Unload through the ki
   expect(el.querySelector(".ev-rail-h").textContent).toBe("Loaded now");
   expect(texts(".ev-slot .k")).toEqual(["Speech", "Transcription"]);
   expect(texts(".ev-slot .nm")).toEqual(["Qwen3-TTS CustomVoice 1.7B", "— nothing loaded"]);
-  expect(el.querySelector(".ev-slot .sub").textContent).toBe("Graphics card");
-  expect(el.querySelector(".ev-slot .sub").title).toBe("Fits the card");
+  // where it runs: the canonical quiet line (.jv-hint, design-law's 12.5px floor)
+  expect(el.querySelector(".ev-slot .jv-hint").textContent).toBe("Graphics card");
+  expect(el.querySelector(".ev-slot .jv-hint").title).toBe("Fits the card");
   expect(texts("button")).toEqual(["Unload"]);
 
   api.post.mockResolvedValue({});
@@ -196,6 +198,14 @@ test("Loaded now: what each kind holds, where it runs, and Unload through the ki
   expect(api.post).toHaveBeenCalledWith("/v1/ai/runtimes/audiocpp/models/qwen3-cv-1.7b/unload", {});
   expect(events).toEqual(["refresh"]);
   expect(refresh).toHaveBeenCalledOnce();
+});
+
+test("Loaded now's text is never below design-law's 12.5px floor", () => {
+  const css = readFileSync("src/css/app.scss", "utf8") // the run's folder is the app's (jsdom has no file: URL);
+  const rules = css.split(/\r?\n/).filter((l) => /^\.ev-(rail|slot)/.test(l));
+  expect(rules.length).toBeGreaterThan(0);
+  const sizes = rules.flatMap((l) => [...l.matchAll(/font-size:\s*([\d.]+)px/g)].map((m) => Number(m[1])));
+  expect(sizes.filter((px) => px < 12.5)).toEqual([]);
 });
 
 test("Loaded now isn't shown while the runtime keeps no loaded set (not installed)", async () => {
