@@ -324,7 +324,17 @@ the gate wait for step 10 (the user's rule, 2026-10-28).
 - **The fork** (the user: "merge it"): upstream merged into `jv` as dacb0d7f, pushed, unbuilt — its build and ctest
   run in step 10. The catalog is being rebuilt from it as `seed_audiocpp_catalog.json` (the kit's guard: seed data
   under the `seed_` prefix), the small-file hashes moving into `seed_file_hashes.js`.
-- **Still to do:** step 9 (docs), step 8 (this PC's data — the deletions included, under the go), step 10.
+- **Step 8 DONE on this PC (2026-10-29):** the kit's `adoptModel`, run once from a scratch command (no code shipped),
+  moved 31 downloaded versions into the kit's models cache (`justwrite-app/data/ai-cache/hf`, the shared
+  `cache_root`): 112 files adopted, 82 shared files linked, every SHA-256 checked by the kit (57 s), none refused.
+  The 61 files left in `data/speech-cache` were each hashed and found byte-identical in the kit's cache (the
+  IndexTTS 2.5 duplicate, Pocket's voice files shared across versions) before the folder was deleted. The kit then
+  installed `v0.9.2-jv.6` (cuda12, eSpeak NG in its `_extras`, no `.py` files) and the Japanese dictionary add-on;
+  `data/engines-runtime` (2.4 GB: jv.4 cuda12, v0.9.0 vulkan, the old eSpeak and dictionary) and
+  `data/engines-runtime-config` deleted after, nothing in the code reading them. Left: `paths.speechCacheRoot` and
+  its Disk usage row go with the next follow-up.
+- **Still to do:** step 9 (docs, running), the switch to the kit's four new pieces (sort, the Load service, the job
+  strip's note, evictions and the chat claim on the strip), step 10.
 
 ## 5 · Decisions for your word
 
