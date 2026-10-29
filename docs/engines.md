@@ -267,7 +267,7 @@ The tab reads, from top to bottom:
    [below](#picking-an-engine-is-picking-what-a-voice-can-do).
 4. **Models** — every speech and speech-recognition model, grouped by engine.
    Above them: **All · Speech · Transcription** (which kind to list), **Find a
-   model**, and JustVoice's filters — see [Finding a model](#finding-a-model).
+   model**, JustVoice's filters and **Sort** — see [Finding a model](#finding-a-model).
 5. **Self-hosted servers — speech servers you run**, then **Online · metered** —
    *Cloud speech APIs — your account, billed by the provider*: the speech
    services you add yourself (see
@@ -720,7 +720,7 @@ section.
 
 ### Finding a model
 
-The row above the models narrows the list:
+The row above the models narrows and orders the list:
 
 - **All · Speech · Transcription** — every model, the models that speak, or the
   speech-recognition models.
@@ -734,6 +734,12 @@ The row above the models narrows the list:
 - **Takes direction** — only models that take written direction or tags.
 - **Fits this card** — only models that read **Fits** (shown on a machine with a
   graphics card of its own).
+- **Sort** — *Sort: name*, *Sort: download size*, *Sort: memory needed* or
+  *Sort: commercial use*. The engines are ordered by their name, by their
+  smallest model's download or memory needed, or by commercial use — each then by
+  name; inside an engine, download size and memory needed order its models too,
+  and the other two keep their own order. A model whose memory isn't known sorts
+  last.
 
 A filter shows only the models that match and opens their engines; an engine
 with none drops out.
