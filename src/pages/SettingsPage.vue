@@ -207,115 +207,6 @@ const serverReachable = ref(false);
 // (The TTS-engine catalog loader left with the default-engine dropdown —
 // parity batch 2026-08-06; the default is a Speech-engines row action now.)
 
-// ─── External engine probe state ────────────────────────────────────────
-const probe = ref(null);
-const probeBusy = ref(false);
-const probeModels = ref([]);
-const probeVoices = ref([]);
-
-const newExternal = ref({
-  id: "",
-  name: "",
-  base_url: "",
-  api_key: "",
-  model: "",
-  voicesText: "",
-});
-const addBusy = ref(false);
-
-async function testExternalConnection() {
-  if (!newExternal.value.base_url) return;
-  probeBusy.value = true;
-  probe.value = null;
-  try {
-    const result = await api.request("/v1/engines/external/probe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        base_url: newExternal.value.base_url,
-        api_key: newExternal.value.api_key || null,
-      }),
-    });
-    probe.value = result;
-    probeModels.value = result.models || [];
-    probeVoices.value = result.voices || [];
-    if (result.recommended_model && !newExternal.value.model) {
-      newExternal.value.model = result.recommended_model;
-    }
-    if (result.voices && result.voices.length > 0 && !newExternal.value.voicesText) {
-      newExternal.value.voicesText = result.voices.join(", ");
-    }
-    if (!newExternal.value.id) {
-      newExternal.value.id =
-        result.server_hint === "unknown"
-          ? "external-tts"
-          : `external-${result.server_hint}`;
-    }
-    if (!newExternal.value.name) {
-      const u = newExternal.value.base_url.replace(/^https?:\/\//, "");
-      newExternal.value.name = `${result.server_hint} @ ${u}`;
-    }
-  } catch (e) {
-    pushToast({ message: `Probe failed: ${e.message || e}`, kind: "error" });
-  } finally {
-    probeBusy.value = false;
-  }
-}
-
-async function addExternalEngine() {
-  if (!newExternal.value.id || !newExternal.value.base_url) return;
-  addBusy.value = true;
-  try {
-    const voices = newExternal.value.voicesText
-      ? newExternal.value.voicesText.split(",").map((s) => s.trim()).filter(Boolean)
-      : [];
-    await api.request("/v1/engines/external", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: newExternal.value.id,
-        name: newExternal.value.name || newExternal.value.id,
-        base_url: newExternal.value.base_url,
-        api_key: newExternal.value.api_key || null,
-        model: newExternal.value.model || "kokoro",
-        voices,
-        response_format: "wav",
-      }),
-    });
-    await refresh();
-    pushToast({ message: `${newExternal.value.name || newExternal.value.id} registered.`, duration: 5000 });
-    newExternal.value = { id: "", name: "", base_url: "", api_key: "", model: "", voicesText: "" };
-    probe.value = null;
-    probeModels.value = [];
-    probeVoices.value = [];
-  } catch (e) {
-    pushToast({ message: `Add failed: ${e.message || e}`, kind: "error" });
-  } finally {
-    addBusy.value = false;
-  }
-}
-
-async function removeExternalEngine(idx) {
-  const ext = settings.value?.engines?.external?.[idx];
-  if (!ext) return;
-  const ok = await confirmDialog({
-    title: `Remove ${ext.name}?`,
-    message: `External engine "${ext.id}" will be unregistered. The remote server itself is not affected. Restart required.`,
-    confirmLabel: "Remove",
-    danger: true,
-  });
-  if (!ok) return;
-  settings.value.engines.external.splice(idx, 1);
-  pushToast({ message: `${ext.name} removed — save to persist.` });
-}
-
-function voicesText(ext) {
-  return (ext.voices || []).join(", ");
-}
-function setVoicesText(ext, raw) {
-  ext.voices = raw.split(",").map((s) => s.trim()).filter(Boolean);
-}
-
 // ─── URL overrides ──────────────────────────────────────────────────────
 const urlOverrideKeys = computed(() =>
   settings.value?.models?.url_overrides
@@ -339,10 +230,6 @@ function removeUrlOverride(key) {
     delete settings.value.models.url_overrides[key];
   }
 }
-
-const probeModelOptions = computed(() =>
-  probeModels.value.map((m) => ({ label: m, value: m }))
-);
 
 // ─── Core settings load + save ──────────────────────────────────────────
 async function refresh() {
@@ -1355,9 +1242,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- External TTS servers moved to Engines → Online providers
-         (engines redesign 2026-06-11) — settings.engines.external data
-         unchanged; this page no longer renders it. -->
     <!-- ─── General · Model URL overrides (was under External TTS) ─── -->
     <div v-show="activeSub === 'general'" class="jv-section" v-if="settings.models">
       <div class="jv-card">
