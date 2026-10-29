@@ -2,9 +2,11 @@
 <!--
   An engine's own terms, shown before the use they gate (decided 2026-10-02 — Pocket TTS:
   "use the copy and show kyutai's terms before first clone"). Mounted once, in layouts/MainLayout.vue;
-  opened by `jv:engine-terms` from services/engineTerms.js — the Clone tab, the Speech
-  engines row, and any refusal the server answers with `terms-required`. Accept records it
-  once per install (POST /v1/engines/{id}/terms); the server then lets the use through.
+  opened by `jv:engine-terms` from services/engineTerms.js — the Clone tab, an engine on the
+  Speech tab, and any refusal the server answers with `terms-required`. Accept records it
+  once per install (POST /v1/engines/{id}/terms); the server then lets the use through, and the
+  action the refusal stopped runs again (`onAccepted` — the Speech tab's Download or Load, the
+  persona page's Load; round E, G5).
 -->
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
@@ -15,12 +17,14 @@ import { TERMS_EVENT, acceptEngineTerms } from "../services/engineTerms.js";
 const api = useApi();
 const engine = ref(null);   // the /v1/engines row whose terms are showing, or null
 const busy = ref(false);
+let onAccepted = null;      // what to do again once they're accepted (the event's), or null
 // What the terms gate: cloning (Pocket TTS) or downloads (an audio.cpp model whose licence
 // isn't a plain "Yes" for commercial use — decided 2026-10-11).
 const forDownload = computed(() => engine.value?.terms?.gates === "download");
 
 async function open(ev) {
   const id = ev?.detail?.engine || "";
+  onAccepted = typeof ev?.detail?.onAccepted === "function" ? ev.detail.onAccepted : null;
   const list = await api.safeRequest("/v1/engines", { engines: [] });
   const row = (list?.engines || []).find((e) => e.id === id && e.terms);
   if (!row) return;
@@ -32,7 +36,7 @@ async function open(ev) {
   engine.value = row;
 }
 
-function close() { engine.value = null; }
+function close() { engine.value = null; onAccepted = null; }
 
 async function accept() {
   busy.value = true;
@@ -40,7 +44,9 @@ async function accept() {
     await acceptEngineTerms(api, engine.value.id);
     const done = forDownload.value ? `${engine.value.name}'s models can be downloaded now.` : `${engine.value.name} can clone voices now.`;
     pushToast({ message: done, kind: "success" });
+    const again = onAccepted;
     close();
+    again?.();
   } catch (e) {
     pushToast({ message: `Couldn't record that: ${e?.message || e}`, kind: "error" });
   } finally {

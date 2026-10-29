@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 //
-// The Speech engines list's words for an engine's licence and a model's memory — ONE vocabulary
-// for AI Settings → Speech engines and its mock (decided 2026-10-11, TASKS "Every speech engine's
-// licence in plain words" and "Speech engines: the real tab…"). The facts come from the server:
-// an engine's `licence` {name, commercial, table, summary, url, checked}, a model's `need_gb`
-// (audio.cpp's estimate or its download, whichever is more) and `measured_mb` (an earlier load
-// on this machine).
+// The Speech tab's words for an engine's licence — ONE vocabulary for AI Settings → Speech (the
+// kit's audio.cpp tab, JustVoice's engine heads and filters in its slots — round E) and the one-click
+// run's licence chips (decided 2026-10-11, TASKS "Every speech engine's licence in plain words").
+// The facts come from the server: an engine's `licence` {name, commercial, table, summary, url,
+// checked}. A model's memory before it loads is the kit's fit word now (its model rows' `fit`).
 
 /** Commercial use: audio.cpp's four words (decided 2026-10-11, answer 1) and "Separate licence"
  * (TASKS "A fifth commercial-use word"). */
@@ -25,13 +24,6 @@ export const COMMERCIAL_OPTIONS = [
   ...COMMERCIAL_USE.map((c) => ({ label: `Commercial use: ${c}`, value: c, hint: COMMERCIAL_HINTS[c] })),
 ];
 
-export const SORTS = [
-  { label: "Sort: name", value: "name" },
-  { label: "Sort: download size", value: "size" },
-  { label: "Sort: memory needed", value: "memory" },
-  { label: "Sort: commercial use", value: "commercial" },
-];
-
 /** The chip's colour class for a commercial-use word. */
 export const licClass = (c) =>
   ({ Conditional: "ev-lic--warn", "Separate licence": "ev-lic--separate", No: "ev-lic--no", Unclear: "ev-lic--unclear" })[c] || "";
@@ -43,34 +35,3 @@ export const reading = (l) =>
 
 /** The commercial-use chip's hover. */
 export const licTitle = (l) => `${l.summary}\n\n${reading(l)}. The licence text at its source is what counts.`;
-
-const gb = (mb) => Math.round((mb / 1024) * 10) / 10;
-
-/** A model's memory before it loads: what an earlier load measured here, else audio.cpp's
- * estimate, against this card (null = no card to fit). A measured size fits when it and the
- * safety margin (`marginMb`, the server's: /v1/engines/vram `safety_margin_mb`) are no more than
- * the card — the rule Auto loads by (manager.placementFor; the narrowings review, M4). `runsOn`
- * is where the server would load it now: a model too big by the estimate whose files fit the
- * card easily is tried on the card first (2026-10-12), and its Runs on line says why. A
- * measured size that fits the card only without the margin says so, with the margin's live
- * size (decided 2026-10-15, M4). → {text, warn, gb, fits}; gb is null when neither is known,
- * fits null when there's no card or no number. */
-export function memoryText({ measuredMb, needGb, runsOn = null }, cardMb, marginMb = 0) {
-  const fitsCard = (mb) => (cardMb ? mb <= cardMb : null);
-  const fitWords = (fits) => (fits === null ? "" : fits ? " · fits this card" : null);
-  if (measuredMb) {
-    const g = gb(measuredMb);
-    const fits = fitsCard(measuredMb + marginMb);
-    const notFit = fitsCard(measuredMb)
-      ? ` · more than this card holds with the ${gb(marginMb)} GB safety margin`
-      : " · more than this card has";
-    return { text: `about ${g} GB, measured here${fitWords(fits) ?? notFit}`, warn: fits === false, gb: g, fits };
-  }
-  if (needGb) {
-    const fits = fitsCard(needGb * 1024);
-    if (fits !== false) return { text: `needs about ${needGb} GB${fitWords(fits)}`, warn: false, gb: needGb, fits };
-    if (runsOn === "gpu") return { text: `needs about ${needGb} GB · more than this card has`, warn: true, gb: needGb, fits };
-    return { text: `needs about ${needGb} GB · too big for this card — Load runs it on the CPU`, warn: true, gb: needGb, fits };
-  }
-  return { text: "memory not measured yet", warn: false, gb: null, fits: null };
-}

@@ -29,8 +29,7 @@ import { useVoicesStore } from "../stores/voices.js";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { pushToast } from "@delebash/ui";
-import { UiButton, UiTag, UiChip, usePoll } from "@delebash/ui";
-import { hostCells, llmClaim, residentCells, subscribeVramFeed } from "../services/vramFeed.js";
+import { UiButton, UiTag, UiChip, useMemoryCells } from "@delebash/ui";
 import { chapterRendered, needSpeaker, partOf } from "../services/lineStates.js";
 import { PROJECT_KINDS, kindLabel, projectKind } from "../services/projectKinds.js";
 import { chapterWordForKind } from "../services/copy.js";
@@ -288,32 +287,14 @@ function cancelTask(t) {
 // ── Loaded engine card ────────────────────────────────────────────────
 
 // The graphics memory as AI Settings' strip shows it (2026-10-06 — this card
-// read a field /v1/system/info never had and showed "VRAM NaN / 8 GB"): VRAM
-// used · Free · LLM from the strip's own reading of /v1/llm-runner/resident,
-// then TTS · STT from the same feed the strip's cells come from, each with its
-// loaded model under it. Polled while Home is on screen, like the strip.
-const resident = ref(null);
-const memoryCells = computed(() => [
-  ...residentCells(resident.value, llmClaim.value),
-  ...hostCells.value.filter((c) => c.label === "TTS" || c.label === "STT"),
-]);
-async function readMemory() {
-  resident.value = await safeRequest("/v1/llm-runner/resident", resident.value);
-}
-const { start: startMemoryPoll, stop: stopMemoryPoll } = usePoll(readMemory, 2500);
-let unsubscribeVram = null;
-function stopMemory() {
-  stopMemoryPoll();
-  if (unsubscribeVram) unsubscribeVram();
-  unsubscribeVram = null;
-}
-onActivated(() => {
-  void readMemory();
-  startMemoryPoll();
-  if (!unsubscribeVram) unsubscribeVram = subscribeVramFeed();
-});
-onDeactivated(stopMemory);
-onBeforeUnmount(stopMemory);
+// read a field /v1/system/info never had and showed "VRAM NaN / 8 GB"): the
+// kit's own cells (useMemoryCells — round E, G10): used · Free · LLM, each kit
+// runtime's booking (speech, transcription) with the model it holds under it,
+// other apps. Polled while Home is on screen, like the strip.
+const { cells: memoryCells, start: startMemoryPoll, stop: stopMemoryPoll } = useMemoryCells();
+onActivated(startMemoryPoll);
+onDeactivated(stopMemoryPoll);
+onBeforeUnmount(stopMemoryPoll);
 
 // ── Recent generations ────────────────────────────────────────────────
 // ▶ opens a compact inline player under the row (the ruling 2026-08-15:
@@ -349,7 +330,7 @@ const dictateChord = computed(() => chordLabel(settings.value?.captures?.chord_p
 // to someone with a rendered book, and said "engine").
 const nextStep = computed(() => {
   if (health.value && !loadedEngine.value && !health.value.current_engine && !recentGenerations.value.length) {
-    return { title: "Load your first voice model", body: "Kokoro runs on CPU in realtime — a good first pick.", href: "#engines", cta: "Open Speech engines" };
+    return { title: "Load your first voice model", body: "Kokoro runs on CPU in realtime — a good first pick.", href: "#/ai?tab=runtime-audiocpp", cta: "Open Speech" };
   }
   if (health.value && !projects.value.length) {
     return { title: "Create your first project", body: "Pick what you're making — the whole app reshapes around it.", href: "#projects", cta: "Open Projects" };
