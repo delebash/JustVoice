@@ -15,7 +15,7 @@
 // here.)
 //
 // Run it when what the mocks show has moved under them: after scripts/audiocpp-catalog.js
-// rewrites catalog.json, after a family's notes (engines/audiocpp/curated/) or the capability rows
+// rewrites seed_audiocpp_catalog.json, after a family's notes (engines/audiocpp/curated/) or the capability rows
 // change, or when a mock reads a field the snapshot doesn't carry yet. The diff of the JSON file is
 // what the mocks will show differently. On Electron's Node, as the server runs (its SQLite
 // module is built for it):
