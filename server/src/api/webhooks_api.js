@@ -21,15 +21,9 @@ import { notFound } from "../errors.js";
 import { construct, DateTime, utcNowNaive } from "../models.js";
 import * as self from "./webhooks_api.js";
 
-export const WEBHOOK_EVENTS = [
-  "render.completed",
-  "render.failed",
-  "generation.created",
-  "voice.created",
-  "model.download.completed",
-  "model.download.failed",
-  "webhook.test",
-];
+// (model.download.completed / .failed went 2026-10-29: nothing fired them, and model downloads are
+// the kit's since round E.)
+export const WEBHOOK_EVENTS = ["render.completed", "render.failed", "generation.created", "voice.created", "webhook.test"];
 export const WebhookEvent = literal(...WEBHOOK_EVENTS);
 
 export const WebhookSubscription = T.Object({
@@ -117,7 +111,8 @@ export function fromOrm(row) {
   return construct(WebhookSubscription, {
     id: row.id,
     url: row.url,
-    events: jsonLoads(row.events_json),
+    // an event gone since it was saved is left out — the subscription still lists
+    events: jsonLoads(row.events_json).filter((e) => self.WEBHOOK_EVENTS.includes(e)),
     secret_set: Boolean(row.secret_hash),
     enabled: row.enabled,
     created_at: row.created_at,

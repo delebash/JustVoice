@@ -19,8 +19,6 @@ Webhooks tab → "+ Add webhook":
 | `render.failed` | A render fails. Body includes error details. |
 | `generation.created` | A new Block render lands in the DB. High-frequency. |
 | `voice.created` | A new voice profile is added. |
-| `model.download.completed` | An engine model finishes downloading. |
-| `model.download.failed` | A model download fails. |
 
 ## HMAC signing
 

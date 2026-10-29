@@ -39,6 +39,22 @@ test("webhook_round_trip", () => {
   expect(fetched.enabled).toBe(true);
 });
 
+test("the_model_download_events_are_gone", () => {
+  // Never fired, and model downloads are the kit's since round E (removed 2026-10-29).
+  expect(whApi.WEBHOOK_EVENTS).not.toContain("model.download.completed");
+  expect(whApi.WEBHOOK_EVENTS).not.toContain("model.download.failed");
+  // a subscription saved before still lists, without them
+  const h = tmpDb();
+  h.insert(Webhook, {
+    url: "https://example.com/hook",
+    events_json: pyJson(["render.completed", "model.download.completed", "model.download.failed"]),
+    secret_hash: _hashSecret("s"),
+    enabled: true,
+  });
+  const row = h.one(`select * from ${Webhook} limit 1`, undefined, Webhook);
+  expect(whApi.fromOrm(row).events).toEqual(["render.completed"]);
+});
+
 test("hmac_signature_format", () => {
   // X-JustVoice-Signature = hex(hmac_sha256(secret, body)): the canonical computation the
   // dispatcher emits.

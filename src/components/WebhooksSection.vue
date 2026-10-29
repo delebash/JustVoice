@@ -26,8 +26,6 @@ const EVENT_OPTIONS = [
   "render.failed",
   "generation.created",
   "voice.created",
-  "model.download.completed",
-  "model.download.failed",
 ];
 
 const subscriptions = ref([]);
