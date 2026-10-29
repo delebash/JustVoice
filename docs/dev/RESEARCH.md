@@ -844,8 +844,8 @@ are its RESEARCH §12. All *code* at just-core `75d07f8` / JustVoice `78ca4a0e` 
   field shows as `placement` with values auto / gpu / cpu (`fields.placement` and its values don't exist); it
   picks among the stt presets — one seeded — and has no control for the preset's model. With no chat model loaded
   and no app claim the strip's LLM cell is "—" (`useMemoryCells.js`, committed `e45086d`; the kit's working tree
-  adds its own on-demand claim). The setting `models.url_overrides` (`models.js:444`) has no reader, before
-  round E or after. — *code, just-core `538ce18b` + working tree, JustVoice `5c1b20bf`, 2026-10-29*.
+  adds its own on-demand claim). The setting `models.url_overrides` (`models.js:444`) had no reader, before
+  round E or after — removed 2026-10-29 with its Settings card (the `models` section was its one field). — *code, just-core `538ce18b` + working tree, JustVoice `5c1b20bf`, 2026-10-29*.
 
 ---
 

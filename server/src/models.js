@@ -440,10 +440,6 @@ export const EnginesSettings = T.Object({
   llm: opt(T.Array(LLMProviderConfig), []),
 });
 
-export const ModelsSettings = T.Object({
-  url_overrides: opt(T.Record(T.String(), T.String()), {}),
-});
-
 export const UseCase = literal("audiobook", "game", "podcast", "dictation", "accessibility", "multiple", "unset");
 
 /**
@@ -551,7 +547,6 @@ export const Settings = T.Object({
   cors: optModel(CorsSettings),
   auth: optModel(AuthSettings),
   mastering: optModel(MasterPresetSettings),
-  models: optModel(ModelsSettings),
   engines: optModel(EnginesSettings),
   generation: optModel(GenerationSettings),
   captures: optModel(CapturesSettings),
@@ -572,7 +567,6 @@ export const SettingsPatch = T.Object({
   cors: opt(nullable(CorsSettings), null),
   auth: opt(nullable(AuthSettings), null),
   mastering: opt(nullable(MasterPresetSettings), null),
-  models: opt(nullable(ModelsSettings), null),
   engines: opt(nullable(EnginesSettings), null),
   generation: opt(nullable(GenerationSettings), null),
   captures: opt(nullable(CapturesSettings), null),

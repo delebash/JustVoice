@@ -65,3 +65,13 @@ test("the_unused_request_body_limit_is_gone", async () => {
   const { c } = await appClient();
   expect("request_body_max_bytes" in (await c.get("/v1/settings")).json().limits).toBe(false);
 });
+
+test("the_unread_model_url_overrides_are_gone", async () => {
+  // Found by round E's docs pass, removed 2026-10-29: nothing ever read models.url_overrides (the
+  // section's one field) — model downloads are the kit's, from each row's pinned repository and
+  // revision. A section saved before is dropped when the settings load.
+  expect("models" in construct(Settings, {})).toBe(false);
+  expect("models" in construct(Settings, { models: { url_overrides: { "kokoro-82m-q8": "https://mirror/x.gguf" } } })).toBe(false);
+  const { c } = await appClient();
+  expect("models" in (await c.get("/v1/settings")).json()).toBe(false);
+});

@@ -189,7 +189,6 @@ const settings = ref({
   cors:      {},
   auth:      {},
   mastering: {},
-  models:    {},
   engines:   { default_tts_engine: "kokoro" },
   app:       { primary_use_case: "unset", secondary_use_cases: [], onboarding_shown: false },
   generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, pause_between_lines_ms: 600, pause_within_paragraph_ms: 250, pause_at_scene_break_ms: 2000, whisper_gap_db: -18, normalize_audio: true },
@@ -206,30 +205,6 @@ const serverReachable = ref(false);
 
 // (The TTS-engine catalog loader left with the default-engine dropdown —
 // parity batch 2026-08-06; the default is a Speech-engines row action now.)
-
-// ─── URL overrides ──────────────────────────────────────────────────────
-const urlOverrideKeys = computed(() =>
-  settings.value?.models?.url_overrides
-    ? Object.keys(settings.value.models.url_overrides)
-    : []
-);
-const newOverrideVariantId = ref("");
-const newOverrideUrl = ref("");
-
-function addUrlOverride() {
-  if (!newOverrideVariantId.value || !newOverrideUrl.value) return;
-  if (!settings.value.models) settings.value.models = { url_overrides: {} };
-  if (!settings.value.models.url_overrides) settings.value.models.url_overrides = {};
-  settings.value.models.url_overrides[newOverrideVariantId.value] = newOverrideUrl.value;
-  newOverrideVariantId.value = "";
-  newOverrideUrl.value = "";
-}
-
-function removeUrlOverride(key) {
-  if (settings.value?.models?.url_overrides) {
-    delete settings.value.models.url_overrides[key];
-  }
-}
 
 // ─── Core settings load + save ──────────────────────────────────────────
 async function refresh() {
@@ -1242,45 +1217,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── General · Model URL overrides (was under External TTS) ─── -->
-    <div v-show="activeSub === 'general'" class="jv-section" v-if="settings.models">
-      <div class="jv-card">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">Model URL overrides</h3>
-        </div>
-        <p class="jv-muted jv-note jv-mb16">
-          Override download URLs per variant. Useful when upstream artifacts move or when mirroring to an internal CDN.
-          Keyed by variant id (e.g. <code class="jv-mono">kokoro-multi-lang-v1_0</code>).
-        </p>
-
-        <table v-if="urlOverrideKeys.length" class="jv-table jv-mb16">
-          <thead>
-            <tr>
-              <th>Variant id</th>
-              <th>Override URL</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="key in urlOverrideKeys" :key="key">
-              <td><code class="jv-mono">{{ key }}</code></td>
-              <td><UiInput v-model="settings.models.url_overrides[key]" :spellcheck="false" /></td>
-              <td class="jv-table__actions">
-                <UiButton intent="danger-outline" size="small" @click="removeUrlOverride(key)">Remove</UiButton>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-else class="jv-muted jv-italic jv-mb14">No URL overrides set.</p>
-
-        <div class="jv-row jv-mb8">
-          <UiInput v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" width="name" />
-          <UiInput v-model="newOverrideUrl" placeholder="override URL" width="url" />
-          <UiButton intent="secondary" :disabled="!newOverrideVariantId || !newOverrideUrl" @click="addUrlOverride">Add override</UiButton>
-        </div>
-        <p class="jv-muted jv-note">Saved with Settings.</p>
-      </div>
-    </div>
 
     <!-- ─── Mastering · placeholder until #88 lands. ─── -->
     <!-- ─── Mastering (preview parity, preview lines 1599-1632) ─── -->
