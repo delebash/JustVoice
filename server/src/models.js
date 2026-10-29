@@ -400,9 +400,8 @@ export const EngineOverrides = T.Object({
   // The operator's own default MODEL for this engine (a USER layer over the manifest's
   // DEFAULT_VARIANT_ID). None = manifest default.
   default_variant: opt(nullable(T.String()), null),
-  // Where each of this engine's models runs — variant id → "auto" | "gpu" | "cpu" (CPU
-  // placement, 2026-10-02). A variant not listed is "auto".
-  placements: opt(T.Record(T.String(), literal("auto", "gpu", "cpu")), {}),
+  // (Where each model runs — Auto / GPU / CPU — is saved by the kit's audio.cpp runtime per model
+  // since round E, its runner setting `placement:audiocpp:<model>`.)
   // The longest piece a line reaches each model in — variant id → characters. A variant not
   // listed uses its catalog default; none at all = `generation.max_chunk_chars`.
   split_chars: opt(T.Record(T.String(), T.Integer()), {}),

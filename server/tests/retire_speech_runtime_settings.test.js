@@ -12,7 +12,7 @@ import { DEFAULT_AUDIOCPP_SETTINGS } from "@delebash/core/runner/config";
 import { retireSpeechRuntimeSettings, retireTranscriptionModel, SPEECH_RUNTIME_SETTINGS } from "../src/database/seed.js";
 import * as session from "../src/database/session.js";
 import { TRANSCRIPTION_FEATURE } from "../src/feature_catalog.js";
-import { Settings } from "../src/models.js";
+import { EngineOverrides, Settings } from "../src/models.js";
 import { DEFAULT_ENGINE_PRESETS, DEFAULT_FEATURE_PRESETS } from "../src/seed_presets.js";
 import { deleteStoredSetting, storedSetting } from "../src/storage/settings_store.js";
 import { endState, useState } from "./engines_helpers.js";
@@ -41,6 +41,8 @@ test("the_eleven_are_the_kits_and_the_schema_keeps_neither", () => {
   expect(SPEECH_RUNTIME_SETTINGS).toEqual(Object.keys(DEFAULT_AUDIOCPP_SETTINGS));
   expect(Object.keys(Settings.properties.engines.properties)).not.toContain("speech_runtime");
   expect(Object.keys(Settings.properties.captures.properties)).not.toContain("stt_model");
+  // where each model runs is saved by the kit per model (placement:audiocpp:<id>) — ours went, nothing carried
+  expect(Object.keys(EngineOverrides.properties)).not.toContain("placements");
   // the Transcription preset starts on the model the setting named by default
   expect(DEFAULT_ENGINE_PRESETS.find((p) => p.id === "p_transcription")).toMatchObject({ provider_id: "local-audiocpp-stt", model: "qwen3-asr-1.7b-q8", kind: "stt", params: { placement: "auto" } });
 });
