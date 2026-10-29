@@ -726,13 +726,16 @@ are its RESEARCH §12. All *code* at just-core `75d07f8` / JustVoice `78ca4a0e` 
   conversion (`slot.js` `recognizerInput`). (was: the hook ran before `withSpeechModel`, outside the lock, so a
   hook deleting older copies could delete one a queued transcription still waited to send — until just-core
   `52e663c`.) — *code, just-core `52e663c`, 2026-10-29* · `server/tests/kit_hooks.test.js`.
-- **The kit keeps its refusals' problems to its routes:** `llm/runtimes_api.js` `asProblem` (403 terms-required,
-  409 not-enough-memory / load-cancelled / engine-cant-run-here / model-busy, 507 disk-full) isn't exported, and
-  `withSpeechModel` throws the service's refusals as they are (an Error with `termsRequired`, `loadCancelled`,
-  `need`, `diskFull`, `busy`; `NotEnoughMemoryError`) — only its own "engine-not-on" is an ApiError. So a line's
-  refusal is mapped to the same problems by our `EngineRequestError` (`engines/audiocpp/kit_speech.js`
-  `engineError`), a licence's as our TermsRequired naming the engine. A line never gets the route's 202
-  "downloading": `useModel` waits for the download (G4). — *code, just-core `52e663c`, 2026-10-29*.
+- **A line's refusals are the kit's routes' problems:** `withSpeechModel` throws the service's refusals as they are
+  (an Error with `termsRequired`, `loadCancelled`, `need`, `diskFull`, `busy`; `NotEnoughMemoryError`) — only its
+  own "engine-not-on" is an ApiError — and the kit exports the mapping its routes answer them with,
+  `llm/runtimes_api.js` `runtimeProblem` (403 terms-required, 409 not-enough-memory / load-cancelled /
+  engine-cant-run-here / model-busy, 507 disk-full, 404). Our `EngineRequestError` carries its problem
+  (`engines/audiocpp/kit_speech.js` `engineError`); ours on top are audio.cpp's own answers with their status, and a
+  licence as our TermsRequired naming the engine, which the app's terms dialog reads (`src/services/
+  engineTerms.js`). A runtime not installed (`notInstalled`) is in no mapping: a line says it failed to load. A line
+  never gets the load route's 202 "downloading": `useModel` waits for the download (G4). (was: the mapping private
+  to the kit's routes, ours a copy of it — until just-core `284c67f`.) — *code, just-core `284c67f`, 2026-10-29*.
 
 ---
 
