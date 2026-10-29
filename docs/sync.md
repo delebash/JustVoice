@@ -41,6 +41,10 @@ The line at the top tells you when this computer last synced, and with which one
 *"Synced 2 min ago · from Studio PC"*. **Devices** lists every computer this one has synced with,
 and how: by hand, the cloud folder, or the network.
 
+A computer you no longer use stays in the cloud folder until you press **Remove** on its row (the
+rows synced through the cloud folder have one). JustVoice syncs first, so nothing that computer
+wrote is lost, then deletes its files from the folder. If that computer syncs again, it comes back.
+
 When another computer's changes arrive while JustVoice is open, the window reloads by itself to
 show them. While a dialog is open or the cursor is in a text box, the reload waits until you
 close the dialog or leave the box, so nothing you are typing is lost.
@@ -145,9 +149,9 @@ the persona finds it straight away. The built-in voices come with their engine a
   - After a restore, this computer carries on in sync as a new device: your other computers'
     **Devices** list it as a new entry beside the old one (both with its name), and the old one's
     files stay in the cloud folder. In this computer's own **Devices**, the old entry reads
-    *‹name› (before the restore on ‹date›)*. There is no Remove: that entry's cloud-folder copy is
-    how this computer gets its newer work back, and a computer that is still offline may not have
-    read it yet.
+    *‹name› (before the restore on ‹date›)*. Its **Remove** works as for any computer (see
+    *Your computers*): this computer syncs first, so what the old entry held reaches your other
+    computers through this computer's own files.
   - This computer keeps its own sync settings — the cloud folder, the paired devices and the
     passwords they reach it with, the library key and its name — not the ones in the backup.
   - While this computer is syncing (a cloud folder or a paired device is set), a backup from
