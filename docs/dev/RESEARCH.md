@@ -718,10 +718,21 @@ are its RESEARCH §12. All *code* at just-core `75d07f8` / JustVoice `78ca4a0e` 
   file by the server. `audio_base64` is read only by task requests (`handle_generic_run`, `:1951-1975`). So a 16 kHz
   copy made for a recogniser is a file, and the kit's transcription hook (`{body, timeout}`) has no step after the
   request that could remove it. — *code, our fork at `1de98891`, 2026-10-29*.
-- **The kit's transcription hook runs outside the stt kind's lock:** `transcribeFeature` calls
-  `transcriptionRequest` (`llm/speech_dispatch.js:49`) before `withSpeechModel` (`:54`), whose `useModel` takes the
-  kind's activity lock (`runtime_service.js:1819`, `_asKind`). So a hook that deletes older 16 kHz copies could
-  delete one a queued transcription still waits to send. — *code, just-core `e45086d`, 2026-10-29*.
+- **The kit's transcription hook runs inside the line, under the stt kind's lock:** `transcribeFeature` calls
+  `transcriptionRequest` inside the `fn` it passes `withSpeechModel` (`llm/speech_dispatch.js`), whose `useModel`
+  holds the kind's activity lock (`runtime_service.js` `_asKind`) — so no other transcription runs while one is
+  shaped and sent. Our hook (`kit_hooks.js` `transcribe`) gives every recogniser but Qwen3-ASR a 16 kHz mono copy
+  in `<data>/cache/transcription-16k/`, named by the recording's bytes, and deletes the older copies at each
+  conversion (`slot.js` `recognizerInput`). (was: the hook ran before `withSpeechModel`, outside the lock, so a
+  hook deleting older copies could delete one a queued transcription still waited to send — until just-core
+  `52e663c`.) — *code, just-core `52e663c`, 2026-10-29* · `server/tests/kit_hooks.test.js`.
+- **The kit keeps its refusals' problems to its routes:** `llm/runtimes_api.js` `asProblem` (403 terms-required,
+  409 not-enough-memory / load-cancelled / engine-cant-run-here / model-busy, 507 disk-full) isn't exported, and
+  `withSpeechModel` throws the service's refusals as they are (an Error with `termsRequired`, `loadCancelled`,
+  `need`, `diskFull`, `busy`; `NotEnoughMemoryError`) — only its own "engine-not-on" is an ApiError. So a line's
+  refusal is mapped to the same problems by our `EngineRequestError` (`engines/audiocpp/kit_speech.js`
+  `engineError`), a licence's as our TermsRequired naming the engine. A line never gets the route's 202
+  "downloading": `useModel` waits for the download (G4). — *code, just-core `52e663c`, 2026-10-29*.
 
 ---
 
