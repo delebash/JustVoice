@@ -708,13 +708,20 @@ are its RESEARCH §12. All *code* at just-core `75d07f8` / JustVoice `78ca4a0e` 
   which is all Hugging Face lists for a file outside LFS. 29 offered rows on the working tree's catalog have one:
   F5-TTS Habibi's 8 `vocab.txt`, KittenTTS 2's LICENSE, NOTICE, two more LICENSEs and SHA256SUMS in each of its 3
   versions, sanoTTS's 18 `config.json` (all under 13 KB). The kit's download checks SHA-256 and removes a file that
-  doesn't match (`runner/models.js` `acquireFileSet`), so those models can't download through it until their
-  SHA-256s are known. — *code + the catalog, 2026-10-29* · `engines/audiocpp/kit_models.js`.
+  doesn't match (`runner/models.js` `acquireFileSet`), so each family file now gives those files' SHA-256s
+  (`SMALL_FILES`, by repository, revision and path): 36 files fetched at their revisions, every size and Git blob id
+  equal to the catalog's — KittenTTS 2's at the pinned `73b762c9` and at `be39e32c`, the uncommitted newer
+  catalog's. (was: the Git id passed on, which the kit's download would refuse — until 2026-10-29.) — *code + the
+  catalog + the files, 2026-10-29* · `engines/audiocpp/kit_models.js`.
 - **audio.cpp's JSON transcription takes only a path on the server's computer** — "audio.cpp's native JSON request
   only takes a server-local path" (`app/server/runtime.cpp:1247-1251`); a multipart `file` part is spooled to a temp
   file by the server. `audio_base64` is read only by task requests (`handle_generic_run`, `:1951-1975`). So a 16 kHz
   copy made for a recogniser is a file, and the kit's transcription hook (`{body, timeout}`) has no step after the
   request that could remove it. — *code, our fork at `1de98891`, 2026-10-29*.
+- **The kit's transcription hook runs outside the stt kind's lock:** `transcribeFeature` calls
+  `transcriptionRequest` (`llm/speech_dispatch.js:49`) before `withSpeechModel` (`:54`), whose `useModel` takes the
+  kind's activity lock (`runtime_service.js:1819`, `_asKind`). So a hook that deletes older 16 kHz copies could
+  delete one a queued transcription still waits to send. — *code, just-core `e45086d`, 2026-10-29*.
 
 ---
 
