@@ -268,7 +268,16 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   at a sentence end, then a clause, then a space, and joins the pieces with no crossfade. Our
   host splits above `max_chunk_chars` (800) at sentence ends with a 50 ms crossfade. — *code,
   2026-10-04* · `../audio.cpp/src/framework/text/chunking.cpp:332-397`; `render_core.py:774-797`;
-  audit §5 D5.
+  audit §5 D5. Since upstream's v0.9.3 (our fork's merge `dacb0d7f`) four families' budget depends
+  on the language and their spec gives no default: Kokoro 100 for Chinese and Japanese voices, else
+  240 (`kokoro_tts/session.cpp:37,102`); FireRedTTS3 80 where hanzi, kana and Hangul outnumber the
+  rest, else 600 (`fireredtts3/session.cpp:25-32`); Magpie 100 for zh and ko, else 300
+  (`magpie_tts/tokenizer_text.cpp:1051`); MOSS-TTS Nano 50 / 256 (`moss/moss_tts_nano/session.cpp:23`).
+  JustVoice keeps each one's old value as its budget (`TEXT_CHUNK_SIZE` in the family file,
+  generated.js `textChunkSize`), so a piece and the price measured at it don't move; a Kokoro line
+  in a Chinese or Japanese voice now reaches the runtime in 240-character pieces that it splits again
+  at 100. (was: every budget the spec's default — until JustVoice `ea2f01fc`, 2026-10-29.) — *code,
+  2026-10-29*.
 - Options the runtime reads, per engine — audit §7. At jv.5 Kokoro's model spec lists its options
   (`model_specs/kokoro_tts.json`: request, session, load), and so do Kitten's (request and
   session) and Qwen3-ASR's (two request options); the Qwen3-TTS, Chatterbox, VoxCPM2 and Pocket
@@ -282,9 +291,14 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   `include/engine/models/chatterbox/tts.h:19-32`, `s3gen_inference.cpp:541-545`.
 - **Qwen3 reads per request** `subtalker_temperature` / `subtalker_top_k` / `subtalker_top_p`
   (0.9 / 50 / 1.0 — the sub-talker that fills in each frame's finer codes), `subtalker_do_sample`,
-  `do_sample`, `max_tokens`. Session: `qwen3_tts.perf_mode` `off` | `flash_attention` (refused on
-  anything but Q8_0 weights), `qwen3_tts.conv_weight_type` `native` | `f32` | `f16`. — *code,
-  2026-10-04* · `../audio.cpp/src/models/qwen3_tts/session.cpp:29-90, 127-136, 184-191, 277-296`,
+  `do_sample`, `max_tokens`. Session: `qwen3_tts.perf_mode` `off` | `flash_attention` |
+  `cuda_perf` (flash attention plus packed projections, optimized cache writes, f16 KV and
+  convolution weights, the stateful streaming decoder and KV alignment 256; `standard` is read as
+  `off`; refused on no weights), `qwen3_tts.conv_weight_type` `native` | `f32` | `f16`, and since the
+  merge `attention`, `packed_projections`, `kv_cache_write`, `kv_cache_type`, `stream_decoder`,
+  `lora`. (was: `off` | `flash_attention`, refused on anything but Q8_0 weights — until our fork's
+  merge of upstream, `dacb0d7f`.) — *code, 2026-10-04; 2026-10-29* ·
+  `../audio.cpp/src/models/qwen3_tts/session.cpp:189-215` at `dacb0d7f`,
   `include/engine/models/qwen3_tts/types.h:24-33`.
 - **VoxCPM2 reads per request** `min_tokens` (2), `max_tokens` (4096; 0 = the model's
   `max_length`), `retry_badcase` (on), `retry_badcase_max_times` (3 tries in all),
@@ -300,12 +314,14 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   Qwen3's three sub-talker settings; VoxCPM2's two runaway settings — advanced knobs at the
   runtime's defaults. Max-token caps are not offered on those seven engines (the models'
   positional limits unchecked). — *code + tests, 2026-10-04* · `capability_details.py`; audit
-  §13.5. **Load options:** every session option a model's spec lists (catalog.json
+  §13.5. **Load options:** every session option a model's spec lists (`seed_audiocpp_catalog.json`
   `options.session`), typed as the spec types it, at audio.cpp's default — except file paths and
-  what the app sets for the row — with Qwen3's `perf_mode` (8-bit rows) and `conv_weight_type`
-  (16-bit by default) kept on the row with their measured words (curated `LOAD_OPTIONS`). (was:
-  those two Qwen3 options alone — until 2026-10-15, the adoption plan's E4.) — *code + tests,
-  2026-10-15* · `engines/audiocpp/runtime_options.js`; JustVoice `43007230`.
+  what the app sets for the row — with Qwen3's `perf_mode` (every row; `cuda_perf` under audio.cpp's
+  own name, no word of ours yet) and `conv_weight_type` (16-bit by default) kept on the row with
+  their measured words (curated `LOAD_OPTIONS`). (was: those two Qwen3 options alone — until
+  2026-10-15, the adoption plan's E4; `perf_mode` on the 8-bit rows only — until JustVoice
+  `ea2f01fc`, 2026-10-29.) — *code + tests, 2026-10-15; 2026-10-29* ·
+  `engines/audiocpp/runtime_options.js`; JustVoice `43007230`.
 - **A session option's key and value** (adoption slice 3): the spec names it locally and the
   framework's key is `<family>.<name>` ("load and session options are local names in the spec;
   the framework derives their public keys as `<family>.<name>`", `docs/maintainers/
@@ -489,6 +505,64 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   (was: the catalog built ahead of the pin, the pin test skipped, the packaged and headless app
   on jv.5 listing Kitten TTS 2 without loading it and sending renamed settings under names jv.5
   doesn't read — until 2026-10-16.) — *GitHub API + tests, 2026-10-16*.
+- **Our fork on upstream v0.9.3 and after** (upstream main `5951ca47`, `v0.9.3-29`; v0.9.3 released
+  2026-10-26): merged into `jv` as `dacb0d7f` (parents `1de98891`, `5951ca47`), pushed 2026-10-29 —
+  150 upstream commits since the last merge's base `5b772fe0` (`9106c13a`). Eight conflicts, each
+  resolved with both sides kept: the README (upstream sorted the community table; our
+  `chatterbox_turbo` row with the cloning packages stays); `app/server/runtime.cpp` (`/health` gains
+  upstream's `version`, `git`, `git_date` beside our `model_management`); `f5_tts/runtime.cpp`
+  (upstream moved `CfgGraph`/`DiTGraph` to file scope as session-owned caches; our local copies go,
+  our no-alloc CUDA context sizing `kDiTGraphNodes` stays); `kokoro_tts/frontend.cpp` (upstream's
+  voice blends, `a(0.6)+b(0.4)`, beside our `voice_pack`: a caller's pack replaces the blend after the
+  voice decides the language, `#<pack id>` still keys the cache); `kokoro_tts/session.cpp`
+  (upstream's CJK `default_text_chunk_size` beside our sentence-pause piece join);
+  `qwen3_tts/talker.cpp` (upstream's per-position code-predictor step graphs keep our zeroed graph
+  buffer, its sampler scratch our instruct guidance mix); `webui/configs/models_catalog.json`
+  (upstream's open-wake-word beside our voicetut-tts); `webui/native/dist/index.html` (upstream's
+  build taken — it lacks our 14 catalog entries until the web UI is rebuilt). Two adaptations
+  outside the conflicts: Qwen3's guidance — upstream replaced the talker step cache's
+  `export_state`/`import_prefill_state(state)` with `import_prefill_state(prefill output, previous
+  graph)`, which the untold pass now uses, its prompt built with the told pass's text projection; and
+  our VoxCPM2 transcript-as-prompt-audio steps aside for a request (or model defaults) that sets
+  upstream's own `ultimate_clone` (#982), which refuses prompt audio beside it
+  (`app/server/server_protocol.cpp:235-240`). **Not built and not run through ctest yet** — that is
+  the final pass. Its specs (43 files, 7 new families): gone, `fish_drama3` `max_new_tokens` (the
+  code reads it as `max_tokens`'s second name, `fish_drama3/session.cpp:140`; nothing saved under it
+  here) and `liveavatar` `fused_cfg` (now `batched_cfg`); default now none (language-dependent),
+  Kokoro, FireRedTTS3, Magpie and MOSS-TTS Nano `text_chunk_size` (§1.2), MioTTS's session one, and
+  Irodori `num_inference_steps` (40 for RF checkpoints, 4 for MeanFlow); new defaults, Drama 3
+  `top_k` 30 → 4097 and `text_chunk_size` 200 → 128 with a new `kv_cache_type` (f16) and
+  `device_sampling` (off), BreezeTTS's `fused_depth`, `direct_prefill`, `skip_cache_round` (on),
+  Kitten TTS 2's default package `kitten_tts2_20261021_q8_0` with 76 more names in `voice_id` (its
+  `ui.builtin_voices` still lists 47, which the app takes); Qwen3's `perf_mode` (§1.2); `lora` /
+  `lora_scale` on ten more families. JustVoice adopts audio.cpp's defaults (the user, 2026-10-13); no
+  family file of ours sets a value these changed. — *git, 2026-10-29* · `git -C ../audio.cpp show
+  dacb0d7f`.
+- **The catalog at the merge** (JustVoice `ea2f01fc`; the file is `seed_audiocpp_catalog.json` since
+  `a3686de1` — the kit's family guard allows a quoted SHA-256 only in a seed file): built at `jv`
+  `dacb0d7f`. 132 families (57 speech), 428 packages, 342 offered by audio.cpp's web UI; 77 engines
+  (50 speech, 27 transcription), 237 model versions. New engines: Gradium Phonon, LFM3-Audio (and its
+  recogniser), Ming 3.0 TTS, Ming 3.0 Audio Tiny (and its recogniser), XTTS v2, beside Fish Audio
+  Drama 3 (and its small IQ3_XXS download) from the uncommitted catalog of 2026-10-18 (`jv`
+  `9106c13a`), which this replaces; LatentSync, Magenta RealTime 2 and openWakeWord are no speech
+  entry, Plapre has no complete package at the pinned revision. Our port of audio.cpp's web UI rule
+  follows upstream's #1127 (a package's load target is the server's; the path is its first GGUF and
+  it carries no session options — none of ours read them) and its five new expose-all families. The
+  package of another repository is pinned at what its revision resolves to on the day: Kitten TTS 2's
+  `dignome/kitten_tts2` moved `be39e32c` → `895debc1`, every file's id the same. **Ahead of the pin:**
+  the packaged app and `npm run server` run v0.9.2-jv.6, which lists these engines without loading
+  them, until the family release ships v0.9.2-jv.7 (TASKS "Our audio.cpp fork is released with the
+  family"). (was: the catalog at the pin v0.9.2-jv.6 — 122 families (50 speech), 386 packages, 69
+  engines (44, 25), 215 versions — until 2026-10-29.) **`MODEL_REVISION` stays `f861648c`:** the
+  merged specs name 22 files missing there — the 13 of v0.9.2 and 9 added to `audio-cpp/audio.cpp-gguf`
+  since (Irodori v4.1 Small MeanFlow ×2, Kitten TTS 2 20261021 ×2, openWakeWord Alexa, Plapre 3 ×2,
+  VoxCPM2 VocalRender Pro, Whistle), all at its main `874fcb41` (2026-10-27) — but at main 145 of the
+  446 files at `f861648c` have other bytes (137 a few KB longer: "Refresh embedded GGUF specs for
+  v0.9.2 (#19)", `6f45df32`, 2026-10-19), 28 of them downloaded here (27 versions: Kokoro, Qwen3 ×4,
+  Chatterbox ×2, Pocket ×7, VoxCPM2 ×2, Qwen3-ASR and its aligner …), which a move would make
+  download again. `661a224e` (2026-10-18), the last before that refresh, adds Plapre, openWakeWord
+  and Whistle and changes only MicroWakeWord's file. The move is the user's (open). — *git + HF API +
+  the downloaded manifests + tests, 2026-10-29*.
 
 ### 1.5 audio.cpp's own web UI
 
@@ -699,20 +773,23 @@ are its RESEARCH §12. All *code* at just-core `75d07f8` / JustVoice `78ca4a0e` 
   `v0.9.0-jv.4/cuda12` (2.0 GB), not the jv.6 pin. The 11 `speech_runtime` settings have the kit's names and
   defaults, and every value here is at its default. JustVoice's `cache_root` is JustWrite's `data/ai-cache`. —
   *measured, read-only, 2026-10-29*.
-- **Pocket TTS's preset voice files carry their SHA-256** (`curated/pocket_tts.js` `VOICE_FILES`): 99 files, 198
+- **Pocket TTS's preset voice files carry their SHA-256** (`seed_file_hashes.js` `POCKET_VOICE_FILES`; was: `curated/
+  pocket_tts.js` `VOICE_FILES` — until JustVoice `78e72445`, the kit's family guard): 99 files, 198
   entries over its 10 rows, each Hugging Face's LFS id at the pinned revision `f861648c` (its API's tree listing,
   `lfs.oid`); the 79 already downloaded here (English, German, Spanish, Portuguese) carry the same ids in their
   `files.json` (147 entries checked, models included), and every size is the file's `file_bytes`. (was: size only
   — until 2026-10-29.) — *web + the downloaded manifests, 2026-10-29*.
-- **A small file Git stores itself has no SHA-256 in `catalog.json`:** its `sha256` is Git's blob id (40 hex, SHA-1),
+- **A small file Git stores itself has no SHA-256 in the catalog:** its `sha256` is Git's blob id (40 hex, SHA-1),
   which is all Hugging Face lists for a file outside LFS. 29 offered rows on the working tree's catalog have one:
   F5-TTS Habibi's 8 `vocab.txt`, KittenTTS 2's LICENSE, NOTICE, two more LICENSEs and SHA256SUMS in each of its 3
   versions, sanoTTS's 18 `config.json` (all under 13 KB). The kit's download checks SHA-256 and removes a file that
-  doesn't match (`runner/models.js` `acquireFileSet`), so each family file now gives those files' SHA-256s
-  (`SMALL_FILES`, by repository, revision and path): 36 files fetched at their revisions, every size and Git blob id
-  equal to the catalog's — KittenTTS 2's at the pinned `73b762c9` and at `be39e32c`, the uncommitted newer
-  catalog's. (was: the Git id passed on, which the kit's download would refuse — until 2026-10-29.) — *code + the
-  catalog + the files, 2026-10-29* · `engines/audiocpp/kit_models.js`.
+  doesn't match (`runner/models.js` `acquireFileSet`), so we give those files' SHA-256s (`seed_file_hashes.js`
+  `SMALL_FILES`, by family, repository, revision and path — seed data since JustVoice `78e72445`; was: each family
+  file's `SMALL_FILES`): 36 files fetched at their revisions, every size and Git blob id equal to the catalog's —
+  KittenTTS 2's at the pinned `73b762c9` and at `be39e32c`, the uncommitted newer catalog's; since the catalog at the
+  merge (§1.4), at `895debc1` alone, its five files fetched again, byte for byte `be39e32c`'s. (was: the Git id
+  passed on, which the kit's download would refuse — until 2026-10-29.) — *code + the catalog + the files,
+  2026-10-29* · `engines/audiocpp/kit_models.js`.
 - **audio.cpp's JSON transcription takes only a path on the server's computer** — "audio.cpp's native JSON request
   only takes a server-local path" (`app/server/runtime.cpp:1247-1251`); a multipart `file` part is spooled to a temp
   file by the server. `audio_base64` is read only by task requests (`handle_generic_run`, `:1951-1975`). So a 16 kHz
@@ -3394,6 +3471,22 @@ title; ten of 32 answers differ from it (eight until "Separate licence" was adde
   from an undisclosed source; Soprano's 1,000 hours are unnamed; Hviske v5.3's GGUF is
   `mirek190/audio.cpp`'s, whose card says Apache-2.0; SenseVoice's own GGUF repo says
   apache-2.0. — *agent + web, 2026-10-15*
+- **The five the merge of upstream v0.9.3 brought** (our fork's `dacb0d7f`; read at their source
+  2026-10-29, the HF API and each card or licence file):
+  - **XTTS v2** — not in the table; ours **No**. Its GGUF repo (`onicubag/xTTSv2-GGUF`) is tagged
+    `mpl-2.0`, the licence of Coqui's code, but the files are Coqui's XTTS-v2 weights, whose
+    `LICENSE.txt` is the Coqui Public Model License 1.0.0: "This license allows only non-commercial
+    use of a machine learning model and its outputs", non-commercial "only so far as you do not
+    receive any direct or indirect payment arising from the use of the model or its output".
+  - **Yes, as the table says:** Gradium Phonon 31M English ("The weights, tokenizer and voices in
+    this repository are released under Apache 2.0, which allows commercial use"; its 40M siblings
+    are CC BY-NC 4.0 and not packaged), Ming 3.0 TTS 0.5B (MIT; the card asks that cloning not be
+    used "to impersonate a real person without consent"), Ming 3.0 Audio Tiny (MIT; the LEGAL.md it
+    points to only says the code's Chinese comments govern).
+  - **Conditional, as the table says:** LFM3-Audio 2B — its LICENSE is LFM2.5-Audio's LFM Open
+    License v1.0 word for word (both fetched and compared), so it reads as LFM2.5-Audio's does. —
+    *web, 2026-10-29* · JustVoice `ea2f01fc` (`curated/xtts_v2.js`, `gradium_phonon.js`,
+    `ming3_tts.js`, `ming3_audio.js`, `lfm3_audio.js`).
 
 ### 10.14 The download test — every speech model through the app (2026-10-11)
 
