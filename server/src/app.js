@@ -24,6 +24,7 @@ import {
   installLogRing,
   MaintenanceGate,
   makeDiskRouter,
+  makeJobsRouter,
   makeLogsRouter,
   makeShutdownRouter,
   onClose,
@@ -48,7 +49,7 @@ import { router as capturesRouter } from "./api/captures_api.js";
 import { router as channelsRouter } from "./api/channels_api.js";
 import { router as effectPresetsRouter } from "./api/effect_presets_api.js";
 import { router as enginesRouter } from "./api/engines_api.js";
-import { router as exportJobsRouter } from "./api/export_jobs_api.js";
+import { jobs as exportJobs, router as exportJobsRouter } from "./api/export_jobs_api.js";
 import { router as externalRouter } from "./api/external_api.js";
 import { router as extractionRouter } from "./api/extraction_api.js";
 import { router as generateRouter } from "./api/generate_api.js";
@@ -409,6 +410,9 @@ export async function createApp(dataDir = null) {
   app.route("/", takesRouter());
   app.route("/", renderJobsRouter());
   app.route("/", exportJobsRouter());
+  // /v1/jobs/:id — following a long job and its Cancel, the kit's (makeJobsRouter, round E §4 step 6):
+  // the book's exports run on its JobRegistry (api/export_jobs_api.js)
+  app.route("/", makeJobsRouter(exportJobs));
   app.route("/", renderLinesRouter());
   app.route("/", channelsRouter());
   app.route("/", mcpBindingsRouter());

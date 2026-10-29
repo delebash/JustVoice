@@ -100,10 +100,9 @@ export async function _stopWorkOnTheFiles() {
     log.warning(`restore teardown: render jobs: ${msg(e)}`);
   }
   try {
+    // the kit's job registry (round E): every export stopped, each waited on — at most 30 s
     const exportJobs = await import("./api/export_jobs_api.js");
-    const live = [...exportJobs._jobs.values()].filter((j) => j.status === "running");
-    for (const j of live) exportJobs.cancelExportJob(j.id);
-    await atMost30s(Promise.allSettled(live.map((j) => j.task)));
+    await exportJobs.jobs.cancelAll({ waitMs: 30_000 });
   } catch (e) {
     log.warning(`restore teardown: export jobs: ${msg(e)}`);
   }

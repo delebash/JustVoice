@@ -4,13 +4,24 @@
 //
 // `POST /v1/projects/{id}/export_m4b` renders and masters every chapter, then encodes the book,
 // and answers only at the end — minutes with nothing to show. These are the same work, reported
-// as it goes: start one, poll it ("Rendering line 12 of 340" while the lines with no take are
-// rendered, then chapter 2 of 4, then "Encoding the book"), cancel it, then fetch the file.
+// as it goes: start one (202 with the job), follow it ("Rendering line 12 of 340" while the lines
+// with no take are rendered, then chapter 2 of 4, then "Encoding the book"), cancel it, then fetch
+// the file.
 //
-// Each job has an AbortController (2026-10-13, the narrowings review R2 and R4): its cancel route
-// and deleting its book abort it. The render phase passes its signal to the scheduler, which
-// withdraws the lines still waiting (the line rendering finishes); the chapters check it
-// between chapters.
+// The jobs are the kit's job registry (round E, docs/plans/2026-10-29-round-e-onto-the-kit.md §4
+// step 6, §5 item 13 — platform/jobs.js JobRegistry): following one and its Cancel are the kit's
+// routes, GET and DELETE /v1/jobs/:id (makeJobsRouter, mounted in app.js), the screen's side the
+// kit's runServerJob (src/services/exportRun.js). A job's step is its `message`; its own fields
+// (`data`) are the step's `done` and `total`, the file's `filename` and its `note`; its `progress`
+// the share of the work done — every line to render, every chapter, the encode, each one step.
+// One export of a kind runs per book: a second start answers the running one. The finished file
+// is JustVoice's to hand over (GET /v1/export_jobs/:id/file, once); it goes with its job — once
+// fetched, or when the registry forgets a job nobody fetched (its `onForget`).
+//
+// The job's signal (the registry's AbortController, 2026-10-13, the narrowings review R2 and R4):
+// Cancel and deleting its book abort it. The render phase passes it to the scheduler, which
+// withdraws the lines still waiting (the line rendering finishes); the chapters check it between
+// chapters.
 //
 // * M4B — the book, one file with chapter marks.
 // * Chapter audio — a zip of each chapter joined (`chapters/NN Title.wav`) and mastered to the
@@ -18,77 +29,85 @@
 //   saying so. The package itself (`GET /v1/projects/{id}/export`) is Overview's, and stays as
 //   it is.
 //
-// Jobs live in memory and a finished file in the temp folder until it is fetched; the old M4B
-// door stays for anything that calls it directly. Python built the file in a worker thread; here
-// the build is the job's own async task.
+// Jobs live in memory (the registry's) and a finished file in the temp folder until it is fetched;
+// the old M4B door stays for anything that calls it directly. The book's one-click run (book_run.js)
+// starts, follows and cancels its M4B through `startM4bExport`, `exportJob` and `cancelExportJob`.
 
-import { randomUUID } from "node:crypto";
 import { createReadStream, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
-import { attachment, Hono } from "@delebash/core/platform";
+import { attachment, Hono, JobRegistry } from "@delebash/core/platform";
 import { safeTitle } from "@delebash/core/platform/filename";
-import { getLogger } from "@delebash/core/platform/log";
 import { ZipWriter } from "@delebash/core/platform/zip";
 import { getState } from "../app_state.js";
 import { Project } from "../database/models.js";
 import * as session from "../database/session.js";
-import { ApiError, badRequest, HttpError, notFound } from "../errors.js";
+import { badRequest, HttpError, notFound } from "../errors.js";
 import * as exportAudiobook from "../export_audiobook.js";
 import * as synthScheduler from "../synth_scheduler.js";
 import { m4bAuthor } from "./projects_api.js";
 import * as renderChapterApi from "./render_chapter_api.js";
 
-const log = getLogger("justvoice.api.export_jobs_api");
-const errText = (e) => e?.message ?? String(e);
+/** A started export's own record, by its job's id — `{projectId, filename, mediaType, note, path,
+ * fetched}`: its file once made, and whether the file route is handing it over. Gone with its job. */
+const _exports = new Map();
 
-/** The jobs, by id (Python's module-level `_jobs`). */
-export const _jobs = new Map();
+const removeTemp = (p) => rmSync(path.dirname(p), { recursive: true, force: true });
 
-class _Cancelled extends Error {}
-
-const _public = (job) => ({
-  id: job.id,
-  status: job.status,
-  done: job.done,
-  total: job.total,
-  step: job.step,
-  error: job.error,
-  // What the file leaves out, said once it is made — the chapter zip without ffmpeg (R8).
-  note: job.note,
-  filename: job.filename,
+/** The export jobs — the kit's registry. A finished job stays until its file is fetched (the
+ * book's one-click run keeps its M4B waiting to be saved): no sweep (`keepMs` Infinity). Forgotten,
+ * its file goes with it — unless the file route is handing it over, which removes it once sent. */
+export const jobs = new JobRegistry({
+  keepMs: Number.POSITIVE_INFINITY,
+  onForget: (job) => {
+    const e = _exports.get(job.id);
+    _exports.delete(job.id);
+    if (e?.path && !e.fetched) removeTemp(e.path);
+  },
 });
+
+const KIND = { m4b: "export-m4b", chapters: "export-chapters" };
 
 /** The chapter zip's note without ffmpeg (the user's words, 2026-10-15). */
 export const NO_MASTERS = "No masters — ffmpeg isn't installed, so the zip holds the chapter WAVs only.";
 
-/** Abort the job: its cancel route, or its book deleted. */
-function _abort(job) {
-  if (!job.abort.signal.aborted) job.abort.abort(new _Cancelled());
-}
-
-function _chapterStep(job, i, n, scene) {
-  if (job.abort.signal.aborted) throw new _Cancelled();
-  job.done = i;
-  return `Chapter ${i + 1} of ${n} · ${scene.title || `Chapter ${scene.position + 1}`}`;
+/** What a job says as it goes: its step's words (`message`), the step's done and total (its own
+ * fields), and its share of the work — every line to render, every chapter, the M4B's encode, one
+ * step each (the registry's progress only grows; each step's own count restarts). */
+class Steps {
+  constructor(ctx, { chapters, encode }) {
+    Object.assign(this, { ctx, lines: 0, linesDone: 0, chapters, chaptersDone: 0, encode: encode ? 1 : 0, encoded: 0 });
+  }
+  say(message, done, total) {
+    const all = this.lines + this.chapters + this.encode;
+    this.ctx.update({ done, total });
+    this.ctx.progress(all ? (this.linesDone + this.chaptersDone + this.encoded) / all : 0, message);
+  }
+  chapter(i, n, scene, total = n) {
+    this.ctx.signal.throwIfAborted();
+    Object.assign(this, { chapters: n, chaptersDone: i });
+    this.say(`Chapter ${i + 1} of ${n} · ${scene.title || `Chapter ${scene.position + 1}`}`, i, total);
+  }
 }
 
 /** The render phase: the lines with no take in use, counted on the job as they land. */
-async function _warm(projectId, job) {
+async function _warm(projectId, kind, steps) {
   const st = getState();
-  const what = job.media_type === "audio/mp4" ? "the M4B export" : "the chapter WAVs export";
+  const { signal } = steps.ctx;
+  const what = kind === "m4b" ? "the M4B export" : "the chapter WAVs export";
   await synthScheduler.warmLines(st, await exportAudiobook.collectProjectLineKwargs(st, projectId), {
     owner: synthScheduler.workOwner(what),
-    signal: job.abort.signal,
+    signal,
     onProgress: (done, total) => {
-      // The line rendering when the job was cancelled still lands; it must not write over
-      // "Cancelled" (2026-10-13, the implementation review's problem 17).
-      if (job.abort.signal.aborted) return;
-      Object.assign(job, { done, total, step: `Rendering line ${Math.min(done + 1, total)} of ${total}` });
+      // The line rendering when the job was cancelled still lands; it must not write over the
+      // cancel (2026-10-13, the implementation review's problem 17).
+      if (signal.aborted) return;
+      Object.assign(steps, { lines: total, linesDone: done });
+      steps.say(`Rendering line ${Math.min(done + 1, total)} of ${total}`, done, total);
     },
   });
-  if (job.abort.signal.aborted) throw new _Cancelled();
+  signal.throwIfAborted();
 }
 
 /** `tempfile.mkstemp(prefix="jv-export-", suffix=…)` — a file of its own, in a folder of its
@@ -97,37 +116,35 @@ function tempFile(suffix) {
   const dir = mkdtempSync(path.join(tmpdir(), "jv-export-"));
   return path.join(dir, `export${suffix}`);
 }
-const removeTemp = (p) => rmSync(path.dirname(p), { recursive: true, force: true });
 
-async function _m4b(job, projectId, name, author) {
-  const progress = (i, n, scene) => {
-    job.total = n + 1; // every chapter, then the encode
-    job.step = _chapterStep(job, i, n, scene);
-  };
+async function _m4b(steps, projectId, name, author) {
+  // every chapter, then the encode
+  const progress = (i, n, scene) => steps.chapter(i, n, scene, n + 1);
   const chapters = await exportAudiobook.assembleProject(getState(), projectId, { progress });
   if (!chapters.length) throw badRequest("project has no scenes to export");
-  if (job.abort.signal.aborted) throw new _Cancelled();
-  job.done = chapters.length;
-  job.step = "Encoding the book";
+  steps.ctx.signal.throwIfAborted();
+  steps.chaptersDone = chapters.length;
+  steps.say("Encoding the book", chapters.length, chapters.length + 1);
   const m4b = await exportAudiobook.muxM4b(chapters, name, author);
   const p = tempFile(".m4b");
   writeFileSync(p, m4b);
+  steps.encoded = 1;
+  steps.say("Done", chapters.length + 1, chapters.length + 1);
   return p;
 }
 
 /** Each chapter joined once, its WAV in `chapters/` and — with ffmpeg — its master in `masters/`.
  * Without ffmpeg there are no masters (raw audio filed as a master would be false), and the job
  * says so in `note` (2026-10-15, the narrowings review R8; it refused the whole zip before). */
-async function _chaptersZip(job, projectId, { masters = true } = {}) {
+async function _chaptersZip(steps, projectId, { masters = true } = {}) {
   const st = getState();
   const scenes = exportAudiobook.projectScenes(projectId);
   if (!scenes.length) throw badRequest("project has no scenes to export");
-  job.total = scenes.length;
   // STORED, as Python wrote them: WAV barely compresses, and a book is hundreds of MB.
   const zf = new ZipWriter({ compression: "stored" });
   for (let i = 0; i < scenes.length; i++) {
     const scene = scenes[i];
-    job.step = _chapterStep(job, i, scenes.length, scene);
+    steps.chapter(i, scenes.length, scene);
     // The chapter's title as written, by the kit's rule as the zip's own name is (2026-10-15, the
     // narrowings review R7; letters and digits only before, the rest "_").
     const title = safeTitle(scene.title, `Chapter ${scene.position + 1}`);
@@ -138,23 +155,9 @@ async function _chaptersZip(job, projectId, { masters = true } = {}) {
   }
   const p = tempFile(".zip");
   writeFileSync(p, zf.toBuffer());
+  steps.chaptersDone = scenes.length;
+  steps.say("Done", scenes.length, scenes.length);
   return p;
-}
-
-async function _run(job, projectId, build) {
-  try {
-    await _warm(projectId, job);
-    const p = await build();
-    Object.assign(job, { path: p, done: job.total, step: "Done", status: "done" });
-  } catch (e) {
-    if (e instanceof _Cancelled) Object.assign(job, { status: "cancelled", step: "Cancelled" });
-    else if (e instanceof ApiError) Object.assign(job, { status: "error", error: String(e.detail) });
-    else {
-      // the panel shows it; the server keeps running
-      log.exception(`export job ${job.id} failed`, e);
-      Object.assign(job, { status: "error", error: errText(e) });
-    }
-  }
 }
 
 function _project(projectId) {
@@ -169,109 +172,126 @@ function _needFfmpeg(what) {
   }
 }
 
-function _start(projectId, filename, mediaType, build, { note = null } = {}) {
-  const job = {
-    id: randomUUID().replaceAll("-", ""),
-    project_id: projectId,
-    status: "running",
-    done: 0,
-    total: 0,
-    step: "Starting",
-    error: null,
-    note,
-    filename,
-    media_type: mediaType,
-    path: null,
-    abort: new AbortController(),
-  };
-  _jobs.set(job.id, job);
-  const out = _public(job);
-  // Held on the job; it starts after this answer is made (asyncio.create_task's order).
-  job.task = Promise.resolve().then(() => _run(job, projectId, () => build(job)));
-  return out;
+/** Start an export of `kind` ("m4b" | "chapters") of the book as a job of the registry → its
+ * snapshot (the one already running for the book, when there is one). */
+function _start(kind, projectId, filename, mediaType, build, { note = null } = {}) {
+  let id = null;
+  const snap = jobs.start({ kind: KIND[kind], key: projectId, label: filename, meta: { projectId } }, async (ctx) => {
+    ctx.update({ done: 0, total: 0, filename, note });
+    ctx.progress(0, "Starting");
+    const steps = new Steps(ctx, { chapters: exportAudiobook.projectScenes(projectId).length, encode: kind === "m4b" });
+    await _warm(projectId, kind, steps);
+    // a running job isn't forgotten (the registry's forget refuses it), so its record is here
+    _exports.get(id).path = await build(steps);
+    // the job's result: what the screen saves it as, and what the file leaves out
+    return { filename, note };
+  });
+  // the work starts after this (the registry's microtask), so its record is here before it ends
+  id = snap.id;
+  if (!_exports.has(id)) _exports.set(id, { projectId, filename, mediaType, note, path: null, fetched: false });
+  return snap;
 }
 
-function _job(jobId) {
-  const job = _jobs.get(jobId);
-  if (job === undefined) throw notFound(`export job ${jobId}`);
-  return job;
+function _startM4b(projectId) {
+  const [name, author] = _project(projectId);
+  _needFfmpeg("M4B export");
+  return _start("m4b", projectId, `${safeTitle(name)}.m4b`, "audio/mp4", (steps) => _m4b(steps, projectId, name, author));
+}
+
+/** Resolves once job `id` has ended (at once when it isn't running). */
+function _ended(id) {
+  return new Promise((resolve) => {
+    const off = jobs.subscribe(id, (ev) => {
+      if (ev.type !== "end") return;
+      off?.();
+      resolve();
+    });
+    if (off === null) resolve();
+  });
 }
 
 /** Stop a deleted book's running exports (`DELETE /v1/projects/{id}`; 2026-10-13, the
  * narrowings review R4). Returns how many were running. */
 export function cancelProjectExports(projectId) {
   let n = 0;
-  for (const job of _jobs.values()) {
-    if (job.project_id !== projectId || job.status !== "running") continue;
-    _abort(job);
-    n += 1;
+  for (const job of jobs.list({ key: projectId })) {
+    if (Object.values(KIND).includes(job.kind) && jobs.cancel(job.id)) n += 1;
   }
   return n;
 }
 
 /**
- * Start the book's M4B export job → the job as its routes show it — the route's body, a function
- * so the one-click run calls it too (its last step). The Save dialog suggests the book's title as
+ * Start the book's M4B export job → the job as the one-click run reads it (`exportJob`'s shape) —
+ * a function so the run calls it too (its last step). The Save dialog suggests the book's title as
  * written (the kit's safeTitle — JustWrite's rule, copied to the kit; JustWrite still keeps its
  * own; 2026-10-13, the narrowings review R7). 404 for an unknown book, 503 without ffmpeg.
  */
 export function startM4bExport(projectId) {
-  const [name, author] = _project(projectId);
-  _needFfmpeg("M4B export");
-  return _start(projectId, `${safeTitle(name)}.m4b`, "audio/mp4", (job) => _m4b(job, projectId, name, author));
+  return exportJob(_startM4b(projectId).id);
 }
 
-/** An export job as its routes show it, and its task (resolves once it ends) — or null when it is
- * unknown (fetched, or gone with a restart: jobs live in memory). */
+/** An export job as the one-click run reads it — `{id, status, done, total, step, error, note,
+ * filename, task}`, `task` resolving once it ends — or null when it is unknown (fetched, or gone
+ * with a restart: jobs live in memory). */
 export function exportJob(jobId) {
-  const job = _jobs.get(jobId);
-  return job === undefined ? null : { ..._public(job), task: job.task };
+  const job = jobs.get(jobId);
+  const e = _exports.get(jobId);
+  if (job === null || e === undefined || e.fetched) return null;
+  return {
+    id: job.id,
+    status: job.state,
+    done: job.data.done ?? 0,
+    total: job.data.total ?? 0,
+    step: job.message || "Starting",
+    error: job.error?.message ?? null,
+    note: e.note,
+    filename: e.filename,
+    task: _ended(job.id),
+  };
 }
 
-/** Cancel an export job (its cancel route's). Unknown → false. */
+/** A finished export's file on disk (until it is fetched or its job forgotten), or null. */
+export function exportFile(jobId) {
+  return _exports.get(jobId)?.path ?? null;
+}
+
+/** Cancel an export job (the kit's DELETE /v1/jobs/:id does it for the screen). Not running → false. */
 export function cancelExportJob(jobId) {
-  const job = _jobs.get(jobId);
-  if (job === undefined) return false;
-  _abort(job);
-  return true;
+  return jobs.cancel(jobId);
 }
 
 export function router() {
   const app = new Hono();
-  app.post("/v1/projects/:project_id/export_m4b/start", (c) => c.json(startM4bExport(c.req.param("project_id"))));
+  // 202 with the job (the kit's long-job shape — platform/jobs.js): following it and its Cancel
+  // are the kit's /v1/jobs/:id
+  app.post("/v1/projects/:project_id/export_m4b/start", (c) => c.json(_startM4b(c.req.param("project_id")), 202));
 
   app.post("/v1/projects/:project_id/export_chapters/start", (c) => {
     const projectId = c.req.param("project_id");
     const [name] = _project(projectId);
     const masters = exportAudiobook.haveFfmpeg();
     const note = masters ? null : NO_MASTERS;
-    return c.json(
-      _start(projectId, `${safeTitle(name)} chapters.zip`, "application/zip", (job) => _chaptersZip(job, projectId, { masters }), { note }),
-    );
+    const snap = _start("chapters", projectId, `${safeTitle(name)} chapters.zip`, "application/zip", (steps) => _chaptersZip(steps, projectId, { masters }), { note });
+    return c.json(snap, 202);
   });
 
-  app.get("/v1/export_jobs/:job_id", (c) => c.json(_public(_job(c.req.param("job_id")))));
-
-  app.post("/v1/export_jobs/:job_id/cancel", (c) => {
-    const job = _job(c.req.param("job_id"));
-    cancelExportJob(job.id);
-    return c.json(_public(job));
-  });
-
-  /** The finished file, once; the job and its temp file go with it. */
+  /** The finished file, once; the job goes with it, and its temp file once sent. */
   app.get("/v1/export_jobs/:job_id/file", (c) => {
     const jobId = c.req.param("job_id");
-    const job = _job(jobId);
-    if (job.status !== "done" || !job.path) throw badRequest(`export job ${jobId} is ${job.status}`);
-    const p = job.path;
-    _jobs.delete(jobId);
+    const job = jobs.get(jobId);
+    const e = _exports.get(jobId);
+    if (job === null || e === undefined || e.fetched) throw notFound(`export job ${jobId}`);
+    if (job.state !== "done" || !e.path) throw badRequest(`export job ${jobId} is ${job.state}`);
+    e.fetched = true;
+    jobs.forget(jobId);
+    const p = e.path;
     const size = statSync(p).size;
     const stream = createReadStream(p);
     stream.once("close", () => removeTemp(p));
     return c.body(Readable.toWeb(stream), 200, {
-      "content-type": job.media_type,
+      "content-type": e.mediaType,
       // RFC 6266/5987: a quote or a title outside ASCII survives (the kit's attachment()).
-      "content-disposition": attachment(job.filename),
+      "content-disposition": attachment(e.filename),
       "content-length": String(size),
     });
   });

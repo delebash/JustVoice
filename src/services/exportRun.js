@@ -5,53 +5,41 @@
 // render phase line by line ("Rendering line 12 of 340", 2026-10-13), then each
 // chapter as it is mastered (then, for the M4B, the encode); Cancel stops it —
 // at once while lines render (2026-10-13), else after the chapter being
-// mastered. The M4B answered only at the end before — minutes with nothing on
-// screen. `kind`: "m4b" the book, "chapters" each chapter's WAV and master in a
+// mastered. `kind`: "m4b" the book, "chapters" each chapter's WAV and master in a
 // zip (the chapters only without ffmpeg, the job's `note` saying so —
 // 2026-10-15, the narrowings review R8).
+//
+// Since round E (2026-10-29, plan §4 step 6) the job is the kit's job registry's
+// and this its runServerJob: the start is the book's route (202 with the job),
+// following it and Cancel the kit's /v1/jobs/:id, the strip's words the job's
+// step; the finished file is ours to fetch, once (GET /v1/export_jobs/:id/file).
 
-import { withAiTask } from "@delebash/ui";
-
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const ENDED = new Set(["done", "error", "cancelled"]);
-
-// What Cancel does, in the strip's hint (the user's words, 2026-10-15: "Cancel
-// stops after the chapter it is on" was no longer true while lines render).
-const CANCEL = "Cancel stops at once while lines render, or after the chapter being mastered.";
+import { runServerJob } from "@delebash/ui";
 
 const KINDS = {
-  m4b: { feature: "export-m4b", path: "export_m4b", what: "M4B audiobook",
-    hint: `Chapters joined and mastered, then the book encoded — ${CANCEL}` },
-  chapters: { feature: "export-chapters", path: "export_chapters", what: "chapter WAVs + masters",
-    hint: `Each chapter joined, then mastered — ${CANCEL}` },
+  m4b: { feature: "export-m4b", path: "export_m4b", what: "M4B audiobook" },
+  chapters: { feature: "export-chapters", path: "export_chapters", what: "chapter WAVs + masters" },
 };
 
 /** Run an export; resolves to { blob, filename, note } once the file is made — `note`, what
- *  the file leaves out (the server's words), or null. */
-export function exportRun(api, project, kind = "m4b") {
+ *  the file leaves out (the server's words), or null. A cancel rejects with an AbortError. */
+export async function exportRun(api, project, kind = "m4b") {
   const k = KINDS[kind];
-  return withAiTask({
+  let jobId = null;
+  const done = await runServerJob({
+    start: async () => {
+      const job = await api.post(`/v1/projects/${project.id}/${k.path}/start`, {});
+      jobId = job.id;
+      return job;
+    },
     feature: k.feature,
     label: `${project.name || "Book"} → ${k.what}`,
     meta: { projectId: project.id },
-  }, async (task) => {
-    let job = await api.request(`/v1/projects/${project.id}/${k.path}/start`, { method: "POST", signal: task.signal });
-    for (;;) {
-      task.setProgress(job.done, job.total || 1, job.total ? undefined : "preparing", k.hint);
-      task.setStats(job.step ? [job.step] : []);
-      if (ENDED.has(job.status)) break;
-      if (task.signal.aborted) {
-        await api.safeRequest(`/v1/export_jobs/${job.id}/cancel`, null, { method: "POST" });
-        throw new DOMException("Export cancelled", "AbortError");
-      }
-      await wait(1000);
-      job = await api.request(`/v1/export_jobs/${job.id}`, { signal: task.signal });
-    }
-    if (job.status === "cancelled") throw new DOMException("Export cancelled", "AbortError");
-    if (job.status === "error") throw new Error(job.error || "the export failed");
-    const blob = await api.requestBlob(`/v1/export_jobs/${job.id}/file`, { signal: task.signal });
-    return { blob, filename: job.filename, note: job.note || null };
+    // the job's step — "Rendering line 12 of 340", "Chapter 2 of 4 · …", "Encoding the book"
+    describe: (job) => job.message || "",
   });
+  const blob = await api.requestBlob(`/v1/export_jobs/${jobId}/file`);
+  return { blob, filename: done?.filename, note: done?.note || null };
 }
 
 /**

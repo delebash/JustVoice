@@ -206,13 +206,15 @@ test("m4b_author_prefers_the_author_field", () => {
   expect(m4bAuthor(proj(null))).toBeNull();
 });
 
-/** Poll an export job until it leaves "running" → `[job, steps]`. */
+/** Poll an export job — the kit's job registry, GET /v1/jobs/:id (round E, plan §4 step 6) — until
+ * it leaves "running" → `[job, steps]`: its state, its step (`message`), its own fields (`data`: the
+ * step's done and total, the file's name, its note). */
 async function follow(c, job) {
   const steps = [];
   for (let i = 0; i < 200; i++) {
-    job = (await c.get(`/v1/export_jobs/${job.id}`)).json();
-    steps.push(job.step);
-    if (job.status !== "running") break;
+    job = (await c.get(`/v1/jobs/${job.id}`)).json();
+    steps.push(job.message);
+    if (job.state !== "running") break;
     await sleep(20);
   }
   return [job, steps];
@@ -229,14 +231,36 @@ test("the_export_job_reports_each_chapter_then_hands_over_the_file", async () =>
   });
   vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
   fakeFfmpeg("M4B!");
-  const [job, steps] = await follow(c, (await c.post(`/v1/projects/${pid}/export_m4b/start`)).json());
-  expect(job.status, JSON.stringify(job)).toBe("done");
-  expect([job.done, job.total]).toEqual([3, 3]); // two chapters, then the encode
+  const start = await c.post(`/v1/projects/${pid}/export_m4b/start`);
+  expect(start.status).toBe(202); // the kit's long-job shape: 202 with the job's snapshot
+  const [job, steps] = await follow(c, start.json());
+  expect(job.state, JSON.stringify(job)).toBe("done");
+  expect([job.data.done, job.data.total]).toEqual([3, 3]); // two chapters, then the encode
+  expect(job.progress).toBe(1);
   expect(steps.some((x) => x.startsWith("Chapter 1 of 2"))).toBe(true);
   const r = await c.get(`/v1/export_jobs/${job.id}/file`);
   expect(r.status).toBe(200);
   expect(r.content.toString("latin1")).toBe("M4B!");
-  expect((await c.get(`/v1/export_jobs/${job.id}`)).status).toBe(404); // fetched once
+  // fetched once: the job is forgotten (the registry says how it ended, 410), its file with it
+  expect((await c.get(`/v1/jobs/${job.id}`)).status).toBe(410);
+  expect((await c.get(`/v1/export_jobs/${job.id}/file`)).status).toBe(404);
+});
+
+test("an_unfetched_export_s_file_goes_when_its_job_is_forgotten", async () => {
+  // The registry's onForget (round E): a finished export nobody fetched leaves no file behind.
+  const { existsSync } = await import("node:fs");
+  const exportJobs = await import("../src/api/export_jobs_api.js");
+  const c = await app();
+  const pid = await seed(c);
+  vi.spyOn(renderChapterApi, "renderSceneWavs").mockImplementation(async () => ({ chapter: wav(0.1, 0.5), master: wav(0.3, 0.5) }));
+  vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
+  const [job] = await follow(c, (await c.post(`/v1/projects/${pid}/export_chapters/start`)).json());
+  expect(job.state, JSON.stringify(job)).toBe("done");
+  const file = exportJobs.exportFile(job.id);
+  expect(existsSync(file)).toBe(true);
+  expect(exportJobs.jobs.forget(job.id)).toBe(true);
+  expect(existsSync(file)).toBe(false);
+  expect(exportJobs.exportJob(job.id)).toBeNull();
 });
 
 test("the_export_job_says_when_ffmpeg_is_missing", async () => {
@@ -259,9 +283,9 @@ test("the_chapter_audio_export_holds_each_chapter_and_its_master", async () => {
     .mockImplementation(async (_st, _sceneId, kw = {}) => ({ chapter: wav(0.1, 0.5), master: kw.master ? wav(0.3, 0.5) : null }));
   vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
   const [job] = await follow(c, (await c.post(`/v1/projects/${pid}/export_chapters/start`)).json());
-  expect(job.status, JSON.stringify(job)).toBe("done");
-  expect(job.filename).toBe("The Ninth Facet chapters.zip");
-  expect(job.note).toBeNull();
+  expect(job.state, JSON.stringify(job)).toBe("done");
+  expect(job.data.filename).toBe("The Ninth Facet chapters.zip");
+  expect(job.data.note).toBeNull();
   expect(joins).toHaveBeenCalledTimes(2);
   const r = await c.get(`/v1/export_jobs/${job.id}/file`);
   expect(r.status).toBe(200);
@@ -282,10 +306,10 @@ test("without_ffmpeg_the_chapter_zip_holds_the_chapters_only_and_says_so", async
   });
   vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(false);
   const start = await c.post(`/v1/projects/${pid}/export_chapters/start`);
-  expect(start.status, start.text).toBe(200);
+  expect(start.status, start.text).toBe(202);
   const [job] = await follow(c, start.json());
-  expect(job.status, JSON.stringify(job)).toBe("done");
-  expect(job.note).toBe("No masters — ffmpeg isn't installed, so the zip holds the chapter WAVs only.");
+  expect(job.state, JSON.stringify(job)).toBe("done");
+  expect(job.data.note).toBe("No masters — ffmpeg isn't installed, so the zip holds the chapter WAVs only.");
   const z = ZipReader.fromBuffer((await c.get(`/v1/export_jobs/${job.id}/file`)).content);
   expect([...z.names()].sort()).toEqual(["chapters/01 One.wav", "chapters/02 Two.wav"]);
   // The M4B still needs it.
@@ -303,8 +327,8 @@ test("the_save_dialog_suggests_the_books_title_as_written", async () => {
   fakeFfmpeg("M4B!");
   expect((await c.patch(`/v1/projects/${pid}`, { json: { name: 'Война: "the" Wizard\'s Tale?' } })).status).toBe(200);
   const [job] = await follow(c, (await c.post(`/v1/projects/${pid}/export_m4b/start`)).json());
-  expect(job.status, JSON.stringify(job)).toBe("done");
-  expect(job.filename).toBe("Война the Wizard's Tale.m4b");
+  expect(job.state, JSON.stringify(job)).toBe("done");
+  expect(job.data.filename).toBe("Война the Wizard's Tale.m4b");
   const r = await c.get(`/v1/export_jobs/${job.id}/file`);
   const header = r.headers["content-disposition"];
   expect(decodeURIComponent(header.split("filename*=UTF-8''")[1])).toBe("Война the Wizard's Tale.m4b");
@@ -334,21 +358,22 @@ test("the_render_phase_counts_its_lines_and_cancel_stops_it", async () => {
   const seen = {};
   waitingWarm(seen);
   let job = (await c.post(`/v1/projects/${pid}/export_m4b/start`)).json();
-  for (let i = 0; i < 100 && job.step !== "Rendering line 2 of 3"; i++) {
+  for (let i = 0; i < 100 && job.message !== "Rendering line 2 of 3"; i++) {
     await sleep(10);
-    job = (await c.get(`/v1/export_jobs/${job.id}`)).json();
+    job = (await c.get(`/v1/jobs/${job.id}`)).json();
   }
-  expect([job.step, job.done, job.total]).toEqual(["Rendering line 2 of 3", 1, 3]);
+  expect([job.message, job.data.done, job.data.total]).toEqual(["Rendering line 2 of 3", 1, 3]);
   expect(seen.opts.owner.label).toBe("the M4B export");
-  await c.post(`/v1/export_jobs/${job.id}/cancel`);
+  // Cancel is the kit's: DELETE /v1/jobs/:id
+  expect((await c.delete(`/v1/jobs/${job.id}`)).status).toBe(200);
   [job] = await follow(c, job);
-  expect([job.status, job.step]).toEqual(["cancelled", "Cancelled"]);
+  expect(job.state).toBe("cancelled");
   expect(seen.opts.signal.aborted).toBe(true);
-  // The line rendering when Cancel came still lands; it doesn't write over "Cancelled"
+  // The line rendering when Cancel came still lands; it doesn't write over the cancel
   // (2026-10-13, the implementation review's problem 17).
   seen.opts.onProgress(2, 3);
-  job = (await c.get(`/v1/export_jobs/${job.id}`)).json();
-  expect([job.status, job.step, job.done, job.total]).toEqual(["cancelled", "Cancelled", 1, 3]);
+  job = (await c.get(`/v1/jobs/${job.id}`)).json();
+  expect([job.state, job.message, job.data.done, job.data.total]).toEqual(["cancelled", "Rendering line 2 of 3", 1, 3]);
 });
 
 test("deleting_a_book_stops_its_export", async () => {
@@ -365,9 +390,9 @@ test("deleting_a_book_stops_its_export", async () => {
   for (let i = 0; i < 100 && !seen.opts; i++) await sleep(10);
   expect((await c.delete(`/v1/projects/${pid}`)).status).toBe(200);
   const [done] = await follow(c, job);
-  expect(done.status).toBe("cancelled");
-  expect((await c.get(`/v1/export_jobs/${other.id}`)).json().status).toBe("running");
-  await c.post(`/v1/export_jobs/${other.id}/cancel`);
+  expect(done.state).toBe("cancelled");
+  expect((await c.get(`/v1/jobs/${other.id}`)).json().state).toBe("running");
+  await c.delete(`/v1/jobs/${other.id}`);
   await follow(c, other);
 });
 
@@ -437,7 +462,7 @@ test("the_chapter_zip_names_each_chapter_as_written", async () => {
   // Nothing left of a title: the chapter's number, as before.
   expect((await c.patch(`/v1/scenes/${scenes[1].id}`, { json: { title: "???" } })).status).toBe(200);
   const [job] = await follow(c, (await c.post(`/v1/projects/${pid}/export_chapters/start`)).json());
-  expect(job.status, JSON.stringify(job)).toBe("done");
+  expect(job.state, JSON.stringify(job)).toBe("done");
   const z = ZipReader.fromBuffer((await c.get(`/v1/export_jobs/${job.id}/file`)).content);
   expect([...z.names()].sort()).toEqual([
     `chapters/01 ${AS_WRITTEN}.wav`,

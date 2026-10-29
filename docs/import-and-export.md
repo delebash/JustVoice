@@ -392,9 +392,11 @@ M4B assembly happens **on the JustVoice server**, no other app involved.
 **In the app** (Studio → Export → **⬇ Export M4B**, since 2026-10-07): a strip under the buttons
 follows it — first *Rendering line 12 of 340* while the lines with no take in use are rendered
 (a line that has one plays it, so it isn't rendered again), then *Chapter 2 of 4 · Bigger
-Inside* as each chapter is joined and mastered, then *Encoding the book* — with **Cancel**:
-*Cancel stops at once while lines render, or after the chapter being mastered* (the line
-rendering when you cancel still finishes). Deleting the book stops its export too. When the file is made, a **Save** dialog asks where to put it and what to
+Inside* as each chapter is joined and mastered, then *Encoding the book* — its bar the share of
+the whole export done (every line to render, every chapter and the encode, one step each) — with
+**Cancel**, which stops it at once while lines render, or after the chapter being mastered (the
+line rendering when you cancel still finishes). (Until round E, 2026-10-29, the strip's bar
+started again at each stage and said what Cancel does under it.) Deleting the book stops its export too. When the file is made, a **Save** dialog asks where to put it and what to
 call it — filled in with the book's title as written, leaving out only the characters a Windows
 file name can't hold (`< > : " / \ | ? *`): *The Ninth Facet.m4b*. The message after says where
 it went, with **Open folder**. Cancel the dialog and it says nothing was saved. (Until then the
@@ -411,15 +413,21 @@ holds `chapters/` only, and once it is saved the app says *No masters — ffmpeg
 installed, so the zip holds the chapter WAVs only.* (Until 2026-10-15 it refused the whole
 zip.)
 
-**For other callers:** `POST /v1/projects/{project_id}/export_m4b/start` starts the job;
-`GET /v1/export_jobs/{id}` says `{status, done, total, step, note}` (`done`/`total` count lines while
-`step` reads *Rendering line N of M*, then chapters); `POST /v1/export_jobs/{id}/cancel` stops it
-after the line rendering now, or between chapters; `GET /v1/export_jobs/{id}/file` hands over the
-finished `.m4b` once, its `Content-Disposition` carrying the name RFC 5987-encoded
-(`filename*=UTF-8''…`) when it goes beyond ASCII.
+**For other callers:** `POST /v1/projects/{project_id}/export_m4b/start` starts the job and answers
+`202` with it — one export of a kind per book at a time: a second start answers the running one.
+The jobs are the shared kit's job registry (since round E, 2026-10-29): `GET /v1/jobs/{id}` says
+`{state, progress, message, data: {done, total, filename, note}, result, error}` — `message` the
+step (*Rendering line N of M*, then *Chapter N of M · Title*, *Encoding the book*), `done`/`total`
+that step's count, `progress` the share of the whole export (0–1), `state` running, done, error or
+cancelled; `GET /v1/jobs/{id}/events` streams the same as server-sent events; `DELETE
+/v1/jobs/{id}` stops it after the line rendering now, or between chapters. `GET
+/v1/export_jobs/{id}/file` hands over the finished `.m4b` once (the job is forgotten with it:
+`GET /v1/jobs/{id}` answers `410`), its `Content-Disposition` carrying the name RFC 5987-encoded
+(`filename*=UTF-8''…`) when it goes beyond ASCII. (Until round E these were
+`GET /v1/export_jobs/{id}` and `POST /v1/export_jobs/{id}/cancel`.)
 `POST /v1/projects/{project_id}/export_m4b` still does it all in one request and returns the
 `.m4b`, named the same way. The chapter audio: `POST /v1/projects/{project_id}/export_chapters/start`, then the same
-`/v1/export_jobs/{id}` doors; without ffmpeg its job's `note` says the zip has no masters
+`/v1/jobs/{id}` and file doors; without ffmpeg its job's `data.note` says the zip has no masters
 (otherwise `note` is null). Deleting the book while that one-request M4B export, the voice-line
 export (`POST /v1/projects/{project_id}/export_voicelines`) or the ACX check
 (`GET /v1/projects/{project_id}/qc`) renders stops it, and it answers `404` (since
