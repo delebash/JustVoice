@@ -42,6 +42,7 @@ vi.mock("../components/SpeechEngineFoot.vue", () => stub("foot"));
 vi.mock("../components/SpeechFilters.vue", () => stub("filters"));
 vi.mock("../components/SpeechModelFacts.vue", () => stub("model"));
 vi.mock("../components/SpeechPickingCard.vue", () => stub("picking"));
+vi.mock("../components/SpeechLoadedRail.vue", () => ({ default: { props: ["engine", "models", "refresh"], setup: (p) => () => h("i", { "data-c": "rail", "data-engine": p.engine ? "yes" : "" }) } }));
 vi.mock("../components/SpeechProvidersPanel.vue", () => ({ default: { props: ["scope"], setup: (p) => () => h("i", { "data-c": `providers-${p.scope}` }) } }));
 vi.mock("vue-router", () => ({ useRoute: () => ({ query: {}, name: "ai", fullPath: "/ai" }), useRouter: () => ({ replace: vi.fn() }) }));
 
@@ -70,7 +71,8 @@ test("the Speech tab is the kit's, with our pieces in its slots and our rules on
   expect(inSlot("group-foot")).toEqual(["foot"]);
   expect(inSlot("filters")).toEqual(["filters"]);
   expect(inSlot("model")).toEqual(["model"]);
-  expect(inSlot("before-models")).toEqual(["picking"]);
+  expect(inSlot("before-models")).toEqual(["rail", "picking"]);
+  expect(el.querySelector('[data-slot="before-models"] [data-c="rail"]').dataset.engine).toBe("yes"); // the tab's engine reaches it
   expect(inSlot("after-models")).toEqual(["providers-selfhosted", "providers-cloud"]);
   // no Speech engines tab of our own any more
   expect(seen.props.appTabs ?? []).toEqual([]);

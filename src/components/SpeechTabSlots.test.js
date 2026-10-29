@@ -4,12 +4,14 @@
 // What JustVoice puts in the kit's Speech tab (round E, docs/plans/2026-10-29-round-e-onto-the-kit.md
 // §4 step 5): an engine's foot — its licence and Delete downloaded models through the kit's own
 // Delete — and a model's facts — its chips, and its load options saved through our route, the model
-// loaded again through the kit's when the server let it go.
+// loaded again through the kit's when the server let it go — and the Loaded now rail above the
+// models, with Unload through the kit's route.
 import { h, nextTick } from "vue";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { DOMWrapper } from "@vue/test-utils";
 import { createTestApp } from "@delebash/ui/quasar/install.js";
+import { i18n } from "../i18n/index.js";
 
 const api = vi.hoisted(() => ({ del: vi.fn(), put: vi.fn(), post: vi.fn(), safeRequest: vi.fn(), request: vi.fn(), patch: vi.fn() }));
 const ui = vi.hoisted(() => ({ confirmDialog: vi.fn(), pushToast: vi.fn(), reportError: vi.fn(), openExternal: vi.fn() }));
@@ -45,6 +47,7 @@ const { default: SpeechEngineFoot } = await import("./SpeechEngineFoot.vue");
 const { default: SpeechEngineHead } = await import("./SpeechEngineHead.vue");
 const { default: SpeechFilters } = await import("./SpeechFilters.vue");
 const { default: SpeechModelFacts } = await import("./SpeechModelFacts.vue");
+const { default: SpeechLoadedRail } = await import("./SpeechLoadedRail.vue");
 const { useEnginesStore } = await import("../stores/engines.js");
 
 const POCKET = { id: "pocket", name: "Pocket TTS", kind: "tts", backend: "managed", terms: { gates: "download", owner: "Kyutai" }, terms_accepted: false };
@@ -84,7 +87,7 @@ async function mount(component, props) {
   engines.items = [POCKET, QWEN];
   engines.loaded = true;
   engines.models = { qwen3: [VARIANT] };
-  app = createTestApp(component, props).use(pinia);
+  app = createTestApp(component, props).use(pinia).use(i18n);
   app.mount(el);
   await nextTick();
   return engines;
@@ -155,4 +158,32 @@ test("the filters edit the tab's own object; Fits this card shows only with a ca
   expect(texts(".chip")).toEqual(["Cloning", "Built-in voices", "Tested by JustVoice", "Takes direction", "Fits this card"]);
   await new DOMWrapper(el.querySelectorAll(".chip")[0]).trigger("click");
   expect(filters.cloning).toBe(true);
+});
+
+test("Loaded now: what each kind holds, where it runs, and Unload through the kit's route", async () => {
+  const refresh = vi.fn();
+  const engine = { kinds: ["tts", "stt"], loaded: [{ modelId: "qwen3-cv-1.7b", placement: "gpu", kind: "tts", reason: "Fits the card" }] };
+  await mount(SpeechLoadedRail, { engine, models: [{ id: "qwen3-cv-1.7b", name: "Qwen3-TTS CustomVoice 1.7B" }], refresh });
+  expect(el.querySelector(".ev-rail-h").textContent).toBe("Loaded now");
+  expect(texts(".ev-slot .k")).toEqual(["Speech", "Transcription"]);
+  expect(texts(".ev-slot .nm")).toEqual(["Qwen3-TTS CustomVoice 1.7B", "— nothing loaded"]);
+  expect(el.querySelector(".ev-slot .sub").textContent).toBe("Graphics card");
+  expect(el.querySelector(".ev-slot .sub").title).toBe("Fits the card");
+  expect(texts("button")).toEqual(["Unload"]);
+
+  api.post.mockResolvedValue({});
+  const events = [];
+  const heard = () => events.push("refresh");
+  window.addEventListener("jv:health-refresh", heard);
+  await new DOMWrapper(el.querySelector("button")).trigger("click");
+  await flush();
+  window.removeEventListener("jv:health-refresh", heard);
+  expect(api.post).toHaveBeenCalledWith("/v1/ai/runtimes/audiocpp/models/qwen3-cv-1.7b/unload", {});
+  expect(events).toEqual(["refresh"]);
+  expect(refresh).toHaveBeenCalledOnce();
+});
+
+test("Loaded now isn't shown while the runtime keeps no loaded set (not installed)", async () => {
+  await mount(SpeechLoadedRail, { engine: { installed: false }, models: [] });
+  expect(el.querySelector(".ev-rail")).toBe(null);
 });

@@ -10,8 +10,9 @@
   the runtime's install, add-ons and settings, and every speech model with its size, licence,
   Auto / GPU / CPU, Download, Load and Delete, are the kit's. What it shows of OURS goes in its
   slots — each engine's head and foot (`group` by engine), our filters (`filter`), each model's
-  facts and load options, the Picking card above the models, and under them the speech servers
-  you run and the cloud speech APIs. Its `changed` reaches every surface as `jv:health-refresh`
+  facts and load options, Loaded now (what each kind holds, with Unload) and the Picking card
+  above the models, and under them the speech servers you run and the cloud speech APIs. Its
+  `changed` reaches every surface as `jv:health-refresh`
   (the top bar's pill, the stores); its `terms-required` opens our terms dialog, which repeats
   the Download or Load once they're accepted. The Speech engines tab of our own, its mock and the
   memory cells we fed the strip (vramFeed — the kit's strip shows each runtime's booking now,
@@ -30,6 +31,7 @@ import { AiModelsArea, useModelApply, pageFlow } from "@delebash/ui";
 import SpeechEngineFoot from "../components/SpeechEngineFoot.vue";
 import SpeechEngineHead from "../components/SpeechEngineHead.vue";
 import SpeechFilters from "../components/SpeechFilters.vue";
+import SpeechLoadedRail from "../components/SpeechLoadedRail.vue";
 import SpeechModelFacts from "../components/SpeechModelFacts.vue";
 import SpeechPickingCard from "../components/SpeechPickingCard.vue";
 import SpeechProvidersPanel from "../components/SpeechProvidersPanel.vue";
@@ -111,7 +113,10 @@ onMounted(async () => {
       <template #runtime-audiocpp-group-foot="{ group, models, refresh }"><SpeechEngineFoot :engine-id="group.key" :models="models" :refresh="refresh" /></template>
       <template #runtime-audiocpp-filters="{ filters }"><SpeechFilters :filters="filters" /></template>
       <template #runtime-audiocpp-model="{ model, refresh }"><SpeechModelFacts :model="model" :refresh="refresh" /></template>
-      <template #runtime-audiocpp-before-models><SpeechPickingCard /></template>
+      <template #runtime-audiocpp-before-models="{ engine, models, refresh }">
+        <SpeechLoadedRail :engine="engine" :models="models" :refresh="refresh" />
+        <SpeechPickingCard />
+      </template>
       <template #runtime-audiocpp-after-models>
         <!-- Self-hosted servers — the user runs these, with their verbs (add/edit/test — user QC
              ruling 2026-08-06) — then the cloud speech APIs. -->

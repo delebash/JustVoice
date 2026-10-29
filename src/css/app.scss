@@ -1941,6 +1941,17 @@ section.block > h3 {
 .jv-player-el{display:none}
 .jv-transport{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .jv-transport__time{font-size:12.5px;color:var(--ink-3)}
+/* The Speech tab's "Loaded now" rail, above the kit's models (SpeechLoadedRail.vue): what each kind
+   holds now, with Unload — the retired Speech engines tab's rail, sized to its content now instead
+   of the column's width. */
+.ev-rail{display:flex;align-items:center;align-self:flex-start;max-width:100%;background:var(--surface);border:1px solid var(--accent-line,#b8d2c3);border-radius:10px;overflow:hidden}
+.ev-rail-h{background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:14px 16px;align-self:stretch;display:flex;align-items:center;border-right:1px solid var(--accent-line,#b8d2c3)}
+.ev-slot{display:flex;align-items:center;gap:10px;padding:9px 16px;border-right:1px solid var(--line);min-width:0}
+.ev-slot:last-child{border-right:0}
+.ev-slot .k{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3)}
+.ev-slot .nm{font-weight:600;font-size:13px;white-space:nowrap}
+.ev-slot .sub{font-size:11px;color:var(--ink-3);white-space:nowrap}
+.ev-slot.empty .nm{color:var(--ink-3);font-weight:400}
 /* A part of the Speech tab's own, under the kit's models: the speech servers you run, the cloud APIs. */
 .ev-section-h{display:flex;align-items:baseline;gap:10px;margin:0 0 8px;padding-bottom:8px;border-bottom:2px solid var(--line)}
 .ev-section-h h3{font-family:var(--font-serif,Georgia,serif);font-size:17px;margin:0;font-weight:600}

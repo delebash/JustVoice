@@ -227,9 +227,10 @@ Under *Local · free*, from top to bottom:
 2. **The filter row** — **Commercial use**, **Tested by JustVoice**, **Takes
    direction**, **Fits this card** and **Sort**; see
    [Finding a model](#finding-a-model).
-3. **Loaded now** — one slot for speech (TTS) and one for speech recognition
-   (STT), each naming the model loaded in it and its engine, with **Unload** to
-   free the slot (the files stay on disk), or *— nothing loaded*.
+3. **Loaded now** — one slot for **Speech** and one for **Transcription**, each
+   naming the model loaded in it and where it runs (**Graphics card** or
+   **CPU**; hover it for why), with **Unload** to free the slot (the files stay
+   on disk), or *— nothing loaded*.
 4. **The speech runtime row** and, under it, **the Japanese dictionary row** —
    see [The speech runtime](#the-speech-runtime).
 5. **Picking an engine is picking what a voice can do** — a table of what each
