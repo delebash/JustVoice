@@ -24,6 +24,14 @@ export const COMMERCIAL_OPTIONS = [
   ...COMMERCIAL_USE.map((c) => ({ label: `Commercial use: ${c}`, value: c, hint: COMMERCIAL_HINTS[c] })),
 ];
 
+/** The Speech tab's sort (the engine list's, decided 2026-10-11): services/speechTab.js orders by it. */
+export const SORTS = [
+  { label: "Sort: name", value: "name" },
+  { label: "Sort: download size", value: "size" },
+  { label: "Sort: memory needed", value: "memory" },
+  { label: "Sort: commercial use", value: "commercial" },
+];
+
 /** The chip's colour class for a commercial-use word. */
 export const licClass = (c) =>
   ({ Conditional: "ev-lic--warn", "Separate licence": "ev-lic--separate", No: "ev-lic--no", Unclear: "ev-lic--unclear" })[c] || "";

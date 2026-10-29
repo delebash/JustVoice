@@ -158,6 +158,13 @@ test("the filters edit the tab's own object; Fits this card shows only with a ca
   expect(texts(".chip")).toEqual(["Cloning", "Built-in voices", "Tested by JustVoice", "Takes direction", "Fits this card"]);
   await new DOMWrapper(el.querySelectorAll(".chip")[0]).trigger("click");
   expect(filters.cloning).toBe(true);
+  // the sort, last (the engine list's second row): by name until one is picked
+  const sort = el.querySelector("select[aria-label='Sort']");
+  expect([...sort.options].map((o) => o.textContent)).toEqual(["Sort: name", "Sort: download size", "Sort: memory needed", "Sort: commercial use"]);
+  expect(sort.value).toBe("name");
+  sort.value = "memory";
+  sort.dispatchEvent(new Event("change"));
+  expect(filters.sort).toBe("memory");
 });
 
 test("Loaded now: what each kind holds, where it runs, and Unload through the kit's route", async () => {

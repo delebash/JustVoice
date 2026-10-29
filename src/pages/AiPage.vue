@@ -9,7 +9,8 @@
   the-kit.md §4 step 5, G6–G9 — "JustVoice's UI in a kit slot"; its name the kit's, §5 item 6):
   the runtime's install, add-ons and settings, and every speech model with its size, licence,
   Auto / GPU / CPU, Download, Load and Delete, are the kit's. What it shows of OURS goes in its
-  slots — each engine's head and foot (`group` by engine), our filters (`filter`), each model's
+  slots — each engine's head and foot (`group` by engine), our filters (`filter`) and sort
+  (`groupSort`, `sort`), each model's
   facts and load options, Loaded now (what each kind holds, with Unload) and the Picking card
   above the models, and under them the speech servers you run and the cloud speech APIs. Its
   `changed` reaches every surface as `jv:health-refresh`
@@ -36,19 +37,22 @@ import SpeechModelFacts from "../components/SpeechModelFacts.vue";
 import SpeechPickingCard from "../components/SpeechPickingCard.vue";
 import SpeechProvidersPanel from "../components/SpeechProvidersPanel.vue";
 import { openEngineTerms } from "../services/engineTerms.js";
-import { groupOf, modelShown } from "../services/speechTab.js";
+import { groupOf, groupOrder, modelOrder, modelShown } from "../services/speechTab.js";
 import { useEnginesStore } from "../stores/engines.js";
 
 const route = useRoute();
 const router = useRouter();
 const engines = useEnginesStore();
 
-// The kit's Speech tab, with our grouping, filters and answers to what it tells us.
+// The kit's Speech tab, with our grouping, filters, sort and answers to what it tells us.
 const RUNTIME_TABS = {
   audiocpp: {
     props: {
       group: (m) => groupOf(m, engines.factsOf(m.id)),
       filter: (m, filters) => modelShown(m, filters, engines.factsOf(m.id)),
+      // the sort our filters pick (filters.sort): the engines, and each engine's models
+      groupSort: (a, b, filters) => groupOrder(a, b, filters.sort, engines.factsOf),
+      sort: (a, b, filters) => modelOrder(a, b, filters.sort, engines.factsOf),
       onChanged: () => window.dispatchEvent(new Event("jv:health-refresh")),
       onTermsRequired: ({ model, retry }) => {
         const f = engines.factsOf(model.id);

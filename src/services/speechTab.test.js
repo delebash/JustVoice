@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from "vitest";
-import { groupOf, modelShown } from "./speechTab.js";
+import { SORTS } from "./engineFacts.js";
+import { groupOf, groupOrder, modelOrder, modelShown } from "./speechTab.js";
 
 // A kit model row (GET /v1/ai/runtimes/audiocpp/models) and our facts about it (the engines store's factsOf).
 const kokoro = { id: "kokoro", name: "Kokoro", licence: { commercial: "Yes" }, tested: { note: "listened" }, status: "installed", deprecated: "" };
@@ -50,5 +51,48 @@ describe("the Speech tab's filters (round E, G6 — the engine list's, 2026-10-1
   it("a model whose facts haven't come yet passes until a filter asks them", () => {
     expect(modelShown(row("x"), {}, null)).toBe(true);
     expect(modelShown(row("x"), { cloning: true }, null)).toBe(false);
+  });
+});
+
+describe("the Speech tab's sort (round E — the engine list's, 2026-10-11)", () => {
+  // kit rows (bytes, the kit's) and our facts (need_gb, the engine's commercial use)
+  const engineOf = { kokoro, pocket, qwen3: { ...kokoro, id: "qwen3", name: "Qwen3-TTS" } };
+  const known = {
+    "kokoro-q8": { engine: engineOf.kokoro, variant: { need_gb: 1 } },
+    "kokoro-bf16": { engine: engineOf.kokoro, variant: { need_gb: 1.2 } },
+    "pocket-en": { engine: engineOf.pocket, variant: { need_gb: 0.5 } },
+    "qwen3-big": { engine: engineOf.qwen3, variant: { need_gb: null } },
+    "qwen3-small": { engine: engineOf.qwen3, variant: { need_gb: 3 } },
+  };
+  const factsOf = (id) => known[id] ?? null;
+  const m = (id, mb) => ({ id, name: id, bytes: mb * 1024 * 1024 });
+  const groups = [
+    { key: "qwen3", label: "Qwen3-TTS", models: [m("qwen3-big", 3000), m("qwen3-small", 50)] },
+    { key: "pocket", label: "Pocket TTS", models: [m("pocket-en", 250)] },
+    { key: "kokoro", label: "Kokoro", models: [m("kokoro-bf16", 330), m("kokoro-q8", 120)] },
+  ];
+  const ordered = (by) => [...groups].sort((a, b) => groupOrder(a, b, by, factsOf)).map((g) => g.key);
+
+  it("offers the engine list's four sorts, in its words", () => {
+    expect(SORTS.map((s) => s.label)).toEqual(["Sort: name", "Sort: download size", "Sort: memory needed", "Sort: commercial use"]);
+  });
+  it("orders the engines by name, by default", () => {
+    expect(ordered("name")).toEqual(["kokoro", "pocket", "qwen3"]);
+    expect(ordered(undefined)).toEqual(["kokoro", "pocket", "qwen3"]);
+  });
+  it("by download size and by memory needed, each engine by its smallest model (unknown memory last)", () => {
+    expect(ordered("size")).toEqual(["qwen3", "kokoro", "pocket"]);
+    expect(ordered("memory")).toEqual(["pocket", "kokoro", "qwen3"]);
+  });
+  it("by commercial use, in the words' order (Yes first), then by name", () => {
+    expect(ordered("commercial")).toEqual(["kokoro", "qwen3", "pocket"]);
+  });
+  it("inside an engine, size and memory order its models; name and commercial use keep the server's order", () => {
+    const models = groups[0].models;
+    const inside = (by) => [...models].sort((a, b) => modelOrder(a, b, by, factsOf)).map((x) => x.id);
+    expect(inside("size")).toEqual(["qwen3-small", "qwen3-big"]);
+    expect(inside("memory")).toEqual(["qwen3-small", "qwen3-big"]);
+    expect(inside("name")).toEqual(["qwen3-big", "qwen3-small"]);
+    expect(inside("commercial")).toEqual(["qwen3-big", "qwen3-small"]);
   });
 });

@@ -3,14 +3,15 @@
   AI Settings → Speech's own filters — the kit's audio.cpp tab, its `filters` slot beside the
   kit's kind picker and search (round E, docs/plans/2026-10-29-round-e-onto-the-kit.md §4 step 5,
   G6): Cloning, Built-in voices, Commercial use, Tested by JustVoice, Takes direction and, on a
-  computer with a graphics card of its own, Fits this card (the engine list's, decided 2026-10-11).
-  It edits the tab's `filters`; services/speechTab.js `modelShown` reads them.
+  computer with a graphics card of its own, Fits this card — then the sort (the engine list's, decided
+  2026-10-11). It edits the tab's `filters`; services/speechTab.js `modelShown` reads them, and its
+  `groupOrder` / `modelOrder` the sort (`filters.sort`, the tab's `groupSort` / `sort` in AiPage.vue).
 -->
 <script setup>
 import { onMounted, ref } from "vue";
 import { UiChip, UiSelect } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
-import { COMMERCIAL_OPTIONS } from "../services/engineFacts.js";
+import { COMMERCIAL_OPTIONS, SORTS } from "../services/engineFacts.js";
 
 const props = defineProps({
   // the tab's filters object (the kit's), edited here
@@ -41,4 +42,6 @@ const toggle = (key) => {
     <UiChip :selected="!!filters.directed" @click="toggle('directed')">Takes direction</UiChip>
     <UiChip v-if="hasCard" :selected="!!filters.fits" @click="toggle('fits')">Fits this card</UiChip>
   </span>
+  <UiSelect :model-value="filters.sort || 'name'" :options="SORTS" width="name" aria-label="Sort"
+    @update:model-value="(v) => (filters.sort = v)" />
 </template>
