@@ -80,6 +80,15 @@ export const FEATURE_CATALOG = [
     "Cleans your dictated text in one pass — what it fixes follows your Capture toggles.",
     "Editing",
   ),
+  // Beside dictation cleanup, which cleans what it hears. Kind "stt": its presets are transcription
+  // presets — a model of the kit's audio.cpp runtime.
+  FeatureCatalogEntry({
+    key: TRANSCRIPTION_FEATURE,
+    label: "Transcription",
+    hint: "Turns speech into text — your dictation, the read-back that checks each take, and agents' transcriptions.",
+    group: "Editing",
+    kind: "stt",
+  }),
   e("persona_rewrite", "Persona rewrite", "Rewrite text in a persona's voice.", "Editing"),
   e("voice_gender", "Voice gender guess", "Label fetched voices the dictionary doesn't know.", "Voices"),
   // The one-click run's step 5 (slice 3): its rows are the two recipes (book_voices/prompts.js).
@@ -89,6 +98,4 @@ export const FEATURE_CATALOG = [
     "Describes each main speaker's voice from how the book shows them, and the narrator's from the book's genre and tone.",
     "Voices",
   ),
-  // Kind "stt": its presets are transcription presets — a model of the kit's audio.cpp runtime.
-  FeatureCatalogEntry({ key: TRANSCRIPTION_FEATURE, label: "Transcription", kind: "stt" }),
 ];
