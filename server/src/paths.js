@@ -39,14 +39,6 @@ export function defaultDataDir() {
 export const storageRoot = (dataDir) => path.join(dataDir, "justvoice");
 export const modelsRoot = (dataDir) => path.join(storageRoot(dataDir), "models");
 export const cacheRoot = (dataDir) => path.join(dataDir, "cache");
-
-/**
- * Where speech-engine model files were downloaded until round E (PLAIN files per
- * <engine>/<variant>/ plus a files.json manifest): the kit's models cache holds them since
- * (docs/plans/2026-10-29-round-e-onto-the-kit.md §4 step 8 moves this computer's into it). Kept
- * only for Disk usage's row (app.js), which shows what is left here until then.
- */
-export const speechCacheRoot = (dataDir) => path.join(dataDir, "speech-cache");
 export const voicesRoot = (dataDir) => path.join(dataDir, "voices");
 export const personasRoot = (dataDir) => path.join(dataDir, "personas");
 export const lexiconsRoot = (dataDir) => path.join(dataDir, "lexicons");

@@ -92,7 +92,7 @@ import { FEATURE_CATALOG, PREFER_LOCAL_FEATURES } from "./feature_catalog.js";
 import * as lineTakes from "./line_takes.js";
 import { clientIdStamp } from "./mcp/context.js";
 import { mountInto as mountMcp } from "./mcp/index.js";
-import { cacheRoot, defaultDataDir, SOURCE_ROOT, speechCacheRoot } from "./paths.js";
+import { cacheRoot, defaultDataDir, SOURCE_ROOT } from "./paths.js";
 import * as renderJobs from "./render_jobs.js";
 import { DEFAULT_FEATURE_PROMPTS } from "./seed_feature_prompts.js";
 import {
@@ -385,9 +385,9 @@ export async function createApp(dataDir = null) {
   app.route("/", syncRouter()); // /v1/sync/* — the sync product's routes (export, import, folder, pairing)
   // The shared platform log + disk surface (the kit's LogsPanel + Storage read these).
   app.route("/", makeLogsRouter(PRODUCT));
-  // JustVoice's app-specific stores ride the disk router's extras: "Speech models" is the
-  // speech cache (every downloaded speech model), the render cache its own row.
-  app.route("/", makeDiskRouter(dataDir, { speechCache: [speechCacheRoot(dataDir)], renderCache: cacheRoot(dataDir) }));
+  // JustVoice's app-specific store rides the disk router's extras: the render cache. The speech
+  // models are the kit's models cache's (its own row) since round E.
+  app.route("/", makeDiskRouter(dataDir, { renderCache: cacheRoot(dataDir) }));
   app.route("/", sseStreamsRouter());
   // Phase 4a addendum (gap-decision workflow v1.0 endpoints)
   app.route("/", webhooksRouter());

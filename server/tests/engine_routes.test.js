@@ -42,6 +42,13 @@ test("the_routes_the_kit_has_now_are_gone", async () => {
   expect((await c.get("/v1/ai/runtimes/audiocpp/engine/status")).status).toBe(200);
 });
 
+test("disk_usage_has_no_speech_cache_row_the_kits_models_cache_holds_them", async () => {
+  // round E step 8: the speech cache's files moved into the kit's models cache (its own row)
+  const { c } = await appClient();
+  const usage = (await c.get("/v1/disk/usage")).json();
+  expect(Object.keys(usage.extras)).toEqual(["renderCache"]);
+});
+
 test("the_engine_list_keeps_our_facts_and_reads_its_state_from_the_kit", async () => {
   const { c } = await appClient();
   fakeSpeechRuntime({ installed: false });

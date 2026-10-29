@@ -734,7 +734,8 @@ async function copySnippet(key) {
 // ── Storage (family section): the kit's StoragePanel — where the data folder is, Change folder, the
 // old copy a move leaves and its Remove, Move back, the disk usage (2026-10-20: a move keeps the old
 // folder, which only the kit's panel removes; JustVoice's own copy of the panel went). JustVoice's own
-// rows — the speech models and the render cache, the server's extra disk buckets — ride its `extra` slot.
+// row — the render cache, the server's extra disk bucket — rides its `extra` slot; the speech models
+// are the kit's models cache's own row since round E.
 const storageShell = {
   getRoot: storageGetRoot,
   pickDirectory,
@@ -1032,10 +1033,6 @@ onMounted(() => {
     <div v-show="activeSub === 'storage'" class="jv-section">
       <StoragePanel :data-dir="dataDir" :shell="storageShell" saves="projects, voices, the database">
         <template #extra="{ usage, size, busy, run }">
-          <!-- what is left in the old speech cache until this computer's files move into the kit's models
-               cache (round E, plan §4 step 8) — the kit's own Clear models cache is the one clear -->
-          <span class="lu-storage__label">Speech models</span>
-          <div class="lu-storage__row"><span>{{ size(usage?.extras?.speechCache) }}</span></div>
           <span class="lu-storage__label">Render cache</span>
           <div class="lu-storage__row">
             <span>{{ size(usage?.extras?.renderCache) }}</span>
