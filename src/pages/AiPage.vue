@@ -25,7 +25,7 @@
   voiced and named "LLM engine setup" (ruling 6) by JustVoice's `kit.quickSetup.*` keys in en.json.
 -->
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { AiModelsArea, useModelApply, pageFlow } from "@delebash/ui";
 import SpeechEngineFoot from "../components/SpeechEngineFoot.vue";
@@ -72,15 +72,24 @@ const openWizardOnce = ref(route.query.quicksetup === "1");
 // This view is kept alive (the layout's KeepAlive), so the setup reads above fire
 // once per session — a LATER #engines / #speakerlab redirect arrives as a query
 // on the same route and must be re-consumed here. The kit area reacts to the
-// prop updates (its own deep-link watcher, 2026-08-06).
-watch(() => route.fullPath, () => {
+// prop updates (its own deep-link watcher, 2026-08-06) — but only when a prop CHANGES: the same
+// link followed again (the user has moved to another tab since) would leave it as it is and never
+// reach the area. So a repeat passes through "" first, a render apart, and arrives as a change.
+async function deepLink(target, value) {
+  if (target.value === value) {
+    target.value = "";
+    await nextTick();
+  }
+  target.value = value;
+}
+watch(() => route.fullPath, async () => {
   if (route.name !== "ai") return;
   const t = String(route.query.tab || "");
   const a = String(route.query.action || "");
   if (!t && !a) return;
-  if (t) initialTab.value = t;
-  if (a) initialAction.value = a;
   router.replace({ path: "/ai" }); // consumed — strip so Back doesn't re-fire
+  if (t) await deepLink(initialTab, t);
+  if (a) await deepLink(initialAction, a);
 });
 
 onMounted(async () => {

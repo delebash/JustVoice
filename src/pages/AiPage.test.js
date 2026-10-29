@@ -3,13 +3,14 @@
 //
 // The AI page hands the kit's Speech tab (AiModelsArea `runtimeTabs.audiocpp`, round E §4 step 5) our
 // grouping by engine, our filter, its answers, and our pieces in its `runtime-audiocpp-<slot>` slots —
-// and no tab of its own.
-import { h, nextTick } from "vue";
+// and no tab of its own; a ?tab= / ?action= deep link reaches the kept-alive page every time it is
+// followed, the same one again included.
+import { h, nextTick, reactive, watch } from "vue";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, expect, test, vi } from "vitest";
 import { createTestApp } from "@delebash/ui/quasar/install.js";
 
-const seen = vi.hoisted(() => ({ props: null }));
+const seen = vi.hoisted(() => ({ props: null, tab: "", action: "", route: { query: {}, name: "ai", fullPath: "/ai" }, router: { replace: () => {} } }));
 const SLOTS = ["group-head", "group-foot", "filters", "model", "before-models", "after-models"];
 vi.mock("@delebash/ui", () => ({
   safeRequest: vi.fn(async () => null),
@@ -27,9 +28,15 @@ vi.mock("@delebash/ui", () => ({
   useModelApply: () => ({}),
   // the kit's area: each Speech slot rendered with the scope the kit tab gives it
   AiModelsArea: {
-    props: ["runtimeTabs", "appTabs", "hwCells", "initialTab"],
+    props: ["runtimeTabs", "appTabs", "hwCells", "initialTab", "initialFeatureAction"],
     setup: (p, { slots }) => {
       seen.props = p;
+      // the kit's own adoption (AiModelsArea's and FeatureWorkbench's watchers): a deep link is taken when
+      // its prop CHANGES to a value
+      seen.tab = p.initialTab || "providers";
+      seen.action = p.initialFeatureAction || "";
+      watch(() => p.initialTab, (t) => { if (t) seen.tab = t; });
+      watch(() => p.initialFeatureAction, (a) => { if (a) seen.action = a; });
       const group = { key: "pocket", label: "Pocket TTS" };
       const scope = { group, models: [], shown: [], refresh: () => {}, filters: {}, model: { id: "pocket-en" }, loaded: null, engine: {} };
       return () => h("div", SLOTS.map((n) => h("section", { "data-slot": n }, slots[`runtime-audiocpp-${n}`]?.(scope))));
@@ -44,7 +51,7 @@ vi.mock("../components/SpeechModelFacts.vue", () => stub("model"));
 vi.mock("../components/SpeechPickingCard.vue", () => stub("picking"));
 vi.mock("../components/SpeechLoadedRail.vue", () => ({ default: { props: ["engine", "models", "refresh"], setup: (p) => () => h("i", { "data-c": "rail", "data-engine": p.engine ? "yes" : "" }) } }));
 vi.mock("../components/SpeechProvidersPanel.vue", () => ({ default: { props: ["scope"], setup: (p) => () => h("i", { "data-c": `providers-${p.scope}` }) } }));
-vi.mock("vue-router", () => ({ useRoute: () => ({ query: {}, name: "ai", fullPath: "/ai" }), useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock("vue-router", () => ({ useRoute: () => seen.route, useRouter: () => seen.router }));
 
 const { default: AiPage } = await import("./AiPage.vue");
 const { useEnginesStore } = await import("../stores/engines.js");
@@ -94,4 +101,45 @@ test("the Speech tab is the kit's, with our pieces in its slots and our rules on
   const retry = () => {};
   onTermsRequired({ model: { id: "pocket-en" }, retry });
   expect(events).toEqual(["refresh", { engine: "pocket", onAccepted: retry }]);
+});
+
+test("the same ?tab= / ?action= deep link, followed again, brings the kept-alive page back to it", async () => {
+  // the router as the page sees it: replace() is the page consuming the link
+  const route = reactive({ name: "ai", query: { tab: "runtime-audiocpp" }, fullPath: "/ai?tab=runtime-audiocpp" });
+  const go = (name, query = {}) => {
+    const q = new URLSearchParams(query).toString();
+    Object.assign(route, { name, query, fullPath: `/${name}${q ? `?${q}` : ""}` });
+  };
+  seen.route = route;
+  seen.router = { replace: vi.fn(({ path }) => go(path.slice(1))) };
+  const settle = async () => {
+    for (let i = 0; i < 4; i++) await nextTick();
+  };
+  el = document.createElement("div");
+  document.body.appendChild(el);
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  app = createTestApp(AiPage).use(pinia);
+  app.mount(el);
+  await settle();
+  expect(seen.tab).toBe("runtime-audiocpp");
+  expect(route.fullPath).toBe("/ai"); // consumed
+
+  // the user moves to another tab, leaves the page, and follows the same link again
+  seen.tab = "providers";
+  go("voices");
+  await settle();
+  go("ai", { tab: "runtime-audiocpp" });
+  await settle();
+  expect(seen.tab).toBe("runtime-audiocpp");
+  expect(route.fullPath).toBe("/ai");
+
+  // an action link, twice
+  go("ai", { tab: "features", action: "speaker_attribution.guided" });
+  await settle();
+  expect([seen.tab, seen.action]).toEqual(["features", "speaker_attribution.guided"]);
+  seen.action = "";
+  go("ai", { tab: "features", action: "speaker_attribution.guided" });
+  await settle();
+  expect(seen.action).toBe("speaker_attribution.guided");
 });
