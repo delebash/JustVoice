@@ -10,8 +10,9 @@ import { stores } from "@delebash/core/llm";
 import { seedRuntimeModels } from "@delebash/core/llm/seed";
 import { RuntimeService } from "@delebash/core/runner/runtime_service";
 import * as session from "../src/database/session.js";
+import { readdirSync, readFileSync } from "node:fs";
 import { CURATED } from "../src/engines/audiocpp/curated/index.js";
-import { VOICE_FILES } from "../src/engines/audiocpp/curated/pocket_tts.js";
+import { POCKET_VOICE_FILES as VOICE_FILES, SMALL_FILES } from "../src/engines/audiocpp/seed_file_hashes.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
 import { runtimeModelRows, variantOf } from "../src/engines/audiocpp/kit_models.js";
 import { tmpPath } from "./helpers.js";
@@ -44,7 +45,7 @@ test("every model version our engines offer is one row, its files pinned, its ma
   }
 });
 
-test("a small file Git stores itself carries the SHA-256 its family file gives it, at its revision", () => {
+test("a small file Git stores itself carries the SHA-256 we give it, at its revision", () => {
   // seed_audiocpp_catalog.json gives such a file Git's blob id (40 hex), all Hugging Face lists for it
   const gitIds = new Map();
   for (const fam of Object.values(generated.CATALOG.families)) {
@@ -56,7 +57,7 @@ test("a small file Git stores itself carries the SHA-256 its family file gives i
       const git = gitIds.get(`${f.repo}\u0000${f.revision}\u0000${f.path}`);
       if (!git) continue;
       seen += 1;
-      const entry = Object.values(CURATED).flatMap((c) => c.SMALL_FILES ?? []).find((e) => e.repo === f.repo && e.revision === f.revision);
+      const entry = Object.values(SMALL_FILES).flat().find((e) => e.repo === f.repo && e.revision === f.revision);
       expect(f.sha256, `${r.id} ${f.path}`).toBe(entry?.sha256[f.path]);
       expect(f.bytes, `${r.id} ${f.path}`).toBe(git.size_bytes);
     }
@@ -65,7 +66,22 @@ test("a small file Git stores itself carries the SHA-256 its family file gives i
   expect(rowOf("sanotts-orig").files.find((f) => f.path === "gguf/config.json").sha256).toMatch(SHA256);
 });
 
-test("Pocket TTS's preset voices carry their SHA-256 from its family file, at the pinned revision", () => {
+test("every SHA-256 we give is seed data: none is left in a family file", () => {
+  // The kit's family guard (check 21) takes a quoted SHA-256 outside a seed file for a violation, so
+  // the small files' and Pocket TTS's voice hashes live in seed_file_hashes.js (2026-10-29).
+  const dir = new URL("../src/engines/audiocpp/curated/", import.meta.url);
+  const files = readdirSync(dir).filter((f) => f.endsWith(".js"));
+  expect(files.length).toBeGreaterThan(50);
+  const withHash = files.filter((f) => /["'][0-9a-f]{64}["']/.test(readFileSync(new URL(f, dir), "utf8")));
+  expect(withHash).toEqual([]);
+  for (const c of Object.values(CURATED)) {
+    expect(c.SMALL_FILES).toBeUndefined();
+    expect(c.VOICE_FILES).toBeUndefined();
+  }
+  expect(Object.keys(SMALL_FILES).sort()).toEqual(["f5_tts", "kitten_tts2", "sanotts"]);
+});
+
+test("Pocket TTS's preset voices carry their SHA-256 from the seed file, at the pinned revision", () => {
   const pocket = rows.filter((r) => r.spec.family === "pocket_tts");
   expect(pocket.length).toBeGreaterThan(0);
   const voices = pocket.flatMap((r) => r.files.filter((f) => f.path.includes("/embeddings/") && !generated.catalogFamily("pocket_tts").packages.some((p) => p.source.files.some((x) => x.path === f.path))));
