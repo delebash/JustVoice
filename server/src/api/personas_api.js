@@ -15,7 +15,7 @@ import { parseWavHeader, writeWavContainer } from "../audio/wav.js";
 import { Block, Generation, Lexicon, MCPBinding, Project, Speaker } from "../database/models.js";
 import * as session from "../database/session.js";
 import * as run from "../engines/llm/run.js";
-import * as manager from "../engines/manager.js";
+import * as modelCatalog from "../engines/model_catalog.js";
 import { badRequest, conflict, notFound } from "../errors.js";
 import {
   construct,
@@ -437,7 +437,7 @@ export function router() {
     if (unsaved !== null) plan.lexicons = plan.lexicons.map((lid) => (lid === unsaved.id ? unsaved : lid));
     if (!body.auto_load) {
       const vm = await vmod.voiceModel(st, plan.voice);
-      if (vm !== null && manager.getManager().getManifest(vm.engineId) != null && !vmod.isModelLoaded(vm.engineId, vm.model)) {
+      if (vm !== null && modelCatalog.getManifest(vm.engineId) != null && !vmod.isModelLoaded(vm.engineId, vm.model)) {
         throw conflict(`engine_not_loaded:${vm.engineId}`);
       }
     }

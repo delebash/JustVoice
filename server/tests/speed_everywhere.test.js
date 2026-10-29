@@ -23,7 +23,7 @@ import { EngineRegistry } from "../src/engines/registry.js";
 import { applyLineDelivery, probeLineCached, renderLine, speedNative } from "../src/render_core.js";
 import * as synthScheduler from "../src/synth_scheduler.js";
 import { RENDER_KEY_VERSION } from "../src/version.js";
-import { FakeCache, renderState, useManager } from "./render_helpers.js";
+import { FakeCache, FakeSpeech, fakeManifest, renderState, useSpeech } from "./render_helpers.js";
 
 afterEach(closeApps);
 
@@ -92,43 +92,18 @@ test("the_openai_compatible_provider_paces_itself", () => {
 
 // ── a chapter line ──────────────────────────────────────────────────────
 
-/** One engine without its own speed (mock-tts) and Kokoro. Both return one second of tone
- * whatever they are asked — the server's stretch is the only thing that can change the length. */
-class Manager {
-  constructor(current = "mock-tts") {
-    const m = (id, voice) => ({ id, kind: "tts", capabilities: { paralinguistic_tags: false }, staticVoices: [{ id: voice, name: voice }] });
-    this._m = new Map([
-      ["mock-tts", m("mock-tts", "mv_1")],
-      ["kokoro", m("kokoro", "af_heart")],
-    ]);
-    this._voice = { "mock-tts": "mv_1", kokoro: "af_heart" };
-    this.synths = [];
-    this.current = { tts: current };
-  }
-  currentId() {
-    return this.current.tts ?? null;
-  }
-  async voices(engineId) {
-    return [{ id: this._voice[engineId], name: "V" }];
-  }
-  getManifest(id) {
-    return this._m.get(id) ?? null;
-  }
-  manifests() {
-    return new Map(this._m);
-  }
-  currentFor(kind) {
-    return this.current[kind] ?? null;
-  }
-  async load(engineId) {
-    this.current.tts = engineId;
-    return {};
-  }
-  async synth(engineId, body) {
-    this.synths.push([engineId, { ...body }]);
-    return [TONE, { sample_rate: SR, channels: 1, is_wav_container: false }];
-  }
-}
+/** One engine without its own speed (mock-tts) and Kokoro — the catalog and the kit's speech
+ * runtime faked (render_helpers' FakeSpeech), mock-tts the one the runtime holds. Both return one
+ * second of tone whatever they are asked — the server's stretch is the only thing that can change
+ * the length. */
+const speech = () =>
+  new FakeSpeech(
+    {
+      "mock-tts": fakeManifest("mock-tts", { staticVoices: [{ id: "mv_1", name: "mv_1" }] }),
+      kokoro: fakeManifest("kokoro", { staticVoices: [{ id: "af_heart", name: "af_heart" }] }),
+    },
+    { pcm: TONE, rate: SR, current: { tts: "mock-tts" } },
+  );
 
 const state = (cache) => renderState({ cache });
 
@@ -146,7 +121,7 @@ function preGap8Key(engineId, voice, delivery) {
 }
 
 test("a_line_on_an_engine_without_speed_is_stretched", async () => {
-  useManager(new Manager());
+  useSpeech(speech());
   const st = state(new FakeCache());
   const dry = await renderLine(st, { voice: "mv_1", text: "Hi", cacheScope: "s" });
   const slow = await renderLine(st, { voice: "mv_1", text: "Hi", delivery: { speed: 0.5 }, cacheScope: "s" });
@@ -155,7 +130,7 @@ test("a_line_on_an_engine_without_speed_is_stretched", async () => {
 });
 
 test("a_kokoro_line_is_paced_by_the_model_not_stretched", async () => {
-  const mgr = useManager(new Manager());
+  const mgr = useSpeech(speech());
   const st = state(new FakeCache());
   const fast = await renderLine(st, { voice: "af_heart", text: "Hi", delivery: { speed: 1.25 }, cacheScope: "s" });
   expect(fast.pcm.length / 2).toBe(N); // the server stretched a line the model already paced
@@ -163,7 +138,7 @@ test("a_kokoro_line_is_paced_by_the_model_not_stretched", async () => {
 });
 
 test("a_line_cached_while_speed_was_ignored_renders_again", async () => {
-  const mgr = useManager(new Manager());
+  const mgr = useSpeech(speech());
   const cache = new FakeCache();
   const st = state(cache);
   cache.put("s", preGap8Key("mock-tts", "mv_1", { speed: 1.25 }), packPcmWithFormat(TONE, SR, 1));
@@ -177,7 +152,7 @@ test("a_line_cached_while_speed_was_ignored_renders_again", async () => {
 });
 
 test("kokoro_lines_and_lines_at_their_own_pace_keep_their_cache_entries", async () => {
-  const mgr = useManager(new Manager());
+  const mgr = useSpeech(speech());
   const cache = new FakeCache();
   const st = state(cache);
   cache.put("s", preGap8Key("kokoro", "af_heart", { speed: 1.25 }), packPcmWithFormat(TONE, SR, 1));
@@ -229,10 +204,10 @@ const nowScheduler = {
   },
 };
 
-/** The app with Generate's manager and scheduler faked (Python's `client` + `gen`). */
+/** The app with Generate's speech and scheduler faked (Python's `client` + `gen`). */
 async function genApp() {
   const { c } = await appClient();
-  const mgr = useManager(new Manager());
+  const mgr = useSpeech(speech());
   vi.spyOn(synthScheduler, "getScheduler").mockReturnValue(nowScheduler);
   return [c, mgr];
 }

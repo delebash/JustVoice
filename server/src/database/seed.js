@@ -7,14 +7,17 @@
 //     the effects-chain editor offers. A preset is matched by NAME and only ever inserted: a
 //     database that already has a preset of that name keeps it as it is, built-in or the user's.
 //   - the workspace seed — the shared LLM stack's migrations and seed in JustWrite's order, then
-//     the settings that moved into the kit carried there (the kit's retireSettings), then the
-//     provider registry booted from the database.
+//     the settings that moved into the kit carried there (the kit's retireSettings: the speech
+//     runtime's, and the transcription model onto its feature's preset), then the provider
+//     registry booted from the database.
 
 import { stores } from "@delebash/core/llm";
+import { resolveRuntimeFeature } from "@delebash/core/llm/image_dispatch";
 import { retireSettings } from "@delebash/core/platform";
 import { getLogger } from "@delebash/core/platform/log";
 import { pyFloatValue as F, pyJson } from "@delebash/core/platform/pyjson";
 import { settingKey } from "@delebash/core/runner/runtimes";
+import { TRANSCRIPTION_FEATURE } from "../feature_catalog.js";
 import { deleteStoredSetting, storedSetting } from "../storage/settings_store.js";
 import { EffectPreset } from "./models.js";
 import * as session from "./session.js";
@@ -43,6 +46,23 @@ export function retireSpeechRuntimeSettings() {
   const out = retireSettings(h, moves, { getSetting: storedSetting, deleteSetting: deleteStoredSetting });
   if (out.moved.length) log.info(`the speech runtime's settings are the AI stack's now, carried over: ${out.moved.join(", ")}`);
   for (const k of out.kept) log.warning(`the setting ${k.key} couldn't move into the AI stack yet: ${k.error?.message ?? k.error}`);
+  return out;
+}
+
+/** The transcription model the setting `captures.stt_model` named — the Transcription feature's
+ * preset's model now (round E, docs/plans/2026-10-29-round-e-onto-the-kit.md §4 steps 1 and 3,
+ * decided) — carried onto that preset and out of the row (the kit's retireSettings, read from the
+ * row as stored). Run at every seed, after the kit's rows: a restored older backup's carries over
+ * too; a feature with no stt preset yet keeps the setting for the next seed. */
+export function retireTranscriptionModel() {
+  const h = session.cfg.handle;
+  const move = (value) => {
+    const { preset } = resolveRuntimeFeature(TRANSCRIPTION_FEATURE, "stt");
+    if (value && preset.model !== String(value)) stores.getEnginePresetStore().save({ ...preset, model: String(value) });
+  };
+  const out = retireSettings(h, { "captures.stt_model": move }, { getSetting: storedSetting, deleteSetting: deleteStoredSetting });
+  if (out.moved.length) log.info("the transcription model is the Transcription feature's preset's now, carried over");
+  for (const k of out.kept) log.warning(`the setting ${k.key} couldn't move onto its preset yet: ${k.error?.message ?? k.error}`);
   return out;
 }
 
@@ -125,7 +145,8 @@ export function seedBuiltinEffectPresets() {
  *   4. the shared seed;
  *   5. tunables edited on legacy rows onto the presets — once the presets exist;
  *   6. retired default catalog rows out;
- *   7. the speech runtime's settings into the kit's audio.cpp runtime — once its rows exist;
+ *   7. the speech runtime's settings into the kit's audio.cpp runtime, and the transcription
+ *      model onto its feature's preset — once their rows exist;
  *   8. the provider registry booted from the database, so `registered` is live from boot.
  * The collaborators load at call time (they sit in import cycles with the app). Errors from
  * steps 2–8 propagate.
@@ -146,5 +167,6 @@ export async function seedWorkspace() {
   await liftEditedTunablesIntoPresets();
   retireDefaultCatalogRows();
   retireSpeechRuntimeSettings();
+  retireTranscriptionModel();
   loadFromConfigs(stores.getProviderStore().list());
 }

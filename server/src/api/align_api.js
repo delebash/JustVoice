@@ -2,9 +2,9 @@
 // /v1/align + chapter captions — word-level timestamps (C1, 2026-08-21) (the port of
 // justvoice/api/align_api.py).
 //
-// The route: rendered audio + the KNOWN text → per-word times. The speech-recognition engine's
-// word aligner (Qwen3-ForcedAligner, a companion of the `asr` model in the speech runtime)
-// times the given words, the host maps them onto the real words (alignment.js — an aligner
+// The route: rendered audio + the KNOWN text → per-word times. Qwen3-ASR's word aligner
+// (Qwen3-ForcedAligner, its companion in the kit's audio.cpp runtime, registered on its first use —
+// engines/audiocpp/kit_speech.js `align`) times the given words, the host maps them onto the real words (alignment.js — an aligner
 // that drops or splits a word never loses its neighbours' timing), and captions.js formats
 // the result as WebVTT or SRT. Engine-agnostic by construction — it measures the finished
 // audio, so it works identically for every TTS engine.
@@ -22,17 +22,18 @@ import { alignKnownText } from "../alignment.js";
 import { getState } from "../app_state.js";
 import { parseWavHeader } from "../audio/wav.js";
 import { toSrt, toVtt } from "../captions.js";
+import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
 import { badRequest } from "../errors.js";
 import * as captures from "./captures_api.js";
 import * as renderChapter from "./render_chapter_api.js";
 
 const msg = (e) => e?.message ?? String(e);
 
-/** WAV + known text → [{word, start, end}], via the stt slot. */
+/** WAV + known text → [{word, start, end}], via Qwen3-ASR's aligner on the kit's runtime. The
+ * language is `language`, else `settings.captures.language`; "" or "auto" is English. */
 export async function _alignWavBytes(wav, text, language) {
-  const [mgr, settings] = await captures.ensureSttLoaded({ aligner: true });
-  const lang = language || settings.captures.language;
-  const hyp = await mgr.align({ wav_b64: wav.toString("base64"), text, language: lang === "" || lang === "auto" ? null : lang });
+  const lang = language || getState().settings.get().captures.language;
+  const hyp = await kitSpeech.align(wav, text, lang === "" || lang === "auto" ? null : lang);
   return alignKnownText(text, hyp, { totalDuration: _wavSeconds(wav) });
 }
 

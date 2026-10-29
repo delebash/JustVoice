@@ -4,17 +4,20 @@
 // from them — the seven described by our own files too, since the adoption plan's slice 4 — each
 // model has a capability row, a line's direction reaches
 // each family as its file says, the request keeps to the spec, a licence that isn't "Yes" gates
-// the first download, and a directed VoxCPM2 line goes without the clip's words.
+// the first download, a companion file reaches the kit's row in its own slot, and a directed
+// VoxCPM2 line goes without the clip's words. Since round E (docs/plans/2026-10-29-round-e-onto-the-
+// kit.md) the catalog is engines/model_catalog.js and the kit's audio.cpp runtime downloads and
+// registers each model from its row (engines/audiocpp/kit_models.js).
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as drama3 from "../src/engines/audiocpp/curated/fish_drama3.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
+import { runtimeModelRows } from "../src/engines/audiocpp/kit_models.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
-import * as manager from "../src/engines/manager.js";
+import * as modelCatalog from "../src/engines/model_catalog.js";
 import { lineModels } from "../src/line_takes.js";
 import { checkDelivery, currentDelivery, modelSettings } from "../src/persona_render.js";
-import { tmpPath } from "./helpers.js";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -32,7 +35,7 @@ test("every engine is built from audio.cpp's files; the seven described by our o
   // (Chatterbox's family and our engine share the id "chatterbox".)
   for (const fam of generated.OWN_FAMILIES) expect(!engines.has(fam) || generated.OWN_ENGINES.includes(fam), fam).toBe(true);
   for (const id of ["cosyvoice3", "index_tts2", "breeze_tts", "higgs_audio_tts", "fish_audio"]) expect(engines.has(id), id).toBe(true);
-  const found = manager.discoverEngines();
+  const found = modelCatalog.discoverEngines();
   expect(found.has("cosyvoice3")).toBe(true);
   expect(found.has("kokoro")).toBe(true);
 });
@@ -182,7 +185,7 @@ test("a clone-only model refuses a voice with no clip by name", () => {
 });
 
 test("the gate follows our reading of the licence, and says it in plain words", () => {
-  const engines = manager.discoverEngines();
+  const engines = modelCatalog.discoverEngines();
   // audio.cpp says No; its Creator Use Grant lets a user sell their own audiobooks with credit.
   const higgs = engines.get("higgs_audio_tts").module.TERMS;
   expect(higgs.gates).toBe("download");
@@ -199,7 +202,7 @@ test("the gate follows our reading of the licence, and says it in plain words", 
 });
 
 test("every engine's facts: our licence word beside audio.cpp's, its status, tested, best for", () => {
-  const engines = manager.discoverEngines();
+  const engines = modelCatalog.discoverEngines();
   const higgs = generated.engineFacts(engines.get("higgs_audio_tts").module);
   expect(higgs.licence).toMatchObject({ commercial: "Conditional", table: "No" });
   expect(higgs.catalog_status).toBe("supported");
@@ -253,7 +256,7 @@ test("a model needs its estimate or its files, whichever is more — the seven d
   expect(generated.needOf(rowOf("moss_ttsd", "moss_ttsd-q8"))).toEqual({ gb: 12.1, by: "files" });
   // The build's answer 3 (decided 2026-10-15): "slice 4 gives those models audio.cpp's memory
   // estimate" (was: none — "memory not measured yet" until their first load).
-  const kokoro = manager.discoverEngines().get("kokoro").module.VARIANTS[0];
+  const kokoro = modelCatalog.discoverEngines().get("kokoro").module.VARIANTS[0];
   expect(generated.needOf(kokoro)).toEqual({ gb: 1, by: "estimate" });
   expect(generated.needOf({ audiocpp: { generated: false } })).toBeNull();
 });
@@ -268,28 +271,32 @@ test("the clip's words reach a spec that lists no options, as they reach one tha
 });
 
 test("a companion a family file names downloads with the model and reaches it as a session option", () => {
-  // MioTTS decodes with MioCodec, given as miotts.codec_model_path; the spec doesn't list it.
-  const engine = manager.discoverEngines().get("miotts");
+  // MioTTS decodes with MioCodec, given as miotts.codec_model_path; the spec doesn't list it. The
+  // kit's row carries it in a slot of that option's name, and the kit gives that slot's file as the
+  // option (round E: the kit downloads and registers the model).
+  const engine = modelCatalog.discoverEngines().get("miotts");
   const row = engine.module.VARIANTS.find((v) => v.id === "miotts-q8");
   const codec = "MioCodec-25Hz-44.1kHz-v2-GGUF/miocodec-25hz-44khz-v2-q8_0.gguf";
   expect(row.sources).toHaveLength(1); // the same repository and revision: one download row
   expect(row.sources[0].files).toContain(codec);
-  vi.spyOn(slot, "_dataDir").mockReturnValue(tmpPath());
-  const [entry] = slot._entriesFor(engine, row);
-  const opt = Object.fromEntries(entry.sessionOptions);
-  expect(String(opt["miotts.codec_model_path"]).replaceAll("\\", "/")).toMatch(new RegExp(`miotts-q8/${codec}$`));
+  const kit = runtimeModelRows().find((r) => r.id === "miotts-q8");
+  expect(kit.files.map((f) => [f.slot, f.path])).toEqual([
+    ["model", "MioTTS-1.7B-GGUF/miotts-1.7b-q8_0.gguf"],
+    ["miotts.codec_model_path", codec],
+  ]);
+  expect(kit.spec.sessionFiles).toEqual({ "miotts.codec_model_path": "miotts.codec_model_path" });
 });
 
 test("a licence that isn't Yes gates the first download until accepted", () => {
-  const index = manager.discoverEngines().get("index_tts2");
-  const cosy = manager.discoverEngines().get("cosyvoice3");
+  const index = modelCatalog.discoverEngines().get("index_tts2");
+  const cosy = modelCatalog.discoverEngines().get("cosyvoice3");
   expect(index.module.TERMS.gates).toBe("download");
   expect(cosy.module.TERMS).toBeUndefined(); // Apache-2.0, commercial use Yes
   vi.spyOn(slot, "termsAccepted").mockReturnValue(false);
-  expect(() => manager.requireDownloadTerms(index)).toThrow(manager.TermsRequired);
-  expect(() => manager.requireDownloadTerms(cosy)).not.toThrow();
+  expect(() => modelCatalog.requireDownloadTerms(index)).toThrow(modelCatalog.TermsRequired);
+  expect(() => modelCatalog.requireDownloadTerms(cosy)).not.toThrow();
   vi.spyOn(slot, "termsAccepted").mockReturnValue(true);
-  expect(() => manager.requireDownloadTerms(index)).not.toThrow();
+  expect(() => modelCatalog.requireDownloadTerms(index)).not.toThrow();
 });
 
 test("a directed VoxCPM2 line goes without the clip's words; a plain one keeps them", () => {

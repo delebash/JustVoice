@@ -5,12 +5,13 @@
 //
 // A take is judged two ways (RESEARCH §10.11):
 //   - its length: longer than the speech runtime's runaway limit for its text
-//     (`runtime.runawayLimitS` — `speech_runtime.runaway_s_per_char` and `runaway_min_s`, the
-//     rule the manager prices models by), it fails, and is not read back (a runaway can run for
+//     (kit_settings.js `runawayLimitS` — the runtime's `runaway_s_per_char` and `runaway_min_s`,
+//     the rule the kit prices models by), it fails, and is not read back (a runaway can run for
 //     minutes);
 //   - read back: the app's own speech recognition transcribes it (captures_api `_sttTranscribe`,
-//     the function behind POST /v1/transcribe), both texts go through Whisper's basic normaliser
-//     (whisper_normalizer.js) and the transcript is lined up against the line's words with jsdiff
+//     the function behind POST /v1/transcribe — the Transcription feature's model), both texts go
+//     through Whisper's basic normaliser (whisper_normalizer.js) and the transcript is lined up
+//     against the line's words with jsdiff
 //     (`diffArrays`, the `diff` package). Words of the line the transcript doesn't have are
 //     MISSED (skipped, or heard as other words); words it has past them are EXTRA (a repeat, a
 //     take that runs on). Thresholds: `settings.take_check` (models.js TakeCheckSettings).
@@ -40,8 +41,9 @@ import * as captures from "./api/captures_api.js";
 import { personaForBlock } from "./api/_speaker_helpers.js";
 import { Block, Generation, Scene } from "./database/models.js";
 import * as session from "./database/session.js";
-import * as runtime from "./engines/audiocpp/runtime.js";
-import { conflict } from "./errors.js";
+import * as kitSettings from "./engines/audiocpp/kit_settings.js";
+import * as kitSpeech from "./engines/audiocpp/kit_speech.js";
+import { badRequest, conflict } from "./errors.js";
 import * as lineTakes from "./line_takes.js";
 import { mediaFile } from "./media_paths.js";
 import { dtIso, utcNow } from "./models.js";
@@ -99,7 +101,7 @@ export function limitsFor(settings, text) {
     missedShare: Number(tc.missed_share),
     extraShare: Number(tc.extra_share),
     minWords: Math.max(1, Number(tc.min_words)),
-    runawayS: runtime.runawayLimitS(text),
+    runawayS: kitSettings.runawayLimitS(text),
   };
 }
 
@@ -297,10 +299,13 @@ export async function _readAll(state, items, out, { signal, onProgress, phase },
       if (gen === null || !lineTakes.hasAudio(gen)) throw new Error("the take has no audio");
       if (!runsAway(gen.duration_sec, limits)) {
         if (!loaded) {
-          // The recogniser, loaded once for the pass (or the one already loaded).
-          const [mgr] = await captures.ensureSttLoaded();
-          const engine = mgr.currentFor("stt");
-          out.recogniser = (engine ? mgr.currentVariantId(engine) || engine : null) ?? out.recogniser;
+          // The recogniser, once for the pass: the Transcription feature's model (its first
+          // read-back loads it, downloading it first when it isn't here).
+          const ready = kitSpeech.transcriptionReadiness();
+          if (ready.need && ready.need !== "model-not-downloaded") {
+            throw badRequest(ready.detail || `speech recognition is ${ready.need} — install the speech runtime and its model on the AI page`);
+          }
+          out.recogniser = ready.model || out.recogniser;
           loaded = true;
         }
         heard = await captures._sttTranscribe(mediaFile(gen.audio_path), await _language(h, state, item.block));

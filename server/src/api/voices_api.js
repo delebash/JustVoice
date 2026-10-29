@@ -18,7 +18,7 @@ import { noiseMarginDb } from "../audio/analyzer.js";
 import { parseWavHeader } from "../audio/wav.js";
 import * as blending from "../engines/blending.js";
 import * as run from "../engines/llm/run.js";
-import { getManager } from "../engines/manager.js";
+import { manifests } from "../engines/model_catalog.js";
 import { badRequest, notFound, notImplemented } from "../errors.js";
 import {
   BlendVoiceRequest,
@@ -95,8 +95,7 @@ export async function listVoices() {
 
   // 1. Static presets from managed engine manifests (always available, no subprocess needed).
   //    Kokoro ships 54 here; clone-only engines empty.
-  const mgr = getManager();
-  for (const manifest of mgr.manifests().values()) {
+  for (const manifest of manifests().values()) {
     for (const v of manifest.staticVoices) out.push(_presetDto(st, manifest.id, v));
   }
 
@@ -273,7 +272,7 @@ export function router() {
     if (hit !== null) return c.json(_registryDto(st, hit[0], hit[1]));
     const rec = st.voices.get(id);
     if (rec) return c.json(_storedToDto(rec));
-    for (const manifest of getManager().manifests().values()) {
+    for (const manifest of manifests().values()) {
       for (const v of manifest.staticVoices) if (v.id === id) return c.json(_presetDto(st, manifest.id, v));
     }
     throw notFound(`voice ${id}`);
@@ -528,11 +527,10 @@ export function router() {
           body.engine,
           // A segment's bounds are floats (its error words print them as Python does).
           segments.map((s) => [s.voice_id, pyFloatValue(s.start), pyFloatValue(s.end)]),
-          { dataDir: st.dataDir, resolveStored: storedVector },
+          { resolveStored: storedVector },
         );
       } else {
         blended = await blending.blend(body.engine, sourceIds, storedWeights, {
-          dataDir: st.dataDir,
           resolveStored: storedVector,
           normalize: false, // already applied above, per strategy
         });

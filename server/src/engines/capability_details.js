@@ -26,7 +26,7 @@ import {
   requestOptionsOf,
   settingsOf,
 } from "./audiocpp/generated.js";
-import { pinnedHas } from "./audiocpp/release.js";
+import { shippedHas } from "./audiocpp/kit_settings.js";
 
 const knob = (v) => construct(KnobSpec, v);
 const tags = (v) => construct(InlineTagSet, v);
@@ -181,11 +181,11 @@ export const CAPABILITY_DETAILS = {
     display_name: "Kokoro",
     supports_voice_cloning: false,
     // A lexicon's IPA (gap 3) rides our audio.cpp's inline "[word](/phonemes/)" — offered once
-    // the pinned build has it; render_core also checks the INSTALLED one.
-    supports_phoneme_input: pinnedHas("inline_ipa"),
-    // Blends (gap 2) need our audio.cpp's `voice_pack` option — offered once the pinned build
-    // has it (release.pinnedHas), so the flag flips with the pin.
-    supports_voice_blending: pinnedHas("voice_pack"),
+    // the build the app ships has it; render_core also checks the one pinned here.
+    supports_phoneme_input: shippedHas("inline_ipa"),
+    // Blends (gap 2) need our audio.cpp's `voice_pack` option — offered once the build the app ships
+    // has it (kit_settings.js shippedHas), so the flag flips with the build.
+    supports_voice_blending: shippedHas("voice_pack"),
     // audio.cpp's Kokoro takes a decoder-noise seed — the same seed repeats the same audio
     // (measured 2026-10-01).
     knobs: atAudiocppRanges("kokoro_tts", [speedKnob(), seedKnob("kokoro_tts")]),
@@ -424,7 +424,7 @@ CAPABILITY_DETAILS.voxcpm2 = detail({
   engine_id: "voxcpm2",
   display_name: "VoxCPM2",
   supports_voice_cloning: true,
-  supports_clone_prompt_text: pinnedHas("voxcpm2_transcript"),
+  supports_clone_prompt_text: shippedHas("voxcpm2_transcript"),
   supports_voice_design: true,
   supports_instruct_freeform: true,
   // The runaway settings at audio.cpp's ranges: its spec gives them none — number boxes, the tries

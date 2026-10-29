@@ -10,15 +10,18 @@
 // The voice list, clone, design and copy go through the real app (`appClient`).
 import { readFileSync } from "node:fs";
 import { afterEach, expect, test, vi } from "vitest";
-import "./engines_helpers.js";
+import { endSpeech, fakeSpeechRuntime } from "./engines_helpers.js";
 import { getState } from "../src/app_state.js";
 import { writeWavContainer } from "../src/audio/wav.js";
-import * as manager from "../src/engines/manager.js";
-import { discoverEngines } from "../src/engines/manager.js";
+import * as kitSpeech from "../src/engines/audiocpp/kit_speech.js";
+import * as modelCatalog from "../src/engines/model_catalog.js";
 import * as vmod from "../src/voice_model.js";
 import { appClient, closeApps } from "./app_helpers.js";
 
-afterEach(closeApps);
+afterEach(async () => {
+  endSpeech();
+  await closeApps();
+});
 
 const SR = 24000;
 
@@ -197,15 +200,9 @@ test("turbo_and_nano_need_a_clip_longer_than_five_seconds", async () => {
 // ── The variant a render loads ────────────────────────────────────────────
 
 test("the_variant_follows_the_model_and_keeps_the_size", () => {
-  const engines = discoverEngines();
-  const mgr = {
-    currentFor: () => null,
-    currentVariantId: () => null,
-    resolvedDefaultVariant: () => "qwen3-cv-0.6b-q8",
-    manifests: () => engines,
-    getManifest: (e) => engines.get(e) ?? null,
-  };
-  vi.spyOn(manager, "getManager").mockReturnValue(mgr);
+  // nothing loaded (the kit's runtime), the user's default the 0.6B CustomVoice
+  fakeSpeechRuntime();
+  vi.spyOn(modelCatalog, "resolvedDefaultVariant").mockReturnValue("qwen3-cv-0.6b-q8");
   vi.spyOn(vmod, "_onDisk").mockImplementation((e, v) => ["qwen3-base-1.7b-q8", "qwen3-base-0.6b-q8"].includes(v));
   // The user's 0.6B default is CustomVoice; a Base voice gets Base 0.6B.
   expect(vmod.variantForModel("qwen3", "qwen3-base")).toBe("qwen3-base-0.6b-q8");
@@ -225,14 +222,8 @@ test("pocket_offers_only_the_versions_that_speak_the_personas_language", async (
   // Decided 2026-10-15 (C5): Pocket has one model per language, so the persona page's Version
   // lists the persona's language's versions; another language's default or loaded model is not
   // this persona's.
-  const engines = discoverEngines();
-  vi.spyOn(manager, "getManager").mockReturnValue({
-    currentFor: () => "pocket",
-    currentVariantId: () => "pocket-en-q8",
-    resolvedDefaultVariant: () => "pocket-en-q8",
-    manifests: () => engines,
-    getManifest: (e) => engines.get(e) ?? null,
-  });
+  fakeSpeechRuntime({ loaded: [{ modelId: "pocket-en-q8" }] });
+  vi.spyOn(modelCatalog, "resolvedDefaultVariant").mockReturnValue("pocket-en-q8");
   vi.spyOn(vmod, "_onDisk").mockReturnValue(true);
   vi.spyOn(vmod, "voiceModel").mockResolvedValue({ engineId: "pocket", model: "pocket", name: "Pocket TTS" });
   const de = await vmod.versionsOf(null, "pocket_alba", "de-DE");
@@ -255,4 +246,26 @@ test("a_load_is_noted_while_it_runs", async () => {
     expect(now.seconds).toBeGreaterThanOrEqual(0);
   });
   expect(vmod.loadingNow()).toBeNull();
+});
+
+test("a_line_names_its_version_and_notes_the_load_only_until_it_starts", async () => {
+  // Round E: the kit's runtime loads the version a line names, inside the line; Render's words
+  // last until the line starts, and a version already loaded notes nothing.
+  fakeSpeechRuntime({ loaded: [{ modelId: "kokoro-82m-bf16" }] });
+  const seen = [];
+  vi.spyOn(kitSpeech, "speak").mockImplementation(async (engineId, versionId, body, { onStart } = {}) => {
+    seen.push(["before", vmod.loadingNow()?.model ?? null]);
+    onStart?.();
+    seen.push(["started", vmod.loadingNow()]);
+    return [Buffer.alloc(0), {}];
+  });
+  expect(vmod.speakingVersion("kokoro", "kokoro")).toBe("kokoro-82m-bf16"); // the loaded one, its size kept
+  await vmod.speak("kokoro", "kokoro", "kokoro-82m-q8", { text: "Hi." });
+  expect(seen).toEqual([["before", vmod.modelName("kokoro", "kokoro")], ["started", null]]);
+  seen.length = 0;
+  await vmod.speak("kokoro", "kokoro", "kokoro-82m-bf16", { text: "Hi." });
+  expect(seen).toEqual([["before", null], ["started", null]]);
+  expect(kitSpeech.speak.mock.calls.map((c) => c[1])).toEqual(["kokoro-82m-q8", "kokoro-82m-bf16"]);
+  // a model the engine's catalog doesn't have is refused by name
+  expect(() => vmod.speakingVersion("kokoro", "no-such-model")).toThrow(vmod.ModelUnavailable);
 });

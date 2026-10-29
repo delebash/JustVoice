@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { Hono } from "@delebash/core/platform";
 import { ValueError } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
-import * as manager from "../engines/manager.js";
+import * as modelCatalog from "../engines/model_catalog.js";
 import { badRequest, notFound } from "../errors.js";
 import { construct, Voice } from "../models.js";
 import { buildBundle, importBundle, LookupError } from "../voice_bundle.js";
@@ -78,7 +78,7 @@ export function router() {
 
     const st = getState();
     // manifests() is keyed by engine id.
-    const known = new Set(manager.getManager().manifests().keys());
+    const known = new Set(modelCatalog.manifests().keys());
     let rec;
     try {
       rec = importBundle(st.voices, payload, { knownEngines: known });

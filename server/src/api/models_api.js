@@ -1,80 +1,47 @@
 // SPDX-License-Identifier: MIT
-// /v1/engines/{id}/models — installable model variants (the port of
+// /v1/engines/{id}/models — each engine's model versions and their facts (the port of
 // justvoice/api/models_api.py).
 //
-// Every speech model lives in the speech cache (`speech_cache.js`). Until the 2026-10-01
-// switch a model could also count as downloaded from an engine's own legacy folder or a Hugging
-// Face cache; both probes went with the per-engine environments — the HF one would now be wrong
-// outright, because nearly every variant comes from the one `audio-cpp/audio.cpp-gguf`
-// repository, so one cached file would have marked them all downloaded.
+// JustVoice's per-version facts — languages, cloning, voices, how it is directed, its description,
+// its load options — and whether it is downloaded (the kit's models cache). The kit's audio.cpp
+// runtime downloads, loads, places and deletes the models, and says where each runs and what it
+// measured (its routes under /v1/ai/runtimes/audiocpp — round E, docs/plans/2026-10-29-round-e-
+// onto-the-kit.md §4 step 4); a model's load options stay ours, saved here.
 
-import { existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { Hono, input } from "@delebash/core/platform";
-import { dirSize } from "@delebash/core/platform/disk_api";
-import { literal, T } from "@delebash/core/platform/models";
+import { T } from "@delebash/core/platform/models";
 import { getState } from "../app_state.js";
+import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
 import * as runtimeOptions from "../engines/audiocpp/runtime_options.js";
-import * as manager from "../engines/manager.js";
 import * as modelCatalog from "../engines/model_catalog.js";
-import { badRequest, conflict, notFound } from "../errors.js";
+import { badRequest, notFound } from "../errors.js";
 import { construct, EngineOverrides, ModelsListResponse } from "../models.js";
-import { speechCacheRoot } from "../paths.js";
-import * as speechCache from "../speech_cache.js";
 import * as vmod from "../voice_model.js";
 
-export const PlacementBody = T.Object({ placement: literal("auto", "gpu", "cpu") });
 export const RuntimeOptionsBody = T.Object({ options: T.Record(T.String(), T.String()) });
-
-/** Where each model runs, or would run now, and why; its CPU speed (CPU placement,
- * 2026-10-02 — docs/plans/2026-10-02-cpu-placement.md §8). Mutates the variants. */
-export async function _annotatePlacement(engineId, variants) {
-  const mgr = manager.getManager();
-  const m = mgr.getManifest(engineId);
-  const kind = m.kind;
-  const loaded = mgr.status(engineId) === "loaded" ? mgr.currentVariantId(engineId) : null;
-  for (const v of variants) {
-    v.placement = manager.EngineManager._userPlacement(engineId, v.id);
-    [v.cpu_realtime, v.cpu_realtime_here] = mgr.cpuSpeed(kind, engineId, v.id);
-    if (v.id === loaded) {
-      v.runs_on = (mgr.resolvedDeviceFor(engineId) || "") === "cpu" ? "cpu" : "gpu";
-      v.runs_on_reason = mgr.placementReasonFor(engineId);
-    } else {
-      [v.runs_on, v.runs_on_reason] = await mgr.placementFor(m, kind, v.id);
-    }
-  }
-}
-
-const variantIn = (engineId, variantId) => modelCatalog.modelsFor(engineId).some((v) => v.id === variantId);
 
 export function router() {
   const app = new Hono();
-  app.get("/v1/engines/:id/models", async (c) => {
+  app.get("/v1/engines/:id/models", (c) => {
     const id = c.req.param("id");
-    // Validate against the manager's discovered manifests — the ONE catalog.
-    if (manager.getManager().getManifest(id) === null) throw notFound(`engine ${id}`);
+    // Validate against the catalog's discovered manifests — the ONE catalog.
+    const m = modelCatalog.getManifest(id);
+    if (m === null) throw notFound(`engine ${id}`);
     const variants = modelCatalog.modelsFor(id);
-    // The per-model on-disk flag drives the verb shown (Download vs Load/Delete): the speech
-    // cache's files.json, every file present at its recorded size.
-    const st = getState();
+    // The per-model on-disk flag drives the verb shown (Download vs Load/Delete): every file in
+    // the kit's models cache at its pinned size.
     for (const v of variants) {
-      v.on_disk = speechCache.variantOnDisk(st.dataDir, id, v.id);
-      // local_dir rides along for the desktop "Open folder" verb — resolved HERE so the layout
-      // knowledge stays server-side.
-      if (v.on_disk) v.local_dir = String(speechCache.variantDir(st.dataDir, id, v.id));
+      const files = kitSpeech.modelFiles(v.id);
+      v.on_disk = files !== null;
+      // local_dir rides along for the desktop "Open folder" verb — the folder holding its main
+      // file, resolved HERE so the layout knowledge stays server-side.
+      if (files?.model) v.local_dir = path.dirname(String(files.model));
     }
-    await _annotatePlacement(id, variants);
-    // What an earlier load measured on this machine's card — the list's memory line prefers it
-    // to audio.cpp's estimate.
-    const mgr = manager.getManager();
-    const kind = mgr.getManifest(id).kind;
-    for (const v of variants) v.measured_mb = mgr.measuredMbFor(kind, id, v.id);
-    // A card load remembered as failed here — the row offers "Try the card again".
-    for (const v of variants) v.failed_on_card = mgr._failedOnCard(kind, id, v.id);
     // How each speech model is directed — written direction, tags, or sliders only (the Engines
     // page, 2026-10-09). Speech recognition speaks nothing, so it has none.
-    if (manager.getManager().getManifest(id).kind === "tts") {
+    if (m.kind === "tts") {
       for (const v of variants) {
         const family = vmod.modelOfVariant(v.id);
         v.directed_by = family ? vmod.directedBy(family) : null;
@@ -88,62 +55,15 @@ export function router() {
   });
 
   /**
-   * Where one model runs: Auto, the graphics card, or the CPU — saved per model in
-   * `engine_overrides[id].placements`. A loaded model is not moved here: the answer's `moves`
-   * says it would now run elsewhere, and the next load of it puts it there.
-   */
-  app.put("/v1/engines/:id/models/:variant_id/placement", input({ body: PlacementBody }), async (c) => {
-    const { id, variant_id: variantId } = c.req.param();
-    const body = c.req.valid("json");
-    const mgr = manager.getManager();
-    const m = mgr.getManifest(id);
-    if (m === null) throw notFound(`engine ${id}`);
-    if (!variantIn(id, variantId)) throw notFound(`variant ${variantId} on engine ${id}`);
-    const store = getState().settings;
-    const cur = store.get();
-    const ov = cur.engines.engine_overrides[id] ?? construct(EngineOverrides, {});
-    if (body.placement === "auto") delete ov.placements[variantId];
-    else ov.placements[variantId] = body.placement;
-    cur.engines.engine_overrides[id] = ov;
-    store.set(cur);
-    const [runsOn, why] = await mgr.placementFor(m, m.kind, variantId);
-    const loaded = mgr.status(id) === "loaded" && mgr.currentVariantId(id) === variantId;
-    const now = loaded ? ((mgr.resolvedDeviceFor(id) || "") === "cpu" ? "cpu" : "gpu") : null;
-    return c.json({
-      engine_id: id,
-      variant_id: variantId,
-      placement: body.placement,
-      runs_on: runsOn,
-      runs_on_reason: why,
-      loaded,
-      moves: Boolean(loaded && now !== runsOn),
-    });
-  });
-
-  /**
-   * "Try the card again" (the narrowings review, M8): forget that a card load of this model
-   * failed or spilled here — its remembered failure only, never its price or CPU speed — so Auto
-   * decides its place afresh.
-   */
-  app.delete("/v1/engines/:id/models/:variant_id/card-failure", (c) => {
-    const { id, variant_id: variantId } = c.req.param();
-    const mgr = manager.getManager();
-    const m = mgr.getManifest(id);
-    if (m === null) throw notFound(`engine ${id}`);
-    if (!variantIn(id, variantId)) throw notFound(`variant ${variantId} on engine ${id}`);
-    return c.json({ engine_id: id, variant_id: variantId, forgotten: mgr.forgetCardFailure(m.kind, id, variantId) });
-  });
-
-  /**
    * A model's speech-runtime options (`engines/audiocpp/runtime_options.js`) — saved per model
    * in `engine_overrides[id].runtime_options`; a value at its default is dropped. The runtime
-   * reads them when the model loads, so a loaded model whose options changed is unloaded here,
-   * and the answer's `reload` asks the caller to load it again.
+   * reads them when the model loads (kit_hooks.js `sessionOptions`), so a loaded model whose
+   * options changed is unloaded here, through the kit, and the answer's `reload` asks the caller to
+   * load it again.
    */
   app.put("/v1/engines/:id/models/:variant_id/runtime-options", input({ body: RuntimeOptionsBody }), async (c) => {
     const { id, variant_id: variantId } = c.req.param();
-    const mgr = manager.getManager();
-    const m = mgr.getManifest(id);
+    const m = modelCatalog.getManifest(id);
     if (m === null) throw notFound(`engine ${id}`);
     const row = modelCatalog._variantRows(id).find((r) => r.id === variantId) ?? null;
     if (row === null) throw notFound(`variant ${variantId} on engine ${id}`);
@@ -163,62 +83,9 @@ export function router() {
     else delete ov.runtime_options[variantId];
     cur.engines.engine_overrides[id] = ov;
     store.set(cur);
-    const loaded = mgr.status(id) === "loaded" && mgr.currentVariantId(id) === variantId;
-    if (loaded && changed) await mgr.unload(m.kind);
+    const loaded = kitSpeech.currentVariantId(id) === variantId;
+    if (loaded && changed) await kitSpeech.unload(variantId);
     return c.json({ engine_id: id, variant_id: variantId, runtime_options: runtimeOptions.describe(id, row), reload: Boolean(loaded && changed) });
-  });
-
-  /**
-   * Delete every downloaded speech model (the whole speech cache) to reclaim disk — the Settings
-   * Disk-usage panel's per-store clear verb. SAFE BY DESIGN: the catalog rows come from the
-   * manifests, so each model re-downloads the next time it's loaded. Refuses with
-   * `{ok: false, detail: "unload engines first"}` (HTTP 200) while any engine is loaded — a
-   * resident model's file is open in the runtime. On success `{ok: true, bytes}`.
-   */
-  app.post("/v1/engines/speech-cache/clear", async (c) => {
-    const mgr = manager.getManager();
-    if ([...mgr.manifests().keys()].some((eid) => mgr.status(eid) === "loaded")) return c.json({ ok: false, detail: "unload engines first" });
-    const root = speechCacheRoot(getState().dataDir);
-    let freed = 0;
-    if (existsSync(root)) {
-      freed = await dirSize(root);
-      try {
-        // fs.promises.rm: Node 24's recursive rmSync follows an NTFS junction (a cache linked to
-        // another drive) and empties what it points to; rm removes the link alone (the kit's)
-        await rm(root, { recursive: true, force: true });
-      } catch {
-        /* ignore_errors */
-      }
-    }
-    return c.json({ ok: true, bytes: freed });
-  });
-
-  /** Delete one model's downloaded file(s) — the per-model 'Delete downloaded model' verb. The
-   * engine and its other variants stay. */
-  app.delete("/v1/engines/:id/models/:variant_id", async (c) => {
-    const { id, variant_id: variantId } = c.req.param();
-    if (!variantIn(id, variantId)) throw notFound(`variant ${variantId} on engine ${id}`);
-    const st = getState();
-    if (!speechCache.variantOnDisk(st.dataDir, id, variantId)) throw notFound(`${variantId} has no downloaded files`);
-    const mgr = manager.getManager();
-    const m = mgr.getManifest(id);
-    if (m !== null && mgr.currentFor(m.kind) === id && mgr.currentVariantId(id) === variantId) {
-      // Windows refuses to delete a file the runtime holds; Linux and macOS deleted it under the
-      // loaded model, which then vanished at its next restart (audit §5 E7).
-      throw conflict(`${variantId} is loaded — unload it, then delete its files`);
-    }
-    const vdir = String(speechCache.variantDir(st.dataDir, id, variantId));
-    try {
-      await rm(vdir, { recursive: true, force: true }); // the link alone, never what it points to
-    } catch {
-      /* ignore_errors */
-    }
-    if (existsSync(vdir)) {
-      // A file the runtime still holds open (Windows refuses the delete).
-      throw conflict(`${variantId}'s files are still in use and were not deleted — unload the model and try again (${vdir})`);
-    }
-    return c.json({ deleted: true, engine_id: id, variant_id: variantId, path: vdir });
   });
   return app;
 }
-

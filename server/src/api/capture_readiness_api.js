@@ -4,17 +4,17 @@
 //
 // Polled every 5s by useDictationReadiness while either model is missing or downloading; stops
 // once both green. Drives the readiness checklist + the hotkey-enabled toggle gating in Settings
-// → Captures. Speech recognition is the `asr` engine's model in the speech runtime: ready = the
-// model the dictation setting names (`settings.captures.stt_model`) is in the speech cache. It
-// loads on first use, so "downloaded" is the gate, not "loaded".
+// → Captures. Speech recognition is the Transcription feature's model (its preset, on the kit's
+// audio.cpp runtime): ready = the kit's readiness for the feature (llm/speech_dispatch.js
+// `speechFeatureReadiness` — the runtime installed, the model downloaded; round E,
+// docs/plans/2026-10-29-round-e-onto-the-kit.md §4 step 3). It loads on first use, so "downloaded"
+// is the gate, not "loaded".
 
 import { Hono } from "@delebash/core/platform";
 import { nullable, opt, T } from "@delebash/core/platform/models";
-import { getState } from "../app_state.js";
-import * as manager from "../engines/manager.js";
-import * as modelCatalog from "../engines/model_catalog.js";
+import { variantOf } from "../engines/audiocpp/kit_models.js";
+import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
 import { construct } from "../models.js";
-import * as speechCache from "../speech_cache.js";
 
 export const ModelReadiness = T.Object({
   ready: T.Boolean(),
@@ -27,32 +27,26 @@ export const ModelReadiness = T.Object({
 
 export const CaptureReadiness = T.Object({ stt: ModelReadiness, llm: ModelReadiness });
 
-/** The dictation recogniser: the one loaded — any recogniser on Speech engines transcribes (the
- * adoption plan's slice 2, E1) — else the setting's Qwen3-ASR model, on disk in the speech cache
- * = ready. */
+/** The dictation recogniser: the Transcription feature's model, ready once the runtime is
+ * installed and the model downloaded — with its download's progress while it downloads. */
 export function _sttReadiness() {
+  let r;
   try {
-    const mgr = manager.getManager();
-    const loaded = mgr.loadedFor("stt");
-    if (loaded !== null) {
-      const vid = mgr.currentVariantId(loaded.manifest.id);
-      const v = (loaded.manifest.module?.VARIANTS || []).find((x) => x.id === vid);
-      const bytes = (v?.sources || []).reduce((n, s) => n + (s.size_bytes || 0), 0);
-      return { ready: true, display_name: v?.name ?? loaded.manifest.name, size_mb: bytes ? Math.floor(bytes / (1024 * 1024)) : null };
-    }
-  } catch {
-    // no manager (bare tests): the setting's model below
-  }
-  try {
-    const st = getState();
-    const want = st.settings.get().captures.stt_model;
-    const variants = modelCatalog.modelsFor("asr");
-    const v = variants.find((x) => x.id === want) ?? (variants.length ? variants[0] : null);
-    if (v === null) return { ready: false, display_name: "No speech-recognition model" };
-    return { ready: speechCache.variantOnDisk(st.dataDir, "asr", v.id), display_name: v.name, size_mb: v.size_mb || null };
+    r = kitSpeech.transcriptionReadiness();
   } catch {
     return { ready: false, display_name: "Speech recognition not set up" }; // not-set-up is a state
   }
+  if (!r.model) return { ready: false, display_name: "No speech-recognition model" };
+  const m = r.modelState;
+  const bytes = Number(m?.bytes || 0);
+  return {
+    ready: Boolean(r.ready),
+    display_name: m?.name ?? variantOf(r.model)?.row?.name ?? r.model,
+    size_mb: bytes ? Math.floor(bytes / (1024 * 1024)) : null,
+    downloading: m?.status === "downloading",
+    progress: m?.status === "downloading" && Number(m.total) > 0 ? (100 * Number(m.downloaded || 0)) / Number(m.total) : 0.0,
+    error: m?.error || null,
+  };
 }
 
 /**

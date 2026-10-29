@@ -3,19 +3,15 @@
 // tab's model dropdown cosmetic. These pin the catalog rows to what actually renders them
 // (since the 2026-10-01 switch: each row's `audiocpp` block and the request mapping in
 // engines/audiocpp/slot.js). The port of tests/test_variant_wiring.py; Python's parametrized
-// tests loop over their cases; its `app` fixture (create_app) is the app state on a temp
-// database (`useState`).
-import { mkdirSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import { afterEach, expect, test, vi } from "vitest";
-import { endState, useState } from "./engines_helpers.js";
-import * as release from "../src/engines/audiocpp/release.js";
+// tests loop over their cases. Since round E (docs/plans/2026-10-29-round-e-onto-the-kit.md) the
+// kit's audio.cpp runtime loads the version it is given and holds it; which version a no-variant
+// choice speaks stays ours (engines/model_catalog.js `resolvedDefaultVariant`), what is downloaded
+// read from the kit (faked here, engines_helpers.js `fakeSpeechRuntime`).
+import { afterEach, expect, test } from "vitest";
+import { endSpeech, endState, fakeSpeechRuntime } from "./engines_helpers.js";
 import { CATALOG, OWN_ENGINES } from "../src/engines/audiocpp/generated.js";
 import { QWEN_LANGUAGE, toSpeechRequest } from "../src/engines/audiocpp/slot.js";
-import * as manager from "../src/engines/manager.js";
-import { discoverEngines, EngineManager } from "../src/engines/manager.js";
-import { modelsFor } from "../src/engines/model_catalog.js";
-import * as speechCache from "../src/speech_cache.js";
+import { discoverEngines, modelsFor, resolvedDefaultVariant } from "../src/engines/model_catalog.js";
 
 // Our own conversions of models audio.cpp doesn't publish — CustomVoice 0.6B (gap 4), Turbo and
 // Nano (gap 1) — as our fork's catalog names them (the adoption plan's slice 4: the repositories come
@@ -31,7 +27,10 @@ const chatterboxManifest = {
 
 const QWEN_LANGS_10 = ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"];
 const row = (engine, variant) => discoverEngines().get(engine).module.VARIANTS.find((r) => r.id === variant);
-afterEach(() => endState());
+afterEach(() => {
+  endSpeech();
+  endState();
+});
 
 // ── Qwen3 ────────────────────────────────────────────────────────────────
 
@@ -149,7 +148,8 @@ test("speech_recognition_carries_its_aligner", () => {
 test("hf_sources_pin_a_commit_not_a_branch", () => {
   // Byte-exact sizes and file lists are facts about a COMMIT; "main" is a moving target.
   const loose = [];
-  const repos = new Set([release.MODEL_REPO, qwen3Manifest.CV_06_REPO, chatterboxManifest.TURBO_REPO, chatterboxManifest.NANO_REPO]);
+  // audio.cpp's model repo: the one the catalog was built from (audiocpp_catalog.test.js pins it).
+  const repos = new Set([CATALOG.generated_from.model_repo, qwen3Manifest.CV_06_REPO, chatterboxManifest.TURBO_REPO, chatterboxManifest.NANO_REPO]);
   for (const [eid, m] of discoverEngines()) {
     for (const variant of m.module.VARIANTS || []) {
       for (const src of variant.sources || []) {
@@ -183,150 +183,44 @@ test("engine_kinds", () => {
   expect(engines.find(([k]) => k === "lfm2_audio_asr")[1].kind).toBe("stt");
 });
 
-// ─── current_variant_id recording (user-hit 2026-06-12) ────────────────
-// Loading via the Voices ask-before-load path passes variant=null; the manager must record
-// the RESOLVED default variant id, never null/"auto".
+// ─── The version a no-variant choice speaks (user-hit 2026-06-12) ──────
+// Loading via the Voices ask-before-load path passed variant=null, and the manager had to record
+// the RESOLVED default variant id, never null/"auto". Since round E the kit loads only a concrete
+// version and holds it (its `loaded()`, read by kit_speech.test.js); the resolution is ours.
 
-const fakeResp = (payload) => ({ statusCode: 200, text: "", json: () => payload });
-
-class FakeSlot {
-  constructor(manifest, placement = "gpu") {
-    this.manifest = manifest;
-    this.placement = placement;
-  }
-  spawn() {}
-  isAlive() {
-    return true;
-  }
-  terminate() {}
-  post(_p, _json = null) {
-    return fakeResp({ ok: true });
-  }
-  get(_p) {
-    return fakeResp({ voices: [] });
+/** `fn()` with Qwen3's manifest default taken away (its module is the one every discovery wraps). */
+function withoutQwen3Default(fn) {
+  const mod = discoverEngines().get("qwen3").module;
+  const was = mod.DEFAULT_VARIANT_ID;
+  mod.DEFAULT_VARIANT_ID = null;
+  try {
+    return fn();
+  } finally {
+    mod.DEFAULT_VARIANT_ID = was;
   }
 }
 
-const fakeManifest = (over = {}) => ({ id: "fake-tts", kind: "tts", isInstalled: true, defaultVariantId: "fake-default-v1", ...over });
-
-function fakeManager(Slot = FakeSlot) {
-  vi.spyOn(manager, "_newSlot").mockImplementation((m, p) => new Slot(m, p));
-  vi.spyOn(EngineManager.prototype, "_resolveDevice").mockReturnValue("cpu");
-  // Never a real model fetch from a test (a cold load downloads what it needs).
-  vi.spyOn(EngineManager.prototype, "_ensureVariantLocal").mockResolvedValue(null);
-  vi.spyOn(EngineManager.prototype, "placementFor").mockResolvedValue(["gpu", "test", false]);
-  const mgr = new EngineManager();
-  mgr._hwCache = null;
-  mgr._hwDetected = true;
-  mgr._manifests.set("fake-tts", fakeManifest());
-  return mgr;
-}
-
-test("load_without_variant_records_default", async () => {
-  const mgr = fakeManager();
-  await mgr.load("fake-tts", { device: "auto" }); // the voice_preview_api call shape
-  expect(mgr.currentVariantId("fake-tts")).toBe("fake-default-v1");
+test("no_manifest_default_resolves_the_downloaded_variant", () => {
+  // An engine with no DEFAULT_VARIANT_ID speaks what is downloaded — never "". Qwen3 stands in,
+  // its default forced off.
+  fakeSpeechRuntime({ onDisk: ["qwen3-base-0.6b-q8"] });
+  expect(withoutQwen3Default(() => resolvedDefaultVariant("qwen3"))).toBe("qwen3-base-0.6b-q8");
 });
 
-test("load_with_auto_variant_records_default", async () => {
-  const mgr = fakeManager();
-  await mgr.load("fake-tts", { device: "auto", variant: "auto" });
-  expect(mgr.currentVariantId("fake-tts")).toBe("fake-default-v1");
-});
-
-test("load_with_explicit_variant_records_it", async () => {
-  const mgr = fakeManager();
-  await mgr.load("fake-tts", { device: "auto", variant: "fake-other-v2" });
-  expect(mgr.currentVariantId("fake-tts")).toBe("fake-other-v2");
-});
-
-test("no_manifest_default_records_the_downloaded_variant", async () => {
-  // An engine with no DEFAULT_VARIANT_ID loads what is downloaded — the manager must record
-  // that variant, not "". Qwen3 stands in, its default forced off.
-  const st = useState();
-  const mgr = fakeManager();
-  mgr._manifests.set("qwen3", fakeManifest({ id: "qwen3", defaultVariantId: null }));
-  const vdir = speechCache.variantDir(st.dataDir, "qwen3", "qwen3-base-0.6b-q8");
-  mkdirSync(vdir, { recursive: true });
-  writeFileSync(path.join(vdir, "m.gguf"), "x");
-  writeFileSync(path.join(vdir, speechCache.MANIFEST_NAME), JSON.stringify({ sources: [], files: [{ path: "m.gguf", size: 1, oid: "" }] }));
-  await mgr.load("qwen3", { device: "auto" });
-  expect(mgr.currentVariantId("qwen3")).toBe("qwen3-base-0.6b-q8");
-});
-
-test("no_manifest_default_and_nothing_downloaded_takes_the_catalogs_first", async () => {
-  useState();
-  const mgr = fakeManager();
-  mgr._manifests.set("qwen3", fakeManifest({ id: "qwen3", defaultVariantId: null }));
-  await mgr.load("qwen3", { device: "auto" });
-  expect(mgr.currentVariantId("qwen3")).toBe(modelsFor("qwen3")[0].id);
+test("no_manifest_default_and_nothing_downloaded_takes_the_catalogs_first", () => {
+  fakeSpeechRuntime({ onDisk: [] });
+  expect(withoutQwen3Default(() => resolvedDefaultVariant("qwen3"))).toBe(modelsFor("qwen3")[0].id);
 });
 
 test("all_multi_variant_engines_resolve_a_real_variant", () => {
   // The user's Set-as-default override is consulted first — absent here, so manifest order is
   // what this pins.
-  for (const [engineId, m] of discoverEngines()) {
-    const resolved = manager.getManager()._resolvedDefaultVariant(m);
+  for (const [engineId] of discoverEngines()) {
+    const resolved = resolvedDefaultVariant(engineId);
     const ids = modelsFor(engineId).map((v) => v.id);
     if (!ids.length) continue;
     expect(ids, engineId).toContain(resolved);
   }
-});
-
-test("already_loaded_reload_keeps_resolved_variant", async () => {
-  const mgr = fakeManager();
-  await mgr.load("fake-tts", { device: "auto", variant: "fake-other-v2" });
-  // Re-load with no variant (Voices preview path) must NOT clobber the explicit variant back
-  // to default, and must never store null.
-  await mgr.load("fake-tts", { device: "auto" });
-  expect(mgr.currentVariantId("fake-tts")).toBe("fake-other-v2");
-  await mgr.load("fake-tts", { device: "auto", variant: "fake-default-v1" });
-  expect(mgr.currentVariantId("fake-tts")).toBe("fake-default-v1");
-});
-
-test("loading_another_variant_of_the_loaded_engine_loads_it", async () => {
-  // Until 2026-10-02 a second variant of a loaded engine was only relabelled — the first model
-  // kept speaking under the new name. Now the old slot goes and the new variant loads.
-  const slots = [];
-  class CountingSlot extends FakeSlot {
-    constructor(...a) {
-      super(...a);
-      this.bodies = [];
-      this.terminated = false;
-      slots.push(this);
-    }
-    post(p, json = null) {
-      this.bodies.push([p, { ...(json || {}) }]);
-      return fakeResp({ ok: true, variant: (json || {}).variant });
-    }
-    terminate() {
-      this.terminated = true;
-    }
-  }
-  const mgr = fakeManager(CountingSlot);
-  await mgr.load("fake-tts", { device: "auto", variant: "fake-default-v1" });
-  await mgr.load("fake-tts", { device: "auto", variant: "fake-other-v2" });
-  expect(slots.length).toBe(2);
-  expect(slots[0].terminated, "the first variant's slot stayed loaded").toBe(true);
-  expect(slots[1].bodies.map(([p, b]) => [p, b.variant])).toContainEqual(["/load", "fake-other-v2"]);
-  expect(mgr.currentVariantId("fake-tts")).toBe("fake-other-v2");
-  // The same variant again, or no variant at all, keeps the slot.
-  await mgr.load("fake-tts", { device: "auto", variant: "fake-other-v2" });
-  await mgr.load("fake-tts", { device: "auto" });
-  expect(slots.length).toBe(2);
-});
-
-test("the_card_names_what_loaded_not_a_stale_request", async () => {
-  // A stored request can name a model the catalog no longer has; the slot loads its default
-  // instead and says which — that is what the card must show.
-  class ResolvingSlot extends FakeSlot {
-    post() {
-      return fakeResp({ ok: true, variant: "fake-default-v1" });
-    }
-  }
-  const mgr = fakeManager(ResolvingSlot);
-  await mgr.load("fake-tts", { device: "auto", variant: "whisper-turbo" });
-  expect(mgr.currentVariantId("fake-tts")).toBe("fake-default-v1");
 });
 
 // ── 16-bit rows (gap 9) ──────────────────────────────────────────────────

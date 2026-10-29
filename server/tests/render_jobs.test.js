@@ -18,7 +18,6 @@ import { router as renderJobsRouter } from "../src/api/render_jobs_api.js";
 import * as appState from "../src/app_state.js";
 import * as session from "../src/database/session.js";
 import { Block, Generation, Project, RenderJob, RenderJobBlock, Scene, Speaker, Take, uuid } from "../src/database/models.js";
-import * as manager from "../src/engines/manager.js";
 import * as exportVoicelines from "../src/export_voicelines.js";
 import { mediaFile } from "../src/media_paths.js";
 import { RenderedLine } from "../src/render_core.js";
@@ -49,8 +48,6 @@ beforeEach(() => {
   h = tmpDb();
   session.cfg.handle = h;
   appState.cfg.state = fakeState(tmpPath());
-  // The worker's idle transition re-probes the resident engine's memory; nothing is resident.
-  vi.spyOn(manager, "getManager").mockReturnValue({ bumpEngineReservation: async () => {} });
 });
 
 afterEach(async () => {

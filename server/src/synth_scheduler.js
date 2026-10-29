@@ -27,10 +27,9 @@
 // submit starts it again. An item's callable may return a value or a promise. Python's lock
 // guarded state no `await` splits, so none is needed.
 
-import { AsyncEvent, background } from "@delebash/core/platform/asyncutil";
+import { AsyncEvent } from "@delebash/core/platform/asyncutil";
 import { getLogger } from "@delebash/core/platform/log";
 import * as arbiter from "@delebash/core/runner/arbiter";
-import * as manager from "./engines/manager.js";
 import * as renderCore from "./render_core.js";
 import * as self from "./synth_scheduler.js";
 import * as voiceModel from "./voice_model.js";
@@ -233,28 +232,12 @@ export class SynthScheduler {
    * Q1's never-evict-busy): while the pool drains, the resident TTS engine is not an eviction
    * victim, so an LLM admission mid-render takes its proceed-with-warning branch instead of
    * killing the render. Coarse by design — one flag for the whole drain, released the moment the
-   * pool empties. Best-effort: bare tests run without the shared stack.
+   * pool empties (each line's own reading is the kit's after-line pass — round E dropped the
+   * settled re-reading here, the plan's B14). Best-effort: bare tests run without the shared stack.
    */
   _setBusy(active) {
     if (active === this._busyActive) return;
     this._busyActive = active;
-    if (!active) {
-      // Busy→idle: one FRESH high-water re-probe of the resident engine (the 2026-08-13
-      // redesign — TTS memory peaks at generate(); the per-line bumps ride a TTL cache and can
-      // be ~2 s stale, this one catches the settled peak). In the background: the probe can
-      // shell out for ~1 s.
-      background(
-        "tts-highwater",
-        async () => {
-          try {
-            await manager.getManager().bumpEngineReservation("tts", { fresh: true });
-          } catch {
-            /* best-effort */
-          }
-        },
-        log,
-      );
-    }
     let arb;
     try {
       arb = arbiter.getArbiter();

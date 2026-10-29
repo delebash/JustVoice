@@ -2,26 +2,32 @@
 // Every speaking family audio.cpp has, offered (docs/plans/2026-10-13-adopt-everything-audiocpp.md
 // slice 2): a model does what its spec says — copies a voice from a clip, speaks its built-in
 // voices (voices in the app, like Kokoro's), makes a voice from words — recognition families are
-// speech-recognition engines, captions stay on Qwen3-ASR's aligner, a model with no direction file
-// can't be directed yet and offers only the emotions its file maps, and a model that can speak
-// without a clip warms up on a full-length piece.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+// speech-recognition engines, a model with no direction file can't be directed yet and offers only
+// the emotions its file maps, and a model that can speak without a clip warms up on a full-length
+// piece. Since round E (docs/plans/2026-10-29-round-e-onto-the-kit.md) the kit's audio.cpp runtime
+// loads and runs every model: a warm-up is ours (slot.js `warmModel`, the kit's warm hook), a
+// recogniser's request and its 16 kHz copy ours (kit_hooks.js `transcribe`), dictation's readiness
+// the Transcription feature's preset (decided, §5 item 7), and a file two models share is one file
+// in the kit's models cache. Captions on Qwen3-ASR's aligner are kit_speech.test.js's.
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterAll, afterEach, expect, test, vi } from "vitest";
 import { endState, useState } from "./engines_helpers.js";
 import { tmpPath } from "./helpers.js";
-import * as captures from "../src/api/captures_api.js";
-import * as speechCache from "../src/speech_cache.js";
 import { listVoices } from "../src/api/voices_api.js";
+import * as dspClient from "../src/audio/dsp_client.js";
 import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
+import * as hooks from "../src/engines/audiocpp/kit_hooks.js";
+import { runtimeModelRows } from "../src/engines/audiocpp/kit_models.js";
+import * as kitSpeech from "../src/engines/audiocpp/kit_speech.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
-import * as manager from "../src/engines/manager.js";
 import { checkDelivery, emotionChoices } from "../src/persona_render.js";
 import * as vmod from "../src/voice_model.js";
 
 afterEach(() => vi.restoreAllMocks());
+afterAll(() => dspClient.stop());
 
 const engines = generated.generatedEngines();
 const modelRow = (engineId, model) => engines.get(engineId).VARIANTS.find((v) => v.audiocpp.model === model);
@@ -199,109 +205,94 @@ test("a model with no direction file can't be directed yet; the persona page off
   expect(checkDelivery({ models: { cosyvoice3: { emotion: "bored" } } })).toEqual(["CosyVoice3 has no emotion called 'bored'"]);
 });
 
-/** A slot holding `row`, its server a fake that records what it is asked. */
-function warmSlot(engineId, row) {
-  vi.spyOn(slot, "effectivePlacement").mockImplementation((p) => p);
-  const s = new slot.AudioCppSlot(manager.discoverEngines().get(engineId));
-  s._row = row;
+/** `row`'s warm-up (slot.js `warmModel`, which the kit's warm hook runs on the server holding the
+ * model): whether it calibrated, and what it asked that server. */
+async function warmUp(engineId, row, calibrateChars) {
   const asked = [];
-  vi.spyOn(s, "_srv").mockReturnValue({
+  const srv = {
     speech: async (req) => asked.push(["speech", req]),
     transcribe: async (req) => asked.push(["transcribe", req]),
-  });
-  return [s, asked];
+  };
+  return [await slot.warmModel(srv, row, engines.get(engineId).KIND, calibrateChars), asked];
 }
 
 test("a model that speaks without a clip warms up on a full-length piece; a clone-only one can't", async () => {
   // M1: in its default built-in voice, at its spec's own piece budget (Kitten TTS 2's 380).
-  const [kitten, k] = warmSlot("kitten_tts2", modelRow("kitten_tts2", "kitten_tts2"));
-  expect(await kitten._warm(800)).toBe(true);
+  const [kitten, k] = await warmUp("kitten_tts2", modelRow("kitten_tts2", "kitten_tts2"), 800);
+  expect(kitten).toBe(true);
   expect(k[0][1].voice).toBe("Bruno"); // the spec's default voice
   expect(k[0][1].input.length).toBeGreaterThan(300);
   expect(k[0][1].input.length).toBeLessThanOrEqual(380);
   // Maya1 in its one voice: its required voice description at audio.cpp's own default.
-  const [maya, m] = warmSlot("maya1", modelRow("maya1", "maya1"));
-  expect(await maya._warm(800)).toBe(true);
+  const [maya, m] = await warmUp("maya1", modelRow("maya1", "maya1"), 800);
+  expect(maya).toBe(true);
   expect(m[0][1].options.instruct).toBe("Warm female voice with an American accent and conversational pacing.");
   // From a description on a design model: the one audio.cpp gives the option (Breeze's spec),
   // else Qwen3 VoiceDesign's warm-up words.
-  const [breeze, b] = warmSlot("breeze_tts", modelRow("breeze_tts", "breeze_tts"));
-  expect(await breeze._warm(800)).toBe(true);
+  const [breeze, b] = await warmUp("breeze_tts", modelRow("breeze_tts", "breeze_tts"), 800);
+  expect(breeze).toBe(true);
   expect(b[0][1].options.instruct).toBe("Speak clearly and naturally.");
   expect(b[0][1].voice_ref).toBeUndefined();
-  const [moss, g] = warmSlot("moss_voicegen", modelRow("moss_voicegen", "moss_voicegen"));
-  await moss._warm(800);
+  const [, g] = await warmUp("moss_voicegen", modelRow("moss_voicegen", "moss_voicegen"), 800);
   expect(g[0][1].options.instruct).toBe("A calm, clear narrator.");
   // In its one voice.
-  const [piper, p] = warmSlot("piper_tts", modelRow("piper_tts", "piper_tts"));
-  expect(await piper._warm(0)).toBe(false); // nothing to calibrate: a short warm-up
+  const [piper, p] = await warmUp("piper_tts", modelRow("piper_tts", "piper_tts"), 0);
+  expect(piper).toBe(false); // nothing to calibrate: a short warm-up
   expect(p[0][1].input).toBe("Ready.");
   // A model that speaks only from a clip says nothing: its first line sets its price.
-  const [cosy, c] = warmSlot("cosyvoice3", modelRow("cosyvoice3", "cosyvoice3"));
-  expect(await cosy._warm(800)).toBe(false);
-  expect(c).toEqual([]);
+  expect(await warmUp("cosyvoice3", modelRow("cosyvoice3", "cosyvoice3"), 800)).toEqual([false, []]);
   // VibeVoice too, now that it speaks only cloned voices (its warm-up in its own voice failed:
   // "VibeVoice prompt has no valid Speaker N: lines").
-  const [vibe, v] = warmSlot("vibevoice", modelRow("vibevoice", "vibevoice-vibevoice"));
-  expect(await vibe._warm(800)).toBe(false);
-  expect(v).toEqual([]);
+  expect(await warmUp("vibevoice", modelRow("vibevoice", "vibevoice-vibevoice"), 800)).toEqual([false, []]);
   // A recogniser hears silence — its 30 s chunk when calibrating, as Qwen3-ASR does.
-  const [canary, a] = warmSlot("canary_asr", engines.get("canary_asr").VARIANTS[0]);
-  expect(await canary._warm(800)).toBe(true);
+  const [canary, a] = await warmUp("canary_asr", engines.get("canary_asr").VARIANTS[0], 800);
+  expect(canary).toBe(true);
   expect(a[0][0]).toBe("transcribe");
   expect(a[0][1].audio).toMatch(/silence-480000\.wav$/);
 });
 
 test("a recogniser hears 16 kHz mono, as audio.cpp's own page sends it", async () => {
   // OWSM, CrisperWhisper, MOSS-Transcribe-Diarize and Hviske v6 refuse any other rate without
-  // libsoxr (the acceptance run, 2026-10-15); audio.cpp's page sends every recogniser 16 kHz.
-  const [owsm] = warmSlot("owsm", engines.get("owsm").VARIANTS[0]);
-  vi.spyOn(owsm, "isAlive").mockReturnValue(true);
-  const heard = [];
-  owsm._srv.mockReturnValue({
-    transcribe: async (req) => {
-      heard.push(parseWavHeader(readFileSync(req.audio))[0]);
-      return { text: "Ready." };
-    },
-  });
-  const f = path.join(tmpPath(), "a-24k-take.wav");
-  writeFileSync(f, writeWavContainer(Buffer.alloc(24000 * 2 * 2), 24000, 2)); // 1 s, stereo
-  const out = await owsm._transcribe({ audio_path: f });
-  expect([out.statusCode, JSON.parse(out.text).text]).toEqual([200, "Ready."]);
-  expect([heard[0].sampleRate, heard[0].channels]).toEqual([16000, 1]);
-  expect(Math.abs(heard[0].durationSec - 1.0)).toBeLessThanOrEqual(0.01);
-  expect(existsSync(f)).toBe(true); // the caller's file stays; only the 16 kHz copy goes
+  // libsoxr (the acceptance run, 2026-10-15); audio.cpp's page sends every recogniser 16 kHz. The
+  // kit asks our hook for the request (kit_hooks.js `transcribe`), which makes the copy.
+  useState();
+  try {
+    const owsm = runtimeModelRows().find((r) => r.id === engines.get("owsm").VARIANTS[0].id);
+    const f = path.join(tmpPath(), "a-24k-take.wav");
+    writeFileSync(f, writeWavContainer(Buffer.alloc(24000 * 2 * 2), 24000, 2)); // 1 s, stereo
+    const { body } = await hooks.transcribe({ audio_path: f }, owsm);
+    const [heard] = parseWavHeader(readFileSync(body.audio));
+    expect([heard.sampleRate, heard.channels]).toEqual([16000, 1]);
+    expect(Math.abs(heard.durationSec - 1.0)).toBeLessThanOrEqual(0.01);
+    expect(existsSync(f)).toBe(true); // the caller's file stays; only the 16 kHz copy goes
+  } finally {
+    endState();
+  }
 });
 
-test("MOSS-Transcribe-Diarize and VibeVoice-ASR Streaming give the words without their own markup", async () => {
+test("MOSS-Transcribe-Diarize and VibeVoice-ASR Streaming give the words without their own markup", () => {
   // Decided 2026-10-15 (TASKS "Slice 2's acceptance findings" 3): their `text` carries timed
   // speaker tags or "Speaker N:" labels; their speaker turns hold the words alone (WORDS_FROM).
-  const heard = async (engineId, answer) => {
-    const [s] = warmSlot(engineId, engines.get(engineId).VARIANTS[0]);
-    vi.spyOn(s, "isAlive").mockReturnValue(true);
-    s._srv.mockReturnValue({ transcribe: async () => answer });
-    const f = path.join(tmpPath(), `${engineId}.wav`);
-    writeFileSync(f, writeWavContainer(Buffer.alloc(16000 * 2), 16000, 1));
-    return JSON.parse((await s._transcribe({ audio_path: f })).text).text;
-  };
+  // What the recogniser answered, as a transcription returns it (kit_speech.js `transcribe`).
+  const heard = (engineId, answer) => slot.plainTranscript(engines.get(engineId).VARIANTS[0], answer);
   const turns = [{ speaker_id: "S01", text: "Two days wrong!" }, { speaker_id: "S01", text: " Yes. " }];
   expect(
-    await heard("moss_transcribe_diarize", {
+    heard("moss_transcribe_diarize", {
       text: "[0.06][S01] Two days wrong![1.20][1.30][S01] Yes.[2.00]",
       segments: turns.map(({ text }) => ({ text })),
       speaker_turns: turns,
     }),
   ).toBe("Two days wrong! Yes.");
   expect(
-    await heard("vibevoice_asr_streaming", {
+    heard("vibevoice_asr_streaming", {
       text: "Speaker 0: Two days wrong! Speaker 1: Yes.",
       speaker_turns: [{ speaker_id: "0", text: "Two days wrong!" }, { speaker_id: "1", text: "Yes." }],
     }),
   ).toBe("Two days wrong! Yes.");
   // No turns parsed: its text, as it came.
-  expect(await heard("moss_transcribe_diarize", { text: " Two days wrong! ", speaker_turns: [] })).toBe("Two days wrong!");
+  expect(heard("moss_transcribe_diarize", { text: " Two days wrong! ", speaker_turns: [] })).toBe("Two days wrong!");
   // Any other recogniser: its text, whatever else it returns.
-  expect(await heard("owsm", { text: "Two days wrong!", speaker_turns: [{ text: "other" }] })).toBe("Two days wrong!");
+  expect(heard("owsm", { text: "Two days wrong!", speaker_turns: [{ text: "other" }] })).toBe("Two days wrong!");
 });
 
 test("VibeVoice speaks each line as speaker 1 of its script, in the clip's voice; MOSS-TTSD as [S1]", () => {
@@ -385,27 +376,6 @@ test("sanoTTS's download is picked by the persona's language, as Pocket TTS's is
   expect(() => vmod.variantForModel("sanotts", "sanotts", "ko")).toThrow(vmod.ModelUnavailable);
 });
 
-test("captions keep Qwen3-ASR and its aligner whatever recogniser transcribes", async () => {
-  const st = useState();
-  try {
-    const loads = [];
-    const fake = {
-      loadedFor: () => ({ manifest: { id: "parakeet_tdt" } }),
-      status: () => "installed",
-      load: async (id, opts) => loads.push([id, opts.variant]),
-    };
-    vi.spyOn(manager, "getManager").mockReturnValue(fake);
-    // Dictation, a clip's words, read-back: the loaded recogniser.
-    await captures.ensureSttLoaded();
-    expect(loads).toEqual([]);
-    // Word timings: Qwen3-ASR takes the slot (the plan's §7 answer 2).
-    await captures.ensureSttLoaded({ aligner: true });
-    expect(loads).toEqual([["asr", st.settings.get().captures.stt_model]]);
-  } finally {
-    endState();
-  }
-});
-
 test("every offered model shows JustVoice's licence reading; one not read yet would show audio.cpp's word", () => {
   // The 34 families listed since slice 2 were read at their source on 2026-10-15 (RESEARCH §10.13).
   for (const [id, m] of engines) expect(generated.engineFacts(m).licence?.by, id).toBeUndefined();
@@ -425,13 +395,17 @@ test("every offered model shows JustVoice's licence reading; one not read yet wo
   for (const [id, m] of engines) if (m.TERMS) expect(m.TERMS.text, id).toBeTruthy();
 });
 
-test("dictation is ready with whichever recogniser is loaded", async () => {
+test("dictation is ready on the Transcription preset's recogniser, named as its model", async () => {
+  // Transcription is a feature on its stt preset since round E (decided, §5 item 7): dictation
+  // reads the kit's readiness for it (kit_speech.js `transcriptionReadiness`), its model named by
+  // our catalog where the kit's state names none.
   const { _sttReadiness } = await import("../src/api/capture_readiness_api.js");
-  vi.spyOn(manager, "getManager").mockReturnValue({
-    loadedFor: () => ({ manifest: { id: "parakeet_tdt", name: "Parakeet TDT", module: engines.get("parakeet_tdt") } }),
-    currentVariantId: () => "parakeet_tdt-q8",
-  });
-  expect(_sttReadiness()).toMatchObject({ ready: true, display_name: engines.get("parakeet_tdt").VARIANTS.find((v) => v.id === "parakeet_tdt-q8").name });
+  const parakeet = engines.get("parakeet_tdt").VARIANTS.find((v) => v.id === "parakeet_tdt-q8");
+  vi.spyOn(kitSpeech, "transcriptionReadiness").mockReturnValue({ ready: true, need: "", model: parakeet.id, modelState: { id: parakeet.id, onDisk: true } });
+  expect(_sttReadiness()).toMatchObject({ ready: true, display_name: parakeet.name, downloading: false });
+  // No preset model: not set up, said as a state.
+  vi.mocked(kitSpeech.transcriptionReadiness).mockReturnValue({ ready: false, need: "no-stt-model", model: "", modelState: null });
+  expect(_sttReadiness()).toEqual({ ready: false, display_name: "No speech-recognition model" });
 });
 
 test("a family's instruction is its direction where its file says so (E3), else a setting", () => {
@@ -514,29 +488,16 @@ test("a line's language goes only in a form the family lists; otherwise the mode
   expect(req.language).toBeUndefined();
 });
 
-test("a speech and a recognition model on one package share one copy on disk", async () => {
-  const dir = tmpPath();
-  // LFM2.5-Audio's recogniser keeps its files in its speech model's folder.
-  const stt = ["lfm2_audio_asr", "lfm2_audio_asr-lfm2audioasr-q8"];
-  const tts = ["lfm2_audio", "lfm2_audio-lfm2audiotts-q8"];
-  expect(speechCache.variantDir(dir, ...stt)).toBe(speechCache.variantDir(dir, ...tts));
-  expect(speechCache.filesOwner("firered_audio_asr", "firered_audio_asr-q8")).toEqual(["firered_audio", "firered_audio-q8"]);
-  expect(speechCache.filesOwner("canary_asr", "canary_asr-q8")).toEqual(["canary_asr", "canary_asr-q8"]);
-  // One download, and both see it.
-  const vdir = String(speechCache.variantDir(dir, ...tts));
-  mkdirSync(vdir, { recursive: true });
-  writeFileSync(path.join(vdir, "m.gguf"), "x");
-  writeFileSync(path.join(vdir, "files.json"), JSON.stringify({ files: [{ path: "m.gguf", size: 1 }] }));
-  expect(speechCache.variantOnDisk(dir, ...tts)).toBe(true);
-  expect(speechCache.variantOnDisk(dir, ...stt)).toBe(true);
-  expect(speechCache.anyVariantOnDisk(dir, "lfm2_audio_asr")).toBe(true);
-  // Deleting the recognition engine's models deletes the one copy.
-  useState(dir);
-  try {
-    const mgr = new manager.EngineManager();
-    await mgr.uninstall("lfm2_audio_asr");
-    expect(existsSync(vdir)).toBe(false);
-  } finally {
-    endState();
-  }
+test("a speech and a recognition model on one package share one copy on disk", () => {
+  // LFM2.5-Audio's and FireRedAudio's recognisers name their speech model's own files — the same
+  // repository, revision, path and SHA-256 — so the kit's models cache (one file per repository,
+  // revision and path) holds one copy that both see. Deleting it is the kit's.
+  const rows = new Map(runtimeModelRows().map((r) => [r.id, r]));
+  const files = (id) => rows.get(id).files.map(({ slot: _slot, ...f }) => f);
+  expect(files("lfm2_audio_asr-lfm2audioasr-q8")).toEqual(files("lfm2_audio-lfm2audiotts-q8"));
+  expect(files("lfm2_audio_asr-lfm2audiojpasr-f16")).toEqual(files("lfm2_audio-lfm2audiojptts-f16"));
+  expect(files("firered_audio_asr-q8")).toEqual(files("firered_audio-q8"));
+  // A recogniser of its own has files of its own.
+  const speechFiles = new Set([...rows.values()].filter((r) => r.kind === "tts").flatMap((r) => r.files.map((f) => `${f.repo}/${f.path}`)));
+  expect(rows.get("canary_asr-q8").files.some((f) => speechFiles.has(`${f.repo}/${f.path}`))).toBe(false);
 });

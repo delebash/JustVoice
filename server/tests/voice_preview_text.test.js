@@ -15,22 +15,22 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import * as generateApi from "../src/api/generate_api.js";
 import * as voicePreviewApi from "../src/api/voice_preview_api.js";
 import { getState } from "../src/app_state.js";
-import * as manager from "../src/engines/manager.js";
 import { Delivery, modelDump } from "../src/models.js";
 import { appClient, closeApps } from "./app_helpers.js";
+import { endSpeech, fakeSpeechRuntime } from "./engines_helpers.js";
 
 beforeEach(() => voicePreviewApi._resetAuditionCache());
-afterEach(closeApps);
+afterEach(async () => {
+  endSpeech();
+  await closeApps();
+});
 
-/** The app, with the manager synth seam stood in for: records every request that got as far
- * as an actual render. */
+/** The app, with Kokoro's model held by the kit's speech runtime (faked — these tests exercise
+ * the audition surface, not install or load state) and Generate's managed door stood in for:
+ * records every request that got as far as an actual render. */
 async function setup() {
   const { c } = await appClient();
-  const mgr = manager.getManager();
-  vi.spyOn(mgr, "currentId").mockReturnValue("kokoro");
-  vi.spyOn(mgr, "currentFor").mockReturnValue("kokoro");
-  // These tests exercise the audition surface, not install state.
-  vi.spyOn(manager.EngineManifest.prototype, "isInstalled", "get").mockReturnValue(true);
+  fakeSpeechRuntime({ loaded: [{ modelId: "kokoro-82m-q8" }] });
   const calls = [];
   vi.spyOn(generateApi, "_generateViaManager").mockImplementation(async (_engineId, req) => {
     calls.push([req.text, req.delivery ? modelDump(Delivery, req.delivery, { excludeNone: true }) : {}]);

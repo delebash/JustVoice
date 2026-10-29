@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Test helpers for the render layer's suites (wave C): the fakes the Python render tests
-// build again and again (_Cache, _FakeManifest, _FakeManager, the SimpleNamespace state),
+// build again and again (_Cache, _FakeManifest, _FakeManager — the catalog and the kit's speech
+// runtime since round E — the SimpleNamespace state),
 // PyFloat-free views for assertions, and a small "book" — a project, a chapter, its lines, a
 // speaker and a persona written straight to the database and stores.
 //
@@ -18,8 +19,9 @@ import { router as renderLinesRouter } from "../src/api/render_lines_api.js";
 import { router as takesRouter } from "../src/api/takes_api.js";
 import * as session from "../src/database/session.js";
 import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js";
+import * as kitSpeech from "../src/engines/audiocpp/kit_speech.js";
+import * as modelCatalog from "../src/engines/model_catalog.js";
 import { EngineRegistry } from "../src/engines/registry.js";
-import * as manager from "../src/engines/manager.js";
 import { inject } from "./helpers.js";
 
 /** A value with every PyFloat read as its number (for toEqual). */
@@ -55,8 +57,10 @@ export function fakeManifest(id, { tags = false, kind = "tts", staticVoices = []
   return { id, kind, capabilities: { paralinguistic_tags: tags }, staticVoices };
 }
 
-/** `_FakeManager`: records loads and synths; synth answers `pcm` at `rate`. */
-export class FakeManager {
+/** `_FakeManager` — the engine catalog and the kit's speech runtime, faked: records each line
+ * (`synths`) and the load it made when its engine wasn't the resident one (`loads`); a line answers
+ * `pcm` at `rate`. */
+export class FakeSpeech {
   constructor(manifests, { pcm = null, rate = 16000, current = {} } = {}) {
     this._m = new Map(Object.entries(manifests));
     this.loads = [];
@@ -74,21 +78,27 @@ export class FakeManager {
   currentFor(kind) {
     return this.current[kind] ?? null;
   }
-  async load(engineId, { device = "auto" } = {}) {
-    this.loads.push([engineId, device]);
-    this.current[this._m.get(engineId).kind] = engineId;
-    return {};
-  }
-  async synth(engineId, body) {
+  /** One line (kit_speech.js `speak`): its engine's model loaded first when another is resident. */
+  async speak(engineId, _versionId, body) {
+    const kind = this._m.get(engineId)?.kind ?? "tts";
+    if (this.current[kind] !== engineId) {
+      this.loads.push([engineId, "auto"]);
+      this.current[kind] = engineId;
+    }
     this.synths.push([engineId, { ...body }]);
     return [this.pcm, { sample_rate: this.rate, channels: 1, is_wav_container: false }];
   }
 }
 
-/** Point `manager.getManager()` at `mgr` for this test. */
-export function useManager(mgr) {
-  vi.spyOn(manager, "getManager").mockReturnValue(mgr);
-  return mgr;
+/** Point the catalog (engines/model_catalog.js) and the speech runtime (kit_speech.js) at `fake`
+ * for this test. */
+export function useSpeech(fake) {
+  vi.spyOn(modelCatalog, "getManifest").mockImplementation((id) => fake.getManifest(id));
+  vi.spyOn(modelCatalog, "manifests").mockImplementation(() => fake.manifests());
+  vi.spyOn(kitSpeech, "currentFor").mockImplementation((kind) => fake.currentFor(kind));
+  vi.spyOn(kitSpeech, "currentVariantId").mockReturnValue(null);
+  vi.spyOn(kitSpeech, "speak").mockImplementation((engineId, versionId, body) => fake.speak(engineId, versionId, body));
+  return fake;
 }
 
 /** The SimpleNamespace state the render tests build. */

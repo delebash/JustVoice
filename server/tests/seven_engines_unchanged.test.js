@@ -10,21 +10,33 @@
 // each warm-up, registration, transcription and alignment — must be the same bytes after it; every
 // model, voice, setting and price key there before must still be there, the same. What an approved
 // decision changes is named below with its decision; nothing else may differ.
+//
+// Since round E (docs/plans/2026-10-29-round-e-onto-the-kit.md) the kit's audio.cpp runtime loads,
+// registers and runs each model; what is ours is what it is handed — the model's kit row (engines/
+// audiocpp/kit_models.js) and our hooks (kit_hooks.js: the warm-up, the load options, a
+// transcription's request) — and the alignment's request (kit_speech.js `align`). So a registration
+// here is what the row and the hooks give the kit (the file by its path in its repository — the
+// speech cache's folder before it is the kit's now), and the aligner registers on the first
+// alignment (round E, G11).
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { pyJson } from "@delebash/core/platform/pyjson";
+import { jsonBody } from "@delebash/core/runner/audiocpp";
 import { afterEach, expect, test, vi } from "vitest";
-import "./engines_helpers.js";
-import { _jsonBody } from "../src/engines/audiocpp/runtime.js";
+import { endSpeech, fakeSpeechRuntime, wav } from "./engines_helpers.js";
+import * as hooks from "../src/engines/audiocpp/kit_hooks.js";
+import { runtimeModelRows } from "../src/engines/audiocpp/kit_models.js";
+import * as kitSpeech from "../src/engines/audiocpp/kit_speech.js";
 import * as runtimeOptions from "../src/engines/audiocpp/runtime_options.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
-import { discoverEngines } from "../src/engines/manager.js";
+import { discoverEngines } from "../src/engines/model_catalog.js";
 import { modelSettings } from "../src/persona_render.js";
-import { wav } from "./engines_helpers.js";
-import { tmpPath } from "./helpers.js";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  endSpeech();
+  vi.restoreAllMocks();
+});
 
 const BEFORE = new URL("./seven_engines_before.json", import.meta.url);
 const WRITE = process.env.JV_SEVEN_BEFORE === "write";
@@ -32,9 +44,9 @@ const SEVEN = ["kokoro", "kitten", "pocket", "qwen3", "chatterbox", "voxcpm2", "
 
 const engine = (id) => discoverEngines().get(id);
 const rowOf = (engineId, variantId) => engine(engineId).module.VARIANTS.find((v) => v.id === variantId);
-// The bytes the runtime sends: a speech request with its floats written as floats
-// (runtime._jsonBody), anything else as `_post` writes it.
-const speechBytes = (req) => _jsonBody(req).toString("utf8");
+// The bytes the runtime sends: a speech request with its floats written as floats (the kit's
+// runner/audiocpp.js `jsonBody`), anything else as its server writes it.
+const speechBytes = (req) => jsonBody(req).toString("utf8");
 const jsonBytes = (v) => pyJson(v, { separators: [",", ":"], ensureAscii: false });
 
 const CLIP = "C:\\voices\\hatter\\ref.wav";
@@ -169,15 +181,9 @@ function requests() {
   return out;
 }
 
-/** A slot holding `row`, its server a recorder (what audio.cpp would be sent). */
-function recordingSlot(engineId, row) {
-  const s = Object.create(slot.AudioCppSlot.prototype);
-  const m = engine(engineId);
-  const sent = [];
-  Object.assign(s, { manifest: m, _row: row, placement: "gpu", kind: m.kind === "stt" ? "stt" : "tts", _loaded: true, sent });
-  s.isAlive = () => true;
-  s._srv = () => ({
-    managed: false,
+/** A server holding a model, recording what audio.cpp would be sent. */
+function recorder(sent) {
+  return {
     speech: async (req) => {
       sent.push(`speech ${speechBytes(req)}`);
       return [wav(0.1), {}];
@@ -190,8 +196,22 @@ function recordingSlot(engineId, row) {
       sent.push(`align ${jsonBytes({ model, text, language })}`);
       return { words: [] };
     },
-  });
-  return s;
+  };
+}
+
+/** What the kit registers a model with, from its kit row and our hooks (its RuntimeService
+ * `entriesFor`): its main file by its path, its family and task, the load options — the row's
+ * own, the ones saved for it (kit_hooks.js `sessionOptions`), a session file's path — in key
+ * order, and each companion from its slot. */
+function registers(kit) {
+  const at = (slotName) => kit.files.find((f) => f.slot === slotName)?.path ?? null;
+  const opts = { ...(kit.spec.sessionOptions ?? {}), ...hooks.sessionOptions(kit) };
+  for (const [k, slotName] of Object.entries(kit.spec.sessionFiles ?? {})) opts[k] = at(slotName);
+  const sorted = Object.fromEntries(Object.entries(opts).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)));
+  return [
+    { id: kit.id, family: kit.spec.family, task: kit.spec.task, path: at("model"), ...(Object.keys(sorted).length ? { session_options: sorted } : {}) },
+    ...(kit.spec.companions ?? []).map((c) => ({ id: `${kit.id}::${c.role}`, family: c.family, task: c.task, path: at(c.slot) })),
+  ];
 }
 
 const literally = (s) => new RegExp(s.replaceAll("\\", "/").replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
@@ -206,24 +226,31 @@ const portable = (s, data = null) => {
  * plain Load, and one that calibrates a 200-character piece). Its recognisers' transcription and
  * alignment too. */
 async function loads() {
-  const data = tmpPath();
-  vi.spyOn(slot, "_dataDir").mockReturnValue(data);
+  const kitRows = new Map(runtimeModelRows().map((r) => [r.id, r]));
   const out = {};
   for (const engineId of SEVEN) {
     const m = engine(engineId);
     for (const row of m.module.VARIANTS) {
       const key = `${engineId}/${row.id}`;
-      const registered = slot._entriesFor(m, row).map((e) => portable(jsonBytes(e.toConfig()), data));
-      const s = recordingSlot(engineId, row);
-      const warm = await s._warm(0);
-      const calibrated = await s._warm(200);
+      const kit = kitRows.get(row.id);
+      const sent = [];
+      const srv = recorder(sent);
+      const warm = await slot.warmModel(srv, row, m.kind, 0);
+      const calibrated = await slot.warmModel(srv, row, m.kind, 200);
       if (m.kind === "stt") {
-        await s._transcribe({ audio_path: "C:\\clips\\hatter.wav", language: "en-US" });
-        await s._transcribe({ audio_path: "C:\\clips\\hatter.wav", language: "yue" });
-        await s._transcribe({ audio_path: "C:\\clips\\hatter.wav", language: "sw" });
-        await s._align({ wav_b64: wav(0.5, 16000).toString("base64"), text: LINE, language: "fr-FR" });
+        // A transcription: the request our hook shapes, as the kit sends it (`transcribeFeature`).
+        for (const language of ["en-US", "yue", "sw"]) {
+          const { body } = await hooks.transcribe({ audio_path: "C:\\clips\\hatter.wav", language }, kit);
+          await srv.transcribe({ model: kit.id, ...body });
+        }
+        // An alignment on this model's aligner.
+        fakeSpeechRuntime({ server: srv });
+        vi.spyOn(kitSpeech, "alignerModel").mockReturnValue(row.id);
+        await kitSpeech.align(wav(0.5, 16000), LINE, "fr-FR");
+        vi.mocked(kitSpeech.alignerModel).mockRestore();
+        endSpeech();
       }
-      out[key] = { registered, warm, calibrated, sent: s.sent.map((x) => portable(x, data)) };
+      out[key] = { registered: registers(kit), warm, calibrated, sent: sent.map((x) => portable(x)) };
     }
   }
   return out;
@@ -314,10 +341,18 @@ const ADDED = [
   "voxcpm2/voxcpm2-orig",
 ];
 
-test("each model loads, warms up, transcribes and aligns with the same requests as before", async () => {
+/** A registration the snapshot holds, as the kit's row gives it: its file by its path in its
+ * repository (the speech cache's folder before it is the kit's models cache now), and without the
+ * kit's own `mode`. */
+function asRow(entry) {
+  const { mode: _mode, path: at, ...rest } = JSON.parse(entry);
+  return { ...rest, path: at.replace(/^<data>\/speech-cache\/[^/]+\/[^/]+\//, "") };
+}
+
+test("each model registers, warms up, transcribes and aligns with the same requests as before", async () => {
   const was = before().loads;
   const is = await loads();
-  for (const [key, load] of Object.entries(was)) expect(is[key], key).toEqual(load);
+  for (const [key, load] of Object.entries(was)) expect(is[key], key).toEqual({ ...load, registered: load.registered.map(asRow) });
   expect(Object.keys(is).filter((k) => !Object.hasOwn(was, k)).sort()).toEqual(ADDED);
 });
 

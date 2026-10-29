@@ -18,6 +18,7 @@
 
 import { pyFloatValue as F } from "@delebash/core/platform/pyjson";
 import { BOOK_VOICES_PRESETS, BOOK_VOICES_SAMPLES } from "./book_voices/prompts.js";
+import { TRANSCRIPTION_FEATURE } from "./feature_catalog.js";
 
 export const DEFAULT_ENGINE_PRESETS = [
   { id: "p_extract", name: "Structured extraction", provider_id: "local-llamacpp", model: "", temperature: 0.2, position: 0 },
@@ -49,6 +50,19 @@ export const DEFAULT_ENGINE_PRESETS = [
     temperature: 0.2,
     think: true,
     position: 6,
+  },
+  // Transcription (round E, docs/plans/2026-10-29-round-e-onto-the-kit.md §5 item 7): a model of
+  // the kit's audio.cpp runtime — today's default, Qwen3-ASR 1.7B 8-bit, as the setting
+  // `captures.stt_model` named until then (a value set there moves here — database/seed.js) — and
+  // where it runs: "auto" leaves it to the user's saved choice for the model.
+  {
+    id: "p_transcription",
+    name: "Transcription",
+    provider_id: "local-audiocpp-stt",
+    model: "qwen3-asr-1.7b-q8",
+    kind: "stt",
+    params: { placement: "auto" },
+    position: 7,
   },
 ];
 
@@ -267,6 +281,8 @@ export const DEFAULT_FEATURE_PRESETS = {
   refine: "p_refine",
   // Voices from the book — its three rows (book_voices/prompts.js).
   ...BOOK_VOICES_PRESETS,
+  // Speech recognition — dictation, a take's read-back, captions, MCP's transcribe (round E).
+  [TRANSCRIPTION_FEATURE]: "p_transcription",
 };
 
 // Catch-all for an action with no ref (custom Lab actions before assignment).

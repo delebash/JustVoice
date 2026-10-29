@@ -6,16 +6,10 @@
 // on a gate item so submissions queue deterministically before the drain starts. (Python's
 // threading.Event is the kit's AsyncEvent; a wait's timeout is in milliseconds there.)
 import { AsyncEvent, sleep } from "@delebash/core/platform/asyncutil";
-import { beforeEach, expect, test, vi } from "vitest";
-import * as manager from "../src/engines/manager.js";
+import { expect, test, vi } from "vitest";
 import * as renderCore from "../src/render_core.js";
 import { SynthScheduler, warmLines, warmSpecs } from "../src/synth_scheduler.js";
 import * as voiceModel from "../src/voice_model.js";
-
-// The worker's idle transition re-probes the resident engine's memory; nothing is resident.
-beforeEach(() => {
-  vi.spyOn(manager, "getManager").mockReturnValue({ bumpEngineReservation: async () => {} });
-});
 
 /** Occupy the worker with a first item until the returned gate is set. */
 async function gated(sched) {

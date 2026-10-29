@@ -14,8 +14,8 @@
 //
 // Requests go through Hono's `app.request` (no socket, no port — helpers.js `inject`).
 // `closeApps()` closes every app built since the last call (its close hooks stop MCP sessions, the
-// engine manager and the DSP program), then forgets the module database and the app state — the
-// next test starts clean.
+// kit's runtime servers and the DSP program), then forgets the module database and the app state —
+// the next test starts clean.
 import { closeApp } from "@delebash/core/platform";
 import { multipart } from "@delebash/core/platform/http";
 import "./helpers.js"; // the sandboxed family registry + user cache (JUST_AI_HOME, LLM_RUNNER_CACHE)

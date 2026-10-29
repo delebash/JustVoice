@@ -1,26 +1,31 @@
 // SPDX-License-Identifier: MIT
 // Kokoro blends on the speech runtime (gap 2, docs/plans/2026-10-03-gap-2-kokoro-blends.md):
-// the voices are read from the GGUF's embedded files, a blend renders through our audio.cpp's
-// `voice_pack` option, and an older runtime refuses by name (the port of
-// tests/test_kokoro_blends.py).
+// the voices are read from the GGUF's embedded files — since round E (docs/plans/2026-10-29-
+// round-e-onto-the-kit.md) the Kokoro file in the kit's models cache — a blend renders through our
+// audio.cpp's `voice_pack` option, written for the line, and a build pinned before jv.4 refuses
+// it by name before anything loads (slot.js `checkLine` on kit_settings.js `runtimeHas`; the port
+// of tests/test_kokoro_blends.py).
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, afterEach, beforeEach, expect, test, vi } from "vitest";
-import "./engines_helpers.js";
+import { stores } from "@delebash/core/llm";
+import { pinKey } from "@delebash/core/runner/runtimes";
+import { endSpeech, endState, fakeServer, fakeSpeechRuntime, useState } from "./engines_helpers.js";
 import * as dspClient from "../src/audio/dsp_client.js";
 import * as blending from "../src/engines/blending.js";
 import { embeddedFiles } from "../src/engines/audiocpp/gguf_files.js";
-import * as release from "../src/engines/audiocpp/release.js";
-import * as runtime from "../src/engines/audiocpp/runtime.js";
+import * as kitSettings from "../src/engines/audiocpp/kit_settings.js";
+import * as kitSpeech from "../src/engines/audiocpp/kit_speech.js";
+import { variantOf } from "../src/engines/audiocpp/kit_models.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
-import { discoverEngines } from "../src/engines/manager.js";
+import { discoverEngines } from "../src/engines/model_catalog.js";
 import { voiceSynthFields } from "../src/render_core.js";
 import { tmpPath } from "./helpers.js";
 
 afterAll(() => dspClient.stop());
-const TAG = release.cfg.TAG;
 afterEach(() => {
-  release.cfg.TAG = TAG;
+  endSpeech();
+  endState();
 });
 
 const u32 = (n) => {
@@ -74,7 +79,8 @@ beforeEach(() => {
     "config.json": Buffer.from("{}"),
   };
   kokoroGguf = ggufWithFiles(path.join(tmpPath(), "kokoro.gguf"), files);
-  vi.spyOn(blending, "_kokoroGguf").mockReturnValue(kokoroGguf);
+  // Kokoro downloaded: its file in the kit's models cache.
+  fakeSpeechRuntime({ onDisk: ["kokoro-82m-q8"], files: { "kokoro-82m-q8": { model: kokoroGguf } } });
   blending._PACK_CACHE.clear();
 });
 afterEach(() => blending._PACK_CACHE.clear());
@@ -94,15 +100,15 @@ test("a_gguf_without_embedded_files_reads_as_none", () => {
 });
 
 test("blends_are_made_from_the_ggufs_voices", async () => {
-  const tmp = tmpPath();
-  const [pack, names, features] = blending._kokoroPack(tmp);
+  expect(blending._kokoroGguf()).toBe(kokoroGguf);
+  const [pack, names, features] = blending._kokoroPack();
   expect(names).toEqual(["af_heart", "am_adam"]);
   expect(pack.get("af_heart").length).toBe(ROWS * 256 * 4);
   expect(features).toBe(256);
-  const mix = await blending.blend("kokoro", ["af_heart", "am_adam"], [0.5, 0.5], { dataDir: tmp, resolveStored: () => null });
+  const mix = await blending.blend("kokoro", ["af_heart", "am_adam"], [0.5, 0.5], { resolveStored: () => null });
   expect(mix.length).toBe(ROWS * 256);
   expect(mix[0]).toBeCloseTo(2.0, 6);
-  const mean = await blending.packMean("kokoro", { dataDir: tmp });
+  const mean = await blending.packMean("kokoro");
   expect(mean[0]).toBeCloseTo(2.0, 6);
   const spliced = await blending.recombine(
     "kokoro",
@@ -110,36 +116,35 @@ test("blends_are_made_from_the_ggufs_voices", async () => {
       ["af_heart", 0.0, 0.5],
       ["am_adam", 0.5, 1.0],
     ],
-    { dataDir: tmp, resolveStored: () => null },
+    { resolveStored: () => null },
   );
   expect(spliced[0]).toBeCloseTo(1.0, 6);
   expect(spliced[200]).toBeCloseTo(3.0, 6);
 });
 
 test("no_kokoro_download_says_so", () => {
-  vi.restoreAllMocks();
-  expect(() => blending._kokoroGguf(tmpPath())).toThrow(/Kokoro is not downloaded/);
+  fakeSpeechRuntime();
+  expect(() => blending._kokoroGguf()).toThrow(/Kokoro is not downloaded/);
 });
 
 // ── the runtime and the slot ─────────────────────────────────────────────
 
 test("features_follow_the_build_order", () => {
-  // jv.2 and jv.3 were never published; blends arrive in jv.4 (decided 2026-10-04).
+  // The build the kit pins on this computer decides; jv.2 and jv.3 were never published; blends
+  // arrive in jv.4 (decided 2026-10-04).
+  useState();
   for (const [tag, expected] of [
     ["v0.9.0", false],
     ["v0.9.0-jv.1", false],
     ["v0.9.0-jv.2", false],
     ["v0.9.0-jv.4", true],
-    [null, false],
     ["v9-unknown", false],
   ]) {
-    vi.spyOn(runtime, "installedTag").mockReturnValue(tag);
-    expect(runtime.hasFeature("voice_pack"), String(tag)).toBe(expected);
+    stores.getRunnerConfigStore().setSetting(pinKey("audiocpp"), tag);
+    expect(kitSettings.runtimeHas("voice_pack"), tag).toBe(expected);
   }
-  release.cfg.TAG = "v0.9.0";
-  expect(release.pinnedHas("voice_pack")).toBe(false);
-  release.cfg.TAG = "v0.9.0-jv.4";
-  expect(release.pinnedHas("voice_pack")).toBe(true);
+  // The build the app ships has them.
+  expect(kitSettings.shippedHas("voice_pack")).toBe(true);
 });
 
 const kokoroRow = () => discoverEngines().get("kokoro").module.VARIANTS.find((r) => r.id === "kokoro-82m-q8");
@@ -190,26 +195,47 @@ test("the_pack_file_is_written_once_by_content", () => {
   expect(() => slot.writeVoicePack([1.0, 2.0])).toThrow(/rows × 256/);
 });
 
-function blendSlot(family) {
-  const sl = Object.create(slot.AudioCppSlot.prototype);
-  Object.assign(sl, { manifest: { name: "Kokoro", id: "kokoro", module: {} }, _row: { id: "m", audiocpp: { family } }, placement: "gpu" });
-  sl.isAlive = () => true;
-  return sl;
+/** What `checkLine` refuses `body` on model version `id` with, or null when the line can go. */
+function refusal(id, body) {
+  try {
+    slot.checkLine(variantOf(id), body);
+  } catch (e) {
+    return e;
+  }
+  return null;
 }
 
-test("an_older_runtime_refuses_a_blend_by_name", async () => {
-  vi.spyOn(runtime, "hasFeature").mockReturnValue(false);
-  // The pin has blends: an update brings them. It doesn't: this version can't (audit §5 E3).
-  vi.spyOn(release, "pinnedHas").mockReturnValue(true);
-  let r = await blendSlot("kokoro_tts")._synth({ voice_vector: new Array(256).fill(0.0), text: "Hi." });
-  expect(r.statusCode).toBe(409);
-  expect(r.json().detail).toContain("speech runtime update");
-  vi.spyOn(release, "pinnedHas").mockReturnValue(false);
-  r = await blendSlot("kokoro_tts")._synth({ voice_vector: new Array(256).fill(0.0), text: "Hi." });
-  expect(r.statusCode).toBe(409);
-  expect(r.json().detail).toContain("Blended voices");
-  expect(r.json().detail).toContain("isn't in this version");
-  r = await blendSlot("qwen3_tts")._synth({ voice_vector: new Array(256).fill(0.0), text: "Hi." });
-  expect(r.statusCode).toBe(422);
-  expect(r.json().detail).toContain("blends are Kokoro's");
+test("an_older_runtime_refuses_a_blend_by_name", () => {
+  const line = { voice_vector: new Array(256).fill(0.0), text: "Hi." };
+  vi.spyOn(kitSettings, "runtimeHas").mockReturnValue(false);
+  // The build the app ships has blends: an update brings them. It doesn't: this version can't
+  // (audit §5 E3).
+  vi.spyOn(kitSettings, "shippedHas").mockReturnValue(true);
+  let e = refusal("kokoro-82m-q8", line);
+  expect(e).toBeInstanceOf(kitSpeech.EngineRequestError);
+  expect(e.status).toBe(409);
+  expect(e.message).toContain("speech runtime update");
+  vi.mocked(kitSettings.shippedHas).mockReturnValue(false);
+  e = refusal("kokoro-82m-q8", line);
+  expect(e.status).toBe(409);
+  expect(e.message).toContain("Blended voices");
+  expect(e.message).toContain("isn't in this version");
+  // A model with no blends says so, whatever the build.
+  e = refusal("qwen3-cv-1.7b-q8", { ...line, voice_id: "Ryan" });
+  expect(e.status).toBe(422);
+  expect(e.message).toContain("blends are Kokoro's");
+});
+
+test("a_blend_reaches_kokoro_as_its_pack", async () => {
+  // On a build that has blends the line goes: its vector written as a pack file, sent as
+  // `voice_pack` with a preset of its language.
+  vi.spyOn(slot, "_dataDir").mockReturnValue(tmpPath());
+  vi.spyOn(kitSettings, "runtimeHas").mockReturnValue(true);
+  const vec = new Array(ROWS * 256).fill(2.0);
+  const line = { voice_id: "v_blend", text: "Hi.", seed: 7, voice_vector: vec, voice_language: "en-US" };
+  expect(refusal("kokoro-82m-q8", line)).toBeNull();
+  const srv = fakeServer();
+  await slot.speak(srv, variantOf("kokoro-82m-q8").row, line);
+  const pack = slot.writeVoicePack(vec).replaceAll("\\", "/");
+  expect(srv.calls).toEqual([["speech", { model: "kokoro-82m-q8", input: "Hi.", seed: 7, voice: "af_alloy", language: "en-us", options: { voice_pack: pack } }]]);
 });

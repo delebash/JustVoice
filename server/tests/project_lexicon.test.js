@@ -24,14 +24,13 @@ import { router as renderChapterRouter } from "../src/api/render_chapter_api.js"
 import * as appState from "../src/app_state.js";
 import * as session from "../src/database/session.js";
 import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js";
-import * as manager from "../src/engines/manager.js";
 import * as exportVoicelines from "../src/export_voicelines.js";
 import { ChapterLine, construct, Lexicon, LexiconEntry, Persona, Settings, utcNow } from "../src/models.js";
 import * as renderCore from "../src/render_core.js";
 import { _applyLexicons, lineLexicons, probeLineCached, RenderedLine, renderLine } from "../src/render_core.js";
 import * as synthScheduler from "../src/synth_scheduler.js";
 import { inject, tmpDb } from "./helpers.js";
-import { FakeCache, FakeManager, fakeManifest, pcmOf, renderState, unwrap, useManager, viaRoutes } from "./render_helpers.js";
+import { FakeCache, FakeSpeech, fakeManifest, pcmOf, renderState, unwrap, useSpeech, viaRoutes } from "./render_helpers.js";
 
 afterEach(closeApps);
 
@@ -148,7 +147,7 @@ test("the_host_keeps_exactly_the_words_an_ipa_splice_speaks", () => {
 });
 
 const mockMgr = () =>
-  useManager(new FakeManager({ "mock-tts": fakeManifest("mock-tts", { staticVoices: [{ id: "mv_1", name: "MV" }] }) }, { pcm: pcmOf(400, 0x1000) }));
+  useSpeech(new FakeSpeech({ "mock-tts": fakeManifest("mock-tts", { staticVoices: [{ id: "mv_1", name: "MV" }] }) }, { pcm: pcmOf(400, 0x1000) }));
 const synthBodies = (mgr) => mgr.synths.map(([, b]) => b);
 
 const renderStateWith = (lx) => renderState({ cache: new FakeCache(), lexicons: lx });
@@ -412,16 +411,6 @@ test("a_lexicon_reaches_the_lines_the_render_reads_it_for", async () => {
 
 // ── §6 · 1 · Generate reads the lexicons the page sends ─────────────────
 
-/** A loaded managed engine with one voice, as `_findManagedVoiceOwner` sees it. */
-class GenManager extends FakeManager {
-  currentId() {
-    return "mock-tts";
-  }
-  async voices() {
-    return [{ id: "mv_1", name: "MV" }];
-  }
-}
-
 /** Runs the one interactive item on the spot. (Python's twin took no `owner=` and so fails
  * today — see the header.) */
 const nowScheduler = {
@@ -447,11 +436,14 @@ const nowScheduler = {
   },
 };
 
-/** The app, with Generate's manager and scheduler faked (Python's `client` + `gen_mgr`). */
+/** The app, with Generate's speech and scheduler faked (Python's `client` + `gen_mgr`): one
+ * managed engine with one voice, its model the one the speech runtime holds — as
+ * `_findManagedVoiceOwner` sees it. */
 async function genApp() {
   const { c } = await appClient();
-  const mgr = new GenManager({ "mock-tts": fakeManifest("mock-tts", { staticVoices: [{ id: "mv_1", name: "MV" }] }) }, { pcm: pcmOf(400, 0x1000) });
-  vi.spyOn(manager, "getManager").mockReturnValue(mgr);
+  const mgr = useSpeech(
+    new FakeSpeech({ "mock-tts": fakeManifest("mock-tts", { staticVoices: [{ id: "mv_1", name: "MV" }] }) }, { pcm: pcmOf(400, 0x1000), current: { tts: "mock-tts" } }),
+  );
   vi.spyOn(synthScheduler, "getScheduler").mockReturnValue(nowScheduler);
   return [c, mgr];
 }

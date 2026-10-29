@@ -1,153 +1,50 @@
 // SPDX-License-Identifier: MIT
-// Moving the speech runtime to a newer pinned release (decided 2026-10-03, TASKS "Our copy of
-// audio.cpp"): an installed older build keeps working, the runtime row offers "Update to
-// <tag>", and the update stops the old processes so the next load starts the pinned build
-// (the port of tests/test_runtime_update.py; the parametrized update test loops over its
-// cases).
+// A clone's transcript is only what was typed (decided 2026-10-03, TASKS "Our copy of
+// audio.cpp"): Qwen3 Base clones from the clip and its words or from the speaker vector alone, and
+// refuses a clip with neither by name; an audition sends no words it wasn't given, and a saved voice
+// keeps "Skip the words". A VoxCPM2 clip's words need our build 1 — on a build pinned before it the
+// line is refused by name before anything loads (the port of tests/test_runtime_update.py).
 //
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import * as binary from "@delebash/core/runner/binary";
+// Moving to a newer pinned release — the old build kept working, "Update to <tag>", the old
+// processes stopped and the replaced build deleted — is the kit's audio.cpp runtime's since round E
+// (docs/plans/2026-10-29-round-e-onto-the-kit.md; its runtime tab and runner/runtime_service.js),
+// tested there. The build pinned here is the kit's (kit_settings.js `runtimeHas`); a line runs on
+// the kit's runtime (kit_speech.js `speak`), faked here.
 import { afterEach, expect, test, vi } from "vitest";
-import "./engines_helpers.js";
-import * as speechRuntimeApi from "../src/api/speech_runtime_api.js";
-import * as espeak from "../src/engines/audiocpp/espeak.js";
-import * as release from "../src/engines/audiocpp/release.js";
-import * as runtime from "../src/engines/audiocpp/runtime.js";
+import { stores } from "@delebash/core/llm";
+import { pinKey } from "@delebash/core/runner/runtimes";
+import { endSpeech, endState, fakeSpeechRuntime, useState } from "./engines_helpers.js";
+import * as kitSettings from "../src/engines/audiocpp/kit_settings.js";
+import * as kitSpeech from "../src/engines/audiocpp/kit_speech.js";
+import { variantOf } from "../src/engines/audiocpp/kit_models.js";
+import * as slot from "../src/engines/audiocpp/slot.js";
 import { toSpeechRequest } from "../src/engines/audiocpp/slot.js";
-import * as manager from "../src/engines/manager.js";
-import { discoverEngines } from "../src/engines/manager.js";
+import { discoverEngines } from "../src/engines/model_catalog.js";
 import { appClient, closeApps } from "./app_helpers.js";
 import { tmpPath } from "./helpers.js";
 import { getState } from "../src/app_state.js";
 import { voiceSynthFields } from "../src/render_core.js";
+import { modelOfVariant } from "../src/voice_model.js";
 
-const TAG = release.cfg.TAG;
-const PREVIOUS = release.cfg.PREVIOUS_TAGS;
-afterEach(() => {
-  release.cfg.TAG = TAG;
-  release.cfg.PREVIOUS_TAGS = PREVIOUS;
-  runtime.forgetInstalled();
-});
-afterEach(closeApps);
-
-/** A pinned release "v9-new", an older "v9-old" still installed; the kit's lookup finds
- * whichever tag has a folder. Returns the set of tags on disk. */
-function tags() {
-  const tmp = tmpPath();
-  release.cfg.TAG = "v9-new";
-  release.cfg.PREVIOUS_TAGS = ["v9-old"];
-  const onDisk = new Set(["v9-old"]);
-  vi.spyOn(binary, "installedRuntimeExe").mockImplementation((cacheRoot, folder, build) => {
-    const exe = path.join(tmp, build, "audiocpp_server.exe");
-    if (onDisk.has(build)) {
-      mkdirSync(path.dirname(exe), { recursive: true });
-      writeFileSync(exe, "x");
-      return exe;
-    }
-    return null;
-  });
-  vi.spyOn(runtime, "selectedAsset").mockReturnValue({ gpu: "cuda12" });
-  vi.spyOn(runtime, "configuredBackend").mockReturnValue("cuda");
-  vi.spyOn(runtime, "_runtimeRoot").mockReturnValue(tmp);
-  runtime.forgetInstalled();
-  return onDisk;
-}
-
-test("an_older_pinned_build_keeps_working_until_updated", () => {
-  const onDisk = tags();
-  const exe = runtime.installedExe();
-  expect(exe).not.toBeNull();
-  expect(path.basename(path.dirname(exe))).toBe("v9-old");
-  expect(runtime.installedTag()).toBe("v9-old");
-  onDisk.add("v9-new"); // the update lands
-  runtime.forgetInstalled();
-  expect(path.basename(path.dirname(runtime.installedExe()))).toBe("v9-new");
-  expect(runtime.installedTag()).toBe("v9-new");
-});
-
-test("nothing_installed_is_nothing", () => {
-  tags().clear();
-  expect(runtime.installedExe()).toBeNull();
-  expect(runtime.installedTag()).toBeNull();
-});
-
-test("the_runtime_row_offers_the_update", () => {
-  const onDisk = tags();
-  vi.spyOn(runtime, "servers").mockReturnValue([{ _run: null, pid: null, isRunning: () => false }]);
-  vi.spyOn(runtime, "availableBackends").mockReturnValue(["cuda", "cpu"]);
-  vi.spyOn(runtime, "_hardware").mockReturnValue({ gpus: [] });
-  vi.spyOn(runtime, "cpuThreads").mockReturnValue(8);
-  vi.spyOn(runtime, "physicalCores").mockReturnValue(8);
-  vi.spyOn(runtime, "_settings").mockReturnValue({ backend: "auto", gpu: 0, cpu_threads: 0, cpu_min_realtime: 2.0 });
-  let info = speechRuntimeApi._info();
-  expect([info.installed, info.version, info.update_to]).toEqual([true, "v9-old", "v9-new"]);
-  onDisk.add("v9-new");
-  runtime.forgetInstalled();
-  info = speechRuntimeApi._info();
-  expect([info.version, info.update_to]).toEqual(["v9-new", null]);
-});
-
-test("an_update_stops_the_old_processes_and_a_fresh_install_does_not", async () => {
-  // An update also deletes the build it replaced (decided 2026-10-03) — only that one: the
-  // older release's other backend keeps working until it is updated.
-  for (const [was, stops] of [
-    ["v9-old", true],
-    ["v9-new", false],
-    [null, false],
-  ]) {
-    vi.restoreAllMocks();
-    const tmp = tmpPath();
-    const old = path.join(tmp, "v9-old", "cuda12");
-    const other = path.join(tmp, "v9-old", "vulkan");
-    for (const d of [old, other, path.join(tmp, "v9-new", "cuda12")]) {
-      mkdirSync(d, { recursive: true });
-      writeFileSync(path.join(d, "audiocpp_server.exe"), "x");
-    }
-    vi.spyOn(runtime, "_runtimeRoot").mockReturnValue(tmp);
-    release.cfg.TAG = "v9-new";
-    vi.spyOn(runtime, "installedTag").mockReturnValue(was);
-    vi.spyOn(runtime, "installedExe").mockReturnValue(path.join(tmp, was || "v9-new", "cuda12", "audiocpp_server.exe"));
-    const bytesSeen = [];
-    vi.spyOn(runtime, "install").mockImplementation(async ({ onProgress }) => {
-      onProgress(5, 10);
-      return "x";
-    });
-    vi.spyOn(espeak, "install").mockResolvedValue(["a", "b"]);
-    const stopped = [];
-    vi.spyOn(runtime, "shutdownServer").mockImplementation(async () => stopped.push("server"));
-    vi.spyOn(manager, "getManager").mockReturnValue({
-      loadedFor: (kind) => (kind === "tts" ? { manifest: { usesAudiocpp: true } } : null),
-      unload: async (kind) => stopped.push(`unload ${kind}`),
-    });
-    await manager._installAudiocppRuntime({ onBytes: (done, total) => bytesSeen.push([done, total]) });
-    expect(stopped, String(was)).toEqual(stops ? ["unload tts", "server"] : []);
-    expect(bytesSeen).toEqual([[5, 10]]); // the job gets the download's bytes
-    expect(existsSync(old)).toBe(!stops); // the replaced build goes on an update
-    expect(existsSync(other) && existsSync(path.join(tmp, "v9-new", "cuda12"))).toBe(true);
-  }
+afterEach(async () => {
+  endSpeech();
+  await closeApps();
+  endState();
 });
 
 test("voxcpm2s_transcript_follows_the_pin", () => {
   // Our build 1 passes a VoxCPM2 clip's transcript on; upstream v0.9.0 ignored it.
-  release.cfg.TAG = "v0.9.0";
-  expect(release.pinnedHas("voxcpm2_transcript")).toBe(false);
-  release.cfg.TAG = "v0.9.0-jv.1";
-  expect(release.pinnedHas("voxcpm2_transcript")).toBe(true);
-});
-
-test("the_pin_is_our_build_and_the_older_ones_keep_working", () => {
-  expect(release.cfg.TAG).toBe("v0.9.2-jv.6");
-  expect(release.cfg.PREVIOUS_TAGS).toEqual(["v0.9.0-jv.5", "v0.9.0-jv.4", "v0.9.0-jv.1", "v0.9.0"]);
-  expect(
-    release.binaries().every((b) => b.assetUrl.startsWith("https://github.com/delebash/audio.cpp/releases/download/v0.9.2-jv.6/")),
-  ).toBe(true);
-  // Every archive the pin downloads is checked against its published digest.
-  expect(release.binaries().every((b) => b.sha256 && (!b.runtimeUrl || b.runtimeSha256))).toBe(true);
-  // Every feature the app knows names a build in the order; jv.2 and jv.3 were never published.
-  for (const v of Object.values(release.FEATURES)) expect(release.BUILDS_IN_ORDER).toContain(v);
-  expect(release.BUILDS_IN_ORDER).not.toContain("v0.9.0-jv.2");
-  expect(release.BUILDS_IN_ORDER).not.toContain("v0.9.0-jv.3");
+  useState();
+  const vox = variantOf("voxcpm2-q8");
+  const line = { text: "Hi.", audio_prompt_path: "C:/v/ref.wav", ref_text: "What the clip says." };
+  stores.getRunnerConfigStore().setSetting(pinKey("audiocpp"), "v0.9.0");
+  expect(kitSettings.runtimeHas("voxcpm2_transcript")).toBe(false);
+  expect(() => slot.checkLine(vox, line)).toThrow(slot.featureRefusal("voxcpm2_transcript"));
+  // A clip without its words needs nothing the old build lacks.
+  expect(() => slot.checkLine(vox, { ...line, ref_text: null })).not.toThrow();
+  stores.getRunnerConfigStore().setSetting(pinKey("audiocpp"), "v0.9.0-jv.1");
+  expect(kitSettings.runtimeHas("voxcpm2_transcript")).toBe(true);
+  expect(() => slot.checkLine(vox, line)).not.toThrow();
 });
 
 // ── A clone's transcript is only what was typed (decided 2026-10-03) ─────
@@ -170,26 +67,23 @@ test("qwen3_base_without_either_is_refused_by_name", () => {
   );
 });
 
-/** The app with its candidate clips kept in a temp folder of the test's own. */
+/** The app with its candidate clips kept in a temp folder of the test's own, its speech on the
+ * kit's runtime faked — every line the kit runs (`svc`) and every synth body it was given
+ * (`speak`'s calls). */
 async function previewClient() {
   const tmp = tmpPath();
   vi.stubEnv("TEMP", tmp);
   vi.stubEnv("TMP", tmp);
   vi.stubEnv("TMPDIR", tmp);
-  return (await appClient()).c;
+  const client = (await appClient()).c;
+  const svc = fakeSpeechRuntime();
+  return { client, svc, speak: vi.spyOn(kitSpeech, "speak") };
 }
 
 test("a_cloned_audition_needs_no_transcript_and_sends_none", async () => {
   // The preview API no longer requires a transcript, so the Voices screen stops sending a
   // placeholder; without one, no ref_text reaches the engine and the saved voice has none.
-  const client = await previewClient();
-  const mgr = manager.getManager();
-  const sent = [];
-  vi.spyOn(mgr, "currentFor").mockReturnValue("chatterbox");
-  vi.spyOn(mgr, "synth").mockImplementation(async (_engineId, body) => {
-    sent.push(body);
-    return [Buffer.alloc(4800), { sample_rate: 24000, channels: 1 }];
-  });
+  const { client, svc, speak } = await previewClient();
   const r = await client.post("/v1/voices/preview", {
     json: {
       engine: "chatterbox",
@@ -200,9 +94,11 @@ test("a_cloned_audition_needs_no_transcript_and_sends_none", async () => {
     },
   });
   expect(r.status, r.text).toBe(200);
-  expect(sent.length).toBeGreaterThan(0);
-  expect("ref_text" in sent[0]).toBe(false);
-  expect(sent[0].audio_prompt_path).toBeTruthy();
+  expect(speak).toHaveBeenCalled();
+  const sent = speak.mock.calls[0][2];
+  expect("ref_text" in sent).toBe(false);
+  expect(sent.audio_prompt_path).toBeTruthy();
+  expect(svc.server.calls[0][1].voice_ref).toBeTruthy();
   const saved = await client.post(`/v1/voices/preview/${r.json().preview_id}/save`, { json: { name: "No words" } });
   expect([200, 201], saved.text).toContain(saved.status);
   const stored = getState().voices.get(saved.json().voice_id);
@@ -213,7 +109,7 @@ test("a_cloned_audition_needs_no_transcript_and_sends_none", async () => {
 test("a_saved_voice_keeps_skip_the_words", async () => {
   // The x-vector choice is stored on the voice — from a direct clone and from a saved audition
   // — so its renders take the mode its audition did (decided 2026-10-03).
-  const client = await previewClient();
+  const { client, svc } = await previewClient();
   const clip = Buffer.from("RIFF....WAVE").toString("base64");
   let r = await client.post("/v1/voices/clone", { json: { engine: "qwen3", name: "Fingerprint", ref_wav_b64: clip, xvector_only: true } });
   expect(r.status, r.text).toBe(201);
@@ -222,16 +118,16 @@ test("a_saved_voice_keeps_skip_the_words", async () => {
   expect(fields.xvector_only).toBe(true);
   expect("ref_text" in fields).toBe(false);
 
-  const mgr = manager.getManager();
-  vi.spyOn(mgr, "currentFor").mockReturnValue("qwen3");
-  // A clone is heard on Qwen3 Base (2026-10-03: the voice's model, not just its engine, has to
-  // be resident) — so the fake says Base is loaded.
-  vi.spyOn(mgr, "currentVariantId").mockReturnValue("qwen3-base-1.7b-q8");
-  vi.spyOn(mgr, "synth").mockResolvedValue([Buffer.alloc(4800), { sample_rate: 24000, channels: 1 }]);
   r = await client.post("/v1/voices/preview", {
     json: { engine: "qwen3", source: "cloned", ref_wav_b64: clip, preview_text: "Hello.", xvector_only: true },
   });
   expect(r.status, r.text).toBe(200);
+  // A clone is heard on Qwen3 Base (2026-10-03: the voice's model, not just its engine), from the
+  // speaker vector alone.
+  expect(svc.lines.map((l) => modelOfVariant(l.modelId))).toEqual(["qwen3-base"]);
+  const req = svc.server.calls[0][1];
+  expect(req.options?.x_vector_only_mode).toBe(true);
+  expect("reference_text" in req).toBe(false);
   const saved = await client.post(`/v1/voices/preview/${r.json().preview_id}/save`, { json: { name: "Audition" } });
   expect([200, 201], saved.text).toContain(saved.status);
   expect(state.voices.get(saved.json().voice_id).xvector_only).toBe(true);

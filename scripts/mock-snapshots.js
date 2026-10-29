@@ -55,7 +55,6 @@ llmDb.createAll(session.cfg.handle);
 const st = new appState.AppState(dataDir);
 appState.setState(st);
 
-const manager = await server("engines/manager.js");
 const modelCatalog = await server("engines/model_catalog.js");
 const enginesApi = await server("api/engines_api.js");
 const voicesApi = await server("api/voices_api.js");
@@ -65,7 +64,6 @@ const vmod = await server("voice_model.js");
 const models = await server("models.js");
 const { EFFECT_CATALOG } = await server("audio/effect_catalog.js");
 
-const mgr = manager.getManager();
 const SEVEN = ["kokoro", "kitten", "pocket", "qwen3", "chatterbox", "voxcpm2", "asr"];
 const commit = execFileSync("git", ["rev-parse", "--short=8", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
 const today = new Date().toISOString().slice(0, 10);
@@ -83,7 +81,7 @@ const VARIANT_KEYS = [
 const optionSets = [];
 const optionIndex = new Map();
 const engines = [];
-for (const m of mgr.manifests().values()) {
+for (const m of modelCatalog.manifests().values()) {
   const info = enginesApi._infoFromManifest(m, "installed");
   const e = Object.fromEntries(ENGINE_KEYS.map((k) => [k, info[k] ?? null]));
   const rows = new Map(modelCatalog._variantRows(m.id).map((r) => [r.id, r]));
@@ -127,12 +125,12 @@ for (const [key, detail] of Object.entries(caps.CAPABILITY_DETAILS)) {
 const wire = models.construct(models.EngineCapabilitiesResponse, { engines: capabilities, emotion_values: [...models.EMOTION_VALUES] });
 const presets = [];
 for (const id of SEVEN) {
-  for (const v of mgr.getManifest(id).staticVoices) presets.push(JSON.parse(JSON.stringify(voicesApi._presetDto(st, id, v))));
+  for (const v of modelCatalog.getManifest(id).staticVoices) presets.push(JSON.parse(JSON.stringify(voicesApi._presetDto(st, id, v))));
 }
 const languages = {};
 const versions = {};
 for (const id of SEVEN) {
-  if (mgr.getManifest(id).kind !== "tts") continue;
+  if (modelCatalog.getManifest(id).kind !== "tts") continue;
   const sizes = new Map(modelCatalog.modelsFor(id).map((v) => [v.id, v.size_mb]));
   for (const model of vmod.modelsOfEngine(id)) {
     languages[model] = vmod.modelSpeaks(id, model);
@@ -147,7 +145,7 @@ for (const id of SEVEN) {
 }
 const terms = {};
 for (const id of SEVEN) {
-  const t = enginesApi._termsOf(mgr.getManifest(id));
+  const t = enginesApi._termsOf(modelCatalog.getManifest(id));
   if (t) terms[id] = t;
 }
 const personaSource =

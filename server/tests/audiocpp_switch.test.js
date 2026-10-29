@@ -1,26 +1,20 @@
 // SPDX-License-Identifier: MIT
 // The audio.cpp switch (docs/plans/2026-10-01-audiocpp-switch.md): the catalog, the request
-// mapping per family, and the runtime's own bookkeeping. No binary, no GPU (the port of
-// tests/test_audiocpp_switch.py; Python's parametrized tests loop over their cases).
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import { afterAll, afterEach, expect, test, vi } from "vitest";
-import * as hardware from "@delebash/core/runner/hardware";
-import { appClient, closeApps } from "./app_helpers.js";
-import { discrete } from "./engines_helpers.js";
+// mapping per family, and the aligner's input rate. No binary, no GPU (the port of
+// tests/test_audiocpp_switch.py; Python's parametrized tests loop over their cases). Since round E
+// (docs/plans/2026-10-29-round-e-onto-the-kit.md) the kit's audio.cpp runtime installs, configures
+// and runs the models — its release rows, its servers' config rows and eSpeak NG, the runtime's
+// settings, where a model runs and deleting its files are the kit's, tested there (the spec that
+// asks it for eSpeak NG's options is kit_models.test.js's); what stays here is ours.
+import { afterAll, expect, test } from "vitest";
+import "./engines_helpers.js";
 import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
 import * as dspClient from "../src/audio/dsp_client.js";
-import * as espeak from "../src/engines/audiocpp/espeak.js";
-import * as release from "../src/engines/audiocpp/release.js";
-import * as runtime from "../src/engines/audiocpp/runtime.js";
-import { ModelEntry } from "../src/engines/audiocpp/runtime.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { toSpeechRequest } from "../src/engines/audiocpp/slot.js";
 import { CATALOG } from "../src/engines/audiocpp/generated.js";
 import { lookup } from "../src/engines/capability_details.js";
-import * as manager from "../src/engines/manager.js";
-import { discoverEngines, EngineManager } from "../src/engines/manager.js";
-import { tmpPath } from "./helpers.js";
+import { discoverEngines } from "../src/engines/model_catalog.js";
 
 // Our own conversions of models audio.cpp doesn't publish — CustomVoice 0.6B (gap 4), Turbo and
 // Nano (gap 1) — as our fork's catalog names them (the adoption plan's slice 4: the repositories come
@@ -43,13 +37,13 @@ const row = (engine, variant) => discoverEngines().get(engine).module.VARIANTS.f
 test("every_switched_engine_runs_on_audiocpp", () => {
   for (const engine of ["kokoro", "qwen3", "chatterbox", "asr"]) {
     const m = discoverEngines().get(engine);
-    expect(m.usesAudiocpp).toBe(true);
+    expect(m.module.VARIANTS.every((r) => Boolean(r.audiocpp)), engine).toBe(true);
     expect(m.module.VARIANTS.map((r) => r.id)).toContain(m.defaultVariantId);
-    // audio.cpp's own repo, or our conversion of a model it does not publish (gap 4; Turbo
-    // and Nano, gap 1, offered from v0.9.0-jv.4), or QwenCleo-ASR's own (the adoption plan's
-    // E14/F5, as audio.cpp's catalog gives it).
+    // audio.cpp's own repo (its catalog's `model_repo`), or our conversion of a model it does
+    // not publish (gap 4; Turbo and Nano, gap 1, offered from v0.9.0-jv.4), or QwenCleo-ASR's
+    // own (the adoption plan's E14/F5, as audio.cpp's catalog gives it).
     const pinned = {
-      [release.MODEL_REPO]: release.MODEL_REVISION,
+      [CATALOG.generated_from.model_repo]: CATALOG.generated_from.model_revision,
       [qwen3Manifest.CV_06_REPO]: qwen3Manifest.CV_06_REVISION,
       [chatterboxManifest.TURBO_REPO]: chatterboxManifest.TURBO_REVISION,
       [chatterboxManifest.NANO_REPO]: chatterboxManifest.NANO_REVISION,
@@ -180,205 +174,6 @@ test("chatterbox_needs_a_clip", () => {
   );
 });
 
-// ─── the runtime's bookkeeping ───────────────────────────────────────────────
-
-test("model_entry_writes_the_config_row", () => {
-  const e = new ModelEntry("kitten-mini-0.8", "kitten_tts", "tts", "C:/m/k.gguf", [["kitten_tts.espeak_data_path", "C:/e/data"]]);
-  expect(e.toConfig()).toEqual({
-    id: "kitten-mini-0.8",
-    family: "kitten_tts",
-    task: "tts",
-    mode: "offline",
-    path: "C:/m/k.gguf",
-    session_options: { "kitten_tts.espeak_data_path": "C:/e/data" },
-  });
-});
-
-// ─── eSpeak NG reaches both phonemizers (audit 2026-10-04 §5 A1–A2) ──────────
-
-function espeakInstalled(root) {
-  const home = espeak.home(root);
-  mkdirSync(path.join(home, "espeak-ng-data"), { recursive: true });
-  writeFileSync(path.join(home, "espeak-ng.dll"), "x");
-  return [path.join(home, "espeak-ng.dll"), path.join(home, "espeak-ng-data")];
-}
-
-test("kokoro_finds_our_espeak_through_the_runtimes_environment", () => {
-  // Kokoro reads ONLY AUDIOCPP_ESPEAK_LIBRARY / _DATA (audio.cpp g2p_multilingual.cpp:92-93);
-  // without them it loads whatever eSpeak NG the system path finds.
-  const tmp = tmpPath();
-  vi.spyOn(runtime, "_runtimeRoot").mockReturnValue(tmp);
-  vi.stubEnv("AUDIOCPP_ESPEAK_LIBRARY", "C:/somewhere/else.dll");
-  let env = runtime._childEnv();
-  expect("AUDIOCPP_ESPEAK_LIBRARY" in env).toBe(false);
-  expect("AUDIOCPP_ESPEAK_DATA" in env).toBe(false);
-  const [lib, data] = espeakInstalled(tmp);
-  env = runtime._childEnv();
-  expect(env.AUDIOCPP_ESPEAK_LIBRARY).toBe(lib);
-  expect(env.AUDIOCPP_ESPEAK_DATA).toBe(data);
-});
-
-test("kitten_gets_its_own_prefixed_espeak_options_and_kokoro_gets_none", () => {
-  // Kitten reads `kitten_tts.espeak_*` (audio.cpp kitten_tts/session.cpp:74); Kokoro would
-  // refuse a session option it doesn't know, so it gets none.
-  const tmp = tmpPath();
-  const [lib, data] = espeakInstalled(tmp);
-  vi.spyOn(manager, "enginesRuntimeRoot").mockReturnValue(tmp);
-  vi.spyOn(slot, "_dataDir").mockReturnValue(path.join(tmp, "data"));
-  const kitten = discoverEngines().get("kitten");
-  const entries = slot._entriesFor(kitten, row("kitten", "kitten-mini-0.8"));
-  expect(entries.length).toBe(1);
-  expect(Object.fromEntries(entries[0].sessionOptions)).toEqual({
-    "kitten_tts.espeak_library_path": lib,
-    "kitten_tts.espeak_data_path": data,
-  });
-  const kokoro = discoverEngines().get("kokoro");
-  const [entry] = slot._entriesFor(kokoro, row("kokoro", "kokoro-82m-q8"));
-  expect(entry.sessionOptions.some(([k]) => k.includes("espeak"))).toBe(false);
-});
-
-test("every_platform_finds_its_espeak_wheel", () => {
-  // PyPI's own file list for espeakng-loader 0.2.4, read 2026-10-04.
-  for (const [filename, tag] of [
-    ["espeakng_loader-0.2.4-py3-none-macosx_10_12_x86_64.whl", "macosx_10_12_x86_64"],
-    ["espeakng_loader-0.2.4-py3-none-macosx_11_0_arm64.whl", "macosx_11_0_arm64"],
-    ["espeakng_loader-0.2.4-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", "manylinux_2_17_x86_64"],
-    ["espeakng_loader-0.2.4-py3-none-manylinux_2_28_aarch64.whl", "manylinux_2_28_aarch64"],
-    ["espeakng_loader-0.2.4-py3-none-win_amd64.whl", "win_amd64"],
-    ["espeakng_loader-0.2.4-py3-none-win_arm64.whl", "win_arm64"],
-  ]) {
-    expect(Object.hasOwn(espeak._SHA256, tag)).toBe(true);
-    expect(espeak.wheelMatches(filename, tag)).toBe(true);
-    const others = Object.keys(espeak._SHA256).filter((t) => t !== tag);
-    expect(others.some((t) => espeak.wheelMatches(filename, t)), filename).toBe(false);
-  }
-});
-
-test("release_rows_pin_one_tag_and_ship_the_windows_cuda_runtime", () => {
-  const rows = release.binaries();
-  expect(rows.every((r) => r.assetUrl.includes(`/${release.cfg.TAG}/`))).toBe(true);
-  const winCuda = rows.filter((r) => r.platform === "windows" && r.gpu.startsWith("cuda"));
-  expect(winCuda.length).toBeGreaterThan(0);
-  expect(winCuda.every((r) => r.runtimeUrl && r.runtimeUrl.includes("cudart"))).toBe(true);
-});
-
-test("an_audiocpp_engine_runs_where_the_runtime_runs", () => {
-  vi.spyOn(runtime, "installedExe").mockReturnValue("C:/rt/audiocpp/v0.9.0/vulkan/audiocpp_server.exe");
-  const m = discoverEngines().get("kokoro");
-  // Neither a per-call device nor the old per-engine Device setting moves one model off the
-  // shared server.
-  expect(new EngineManager()._resolveDevice(m, "cpu")).toBe("vulkan");
-});
-
-// ─── the runtime row and the delete (the API) ────────────────────────────────
-
-/** A client on a fresh app over fake hardware, with the runtime's install answer pinned. */
-async function runtimeClient(dir, { installed = null } = {}) {
-  runtime.cfg.HW = discrete();
-  vi.spyOn(runtime, "installedExe").mockReturnValue(installed);
-  return (await appClient(dir)).c;
-}
-
-test("the_runtime_row_reads_and_saves_its_backend", async () => {
-  const c = await runtimeClient(tmpPath());
-  let r = (await c.get("/v1/speech-runtime")).json();
-  expect(r.installed).toBe(false);
-  expect(r.backend_setting).toBe("auto");
-  expect(new Set(r.backends)).toEqual(new Set(["cuda", "vulkan", "cpu"]));
-  expect(r.gpus).toEqual(["fake"]);
-  r = await c.put("/v1/speech-runtime", { json: { backend: "vulkan", gpu: 0 } });
-  expect(r.status).toBe(200);
-  expect(r.json().backend_setting).toBe("vulkan");
-  expect((await c.get("/v1/settings")).json().engines.speech_runtime).toEqual({
-    backend: "vulkan",
-    gpu: 0,
-    cpu_threads: 0,
-    cpu_min_realtime: 2.0,
-    spill_mb: 256,
-    runaway_s_per_char: 0.5,
-    runaway_min_s: 30.0,
-    card_margin_mb: 512,
-    gpu_threads: 4,
-    start_timeout_s: 60.0,
-    request_timeout_s: 900.0,
-  });
-});
-
-test("the_runtime_row_saves_the_cpu_process_threads_without_touching_the_build", async () => {
-  // CPU placement (2026-10-02): the CPU process's threads are a setting; 0 means the physical
-  // core count, and changing them keeps the backend the user chose.
-  vi.spyOn(runtime, "physicalCores").mockReturnValue(8);
-  const c = await runtimeClient(tmpPath());
-  let r = (await c.get("/v1/speech-runtime")).json();
-  expect([r.cpu_threads, r.cpu_threads_used, r.physical_cores]).toEqual([0, 8, 8]);
-  expect(r.cpu_min_realtime).toBe(2.0);
-  expect(r.cpu_running).toBe(false);
-  await c.put("/v1/speech-runtime", { json: { backend: "vulkan", gpu: 0 } });
-  r = await c.put("/v1/speech-runtime", { json: { backend: "vulkan", gpu: 0, cpu_threads: 6 } });
-  expect(r.status).toBe(200);
-  expect(r.json().cpu_threads_used).toBe(6);
-  expect(r.json().backend_setting).toBe("vulkan");
-  expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", cpu_threads: -1 } })).status).toBe(400);
-  expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", cpu_min_realtime: 0 } })).status).toBe(400);
-  expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", runaway_min_s: -1 } })).status).toBe(400);
-});
-
-test("the_runtime_row_shows_and_saves_the_card_overflow_limit", async () => {
-  // M7 (decided 2026-10-15): `spill_mb` on the runtime row, default 256; saving it stops nothing.
-  const c = await runtimeClient(tmpPath());
-  expect((await c.get("/v1/speech-runtime")).json().spill_mb).toBe(256);
-  const stop = vi.spyOn(runtime, "shutdownServer");
-  const r = await c.put("/v1/speech-runtime", { json: { backend: "auto", gpu: 0, cpu_threads: 0, cpu_min_realtime: 2, spill_mb: 512 } });
-  expect(r.status).toBe(200);
-  expect(r.json().spill_mb).toBe(512);
-  expect(stop).not.toHaveBeenCalled();
-  expect((await c.get("/v1/settings")).json().engines.speech_runtime.spill_mb).toBe(512);
-  expect((await c.put("/v1/speech-runtime", { json: { spill_mb: -1 } })).status).toBe(400);
-  // Offered only where the overflow is measured (Windows; decided 2026-10-15).
-  vi.spyOn(runtime, "spillMeasured").mockReturnValue(true);
-  expect((await c.get("/v1/speech-runtime")).json().spill_measured).toBe(true);
-  vi.spyOn(runtime, "spillMeasured").mockReturnValue(false);
-  expect((await c.get("/v1/speech-runtime")).json().spill_measured).toBe(false);
-});
-
-test("the_card_overflow_is_measured_on_windows_only", () => {
-  // Windows' per-process "Shared Usage" counter, read through typeperf (the kit's
-  // processTreeSharedMb): elsewhere spill_mb has nothing to compare.
-  const which = vi.spyOn(hardware, "which").mockReturnValue("C:/Windows/System32/typeperf.exe");
-  const platform = vi.spyOn(hardware, "platformKey").mockReturnValue("windows");
-  expect(runtime.spillMeasured()).toBe(true);
-  which.mockReturnValue(null);
-  expect(runtime.spillMeasured()).toBe(false);
-  which.mockReturnValue("/usr/bin/typeperf");
-  for (const os of ["linux", "macos"]) {
-    platform.mockReturnValue(os);
-    expect(runtime.spillMeasured(), os).toBe(false);
-  }
-});
-
-test("the_runtime_row_refuses_a_build_this_os_has_none_of", async () => {
-  const c = await runtimeClient(tmpPath());
-  expect((await c.put("/v1/speech-runtime", { json: { backend: "metal" } })).status).toBe(400);
-  expect((await c.put("/v1/speech-runtime", { json: { backend: "cpu", gpu: -1 } })).status).toBe(400);
-});
-
-test("deleting_an_engines_models_says_so_when_files_stay", async () => {
-  // Windows refuses to delete a file a process holds open; the delete must not report success
-  // over files that are still there.
-  const dir = tmpPath();
-  const c = await runtimeClient(dir);
-  const model = path.join(dir, "speech-cache", "kokoro", "kokoro-82m-q8", "kokoro-82m-q8_0.gguf");
-  mkdirSync(path.dirname(model), { recursive: true });
-  writeFileSync(model, "gguf");
-  const spy = vi.spyOn(manager, "_rmtree").mockImplementation(() => {});
-  const r = await c.delete("/v1/engines/kokoro");
-  spy.mockRestore();
-  expect(r.status).toBe(409);
-  expect(r.text).toContain("still in use");
-  expect((await c.delete("/v1/engines/kokoro")).status).toBe(200);
-  expect(existsSync(model)).toBe(false);
-});
-
 // ─── the aligner's input rate ────────────────────────────────────────────────
 
 function toneWav(rate, seconds, channels = 1) {
@@ -446,10 +241,3 @@ test("voxcpm2_speaks_a_lines_own_brackets_as_dashes", () => {
   expect(toSpeechRequest(r, { text: "(Aside) He left.", audio_prompt_path: "a.wav" }).input).toBe("Aside — He left.");
   expect(toSpeechRequest(r, { text: "(Aside) He left.", delivery: { instruct: "Dry" } }).input).toBe("(Dry)Aside — He left.");
 });
-
-afterEach(async () => {
-  await closeApps();
-  runtime.cfg.HW = null;
-  runtime.forgetInstalled();
-});
-

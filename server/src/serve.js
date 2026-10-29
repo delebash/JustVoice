@@ -20,12 +20,11 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { runServer } from "@delebash/core/platform";
-import { addSink, getLogger, LEVELS, setLevel } from "@delebash/core/platform/log";
+import { addSink, LEVELS, setLevel } from "@delebash/core/platform/log";
 import { pyInt } from "@delebash/core/platform/py";
 import { createApp } from "./app.js";
 import { getState } from "./app_state.js";
 import { seedWorkspace } from "./database/seed.js";
-import * as leftovers from "./engines/leftovers.js";
 import { defaultDataDir } from "./paths.js";
 import { readSettingsReadOnly } from "./storage/settings_store.js";
 import { networkHost } from "./sync.js";
@@ -180,14 +179,6 @@ export async function main(argv = process.argv.slice(2)) {
     build: async ({ port: resolvedPort }) => {
       const app = await createApp(dd);
       await seedWorkspace();
-      // Engines a dead server left running still hold their GPU memory; stop them before this
-      // server starts its own (2026-09-29). Only this install's engines, and only those whose
-      // server is gone — engines/leftovers.js.
-      try {
-        await leftovers.stopLeftoverEngines("startup sweep");
-      } catch (e) {
-        getLogger("justvoice.serve").warning(`leftover-engine sweep failed: ${e?.message ?? e}`);
-      }
       // CLI/env overrides sit on top of the settings-derived host/port; sync's "let my other
       // devices connect" (with a pairing token) widens the settings' host to the network
       // (server/src/sync.js).

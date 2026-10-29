@@ -14,6 +14,7 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 import { LLM_TABLES } from "@delebash/core/llm";
 import * as lifecycle from "@delebash/core/runner/lifecycle";
+import { stopRuntimeServers } from "@delebash/core/runner/runtime_service";
 import { getLogger } from "@delebash/core/platform/log";
 import { makeDataRouter } from "@delebash/core/platform/data_api";
 import * as appState from "./app_state.js";
@@ -36,8 +37,8 @@ const msg = (e) => e?.message ?? String(e);
 /**
  * Clean slate for everything AI-resident (the family rule, 2026-07-11: no child keeps
  * running under pre-reset/pre-restore config while the UI claims the new one is active): the
- * shared LLM runner's children + VRAM ledger, the managed TTS engine slots, and any
- * runtime-registered external engines. Best-effort throughout — a reset/restore must never
+ * shared LLM runner's children + VRAM ledger, the kit's runtime servers (the speech models'
+ * audio.cpp — the template's stop), and any runtime-registered external engines. Best-effort throughout — a reset/restore must never
  * fail on teardown. (The engine modules are another slice's; loaded lazily, as Python did.)
  */
 export async function _stopAiEnginesBestEffort() {
@@ -47,10 +48,9 @@ export async function _stopAiEnginesBestEffort() {
     /* best-effort */
   }
   try {
-    const manager = await import("./engines/manager.js");
-    await manager.getManager().unload();
+    await stopRuntimeServers();
   } catch (e) {
-    log.warning(`engine teardown: managed-engine unload failed: ${msg(e)}`);
+    log.warning(`engine teardown: the speech runtime's stop failed: ${msg(e)}`);
   }
   try {
     const { EngineRegistry } = await import("./engines/registry.js");

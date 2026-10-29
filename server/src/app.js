@@ -3,8 +3,9 @@
 //
 // Boots the AppState (engine registry + stores), discovers the managed engines, registers any
 // configured external engines, then mounts every router — JustVoice's own, the shared runner
-// router, the whole shared LLM stack (installLlm), the family data/logs/disk routers and the MCP
-// server. The GUI (the Vite-built Vue SPA) is served from `/` (with `/ui` redirecting there).
+// router, the whole shared LLM stack (installLlm, which runs our speech models on the kit's
+// audio.cpp runtime), the family data/logs/disk routers and the MCP server. The GUI (the
+// Vite-built Vue SPA) is served from `/` (with `/ui` redirecting there).
 //
 // The family shape (JustWrite's app.js, docgen's): the kit's Hono server with problem+json
 // errors (`createServer`), the kit's CSRF / CORS / bearer-auth middleware in Python's middleware
@@ -34,6 +35,7 @@ import {
 import { purePath } from "@delebash/core/platform/data_paths";
 import { getLogger } from "@delebash/core/platform/log";
 import { ValueError } from "@delebash/core/platform/py";
+import { stopRuntimeServers } from "@delebash/core/runner/runtime_service";
 // ── The routers (registered below in app.py's order) ──
 import { router as activeTasksRouter } from "./api/active_tasks_api.js";
 import { router as alignRouter } from "./api/align_api.js";
@@ -45,9 +47,7 @@ import { router as captureReadinessRouter } from "./api/capture_readiness_api.js
 import { router as capturesRouter } from "./api/captures_api.js";
 import { router as channelsRouter } from "./api/channels_api.js";
 import { router as effectPresetsRouter } from "./api/effect_presets_api.js";
-import { router as engineSourcesRouter } from "./api/engine_sources_api.js";
 import { router as enginesRouter } from "./api/engines_api.js";
-import { router as enginesModelsRouter } from "./api/engines_models_api.js";
 import { router as exportJobsRouter } from "./api/export_jobs_api.js";
 import { router as externalRouter } from "./api/external_api.js";
 import { router as extractionRouter } from "./api/extraction_api.js";
@@ -69,7 +69,6 @@ import { router as serverAuthRouter } from "./api/server_auth_api.js";
 import { router as settingsRouter } from "./api/settings_api.js";
 import { router as smartAssignRouter } from "./api/smart_assign_api.js";
 import { router as speakersRouter } from "./api/speakers_api.js";
-import { router as speechRuntimeRouter } from "./api/speech_runtime_api.js";
 import { router as sseStreamsRouter } from "./api/sse_streams_api.js";
 import { router as systemRouter } from "./api/system_api.js";
 import { router as takesRouter } from "./api/takes_api.js";
@@ -87,9 +86,8 @@ import { initDb, getDb } from "./database/session.js";
 import * as devBuild from "./engines/audiocpp/dev_build.js";
 import { SPEECH_HOOKS } from "./engines/audiocpp/kit_hooks.js";
 import { runtimeModelRows } from "./engines/audiocpp/kit_models.js";
-import * as runtime from "./engines/audiocpp/runtime.js";
 import { ExternalOpenAiTtsBackend } from "./engines/external_openai.js";
-import * as manager from "./engines/manager.js";
+import * as modelCatalog from "./engines/model_catalog.js";
 import { FEATURE_CATALOG, PREFER_LOCAL_FEATURES } from "./feature_catalog.js";
 import * as lineTakes from "./line_takes.js";
 import { clientIdStamp } from "./mcp/context.js";
@@ -147,16 +145,15 @@ const isDir = (p) => statSync(p, { throwIfNoEntry: false })?.isDirectory() ?? fa
 const isFile = (p) => statSync(p, { throwIfNoEntry: false })?.isFile() ?? false;
 
 /**
- * Boot-time engine registration. Managed engines are the plugin manager's — discovery runs the
- * first time `getManager()` is called, triggered here so the catalog is populated before the
- * first request. The manager doesn't auto-LOAD anything; that's the user's explicit action via
- * /v1/engines/{id}/load. Every built-in engine is a catalog under engines/<id>/ whose models
- * run in the one audio.cpp speech runtime (the 2026-10-01 switch).
+ * Boot-time engine registration. Managed engines are the catalog's (engines/model_catalog.js) —
+ * discovered here so the catalog is populated before the first request. Nothing loads at boot: a
+ * model loads on its first line, or on the user's Load (the kit's audio.cpp runtime). Every
+ * built-in engine is a catalog under engines/<id>/ whose models run in the one audio.cpp speech
+ * runtime (the 2026-10-01 switch; the kit's since round E).
  */
 export function _registerExistingEngines(_state, _dataDir) {
-  const mgr = manager.getManager();
-  const ids = [...mgr.manifests().keys()];
-  log.info(`plugin manager discovered ${ids.length} managed engines: ${[...ids].sort().join(", ") || "(none)"}`);
+  const ids = [...modelCatalog.manifests().keys()];
+  log.info(`discovered ${ids.length} managed engines: ${[...ids].sort().join(", ") || "(none)"}`);
 }
 
 /** Register every configured external TTS provider (`provider_type` picks the adapter). */
@@ -232,11 +229,6 @@ export async function createApp(dataDir = null) {
   // the engine adopts what's there and records every change from here on.
   openSync(dataDir);
 
-  // Hardware detection is async in JavaScript, and the runtime's readers (installed build,
-  // features, placement) read its memo — detected once, before anything reads them.
-  const hw = await runtime.ensureHardware();
-  log.debug(`boot: hardware detected (${hw.platform}, ${(hw.gpus || []).length} GPU(s), ${runtime.physicalCores()} cores)`);
-
   // Render jobs a dead server left queued/running become "paused" (their rows survive a
   // restart; resume re-runs the unfinished blocks).
   try {
@@ -265,8 +257,7 @@ export async function createApp(dataDir = null) {
   // publishes no OpenAPI document.)
   // Request bodies keep Python's floats where a route opts in (the kit's float opt-in:
   // `input({…, pyFloats: true})`, or a kit-built route named here), and every body as sent rides
-  // on `c.get("sentBody")` — what pydantic's `exclude_unset` reads (PATCH /v1/settings, PUT
-  // /v1/speech-runtime).
+  // on `c.get("sentBody")` — what pydantic's `exclude_unset` reads (PATCH /v1/settings).
   // An unhandled exception answers the kit's family envelope (§15: problem+json, request id).
   const app = createServer({ typeBase: TYPE_BASE, pyFloats: { routes: PY_FLOAT_ROUTES } });
 
@@ -352,9 +343,10 @@ export async function createApp(dataDir = null) {
   // ── Routes, in app.py's order ──────────────────────────────────────────────
   app.route("/", healthRouter());
   app.route("/", systemRouter());
-  // POST /v1/shutdown, the kit's one route (2026-10-15): the speech engines stop first, so their
-  // graphics memory is free before the answer; then the server runServer runs stops.
-  app.route("/", makeShutdownRouter({ beforeStop: () => manager.shutdownManager() }));
+  // POST /v1/shutdown, the kit's one route (2026-10-15): the kit's runtime servers (the speech
+  // models) stop first, so their graphics memory is free before the answer; then the server
+  // runServer runs stops.
+  app.route("/", makeShutdownRouter({ beforeStop: () => stopRuntimeServers() }));
   app.route("/", serverAuthRouter()); // the auth door + lockout escape (family shape)
   app.route("/", settingsRouter());
   app.route("/", voicesRouter());
@@ -363,10 +355,7 @@ export async function createApp(dataDir = null) {
   app.route("/", speakersRouter());
   app.route("/", lexiconsRouter());
   app.route("/", enginesRouter());
-  app.route("/", speechRuntimeRouter());
   app.route("/", modelsRouter());
-  app.route("/", enginesModelsRouter());
-  app.route("/", engineSourcesRouter());
   app.route("/", runnerRouter());
 
   // THE SHARED STACK, ONE CALL: the same installLlm JustWrite boots through — LLM tables in
@@ -397,14 +386,12 @@ export async function createApp(dataDir = null) {
     // The kit's audio.cpp runtime, our speech models its rows and our hooks its warm-up, piece
     // length, load options, transcription shaping and licence gate; `npm run dev` runs our
     // checkout's build in place of an installed one (round E, docs/plans/2026-10-29-round-e-onto-
-    // the-kit.md §4 step 1).
+    // the-kit.md §4 step 1). The AI model's RAM refusal names the speech models the runtime holds
+    // (the kit's own list — the narrowings review, M3).
     runtimes: ["audiocpp"],
     runtimeModels: runtimeModelRows(),
     runtimeSpeech: { audiocpp: SPEECH_HOOKS },
     runtimeExeOverrides: { audiocpp: () => devBuild.current() },
-    // The AI model's RAM refusal names a loaded speech model on the card or the CPU (the
-    // narrowings review, M3).
-    speechModelsFn: () => manager.getManager().loadedSpeechModels(),
     // allowKeyReveal stays OFF pending an explicit ruling.
   });
   // Workspace SEEDING (effect presets, JV's warm-OFF default, the legacy migrations, the
@@ -459,7 +446,7 @@ export async function createApp(dataDir = null) {
     log.warning(`MCP server failed to mount (continuing without it): ${e?.message ?? e}`);
   }
 
-  // Shutdown — every open MCP session, then the managed engines (their runtime processes), then
+  // Shutdown — every open MCP session, then the kit's runtime servers (the speech models), then
   // the DSP program. Without it, a stopped server would leave engine processes holding memory.
   onClose(app, async () => {
     stopSync();
@@ -471,9 +458,9 @@ export async function createApp(dataDir = null) {
       }
     }
     try {
-      await manager.shutdownManager();
+      await stopRuntimeServers();
     } catch (e) {
-      log.warning(`manager shutdown raised: ${e?.message ?? e}`);
+      log.warning(`the speech runtime's stop raised: ${e?.message ?? e}`);
     }
     await dspClient.stop();
   });

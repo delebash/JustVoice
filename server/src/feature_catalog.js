@@ -8,6 +8,12 @@ import { FeatureCatalogEntry } from "@delebash/core/llm";
 
 const e = (key, label, hint, group) => FeatureCatalogEntry({ key, label, hint, group });
 
+// Speech recognition — dictation's captures, a take's read-back, chapter captions' word timings and
+// MCP's justvoice.transcribe: one feature on its own stt preset (seed_presets.js), its model and where
+// it runs set there (round E, docs/plans/2026-10-29-round-e-onto-the-kit.md §5 item 7; until then the
+// setting `captures.stt_model`). The kit's audio.cpp runtime runs it (engines/audiocpp/kit_speech.js).
+export const TRANSCRIPTION_FEATURE = "transcription";
+
 // Features that prefer the built-in llama.cpp runner when nothing more specific is
 // configured (privacy-sensitive, accuracy-critical work). Passed to
 // installLlm({preferLocalFeatures}). speaker_discovery reads the same manuscript text
@@ -83,4 +89,6 @@ export const FEATURE_CATALOG = [
     "Describes each main speaker's voice from how the book shows them, and the narrator's from the book's genre and tone.",
     "Voices",
   ),
+  // Kind "stt": its presets are transcription presets — a model of the kit's audio.cpp runtime.
+  FeatureCatalogEntry({ key: TRANSCRIPTION_FEATURE, label: "Transcription", kind: "stt" }),
 ];

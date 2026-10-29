@@ -9,16 +9,18 @@
 //
 // The speech model and the recogniser are faked as line_takes.test.js fakes the speech model:
 // renderCore.renderLine makes a short sound that records the real inputs key (its length follows
-// the text, or `long` for a runaway), and captures._sttTranscribe answers from a script per line.
+// the text, or `long` for a runaway), the Transcription feature is ready (kit_speech.js
+// `transcriptionReadiness`), and captures._sttTranscribe answers from a script per line.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { stores } from "@delebash/core/llm";
 import { sleep } from "@delebash/core/platform/asyncutil";
 import { endState, useState } from "./engines_helpers.js";
 import * as captures from "../src/api/captures_api.js";
 import { router as renderLinesRouter } from "../src/api/render_lines_api.js";
 import { Generation, Take } from "../src/database/models.js";
-import { badRequest } from "../src/errors.js";
 import * as session from "../src/database/session.js";
-import * as runtime from "../src/engines/audiocpp/runtime.js";
+import * as kitSettings from "../src/engines/audiocpp/kit_settings.js";
+import * as kitSpeech from "../src/engines/audiocpp/kit_speech.js";
 import * as lineTakes from "../src/line_takes.js";
 import { mediaFile } from "../src/media_paths.js";
 import * as renderCore from "../src/render_core.js";
@@ -36,7 +38,7 @@ let renders;
 let heardScript; // block id → transcripts, one per read-back, in order
 let heardCalls;
 let stt; // the recogniser's spy
-let sttLoad; // its load's
+let sttReady; // the Transcription feature's readiness
 const long = new Set(); // texts whose next render runs away (40 s)
 
 beforeEach(() => {
@@ -59,12 +61,9 @@ beforeEach(() => {
     if (long.has(text)) long.delete(text);
     return new RenderedLine({ pcm: Buffer.alloc(2 * frames), sampleRate: 16000, channels: 1, effectiveDelivery: {}, inputsKey: key || "", seed: kw.seed ?? null });
   });
-  // The recogniser: loaded, and hearing what each line's script says (the line's own words when
-  // the script has run out).
-  sttLoad = vi.spyOn(captures, "ensureSttLoaded").mockImplementation(async () => [
-    { currentFor: () => "asr", currentVariantId: () => "qwen3-asr-1.7b-q8" },
-    st.settings.get(),
-  ]);
+  // The recogniser: the Transcription feature's model, ready, and hearing what each line's script
+  // says (the line's own words when the script has run out).
+  sttReady = vi.spyOn(kitSpeech, "transcriptionReadiness").mockReturnValue({ ready: true, need: "", detail: "", model: "qwen3-asr-1.7b-q8" });
   stt = vi.spyOn(captures, "_sttTranscribe").mockImplementation(async (file, language) => {
     const gen = h()
       .all(`select * from ${Generation}`, [], Generation)
@@ -149,11 +148,12 @@ test("the_limits_live_in_settings", () => {
   expect(unwrap(s.take_check)).toEqual({ missed_share: 0.2, extra_share: 0.2, min_words: 2 });
   expect(takeCheck.limitsFor(s, "x".repeat(10)).runawayS).toBe(30);
   expect(takeCheck.limitsFor(s, "x".repeat(100)).runawayS).toBe(50); // 0.5 s a character
-  st.settings.patch({ take_check: { missed_share: 0.35 }, engines: { speech_runtime: { runaway_min_s: 10 } } });
+  // the runaway limit is the speech runtime's — the kit's runner settings, the rule it prices models by
+  st.settings.patch({ take_check: { missed_share: 0.35 } });
+  stores.getRunnerConfigStore().setSetting("runaway_min_s:audiocpp", "10");
   const l = takeCheck.limitsFor(st.settings.get(), "x".repeat(10));
   expect([l.missedShare, l.extraShare, l.minWords, l.runawayS]).toEqual([0.35, 0.2, 2, 10]);
-  // The manager prices models by the same rule.
-  expect(runtime.runawayLimitS("x".repeat(10))).toBe(10);
+  expect(kitSettings.runawayLimitS("x".repeat(10))).toBe(10);
 });
 
 // ── the step ─────────────────────────────────────────────────────────────
@@ -236,9 +236,12 @@ test("a_runaway_fixed_by_its_rerender_passes", async () => {
 test("no_speech_recognition_stops_the_check_with_its_words", async () => {
   const b = book(st, ["One."]);
   await renderBlock(st, b.blocks[0]);
-  sttLoad.mockRejectedValue(badRequest("speech recognition is not installed — install the speech runtime and its model on the AI page"));
+  sttReady.mockReturnValue({ ready: false, need: "engine-not-installed", detail: "", model: "qwen3-asr-1.7b-q8" });
   await expect(takeCheck.checkTakes(st, [b.sid])).rejects.toMatchObject({ statusCode: 400 });
   expect(record(b.blocks[0])).toBeNull();
+  // a model not downloaded yet is no reason to stop: its first read-back's load downloads it
+  sttReady.mockReturnValue({ ready: false, need: "model-not-downloaded", detail: "", model: "qwen3-asr-1.7b-q8" });
+  expect((await takeCheck.checkTakes(st, [b.sid])).checked).toBe(1);
 });
 
 test("only_lines_with_a_current_take_are_checked", async () => {

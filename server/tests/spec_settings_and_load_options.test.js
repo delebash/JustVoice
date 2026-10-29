@@ -5,18 +5,20 @@
 // spec's); a file on the server's disk is never a setting; every load option the spec lists is
 // on the model's row at audio.cpp's default, Qwen3's decoder 16-bit by default; Chatterbox
 // Multilingual's v3 checkpoint is one of them; a model's memory price is kept per load-option set.
-import * as stores from "@delebash/core/llm/stores";
-import * as hardware from "@delebash/core/runner/hardware";
+// Since round E (docs/plans/2026-10-29-round-e-onto-the-kit.md §4 step 1) the kit's audio.cpp
+// runtime registers the model and keeps its price: the load options it registers and the set it
+// prices under are our hooks' answers (kit_hooks.js `sessionOptions`, `loadOptionsKey`); the
+// prices themselves, and the rows it records, are the kit's and tested there.
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
+import * as hooks from "../src/engines/audiocpp/kit_hooks.js";
+import { runtimeModelRows } from "../src/engines/audiocpp/kit_models.js";
 import * as runtimeOptions from "../src/engines/audiocpp/runtime_options.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
-import * as manager from "../src/engines/manager.js";
-import { discoverEngines, EngineManager } from "../src/engines/manager.js";
+import { discoverEngines } from "../src/engines/model_catalog.js";
 import { checkDelivery } from "../src/persona_render.js";
-import { tmpPath } from "./helpers.js";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -24,6 +26,8 @@ const knob = (model, key) => lookup(model).knobs.find((k) => k.key === key);
 const row = (engine, variant) => discoverEngines().get(engine).module.VARIANTS.find((r) => r.id === variant);
 const option = (r, key) => runtimeOptions.offeredFor(r).find((o) => o.key === key);
 const MULTILINGUAL = ["chatterbox", "chatterbox-multilingual-v2-q8"];
+/** The kit's runtime_model row of a version (kit_models.js), as the kit hands it to our hooks. */
+const kitRow = (variant) => runtimeModelRows().find((r) => r.id === variant);
 
 // ─── Settings (E2, F9) ─────────────────────────────────────────────────────
 
@@ -187,10 +191,9 @@ test("Chatterbox Multilingual's v3 checkpoint is its load option; set, it reache
   });
   // Turbo and Nano are another family: no such option.
   expect(option(row("chatterbox", "chatterbox-turbo-q8"), "chatterbox.multilingual_t3")).toBeUndefined();
+  // Every load of it registers the options the user saved (the kit reads our `sessionOptions`).
   vi.spyOn(runtimeOptions, "savedFor").mockReturnValue({ "chatterbox.multilingual_t3": "v3" });
-  vi.spyOn(slot, "_dataDir").mockReturnValue(tmpPath());
-  const entry = slot._entriesFor(discoverEngines().get("chatterbox"), r)[0];
-  expect(Object.fromEntries(entry.sessionOptions)).toEqual({ "chatterbox.multilingual_t3": "v3" });
+  expect(hooks.sessionOptions(kitRow(r.id))).toEqual({ "chatterbox.multilingual_t3": "v3" });
   // v3 speaks the 23 languages audio.cpp lists for the family, as v2 does.
   expect(r.languages).toEqual(generated.catalogFamily("chatterbox").languages);
 });
@@ -247,39 +250,16 @@ test("a generated model's row offers its spec's load options too", () => {
 
 // ─── The price per load-option set (§7 question 3) ─────────────────────────
 
-test("a model's memory price is kept per load-option set; the default set's rows from before still count", () => {
-  const mgr = new EngineManager();
-  const [engine, variant] = MULTILINGUAL;
-  const split = String(mgr.effectiveSplit(engine, variant));
-  const peak = (mb, extra = []) => ({
-    modelId: `tts:${engine}:${variant}`,
-    machineKey: "box",
-    source: "peak",
-    backend: "cuda",
-    vramModelMb: mb,
-    switches: [{ flagName: "split_chars", flagValue: split }, { flagName: "runtime", flagValue: "jv.6" }, ...extra],
-  });
-  const rows = [peak(3000), peak(3600, [{ flagName: "load_options", flagValue: "chatterbox.multilingual_t3=v3" }])];
-  const recorded = [];
-  vi.spyOn(stores, "getModelMeasurementStore").mockReturnValue({
-    list: (mid) => rows.filter((r) => r.modelId === mid),
-    record: (mid, r) => recorded.push(r),
-    pruneLoadRows: () => 0,
-  });
-  vi.spyOn(hardware, "currentMachineKey").mockReturnValue("box");
-  vi.spyOn(manager, "_runtimeBuild").mockReturnValue("jv.6");
-  // The default set: the row measured before the key existed.
-  expect(mgr.loadOptionsKey(engine, variant)).toBe("");
-  expect(mgr._priceMb("tts", engine, variant, "cuda")).toBe(3000);
-  mgr._recordSpeechLoad(mgr.getManifest(engine), "tts", variant, 3100, "cuda");
-  expect(recorded[0].rows.some((f) => f.flagName === "load_options")).toBe(false);
-  // v3 chosen: its own price, and its rows say so.
+test("a model's memory price is kept per load-option set; the default set has no key, so its rows from before still count", () => {
+  // The set our hook names is the one the kit keeps the price under (its rows' `load_options`).
+  const [, variant] = MULTILINGUAL;
+  const row = kitRow(variant);
+  // The default set: no key, as the rows measured before the key existed have none.
+  expect(hooks.loadOptionsKey(row)).toBe("");
+  // v3 chosen: its own set.
   vi.spyOn(runtimeOptions, "savedFor").mockReturnValue({ "chatterbox.multilingual_t3": "v3" });
-  expect(mgr.loadOptionsKey(engine, variant)).toBe("chatterbox.multilingual_t3=v3");
-  expect(mgr._priceMb("tts", engine, variant, "cuda")).toBe(3600);
-  mgr._recordSpeechLoad(mgr.getManifest(engine), "tts", variant, 3700, "cuda");
-  expect(recorded[1].rows).toContainEqual({ flagName: "load_options", flagValue: "chatterbox.multilingual_t3=v3" });
-  // A set never measured has no price: it is measured the first time it is used.
+  expect(hooks.loadOptionsKey(row)).toBe("chatterbox.multilingual_t3=v3");
+  // Another set is another price, measured the first time it is used.
   vi.spyOn(runtimeOptions, "savedFor").mockReturnValue({ "chatterbox.mem_saver": "true" });
-  expect(mgr._priceMb("tts", engine, variant, "cuda")).toBe(0);
+  expect(hooks.loadOptionsKey(row)).toBe("chatterbox.mem_saver=true");
 });

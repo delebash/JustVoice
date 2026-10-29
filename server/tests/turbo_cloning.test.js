@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: MIT
 // Chatterbox Turbo and Nano clone again (gap 1, docs/plans/2026-10-03-gap-1-turbo-cloning.md):
-// their capability rows are back, the slot maps a cloned voice and refuses on an older runtime
-// by name, and a Load warms the built-in voice so the memory is booked (the port of
-// tests/test_turbo_cloning.py).
+// their capability rows are back, a cloned voice maps to Turbo's own request, a line on a build
+// older than jv.4 is refused by name before anything loads, and a load warms the built-in voice so
+// its memory is measured (the port of tests/test_turbo_cloning.py). Since round E
+// (docs/plans/2026-10-29-round-e-onto-the-kit.md) the kit's audio.cpp runtime runs the model: the
+// build is the one the kit pins here (kit_settings.js `runtimeHas`), the refusal slot.js
+// `checkLine`, the line `speak` and the warm-up `warmModel` on the server the kit holds it in.
 import { afterEach, expect, test, vi } from "vitest";
-import "./engines_helpers.js";
-import * as release from "../src/engines/audiocpp/release.js";
-import * as runtime from "../src/engines/audiocpp/runtime.js";
+import { stores } from "@delebash/core/llm";
+import { pinKey } from "@delebash/core/runner/runtimes";
+import { endState, fakeServer, useState } from "./engines_helpers.js";
+import * as kitSettings from "../src/engines/audiocpp/kit_settings.js";
+import * as kitSpeech from "../src/engines/audiocpp/kit_speech.js";
+import { variantOf } from "../src/engines/audiocpp/kit_models.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { CAPABILITY_DETAILS, lookup } from "../src/engines/capability_details.js";
 import { _applyEmotionTag } from "../src/render_core.js";
 
-const TAG = release.cfg.TAG;
-afterEach(() => {
-  release.cfg.TAG = TAG;
-});
+afterEach(() => endState());
 
 const TURBO = {
   id: "chatterbox-turbo-q8",
@@ -23,20 +26,20 @@ const TURBO = {
 };
 
 test("turbo_clone_arrives_in_jv4", () => {
+  // The build the kit pins on this computer decides; jv.2 and jv.3 were never published.
+  useState();
   for (const [tag, expected] of [
     ["v0.9.0", false],
     ["v0.9.0-jv.1", false],
     ["v0.9.0-jv.3", false],
     ["v0.9.0-jv.4", true],
-    [null, false],
+    ["v0.9.2-jv.6", true],
   ]) {
-    vi.spyOn(runtime, "installedTag").mockReturnValue(tag);
-    expect(runtime.hasFeature("turbo_clone"), String(tag)).toBe(expected);
+    stores.getRunnerConfigStore().setSetting(pinKey("audiocpp"), tag);
+    expect(kitSettings.runtimeHas("turbo_clone"), tag).toBe(expected);
   }
-  release.cfg.TAG = "v0.9.0-jv.1";
-  expect(release.pinnedHas("turbo_clone")).toBe(false);
-  release.cfg.TAG = "v0.9.0-jv.4";
-  expect(release.pinnedHas("turbo_clone")).toBe(true);
+  // The build the app ships has it, so Turbo is offered.
+  expect(kitSettings.shippedHas("turbo_clone")).toBe(true);
 });
 
 test("turbo_and_nano_variants_reach_their_own_rows", () => {
@@ -92,39 +95,40 @@ test("a_voice_without_a_clip_is_refused_by_name", () => {
   );
 });
 
-/** The slot under test: Turbo's row, always alive, its server a recorder. */
-function turboSlot() {
-  const s = Object.create(slot.AudioCppSlot.prototype);
-  Object.assign(s, {
-    manifest: { name: "Chatterbox", id: "chatterbox", module: {} },
-    _row: TURBO,
-    placement: "gpu",
-    sent: [],
-  });
-  s.isAlive = () => true;
-  s._srv = () => ({
-    speech: async (req) => {
-      s.sent.push(req);
-      return [Buffer.alloc(0), {}];
-    },
-  });
-  return s;
-}
-
 test("an_older_runtime_refuses_turbo_by_name", async () => {
-  vi.spyOn(runtime, "hasFeature").mockReturnValue(false);
-  vi.spyOn(release, "pinnedHas").mockReturnValue(true);
-  let r = await turboSlot()._synth({ text: "Hi.", audio_prompt_path: "C:/v.wav" });
-  expect(r.statusCode).toBe(409);
-  expect(r.json().detail).toContain("speech runtime update");
-  vi.spyOn(release, "pinnedHas").mockReturnValue(false);
-  r = await turboSlot()._synth({ text: "Hi.", audio_prompt_path: "C:/v.wav" });
-  expect(r.statusCode).toBe(409);
-  expect(r.json().detail).toContain("Chatterbox Turbo and Nano voices");
+  const turbo = variantOf("chatterbox-turbo-q8");
+  const line = { text: "Hi.", seed: 7, audio_prompt_path: "C:/v.wav" };
+  const refusal = () => {
+    try {
+      slot.checkLine(turbo, line);
+    } catch (e) {
+      return e;
+    }
+    return null;
+  };
+  // The build pinned here lacks it: an update offered when the build the app ships has it …
+  vi.spyOn(kitSettings, "runtimeHas").mockReturnValue(false);
+  vi.spyOn(kitSettings, "shippedHas").mockReturnValue(true);
+  let e = refusal();
+  expect(e).toBeInstanceOf(kitSpeech.EngineRequestError);
+  expect(e.status).toBe(409);
+  expect(e.message).toContain("speech runtime update");
+  // … else that this version doesn't have it, by name.
+  vi.mocked(kitSettings.shippedHas).mockReturnValue(false);
+  e = refusal();
+  expect(e.status).toBe(409);
+  expect(e.message).toContain("Chatterbox Turbo and Nano voices");
+  // A build that has it takes the line: the clip reaches audio.cpp as Turbo's voice_ref.
+  vi.mocked(kitSettings.runtimeHas).mockReturnValue(true);
+  expect(refusal()).toBeNull();
+  const srv = fakeServer();
+  const [, meta] = await slot.speak(srv, turbo.row, line);
+  expect(srv.calls).toEqual([["speech", { model: "chatterbox-turbo-q8", input: "Hi.", seed: 7, voice_ref: "C:/v.wav" }]]);
+  expect(meta).toEqual({ media_type: "audio/wav", sample_rate: 24000, channels: 1, is_wav_container: true });
 });
 
 test("a_load_warms_the_built_in_voice", async () => {
-  const s = turboSlot();
-  await s._warm();
-  expect(s.sent).toEqual([{ model: "chatterbox-turbo-q8", input: "Ready.", seed: 1 }]);
+  const srv = fakeServer();
+  expect(await slot.warmModel(srv, TURBO, "tts")).toBe(false);
+  expect(srv.calls).toEqual([["speech", { model: "chatterbox-turbo-q8", input: "Ready.", seed: 1 }]]);
 });

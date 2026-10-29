@@ -2,14 +2,16 @@
 // Every declared knob must be a knob the engine actually receives (the port of
 // tests/test_engine_knob_wiring.py). Since the 2026-10-01 switch the "adapter" is one
 // function — `engines/audiocpp/slot.js: toSpeechRequest` — so these drive it directly: set
-// every declared knob, and the value must come out the other side.
+// every declared knob, and the value must come out the other side. (Since round E the kit's audio.cpp
+// runtime sends that request — docs/plans/2026-10-29-round-e-onto-the-kit.md; the catalog is
+// engines/model_catalog.js.)
 import { expect, test } from "vitest";
 import "./engines_helpers.js";
 import { nestEngineKeys } from "../src/delivery_merge.js";
 import { generatedEngines, generatedModels } from "../src/engines/audiocpp/generated.js";
 import { toSpeechRequest } from "../src/engines/audiocpp/slot.js";
 import { CAPABILITY_DETAILS, lookup } from "../src/engines/capability_details.js";
-import { discoverEngines } from "../src/engines/manager.js";
+import { discoverEngines } from "../src/engines/model_catalog.js";
 import { Delivery, modelFields } from "../src/models.js";
 
 // Capability row → a catalog variant that renders with it, and how the body must look for

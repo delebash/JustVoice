@@ -3,24 +3,25 @@
 // justvoice/api/engines_api.py).
 //
 // Merges three sources of truth into one response:
-//   1. Manager-managed engines (built from audio.cpp's own files, engines/audiocpp/generated.js).
+//   1. Managed engines — JustVoice's catalog (built from audio.cpp's own files,
+//      engines/audiocpp/generated.js), its facts: licence, tested, best for, terms, default version.
 //   2. Runtime-registered external engines (computeStatus derives their state).
 //   3. Runtime-registered in-process engines (state.engines.all() — the external
 //      OpenAI-compatible servers).
-// Status per engine: managed → manager.status(id) (not_installed | installed | loaded); legacy
-// → the registry's registration + computeStatus().
+// Status per engine: managed → the kit's audio.cpp runtime (installed from its status, loaded from
+// its `loaded()` — not_installed | installed | loaded; round E, docs/plans/2026-10-29-round-e-onto-
+// the-kit.md §4 step 4, whose routes under /v1/ai/runtimes/audiocpp install, load, place and delete);
+// legacy → the registry's registration + computeStatus().
 
-import { Hono, input } from "@delebash/core/platform";
+import { Hono } from "@delebash/core/platform";
 import { HttpError } from "@delebash/core/platform/errors";
-import { opt, T } from "@delebash/core/platform/models";
-import { pyInt, strRepr } from "@delebash/core/platform/py";
+import { strRepr } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import { engineFacts } from "../engines/audiocpp/generated.js";
-import * as runtime from "../engines/audiocpp/runtime.js";
+import * as kitSettings from "../engines/audiocpp/kit_settings.js";
+import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
 import { CAPABILITY_DETAILS, lookup as lookupCapability } from "../engines/capability_details.js";
 import { computeStatus } from "../engines/catalog.js";
-import * as leftovers from "../engines/leftovers.js";
-import * as manager from "../engines/manager.js";
 import * as modelCatalog from "../engines/model_catalog.js";
 import { badRequest, notFound } from "../errors.js";
 import {
@@ -31,9 +32,6 @@ import {
   EngineCapabilityDetail,
   EngineOverrides,
   EnginesListResponse,
-  EngineVramResponse,
-  LeftoverEnginesResponse,
-  VramClaim,
 } from "../models.js";
 
 // Mapping from manifest CAPABILITIES dict keys → Feature literal strings.
@@ -62,7 +60,7 @@ export function _infoFromManifest(manifest, status) {
   if (runtimes.some((r) => r === "cuda" || r === "vulkan" || r === "metal") && !featureList.includes("gpu_accel")) {
     featureList.push("gpu_accel");
   }
-  const mgr = manager.getManager();
+  const loaded = kitSpeech.loadedOf(manifest.id);
   return {
     id: manifest.id,
     name: manifest.name,
@@ -75,19 +73,18 @@ export function _infoFromManifest(manifest, status) {
     is_stubbed: false,
     // The RESOLVED default (parity batch 2026-08-06): the user's Set-as-default override layered
     // over the manifest's — so the UI's "Default ✓" badge and a no-variant load never disagree.
-    default_variant_id: mgr.resolvedDefaultVariant(manifest.id) || manifest.defaultVariantId,
+    default_variant_id: modelCatalog.resolvedDefaultVariant(manifest.id) || manifest.defaultVariantId,
     kind: manifest.kind,
     kinds: manifest.kinds,
-    current_variant_id: mgr.currentVariantId(manifest.id),
+    current_variant_id: loaded?.versionId ?? null,
     isolation: manifest.isolation,
     supported_oses: manifest.supportedOses,
     supported_on_this_os: manifest.supportsCurrentOs(),
     deprecated: manifest.deprecated,
     weights_license: manifest.weightsLicense,
-    // The device the load actually resolved to, straight from the one load door.
-    resolved_device: mgr.resolvedDeviceFor(manifest.id),
-    // CPU placement (2026-10-02): why it runs there.
-    placement_reason: mgr.placementReasonFor(manifest.id),
+    // Where its loaded model runs and why, as the kit's runtime says (its `loaded()`).
+    resolved_device: loaded?.placement ?? null,
+    placement_reason: loaded?.reason ?? "",
     terms: _termsOf(manifest),
     terms_accepted: _termsAccepted(manifest.id),
     // Its licence in plain words, audio.cpp's status, tested, best for (the Speech engines list).
@@ -107,160 +104,24 @@ export function _termsAccepted(engineId) {
 }
 
 /** The id of whichever engine is loaded (managed or in-process), or null. */
-const _currentId = () => manager.getManager().currentId() || getState().engines.current();
+const _currentId = () => kitSpeech.currentFor("tts") || getState().engines.current();
 
 /** `datetime.now(timezone.utc).isoformat(timespec="seconds")`. */
 const utcSecondsIso = () => `${new Date().toISOString().slice(0, 19)}+00:00`;
 
 /**
- * A capability row's build-gated flags as the INSTALLED speech runtime has them — the rows
- * follow the pinned build, and an install still on an older one can't play blends or splice a
- * lexicon's IPA (audit §5 E3).
+ * A capability row's build-gated flags as the build pinned here has them — the rows follow the
+ * build the app ships, and an install still on an older one can't play blends or splice a
+ * lexicon's IPA (audit §5 E3; kit_settings.js `runtimeHas`).
  */
 export function _asInstalled(detail) {
   const update = {};
-  if (detail.supports_voice_blending && !runtime.hasFeature("voice_pack")) update.supports_voice_blending = false;
-  if (detail.supports_phoneme_input && !runtime.hasFeature("inline_ipa")) update.supports_phoneme_input = false;
-  if (detail.engine_id === "voxcpm2" && detail.supports_clone_prompt_text && !runtime.hasFeature("voxcpm2_transcript")) {
+  if (detail.supports_voice_blending && !kitSettings.runtimeHas("voice_pack")) update.supports_voice_blending = false;
+  if (detail.supports_phoneme_input && !kitSettings.runtimeHas("inline_ipa")) update.supports_phoneme_input = false;
+  if (detail.engine_id === "voxcpm2" && detail.supports_clone_prompt_text && !kitSettings.runtimeHas("voxcpm2_transcript")) {
     update.supports_clone_prompt_text = false;
   }
   return Object.keys(update).length ? { ...detail, ...update } : detail;
-}
-
-/**
- * Q3's standing "AI model (loads on demand)" line — the ROUTED DEFAULT's predicted footprint,
- * from the kit's `previewFit` claim ladder. Several distinct local models → the largest claim.
- * Everything named is cloud → "cloud-routed"; nothing named anywhere → "not-configured".
- * → [claim | null, reason | null].
- */
-export async function _onDemandClaim() {
-  try {
-    const { stores } = await import("@delebash/core/llm");
-    const { getService } = await import("@delebash/core/runner/lifecycle");
-    const { jvLlmConfig } = await import("../engines/llm/run.js");
-    const localModels = new Set();
-    let namedAny = false;
-    const d = stores.getRoutingStore().getRouting().default;
-    if (d?.llmId) {
-      namedAny = true;
-      if (d.llmId === "local-llamacpp" && d.model) localModels.add(d.model);
-    }
-    for (const c of jvLlmConfig().production_configs || []) {
-      const pid = c.providerId || "";
-      if (!pid) continue;
-      namedAny = true;
-      if (pid === "local-llamacpp" && c.model) localModels.add(c.model);
-    }
-    if (!localModels.size) return [null, namedAny ? "cloud-routed" : "not-configured"];
-    const svc = getService();
-    let best = null;
-    for (const mid of [...localModels].sort()) {
-      let claim;
-      try {
-        claim = (svc.previewFit(mid) || {}).claim || {};
-      } catch {
-        continue; // one bad row must not kill the strip
-      }
-      if (!Object.keys(claim).length) continue;
-      const c = construct(VramClaim, {
-        model: mid,
-        vram_mb: pyInt(claim.vramMb || 0),
-        ram_mb: pyInt(claim.ramMb || 0),
-        source: String(claim.source || "computed"),
-        matches: pyInt(claim.matches || 0),
-      });
-      if (best === null || c.vram_mb > best.vram_mb) best = c;
-    }
-    return best !== null ? [best, null] : [null, "not-configured"];
-  } catch {
-    return [null, "unavailable"]; // the strip must render even if routing is mid-boot
-  }
-}
-
-/** The leftover rows as the splash reads them. */
-export function _leftoversResponse(found) {
-  const manifests = manager.getManager().manifests();
-  const rows = found.map((lo) => ({
-    pid: lo.pid,
-    engine_id: lo.engineId,
-    // The one audio.cpp server holds every model — it has no manifest.
-    engine_name: lo.engineId === "audiocpp" ? "Speech runtime" : (manifests.get(lo.engineId)?.name ?? lo.engineId),
-    started: lo.started,
-    server_pid: lo.serverPid,
-    gpu_mb: lo.gpuMb,
-  }));
-  const measured = rows.map((r) => r.gpu_mb).filter((g) => g != null);
-  return construct(LeftoverEnginesResponse, { leftovers: rows, gpu_mb: measured.length ? measured.reduce((a, b) => a + b, 0) : null });
-}
-
-/**
- * The memory budget strip (the 2026-08-13 VRAM wiring, Q3/Q4): ONE endpoint reading the
- * shared arbiter — total / committed / remaining for the box's budget pool, each resident
- * booking with its kind + provenance, the busy kinds, the on-demand LLM claim, and eviction
- * events newer than `events_since`.
- */
-export async function getEngineVram(eventsSince = 0) {
-  let arb;
-  try {
-    const { getArbiter } = await import("@delebash/core/runner/arbiter");
-    arb = getArbiter();
-  } catch {
-    throw new HttpError(503, "the shared LLM stack is not mounted");
-  }
-  // The manager's cached hardware snapshot — never re-probe per poll.
-  const mgr = manager.getManager();
-  const hw = await mgr._hardware();
-  // A slot whose runtime process died goes, booking and all, BEFORE the snapshot (audit
-  // 2026-10-04 §13.2).
-  for (const kind of ["tts", "stt"]) mgr.loadedFor(kind);
-  const snap = hw !== null ? await arb.snapshot(hw) : await arb.snapshot();
-  const [claim, claimReason] = await _onDemandClaim();
-  // The measured pool state (the strip shows REALITY); `other_mb` = measured use the ledger
-  // can't attribute (other apps, OS).
-  const used = await mgr.poolUsedMb();
-  const other = used !== null ? Math.max(0, used - snap.committed_mb) : 0;
-
-  const engineLabel = (engineId) => mgr.getManifest(engineId)?.name ?? engineId;
-  const loaded = [];
-  for (const kind of ["tts", "stt"]) {
-    const proc = mgr.loadedFor(kind);
-    if (proc === null) continue;
-    const engineId = proc.manifest.id;
-    const variantId = mgr.currentVariantId(engineId) || mgr.resolvedDefaultVariant(engineId);
-    let modelName = "";
-    if (variantId) {
-      try {
-        modelName = modelCatalog.modelsFor(engineId).find((v) => v.id === variantId)?.name ?? variantId;
-      } catch {
-        modelName = variantId; // a catalog miss must not kill the strip
-      }
-    }
-    loaded.push({ key: `${kind}:${engineId}`, kind, label: proc.manifest.name, model: modelName, device: mgr.resolvedDeviceFor(engineId) || "" });
-  }
-  const reservations = snap.reservations.map((r) => {
-    const row = { ...r };
-    if (row.kind === "tts" || row.kind === "stt") {
-      const i = row.key.indexOf(":"); // key.split(":", 1)[-1]
-      row.label = engineLabel(i < 0 ? row.key : row.key.slice(i + 1));
-    }
-    return row;
-  });
-  return construct(EngineVramResponse, {
-    mem_arch: snap.mem_arch,
-    total_mb: snap.vram_total_mb,
-    safety_margin_mb: manager.EngineManager._cardMarginMb(),
-    committed_mb: snap.committed_mb,
-    booked_mb: snap.booked_mb ?? snap.committed_mb,
-    remaining_mb: snap.remaining_mb,
-    used_mb: used,
-    other_mb: other,
-    reservations,
-    loaded,
-    busy_kinds: snap.busy_kinds,
-    claim,
-    claim_reason: claimReason,
-    events: arb.eventsSince(eventsSince),
-  });
 }
 
 export function router() {
@@ -271,7 +132,7 @@ export function router() {
    */
   app.post("/v1/engines/:id/terms", (c) => {
     const id = c.req.param("id");
-    const m = manager.getManager().getManifest(id);
+    const m = modelCatalog.getManifest(id);
     if (m === null) throw notFound(`engine ${id}`);
     if (!m.module?.TERMS || !Object.keys(m.module.TERMS).length) throw badRequest(`${m.name} has no terms to accept`);
     const store = getState().settings;
@@ -287,13 +148,12 @@ export function router() {
 
   app.get("/v1/engines", (c) => {
     const st = getState();
-    const mgr = manager.getManager();
     const cur = _currentId();
     const catalog = [];
     const seen = new Set();
     // 1. Managed engines (the plugin model).
-    for (const m of mgr.manifests().values()) {
-      const info = _infoFromManifest(m, mgr.status(m.id));
+    for (const m of modelCatalog.manifests().values()) {
+      const info = _infoFromManifest(m, kitSpeech.engineStatus(m.id));
       info.current = m.id === cur;
       catalog.push(info);
       seen.add(m.id);
@@ -331,7 +191,7 @@ export function router() {
     // OS gate (2026-08-20): a row keyed by a variant this machine's catalog cannot see is
     // dropped HERE — the same one-door rule the catalog applies. Engine-id rows and family rows
     // (a visible variant id extends them, e.g. qwen3-base → qwen3-base-1.7b) always pass.
-    const manifests = manager.getManager().manifests();
+    const manifests = modelCatalog.manifests();
     const visible = new Set();
     for (const engId of manifests.keys()) for (const v of modelCatalog.modelsFor(engId)) visible.add(v.id);
     const engines = {};
@@ -350,18 +210,13 @@ export function router() {
     return c.json(construct(EngineCapabilityDetail, detail));
   });
 
-  app.get("/v1/engines/vram", input({ querystring: T.Object({ events_since: opt(T.Integer(), 0) }) }), async (c) =>
-    c.json(await getEngineVram(c.req.valid("query").events_since ?? 0)),
-  );
-
   app.get("/v1/engines/current", (c) => {
-    const mgr = manager.getManager();
-    const cur = mgr.currentId() || getState().engines.current();
+    const cur = _currentId();
     if (cur == null) return c.json(construct(CurrentEngineResponse, { engine: null }));
     // Managed engine?
-    const m = mgr.getManifest(cur);
+    const m = modelCatalog.getManifest(cur);
     if (m) {
-      const info = _infoFromManifest(m, mgr.status(cur));
+      const info = _infoFromManifest(m, kitSpeech.engineStatus(cur));
       info.current = true;
       return c.json(construct(CurrentEngineResponse, { engine: info }));
     }
@@ -386,15 +241,6 @@ export function router() {
     }
     return c.json(construct(CurrentEngineResponse, { engine: null }));
   });
-
-  // ── Engines left behind by a server that is gone (2026-09-29) ─────────────
-  // The boot splash offers "Stop them" when a model fails to load while old engines hold GPU
-  // memory; the server also sweeps them once at startup (serve.js). `engines/leftovers.js` owns
-  // what counts as one.
-
-  app.get("/v1/engines/leftovers", async (c) => c.json(_leftoversResponse(await leftovers.findLeftoverEngines())));
-
-  app.post("/v1/engines/leftovers/stop", async (c) => c.json(_leftoversResponse(await leftovers.stopLeftoverEngines("stopped from the app"))));
   return app;
 }
 

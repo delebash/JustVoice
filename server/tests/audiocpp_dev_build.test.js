@@ -1,25 +1,26 @@
 // SPDX-License-Identifier: MIT
 // `npm run dev` runs our audio.cpp checkout's own build (docs/dev/TASKS.md, "`npm run dev`
-// always runs the latest audio.cpp"): the server reads the build from
-// JUSTVOICE_AUDIOCPP_BUILD, runs it instead of the pinned release, offers every feature, shows
-// it on the runtime row, and installs only eSpeak NG for it (the port of
-// tests/test_audiocpp_dev_build.py).
+// always runs the latest audio.cpp"): the server reads the build from JUSTVOICE_AUDIOCPP_BUILD —
+// its server, its backend from the build's own CMake cache, its version for the runtime row — and
+// offers every feature for it. Since round E (docs/plans/2026-10-29-round-e-onto-the-kit.md §3.3,
+// §4 step 1) the kit's audio.cpp runtime runs that build in place of an installed one
+// (`runtimeExeOverrides`, kit_runtime_wiring.test.js) and owns its install, its eSpeak NG, its
+// runtime row and the server processes; what stays ours is reading the build (dev_build.js
+// `current()`) and every feature on for it (kit_settings.js `shippedHas`, `runtimeHas`), and the
+// catalog built under it (the port of tests/test_audiocpp_dev_build.py).
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { stores } from "@delebash/core/llm";
 import { runtime as dataRuntime } from "@delebash/core/platform/data_paths";
+import { pinKey, runtimeOf } from "@delebash/core/runner/runtimes";
 import { afterEach, expect, test, vi } from "vitest";
-import "./engines_helpers.js";
-import * as speechRuntimeApi from "../src/api/speech_runtime_api.js";
+import { endState, useState } from "./engines_helpers.js";
 import * as devBuild from "../src/engines/audiocpp/dev_build.js";
-import * as espeak from "../src/engines/audiocpp/espeak.js";
 import { ownEngine } from "../src/engines/audiocpp/generated.js";
-import * as release from "../src/engines/audiocpp/release.js";
-import * as runtime from "../src/engines/audiocpp/runtime.js";
-import * as leftovers from "../src/engines/leftovers.js";
-import * as manager from "../src/engines/manager.js";
+import * as kitSettings from "../src/engines/audiocpp/kit_settings.js";
 import { tmpPath } from "./helpers.js";
 
-// Chatterbox and Kokoro built again under the pin a test sets (Python reloaded their manifests;
+// Chatterbox and Kokoro built again under the build a test sets (Python reloaded their manifests;
 // since the adoption plan's slice 4 they are built from audio.cpp's files and our notes).
 const chatterbox = { build: () => ownEngine("chatterbox") };
 const kokoro = { build: () => ownEngine("kokoro") };
@@ -38,18 +39,14 @@ const FROZEN = dataRuntime.frozen;
 afterEach(() => {
   dataRuntime.frozen = FROZEN;
   devBuild.current.cacheClear();
-  runtime.forgetInstalled();
+  endState();
 });
 
-/** The server pointed at a development build, with eSpeak NG installed. */
+/** The server pointed at a development build. */
 function dev() {
-  const tmp = tmpPath();
-  const binDir = makeBuild(tmp);
+  const binDir = makeBuild(tmpPath());
   vi.stubEnv(devBuild.ENV, binDir);
-  vi.spyOn(runtime, "_runtimeRoot").mockReturnValue(path.join(tmp, "rt"));
-  vi.spyOn(espeak, "paths").mockReturnValue(["lib.dll", "data"]);
   devBuild.current.cacheClear();
-  runtime.forgetInstalled();
   return binDir;
 }
 
@@ -86,87 +83,27 @@ test("uncommitted_edits_show_in_the_version", () => {
   expect([b.version, b.backend]).toEqual(["dev · 6a2bb4c5 + local changes", "cpu"]);
 });
 
-test("the_runtime_is_the_dev_build_with_every_feature", () => {
-  const binDir = dev();
-  const exe = runtime.installedExe();
-  expect(exe).toBe(path.join(binDir, devBuild.SERVER_EXE));
-  expect(runtime.installedTag()).toBe("dev");
-  expect(runtime.backendOf(exe)).toBe("cuda");
-  for (const f of Object.keys(release.FEATURES)) {
-    expect(runtime.hasFeature(f)).toBe(true);
-    expect(release.pinnedHas(f)).toBe(true);
-  }
-  expect(runtime.hasFeature("no_such_feature")).toBe(false);
-  expect(release.pinnedHas("no_such_feature")).toBe(false);
-});
-
-test("without_espeak_it_waits_for_install", () => {
+test("the_dev_build_has_every_feature", () => {
+  // An older build pinned on this computer lacks them …
+  useState();
+  stores.getRunnerConfigStore().setSetting(pinKey("audiocpp"), "v0.9.0");
+  expect(kitSettings.runtimeHas("voice_pack")).toBe(false);
+  // … the dev build, the fork's latest, has every one the kit knows — both what the app offers and
+  // what the build here answers for; a feature the kit doesn't know stays off.
   dev();
-  vi.spyOn(espeak, "paths").mockReturnValue(null);
-  runtime.forgetInstalled();
-  expect(runtime.installedExe()).toBeNull();
+  for (const f of Object.keys(runtimeOf("audiocpp").defaults.features)) {
+    expect(kitSettings.runtimeHas(f), f).toBe(true);
+    expect(kitSettings.shippedHas(f), f).toBe(true);
+  }
+  expect(kitSettings.runtimeHas("no_such_feature")).toBe(false);
+  expect(kitSettings.shippedHas("no_such_feature")).toBe(false);
 });
 
 test("the_catalogs_offer_what_the_dev_build_reads", () => {
-  // Python reloaded the manifests under the dev build; here their pin-dependent half is built
+  // Python reloaded the manifests under the dev build; here their build-dependent half is built
   // again.
   dev();
   const cb = chatterbox.build();
   for (const l of ["he", "ru", "zh", "ja"]) expect(cb.VARIANTS[0].languages).toContain(l);
   expect(kokoro.build().STATIC_VOICES.length).toBe(54);
-});
-
-test("the_runtime_row_says_it_is_the_dev_build", () => {
-  dev();
-  const srv = { _run: null, pid: null, isRunning: () => false };
-  vi.spyOn(runtime, "servers").mockReturnValue([srv]);
-  vi.spyOn(runtime, "availableBackends").mockReturnValue(["cuda", "cpu"]);
-  vi.spyOn(runtime, "_hardware").mockReturnValue({ gpus: [] });
-  vi.spyOn(runtime, "cpuThreads").mockReturnValue(8);
-  vi.spyOn(runtime, "physicalCores").mockReturnValue(8);
-  vi.spyOn(runtime, "_settings").mockReturnValue({ backend: "vulkan", gpu: 0, cpu_threads: 0, cpu_min_realtime: 2.0 });
-  const info = speechRuntimeApi._info();
-  expect([info.installed, info.version, info.update_to, info.backend, info.build, info.dev_source]).toEqual([
-    true,
-    "dev · 6a2bb4c5",
-    null,
-    "cuda",
-    null,
-    "..\\audio.cpp",
-  ]);
-  expect(info.japanese_dictionary).not.toBeNull(); // the dev build reads Japanese
-});
-
-test("install_fetches_only_espeak", async () => {
-  dev();
-  const calls = [];
-  vi.spyOn(runtime, "install").mockImplementation(async () => calls.push("binary"));
-  vi.spyOn(espeak, "install").mockImplementation(async () => calls.push("espeak"));
-  vi.spyOn(manager, "_removeReplacedBuild").mockImplementation(async () => calls.push("remove"));
-  await manager._installAudiocppRuntime();
-  expect(calls).toEqual(["espeak"]);
-});
-
-test("the_leftover_sweep_covers_the_dev_build", () => {
-  const binDir = dev();
-  const roots = leftovers._audiocppRoots();
-  expect(leftovers._engineIdOf([path.join(binDir, devBuild.SERVER_EXE), "--config", "x"], roots)).toBe("audiocpp");
-  expect(leftovers._engineIdOf(["C:\\elsewhere\\audiocpp_server.exe"], roots)).toBeNull();
-});
-
-test("the_wrapper_is_told_when_the_app_still_runs_it", async () => {
-  // Before it builds, `npm run dev` stops servers whose JustVoice is gone and refuses (exit 3)
-  // while one still serves a running app — it holds the exe (decided D5).
-  const binDir = dev();
-  const stopped = [];
-  vi.spyOn(leftovers, "stopLeftoverEngines").mockImplementation(async (reason) => {
-    stopped.push(reason);
-    return [];
-  });
-  const procs = [{ pid: 11, exe: "C:\\other\\x.exe" }];
-  vi.spyOn(leftovers, "processTable").mockImplementation(async () => procs);
-  expect(await devBuild._stopLeftovers()).toBe(0);
-  expect(stopped).toEqual(["npm run dev"]);
-  procs.push({ pid: 12, exe: path.join(binDir, devBuild.SERVER_EXE) });
-  expect(await devBuild._stopLeftovers()).toBe(3);
 });

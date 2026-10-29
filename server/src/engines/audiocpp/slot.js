@@ -1,53 +1,33 @@
 // SPDX-License-Identifier: MIT
-// Where an engine subprocess used to stand — now one model inside the audio.cpp server (the
-// port of justvoice/engines/audiocpp/slot.py).
+// How each family's request reads in audio.cpp's terms — a line, a transcription, a warm-up — the
+// one place that knows (the port of justvoice/engines/audiocpp/slot.py).
 //
-// The engine manager spawns, POSTs `/load`, `/synth`, `/transcribe`, `/align`, GETs `/voices`,
-// and terminates. Until the switch each of those was an HTTP call into a Python child running
-// the model's reference code. `AudioCppSlot` answers the same calls by driving the ONE
-// audio.cpp server, so the manager's admission, VRAM bookings, per-kind slots and cancel logic
-// keep working untouched (plan §3.3).
-//
-// Per-family request mapping (plan §3.4) lives here — the single place that knows how each of
-// our engines' requests reads in audio.cpp's terms. What audio.cpp cannot do yet refuses by
-// name instead of rendering the wrong thing (plan §5).
-//
-// The slot's answers are `_Resp` objects (`statusCode`, `content`, `headers`, `text`,
-// `json()`) — the bit of an HTTP response the manager reads. Every call is async.
+// Until round E this was also the engine "slot" the manager spawned, loaded and terminated (one
+// model inside an audio.cpp server, answering the old engine protocol's /load, /synth,
+// /transcribe, /align). The kit's audio.cpp runtime runs the servers and the models now
+// (docs/plans/2026-10-29-round-e-onto-the-kit.md); what stays is ours (plan §1): `checkLine` and
+// `speak`, the line on a server the kit holds the model in (kit_speech.js), `warmModel`, a load's
+// warm-up (kit_hooks.js), and the per-family mapping (plan §3.4 of the 2026-10-01 switch). What
+// audio.cpp cannot do yet refuses by name instead of rendering the wrong thing (that plan's §5).
 
 import { createHash } from "node:crypto";
-import {
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  statSync,
-  utimesSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { getLogger } from "@delebash/core/platform/log";
-import { cmp, pyFloatParse, pyInt, rstrip, RuntimeError, splitWs, S, strip, truthy, ValueError } from "@delebash/core/platform/py";
-import { pyIntOf, pyJson, unwrap } from "@delebash/core/platform/pyjson";
+import { pyFloatParse, pyInt, rstrip, splitWs, S, strip, truthy, ValueError } from "@delebash/core/platform/py";
+import { pyIntOf, unwrap } from "@delebash/core/platform/pyjson";
+import { AudioCppError } from "@delebash/core/runner/audiocpp";
 import * as appState from "../../app_state.js";
 import * as dspClient from "../../audio/dsp_client.js";
 import { parseWavHeader, writeWavContainer } from "../../audio/wav.js";
-import * as speechCache from "../../speech_cache.js";
 import { splice, vocabOf } from "../kokoro/ipa.js";
-import * as manager from "../manager.js";
+import * as modelCatalog from "../model_catalog.js";
 import { CURATED } from "./curated/index.js";
-import * as espeak from "./espeak.js";
 import * as generated from "./generated.js";
-import * as japanese from "./japanese.js";
-import * as release from "./release.js";
-import * as runtime from "./runtime.js";
-import { AudioCppError, ModelEntry } from "./runtime.js";
-import * as runtimeOptions from "./runtime_options.js";
+import * as kitSettings from "./kit_settings.js";
+import * as kitSpeech from "./kit_speech.js";
 import * as self from "./slot.js";
-
-export { AudioCppError, ModelEntry, release };
 
 const log = getLogger("justvoice.engines.audiocpp.slot");
 
@@ -82,41 +62,7 @@ const get = (o, k, d = null) => (has(o, k) ? o[k] : d);
 const kokoroLanguageOf = (voice) => generated.kokoroVoices().find(([v]) => v === voice)?.[1] ?? null;
 const fwd = (p) => String(p).replaceAll("\\", "/");
 
-/** Python's repr() of a str / None, for a refusal's text. */
-function pyRepr(v) {
-  if (v === null || v === undefined) return "None";
-  const s = String(v);
-  const q = s.includes("'") && !s.includes('"') ? '"' : "'";
-  return `${q}${s.replaceAll("\\", "\\\\").replaceAll(q, `\\${q}`)}${q}`;
-}
-
-/** The bit of an HTTP response the manager reads. */
-export class _Resp {
-  constructor(status, content = Buffer.alloc(0), headers = null, payload = null) {
-    this.statusCode = status;
-    this.content = content;
-    this.headers = headers || {};
-    this._payload = payload;
-  }
-
-  get text() {
-    if (this._payload !== null) return pyJson(this._payload);
-    return Buffer.from(this.content).toString("utf8");
-  }
-
-  json() {
-    if (this._payload !== null) return this._payload;
-    return JSON.parse(this.content && this.content.length ? Buffer.from(this.content).toString("utf8") : "{}");
-  }
-
-  raiseForStatus() {
-    if (this.statusCode >= 400) throw new RuntimeError(this.text);
-  }
-}
-
-const err = (status, msg) => new _Resp(status, Buffer.alloc(0), null, { detail: msg });
-
-// ─── What the server is told it may load ────────────────────────────────────
+// ─── Voice packs and references ──────────────────────────────────────────────
 
 export function _dataDir() {
   return appState.getState().dataDir;
@@ -251,70 +197,13 @@ export function guardedReference(file) {
   return out;
 }
 
-/** The manifest row for `variantId` (or the engine's default), with its `audiocpp` block. */
-export function variantSpec(manifest, variantId) {
-  const rows = [...(manifest.module?.VARIANTS || [])];
-  const want = variantId == null || variantId === "" || variantId === "auto" ? manifest.defaultVariantId : variantId;
-  let row = rows.find((r) => r.id === want);
-  if (row === undefined && rows.length) row = rows.find((r) => r.id === manifest.defaultVariantId) ?? rows[0];
-  return row && row.audiocpp ? row : null;
-}
-
 // The families that take eSpeak NG's paths as session options (audio.cpp
 // community_models/kitten_tts/session.cpp:74 — `kitten_tts.espeak_library_path` /
 // `kitten_tts.espeak_data_path`). Kokoro is not one: it reads the environment.
 export const ESPEAK_SESSION_FAMILIES = ["kitten_tts"];
 
-/** The runtime entries a row registers: its model, then its companions (`<id>::<role>`) — each
- * file where its download put it (speech_cache.variantFilePath: a model from two repositories,
- * QwenCleo-ASR and Qwen3's aligner, keeps each in its own folder). */
-export function _entriesFor(manifest, row) {
-  const spec = row.audiocpp;
-  const at = (file) => String(speechCache.variantFilePath(self._dataDir(), manifest.id, row.id, row.sources, file));
-  const opts = { ...(spec.session_options || {}) };
-  // The options the user set on the model's row (audit §13.5, 5h).
-  Object.assign(opts, runtimeOptions.sessionOptionsFor(manifest.id, row));
-  // A companion file downloaded with the model (a family file's SESSION_FILES — MioTTS's codec).
-  for (const [k, file] of Object.entries(spec.session_files || {})) opts[k] = at(file);
-  // The eSpeak NG phonemizer the runtime install fetched. KittenTTS reads it from its own
-  // prefixed session options; Kokoro reads only the runtime's environment
-  // (`runtime._childEnv`) and would refuse a session option it doesn't know.
-  if (ESPEAK_SESSION_FAMILIES.includes(spec.family)) {
-    const found = espeak.paths(manager.enginesRuntimeRoot());
-    if (found) {
-      opts[`${spec.family}.espeak_library_path`] = String(found[0]);
-      opts[`${spec.family}.espeak_data_path`] = String(found[1]);
-    }
-  }
-  const pairs = Object.entries(opts).sort(([a], [b]) => cmp(a, b));
-  const out = [new ModelEntry(row.id, spec.family, spec.task, at(spec.file), pairs)];
-  for (const comp of spec.companions || []) {
-    out.push(new ModelEntry(`${row.id}::${comp.role}`, comp.family, comp.task, at(comp.file)));
-  }
-  return out;
-}
-
-/** Every model of `kind` ("tts" | "stt") on disk — the config's list for a build that can't
- * register models at run time (`managedRuntime`). */
-export function installedEntries(kind) {
-  const out = [];
-  for (const m of manager.getManager().manifests().values()) {
-    if (m.kind !== kind) continue;
-    for (const row of m.module.VARIANTS || []) {
-      if (row.audiocpp && speechCache.variantOnDisk(self._dataDir(), m.id, row.id)) out.push(...self._entriesFor(m, row));
-    }
-  }
-  return out;
-}
-
-/** Whether the installed build registers models at run time (`model_management`, our fork —
- * audit 2026-10-04 §13.2): its processes start with no models and nothing downloaded or
- * deleted restarts them. */
-export function managedRuntime() {
-  return runtime.hasFeature("model_management");
-}
-
-// What each build feature makes possible, as a refusal names it (release.FEATURES).
+// What each build feature makes possible, as a refusal names it (the kit's runtimes.js
+// `defaults.features`).
 const FEATURE_WORDS = {
   voice_pack: "Blended voices",
   inline_ipa: "A lexicon's pronunciations on Kokoro",
@@ -324,7 +213,7 @@ const FEATURE_WORDS = {
   voxcpm2_transcript: "A VoxCPM2 clone's transcript",
 };
 
-/** The build features a synth of this line needs (`release.FEATURES`). */
+/** The build features a synth of this line needs (the kit's `defaults.features`). */
 export function featuresNeeded(row, body) {
   const family = row.audiocpp.family;
   const lang = String(get(body, "language") || "").split("-")[0].toLowerCase();
@@ -343,46 +232,15 @@ export function featuresNeeded(row, body) {
   return out;
 }
 
-/** Why a line can't be spoken on the installed build — an update to offer when the pinned
- * build has the feature, else that this version doesn't have it yet (audit §5 E3). */
+/** Why a line can't be spoken on the build pinned here — an update to offer when the build the
+ * app ships has the feature (kit_settings.js `shippedHas`), else that this version doesn't have it
+ * yet (audit §5 E3). */
 export function featureRefusal(feature) {
   const words = get(FEATURE_WORDS, feature) ?? feature;
-  if (release.pinnedHas(feature)) {
+  if (kitSettings.shippedHas(feature)) {
     return `${words} — this needs the speech runtime update. Update it on AI Settings → Speech engines.`;
   }
   return `${words} — this isn't in this version's speech runtime yet.`;
-}
-
-/** Where a model asked for `placement` actually runs: a machine whose runtime IS the CPU
- * build has only the CPU process. */
-export function effectivePlacement(placement) {
-  const exe = runtime.installedExe();
-  if (exe !== null && runtime.backendOf(exe) === "cpu") return "cpu";
-  return placement;
-}
-
-/** The running server for `placement` ("gpu" | "cpu") and `kind` ("tts" | "stt"). The CPU
- * process runs the installed build with `backend: cpu` — measured at 0 MB of graphics memory —
- * at the CPU-threads setting (docs/plans/2026-10-02-cpu-placement.md §8). */
-export async function ensureServer(placement = "gpu", kind = "tts") {
-  const exe = runtime.installedExe();
-  if (exe === null) throw new RuntimeError("the speech runtime (audio.cpp) is not installed — install it on the AI page");
-  placement = self.effectivePlacement(placement);
-  const srv = runtime.getServer(placement, kind);
-  const managed = self.managedRuntime();
-  const models = managed ? [] : self.installedEntries(kind);
-  if (placement === "cpu") {
-    await srv.ensure(exe, models, {
-      dataDir: self._dataDir(),
-      device: runtime.configuredGpu(),
-      threads: runtime.cpuThreads(),
-      backend: "cpu",
-      managed,
-    });
-  } else {
-    await srv.ensure(exe, models, { dataDir: self._dataDir(), device: runtime.configuredGpu(), managed });
-  }
-  return srv;
 }
 
 /** Has the user accepted this engine's own terms (manifest TERMS)? Best-effort: no app state
@@ -395,10 +253,6 @@ export function termsAccepted(engineId) {
     return false;
   }
 }
-
-// The refusal's machine-readable code — the manager turns it into TermsRequired, which the
-// API answers with 403 + `code: terms_required` so the app can show the terms.
-export const TERMS_REQUIRED = "terms_required";
 
 /** A RIFF WAV's [rate, channels] (Python's `wave` reads them). */
 function wavRateChannels(wav) {
@@ -416,226 +270,51 @@ function wavRateChannels(wav) {
   throw new ValueError("fmt chunk and/or data chunk missing");
 }
 
-// ─── The slot ───────────────────────────────────────────────────────────────
+// ─── A line ─────────────────────────────────────────────────────────────────
 
-/** One engine's model resident in one of the runtime's servers. `placement` ("gpu" | "cpu")
- * is which server — the manager decides it. */
-export class AudioCppSlot {
-  constructor(manifest, placement = "gpu") {
-    this.manifest = manifest;
-    this.placement = self.effectivePlacement(placement);
-    // Speech and speech recognition each have their own process (audit §13.2).
-    this.kind = manifest.kind === "stt" ? "stt" : "tts";
-    this.proc = null; // the server's ChildProcess — its pid is what VRAM probes read
-    this.port = null;
-    this._row = null;
-    this._loaded = false;
-    this._generation = null;
-    // The first line / clip after a CPU load records its real-time factor (manager).
-    this.speedRecorded = false;
+/** A line the model can't take before anything loads (`found`: kit_models.js `variantOf`'s
+ * `{engineId, mod, row}`) — a blend on a model that has none, a build feature the runtime here
+ * lacks (each refused by name before audio.cpp fails inside or ignores it, audit §5 E1), a clone
+ * on an engine whose terms gate cloning until they are accepted (TermsRequired). Throws the
+ * refusal; nothing when the line can go. */
+export function checkLine(found, body) {
+  const { engineId, mod, row } = found;
+  const name = mod.NAME ?? engineId;
+  const refuse = (status, message) => new kitSpeech.EngineRequestError(status, `engine synth failed: ${message}`);
+  if (truthy(get(body, "voice_vector")) && row.audiocpp.family !== "kokoro_tts") {
+    throw refuse(422, `${name} has no blended voices — blends are Kokoro's`);
   }
-
-  _srv() {
-    return runtime.getServer(this.placement, this.kind);
+  for (const feature of self.featuresNeeded(row, body)) {
+    if (!kitSettings.runtimeHas(feature)) throw refuse(409, self.featureRefusal(feature));
   }
-
-  // -- lifecycle --
-
-  async spawn() {
-    const srv = await self.ensureServer(this.placement, this.kind);
-    this.proc = srv._run.proc;
-    this.port = srv._run.port;
-    this._generation = srv._run.proc.pid;
+  const terms = mod.TERMS;
+  if (terms && terms.gates === "cloning" && truthy(get(body, "audio_prompt_path")) && !self.termsAccepted(engineId)) {
+    throw new modelCatalog.TermsRequired(
+      engineId,
+      `${name} clones a voice only after you accept ${terms.owner ?? "its makers"}'s terms — ` +
+        `open Voices → Clone with ${name}, or AI Settings → Speech engines, to read and accept them.`,
+    );
   }
+}
 
-  isAlive() {
-    const srv = this._srv();
-    return Boolean(this._loaded && srv.isRunning() && srv.pid === this._generation);
+/** The line `body` on `server` — the kit's AudioCppServer holding `row`'s model: a blend's pack
+ * written for it, the request shaped for its family (`toSpeechRequest`), and audio.cpp's WAV back.
+ * A line the model can't take — a voice it doesn't have, a language it doesn't speak — is a
+ * request it can't take (400), never an internal error (seen through the app 2026-10-16: Pocket
+ * TTS French's preset refusal answered 500). → `[wav, {media_type, sample_rate, channels,
+ * is_wav_container}]`. */
+export async function speak(server, row, body) {
+  if (truthy(get(body, "voice_vector"))) body = { ...body, voice_pack_path: String(self.writeVoicePack(body.voice_vector)) };
+  let req;
+  try {
+    req = self.toSpeechRequest(row, body);
+  } catch (e) {
+    if (e instanceof AudioCppError && e.status === 500) throw new AudioCppError(e.message, 400);
+    throw e;
   }
-
-  /** It had loaded, and the process holding its model is gone or replaced — the model went
-   * with it. A slot still loading is not dead. */
-  isDead() {
-    return Boolean(this._loaded && !this.isAlive());
-  }
-
-  async terminate() {
-    const srv = this._srv();
-    const ours = this._row !== null && srv.isRunning() && srv.pid === this._generation;
-    if (ours && CURATED[this._row.audiocpp?.family]?.UNLOAD_STOPS_PROCESS) {
-      // A family whose memory only its process's end frees (its curated file says so): this
-      // kind's process holds no other model, so stopping it is the unload.
-      await srv.stop();
-    } else if (ours) {
-      let ids = self._entriesFor(this.manifest, this._row).map((e) => e.id);
-      if (srv.managed) ids = ids.filter((i) => srv.hasModel(i));
-      try {
-        await srv.unload(ids);
-      } catch (e) {
-        if (!(e instanceof AudioCppError)) throw e;
-        log.warning(`audio.cpp unload of ${this._row.id} failed: ${e.message}`);
-      }
-    }
-    this._loaded = false;
-  }
-
-  async get(p) {
-    if (p === "/voices") return new _Resp(200, Buffer.alloc(0), null, { voices: [...this.manifest.staticVoices] });
-    if (p === "/health") return new _Resp(this._srv().isRunning() ? 200 : 503, Buffer.alloc(0), null, {});
-    return err(404, `${p} has no audio.cpp equivalent`);
-  }
-
-  async post(p, json = null, _timeout = null) {
-    const body = json || {};
-    try {
-      if (p === "/load") return await this._load(body);
-      if (p === "/synth") return await this._synth(body);
-      if (p === "/transcribe") return await this._transcribe(body);
-      if (p === "/align") return await this._align(body);
-      if (p === "/shutdown") return new _Resp(200, Buffer.alloc(0), null, {});
-      return err(501, `${this.manifest.name} has no ${p} in audio.cpp`);
-    } catch (e) {
-      if (!(e instanceof AudioCppError)) throw e;
-      // audio.cpp's own status survives — out of memory and busy are 503, a bad request 400
-      // (audit §5 D8).
-      return err(e.status >= 400 && e.status < 600 ? e.status : 500, e.message);
-    }
-  }
-
-  // -- /load --
-
-  async _load(body) {
-    const row = self.variantSpec(this.manifest, get(body, "variant"));
-    if (row === null) return err(400, `${this.manifest.name} has no audio.cpp model for ${pyRepr(get(body, "variant"))}`);
-    if (!speechCache.variantOnDisk(self._dataDir(), this.manifest.id, row.id)) {
-      return err(400, `${has(row, "name") ? row.name : row.id} is not downloaded — download it on the AI page`);
-    }
-    const srv = await self.ensureServer(this.placement, this.kind);
-    if (srv.managed) {
-      // Registered and loaded now — a Load means loaded. Companions (the aligner) register on
-      // their first use, as they loaded lazily before.
-      await srv.register(self._entriesFor(this.manifest, row)[0]);
-    }
-    this._row = row;
-    this.proc = srv._run.proc;
-    this.port = srv._run.port;
-    this._generation = srv._run.proc.pid;
-    this._loaded = true;
-    const calibrated = await this._warm(pyIntOf(get(body, "calibrate_chars") || 0));
-    return new _Resp(200, Buffer.alloc(0), null, {
-      ok: true,
-      variant: row.id,
-      calibrated,
-      voices: [...this.manifest.staticVoices],
-    });
-  }
-
-  /** The warm-up after a Load (`warmModel`) on this slot's server. */
-  async _warm(calibrateChars = 0) {
-    return self.warmModel(this._srv(), this._row, this.kind, calibrateChars);
-  }
-
-  // -- /synth --
-
-  async _synth(body) {
-    if (!this.isAlive() || this._row === null) return err(409, `${this.manifest.name} is not loaded`);
-    if (truthy(get(body, "voice_vector")) && this._row.audiocpp.family !== "kokoro_tts") {
-      return err(422, `${this.manifest.name} has no blended voices — blends are Kokoro's`);
-    }
-    // What this line needs from the INSTALLED build (the CPU process runs the same one), each
-    // refused by name before audio.cpp fails inside or ignores it (audit §5 E1).
-    for (const feature of self.featuresNeeded(this._row, body)) {
-      if (!runtime.hasFeature(feature)) return err(409, self.featureRefusal(feature));
-    }
-    if (truthy(get(body, "voice_vector"))) body = { ...body, voice_pack_path: String(self.writeVoicePack(body.voice_vector)) };
-    const terms = this.manifest.module?.TERMS;
-    if (terms && terms.gates === "cloning" && truthy(get(body, "audio_prompt_path")) && !self.termsAccepted(this.manifest.id)) {
-      return new _Resp(403, Buffer.alloc(0), null, {
-        detail:
-          `${this.manifest.name} clones a voice only after you accept ${terms.owner ?? "its makers"}'s terms — ` +
-          `open Voices → Clone with ${this.manifest.name}, or AI Settings → Speech engines, to read and accept them.`,
-        code: TERMS_REQUIRED,
-        engine: this.manifest.id,
-      });
-    }
-    // A line the model can't take — a voice it doesn't have, a language it doesn't speak — is a
-    // request it can't take (400, EngineRequestError's contract), never an internal error (seen
-    // through the app 2026-10-16: Pocket TTS French's preset refusal answered 500).
-    let req;
-    try {
-      req = self.toSpeechRequest(this._row, body);
-    } catch (e) {
-      if (e instanceof AudioCppError && e.status === 500) throw new AudioCppError(e.message, 400);
-      throw e;
-    }
-    const [wav] = await this._srv().speech(req);
-    const [sr, ch] = wavRateChannels(wav);
-    return new _Resp(200, Buffer.from(wav), {
-      "content-type": "audio/wav",
-      "X-JustVoice-Sample-Rate": String(sr),
-      "X-JustVoice-Channels": String(ch),
-      "X-JustVoice-WAV-Container": "1",
-    });
-  }
-
-  // -- /transcribe, /align --
-
-  _audioPath(body) {
-    if (truthy(get(body, "audio_path"))) return [fwd(body.audio_path), false];
-    const raw = Buffer.from(String(get(body, "wav_b64") || ""), "base64"); // before the file: a bad upload leaves none
-    const name = path.join(os.tmpdir(), `tmp${Math.random().toString(36).slice(2, 10)}.wav`);
-    writeFileSync(name, raw);
-    return [fwd(name), true];
-  }
-
-  async _transcribe(body) {
-    if (!this.isAlive() || this._row === null) return err(409, `${this.manifest.name} is not loaded`);
-    let [p, temp] = this._audioPath(body);
-    let out;
-    try {
-      if (this._row.audiocpp.family !== "qwen3_asr") {
-        // Every other recogniser audio.cpp has (generated.js): the audio at 16 kHz mono, as
-        // audio.cpp's own page sends a recogniser's (webui +page.svelte, stagedPath) — several
-        // (OWSM, CrisperWhisper, MOSS-Transcribe-Diarize, Hviske v6) refuse any other rate
-        // without libsoxr, which the release doesn't carry.
-        const wav = readFileSync(p);
-        const at16k = await self.asAudio16kMono(wav);
-        if (at16k !== wav) {
-          const name = path.join(os.tmpdir(), `tmp${Math.random().toString(36).slice(2, 10)}.wav`);
-          writeFileSync(name, at16k);
-          if (temp) rmSync(p, { force: true });
-          [p, temp] = [fwd(name), true];
-        }
-      }
-      out = await this._srv().transcribe(self.transcribeRequest(this._row, body, p), self._transcribeTimeout(p));
-    } finally {
-      if (temp) rmSync(p, { force: true });
-    }
-    // audio.cpp's recognisers report no confidence — null means UNKNOWN, never zero.
-    return new _Resp(200, Buffer.alloc(0), null, { text: self.plainTranscript(this._row, out), confidence: null });
-  }
-
-  async _align(body) {
-    if (!this.isAlive() || this._row === null) return err(409, `${this.manifest.name} is not loaded`);
-    const aligner = (this._row.audiocpp.companions || []).find((c) => c.role === "aligner");
-    if (aligner === undefined) return err(501, "this speech-recognition model has no word aligner");
-    const wav = truthy(get(body, "audio_path"))
-      ? readFileSync(body.audio_path)
-      : Buffer.from(String(get(body, "wav_b64") || ""), "base64");
-    const lang = String(get(body, "language") || "en").split("-")[0].toLowerCase();
-    const srv = this._srv();
-    const alignerId = `${this._row.id}::aligner`;
-    if (srv.managed && !srv.hasModel(alignerId)) {
-      await srv.register(self._entriesFor(this.manifest, this._row).find((e) => e.id === alignerId));
-    }
-    const out = await srv.align(alignerId, await self.asAudio16kMono(wav), get(body, "text") || "", get(ASR_LANGUAGE, lang) ?? "English");
-    const words = (out.words || []).map((w) => ({
-      word: get(w, "word", ""),
-      start: Number(get(w, "start", 0.0)),
-      end: Number(get(w, "end", 0.0)),
-    }));
-    return new _Resp(200, Buffer.alloc(0), null, { words });
-  }
+  const [wav] = await server.speech(req);
+  const [sampleRate, channels] = wavRateChannels(wav);
+  return [Buffer.from(wav), { media_type: "audio/wav", sample_rate: sampleRate, channels, is_wav_container: true }];
 }
 
 /** A recogniser's transcript: its response's `text` — or, where its family's file names the
@@ -662,10 +341,10 @@ export function transcribeRequest(row, body, audio) {
   return req;
 }
 
-/** How long a transcription may take (seconds): the request timeout setting (`floor`), or three
+/** How long a transcription may take (seconds): the runtime's request limit (`floor`), or three
  * times the recording — speech recognition runs at about 2x real time on the CPU, so a fixed 600 s
  * timed out recordings longer than ~20 minutes (audit §5 D9). */
-export function _transcribeTimeout(p, floor = runtime.requestTimeout()) {
+export function _transcribeTimeout(p, floor = kitSettings.runtimeNumber("request_timeout_s")) {
   let seconds;
   try {
     // Python's `wave`: PCM (or extensible) only; frames = data bytes / block size.
@@ -726,6 +405,31 @@ export async function asAudio16kMono(wav) {
   }
   if (fmt.sampleRate === ALIGN_RATE && fmt.channels === 1) return wav;
   return dspClient.alignerInput(wav, ALIGN_RATE);
+}
+
+/**
+ * The recording a recogniser other than Qwen3-ASR hears: at 16 kHz mono, as audio.cpp's own page
+ * sends a recogniser's (webui +page.svelte, stagedPath) — several (OWSM, CrisperWhisper,
+ * MOSS-Transcribe-Diarize, Hviske v6) refuse any other rate without libsoxr, which the release
+ * doesn't carry. audio.cpp's JSON transcription takes only a path on this computer (RESEARCH §1.7),
+ * so a recording at another rate goes as a copy in the cache, named by its bytes; the one before it
+ * is deleted at each conversion — the kit shapes a transcription under its kind's lock, so no other
+ * request still waits to send it (just-core 52e663c). The recording itself is never changed; one at
+ * 16 kHz mono goes as it is. → the path to send.
+ */
+export async function recognizerInput(file) {
+  const raw = readFileSync(file);
+  const at16k = await self.asAudio16kMono(raw);
+  if (at16k === raw) return fwd(file);
+  const folder = path.join(String(self._dataDir()), "cache", "transcription-16k");
+  const out = path.join(folder, `${createHash("sha1").update(raw).digest("hex")}.wav`);
+  mkdirSync(folder, { recursive: true });
+  packSeq += 1;
+  const tmp = path.join(folder, `${path.basename(out, ".wav")}.${process.pid}-${packSeq}.tmp`);
+  writeFileSync(tmp, at16k);
+  renameSync(tmp, out);
+  for (const n of readdirSync(folder)) if (n.endsWith(".wav") && n !== path.basename(out)) rmSync(path.join(folder, n), { force: true });
+  return fwd(out);
 }
 
 const SILENCE = new Map();
@@ -850,7 +554,7 @@ export async function warmModel(srv, row, kind, calibrateChars = 0) {
  * request a line takes, so a first load measures its memory as the seven engines described by
  * our own files have always done theirs (`warmModel`). A
  * model that speaks only from a clip can't: its price is saved after its first line instead
- * (§7 answer 5; manager.load). Returns whether it calibrated.
+ * (§7 answer 5; the kit's runtime_service.js `_priceFirstLine`). Returns whether it calibrated.
  */
 async function warmGenerated(srv, row, kind, text, n, calibrateChars) {
   const spec = row.audiocpp;
@@ -877,25 +581,26 @@ export const JAPANESE_DICTIONARY_MISSING =
   "Japanese needs the Japanese dictionary — install it on AI Settings → Speech engines.";
 
 /** Kokoro's Japanese voices and Chatterbox in Japanese read MeCab's UniDic dictionary — the
- * optional download on the runtime row (gap 7); without it, refused by name. */
+ * runtime's optional add-on (gap 7; the kit's "unidic"); without it, refused by name. */
 function requireJapaneseDictionary() {
-  if (japanese.dictionaryDir(manager.enginesRuntimeRoot()) === null) throw new AudioCppError(JAPANESE_DICTIONARY_MISSING);
+  if (!kitSpeech.addonInstalled("unidic")) throw new AudioCppError(JAPANESE_DICTIONARY_MISSING);
 }
 
 const PAREN_RE = new RegExp(`${S}*\\(${S}*|${S}*\\)${S}*`, "gu");
 const DASH_RUN_RE = new RegExp(`(?:${S}*—${S}*){2,}`, "gu");
 
-/** Kokoro's phoneme symbols, from this row's own model file (`ipa.vocabOf`) — null when it can't
- * be read, and the runtime then names a symbol it lacks, as before. */
+/** Kokoro's phoneme symbols, from this row's own model file (`ipa.vocabOf`, the kit's models
+ * cache) — null when it can't be read, and the runtime then names a symbol it lacks, as before. */
 export function kokoroVocab(row) {
   try {
-    return vocabOf(path.join(String(speechCache.variantDir(self._dataDir(), "kokoro", row.id)), row.audiocpp.file));
+    const file = kitSpeech.modelFiles(row.id)?.model;
+    return file ? vocabOf(file) : null;
   } catch {
     return null;
   }
 }
 
-/** A manager synth body (a `SynthRequest` as a snake_case object) → `/v1/audio/speech` JSON. */
+/** A synth body (a `SynthRequest` as a snake_case object) → `/v1/audio/speech` JSON. */
 export function toSpeechRequest(row, body) {
   const spec = row.audiocpp;
   const family = spec.family;

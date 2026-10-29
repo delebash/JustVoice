@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // The speech engines built from audio.cpp's own files (docs/plans/2026-10-11-audiocpp-engine-
 // catalog.md §3–4). Every speech family in `catalog.json` (scripts/audiocpp-catalog.js) becomes an
-// engine here — an engine module (ID, NAME, VARIANTS, STATIC_VOICES …) the manager discovers — and
+// engine here — an engine module (ID, NAME, VARIANTS, STATIC_VOICES …) the catalog discovers — and
 // each of its runnable models a capability row (capability_details.js). What a spec can't say — how
 // a line's direction reaches the model, what we found by testing — comes from our own file per
 // family in `./curated/`.
@@ -30,9 +30,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { EMOTION_VALUES } from "../../models.js";
-import * as speechCache from "../../speech_cache.js";
 import { CURATED } from "./curated/index.js";
-import * as release from "./release.js";
+import { shippedHas } from "./kit_settings.js";
 
 export const CATALOG = JSON.parse(readFileSync(new URL("./catalog.json", import.meta.url), "utf8"));
 
@@ -700,14 +699,15 @@ const PRECISION_RANK = { q8: 0, bf16: 1, f16: 1, orig: 2 };
 /** `text` with each `{name}` filled from `facts`. */
 const fill = (text, facts) => String(text ?? "").replace(/\{(\w+)\}/g, (m, k) => (Object.hasOwn(facts, k) ? String(facts[k]) : m));
 
-/** A note's switch: true / false, or the name of a build feature the pinned build must have. */
-const switchOn = (v) => (typeof v === "string" ? release.pinnedHas(v) : Boolean(v));
+/** A note's switch: true / false, or the name of a build feature the build the app ships must
+ * have (kit_settings.js `shippedHas`). */
+const switchOn = (v) => (typeof v === "string" ? shippedHas(v) : Boolean(v));
 
-/** Whether a language (or a voice in it) is offered on the pinned build: its family file's
+/** Whether a language (or a voice in it) is offered on the build the app ships: its family file's
  * `LANGUAGE_FEATURES` names the build feature it needs (gap 7's languages). */
 function languageOffered(cur, lang) {
   const need = (cur.LANGUAGE_FEATURES || {})[String(lang).toLowerCase().split("-")[0]];
-  return need === undefined || release.pinnedHas(need);
+  return need === undefined || shippedHas(need);
 }
 
 /** A model row's name and description at a package's precision, where our notes word its first one:
@@ -846,7 +846,7 @@ function ownModel(engineId, family, note) {
     rows,
     voices: voices.map(({ audiocpp_voice: _a, file_bytes: _b, ...v }) => v),
     facts,
-    pending: Boolean(note.needs) && !release.pinnedHas(note.needs),
+    pending: Boolean(note.needs) && !shippedHas(note.needs),
     needs: Boolean(note.needs),
   };
 }
@@ -888,7 +888,7 @@ export function ownEngine(engineId) {
     variants = variants.map((v, i) => [v, i]).sort(([a, i], [b, j]) => rank(a) - rank(b) || i - j).map(([v]) => v);
   }
   const first = models[0];
-  const until = Object.entries(head.description_until || {}).find(([feature]) => !release.pinnedHas(feature));
+  const until = Object.entries(head.description_until || {}).find(([feature]) => !shippedHas(feature));
   const description = fill(until ? until[1] : head.description, first.facts);
   const lic = licenceOf(fam);
   const kind = first.kind;
@@ -1030,22 +1030,7 @@ export function generatedEngines() {
     _engines.set(engineId, mod);
   }
   // A recognition model on a package a speech model of its family uses (FireRedAudio, LFM2.5-Audio)
-  // keeps its files in that model's folder: one download, seen by both (speech_cache.variantDir).
-  const speaking = new Map();
-  for (const [engineId, mod] of _engines) {
-    if (mod.KIND !== "tts") continue;
-    for (const v of mod.VARIANTS) {
-      const key = `${v.audiocpp.family}/${v.audiocpp.package}`;
-      if (!speaking.has(key)) speaking.set(key, [engineId, v.id]);
-    }
-  }
-  for (const [engineId, mod] of _engines) {
-    if (mod.KIND !== "stt") continue;
-    for (const v of mod.VARIANTS) {
-      const owner = speaking.get(`${v.audiocpp.family}/${v.audiocpp.package}`);
-      if (owner) speechCache.shareVariantFiles(engineId, v.id, ...owner);
-    }
-  }
+  // names the same files: the kit's models cache keeps one copy of them (by SHA-256), seen by both.
   return _engines;
 }
 

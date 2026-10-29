@@ -395,19 +395,8 @@ export const MasterPresetSettings = T.Object({
   }),
 });
 
-/**
- * Operator-provided source for one engine model variant. Engine model HF repos live in each
- * engine's manifest VARIANTS as defaults; the operator can point a variant at another repo
- * (a mirror, a fork) here. The variant's pinned file names are kept.
- */
-export const EngineModelSourceOverride = T.Object({
-  hf_repo: opt(nullable(T.String()), null),
-  hf_revision: opt(nullable(T.String()), null), // pin a commit / tag
-});
-
-/** Per-engine operator overrides (download sources by variant, the default model, …). */
+/** Per-engine operator overrides (the default model, each model's piece length and load options, …). */
 export const EngineOverrides = T.Object({
-  sources: opt(T.Record(T.String(), EngineModelSourceOverride), {}),
   // The operator's own default MODEL for this engine (a USER layer over the manifest's
   // DEFAULT_VARIANT_ID). None = manifest default.
   default_variant: opt(nullable(T.String()), null),
@@ -423,42 +412,6 @@ export const EngineOverrides = T.Object({
   // When the user accepted the engine's own terms (Pocket TTS: Kyutai's prohibited-use
   // terms, which gate cloning). ISO-8601; None = not accepted.
   terms_accepted_at: opt(nullable(T.String()), null),
-});
-
-/**
- * The ONE audio.cpp runtime every speech engine shares (the 2026-10-01 switch). Set on the
- * AI page's runtime row through PUT /v1/speech-runtime.
- */
-export const SpeechRuntimeSettings = T.Object({
-  // "auto" = this machine's choice; "cuda" | "vulkan" | "cpu" | "metal" pins that build.
-  backend: opt(T.String(), "auto"),
-  // Which GPU the server runs on (audio.cpp's `device` — 0 = the first).
-  gpu: opt(T.Integer(), 0),
-  // The second, CPU-only process: how many threads it computes with. 0 = this machine's
-  // physical core count.
-  cpu_threads: opt(T.Integer(), 0),
-  // "Fast enough on the CPU" for Auto: seconds of audio per second of work (decided 2×).
-  cpu_min_realtime: opt(T.Number(), 2.0),
-  // Windows: how much a card load may grow its process's shared GPU memory (MB) before it counts
-  // as spilled into system memory, which Auto treats as a failed card load (2026-10-12; a load
-  // that fits grows it by 0 from a 78 MB baseline).
-  spill_mb: opt(T.Integer(), 256),
-  // A runaway line (manager._noteRunaway): its audio runs longer than this many seconds a
-  // character of its text, and longer than `runaway_min_s` seconds; the process that ran it no
-  // longer sets the model's price.
-  runaway_s_per_char: opt(T.Number(), 0.5),
-  runaway_min_s: opt(T.Number(), 30.0),
-  // The headroom (MB) a speech model is held to on the graphics card, on top of the card's measured
-  // free memory: Auto's "more than it holds", the card's admission and Speech engines' "fits this
-  // card" (decided 2026-10-16, the user: "do 1 and 2" — 512 MB for speech; the AI model's layer
-  // split keeps the kit's 1 GB `safety_margin_mb`). A model you pin to the GPU is held to none.
-  card_margin_mb: opt(T.Integer({ minimum: 0 }), 512),
-  // The graphics-card process's CPU threads — its work off the card (text, sampling).
-  gpu_threads: opt(T.Integer(), 4),
-  // How long a process may take to come up before its start counts as failed.
-  start_timeout_s: opt(T.Number(), 60.0),
-  // How long one request may run — a line, a model load.
-  request_timeout_s: opt(T.Number(), 900.0),
 });
 
 export const ExternalEngineConfig = T.Object({
@@ -480,8 +433,8 @@ export const EnginesSettings = T.Object({
   engine_overrides: opt(T.Record(T.String(), EngineOverrides), {}),
   // Preferred TTS engine for create flows + first-render auto-setup. Engine id.
   default_tts_engine: opt(T.String(), "kokoro"),
-  // The audio.cpp runtime's backend and GPU — one for every speech engine.
-  speech_runtime: optModel(SpeechRuntimeSettings),
+  // (The audio.cpp runtime's own settings — its backend, card, threads, limits — are the kit's
+  // runner settings since round E, `<name>:audiocpp`; database/seed.js carried them there.)
   external: opt(T.Array(ExternalEngineConfig), []),
   // LEGACY LLM provider list — dormant since 2026-08-01 (providers live in the shared DB
   // store); the field STAYS because migrate_providers reads it to upgrade old installs.
@@ -499,7 +452,8 @@ export const UseCase = literal("audiobook", "game", "podcast", "dictation", "acc
  * shell; the server stores them so every window + CLI client reads the same preferences.
  */
 export const CapturesSettings = T.Object({
-  stt_model: opt(T.String(), "qwen3-asr-1.7b-q8"), // variant id on the asr engine
+  // (Its recogniser is the Transcription feature's preset's model since round E — database/seed.js
+  // carried `stt_model` there.)
   language: opt(T.String(), "auto"),
   auto_refine: opt(T.Boolean(), true),
   llm_model: opt(T.String(), "qwen3-llm-0.6b"), // variant id on the qwen3-llm engine
@@ -541,7 +495,7 @@ export const ExtractionSettings = T.Object({
  * `missed_share` of the line's words (skipped or heard as other words), or hears more than
  * `extra_share` of them again past its text (a repeat, a take that runs on) — in either case at
  * least `min_words` words — or when the take runs longer than the speech runtime's runaway limit
- * (`engines.speech_runtime.runaway_s_per_char` and `runaway_min_s`). A failed take is rendered
+ * (its `runaway_s_per_char` and `runaway_min_s`, the kit's runner settings). A failed take is rendered
  * again once with a new seed; one that still fails is flagged. The three numbers are
  * unmeasured starting points (2026-10-16).
  */
@@ -1028,7 +982,7 @@ export const EngineInfo = T.Object({
   status: opt(EngineStatus, "not_installed"),
   current: opt(T.Boolean(), false),
   is_stubbed: opt(T.Boolean(), false),
-  // The variant `POST /v1/engines/<id>/load` (no `model_variant`) actually loads.
+  // The variant a line speaks on when nothing else chooses (voice_model.variantForModel).
   default_variant_id: opt(nullable(T.String()), null),
   // Engine discriminator (tts / llm / embedding).
   kind: opt(T.String(), "tts"),
@@ -1067,89 +1021,6 @@ export const EngineInfo = T.Object({
 export const EnginesListResponse = T.Object({
   engines: T.Array(EngineInfo),
   current: opt(nullable(T.String()), null),
-});
-
-// ─── The memory budget strip (the 2026-08-13 VRAM wiring, Q3/Q4) ─────────
-
-/** One resident booking in the shared ledger. `source`: measured | computed | declared. */
-export const VramReservation = T.Object({
-  key: T.String(),
-  vram_mb: T.Integer(),
-  pinned: opt(T.Boolean(), false),
-  kind: opt(T.String(), "llm"),
-  source: opt(T.String(), "computed"),
-  // ASLEEP: the AI runner idle-unloaded this model, so the booking names memory the card is
-  // not currently holding. Excluded from `committed_mb`.
-  asleep: opt(T.Boolean(), false),
-  // Engine display name, joined server-side.
-  label: opt(T.String(), ""),
-});
-
-/** One LOADED speech engine, pre-joined for the strip's cells. */
-export const VramLoadedRow = T.Object({
-  key: T.String(), // "tts:chatterbox"
-  kind: T.String(),
-  label: T.String(),
-  model: opt(T.String(), ""),
-  device: opt(T.String(), ""),
-});
-
-/** The on-demand LLM's predicted footprint. `ram_mb` is display-only. */
-export const VramClaim = T.Object({
-  model: T.String(),
-  vram_mb: T.Integer(),
-  ram_mb: opt(T.Integer(), 0),
-  source: opt(T.String(), "computed"),
-  matches: opt(T.Integer(), 0),
-});
-
-/** One eviction from the arbiter's event ring. */
-export const VramEvent = T.Object({
-  seq: T.Integer(),
-  at: T.Integer(),
-  victim_key: T.String(),
-  victim_kind: T.String(),
-  reason: opt(T.String(), ""),
-});
-
-/** One engine process tree whose server is gone (2026-09-29). */
-export const LeftoverEngine = T.Object({
-  pid: T.Integer(),
-  engine_id: T.String(),
-  engine_name: T.String(),
-  started: T.Number(), // epoch seconds
-  server_pid: opt(nullable(T.Integer()), null), // the server that started it, when known
-  gpu_mb: opt(nullable(T.Integer()), null), // None = unmeasurable on this box
-});
-
-/** `GET /v1/engines/leftovers` and `POST /v1/engines/leftovers/stop`. */
-export const LeftoverEnginesResponse = T.Object({
-  leftovers: T.Array(LeftoverEngine),
-  gpu_mb: opt(nullable(T.Integer()), null), // summed; None when nothing could be measured
-});
-
-/** `GET /v1/engines/vram` — the one budget view. `mem_arch` drives the strip's label. */
-export const EngineVramResponse = T.Object({
-  mem_arch: T.String(),
-  total_mb: T.Integer(),
-  // The safety margin a load is held to on the card (MB) — the runner config's, the one Auto's
-  // "more than it holds" counts; the Speech engines tab's "fits this card" counts it too.
-  safety_margin_mb: opt(T.Integer(), 0),
-  committed_mb: T.Integer(),
-  // Booked INCLUDING models the AI runner has put to sleep.
-  booked_mb: opt(T.Integer(), 0),
-  remaining_mb: T.Integer(),
-  // The MEASURED pool state — `used_mb` is what nvidia-smi would print (None =
-  // unmeasurable), `other_mb` the slice the ledger can't attribute.
-  used_mb: opt(nullable(T.Integer()), null),
-  other_mb: opt(T.Integer(), 0),
-  reservations: opt(T.Array(VramReservation), []),
-  loaded: opt(T.Array(VramLoadedRow), []),
-  busy_kinds: opt(T.Array(T.String()), []),
-  claim: opt(nullable(VramClaim), null),
-  // Why there is no claim when claim is null: "cloud-routed" | "not-configured" | "unavailable".
-  claim_reason: opt(nullable(T.String()), null),
-  events: opt(T.Array(VramEvent), []),
 });
 
 export const CurrentEngineResponse = T.Object({
@@ -1279,17 +1150,10 @@ export const ModelVariant = T.Object({
   hf_repo: opt(nullable(T.String()), null),
   url: opt(nullable(T.String()), null),
   files: opt(T.Array(ModelFile), []),
-  // Weights present locally (speech cache first, then a legacy HF-cache install).
+  // Every file present locally, in the kit's models cache.
   on_disk: opt(nullable(T.Boolean()), null),
-  // Where those weights live when on_disk — for the desktop "Open folder" verb.
+  // The folder holding its main file when on_disk — for the desktop "Open folder" verb.
   local_dir: opt(nullable(T.String()), null),
-  // Where it runs (CPU placement): the user's choice, where it runs now, and why.
-  placement: opt(T.String(), "auto"),
-  runs_on: opt(nullable(T.String()), null),
-  runs_on_reason: opt(T.String(), ""),
-  // Its speed on the CPU, seconds of audio per second of work.
-  cpu_realtime: opt(nullable(T.Number()), null),
-  cpu_realtime_here: opt(T.Boolean(), false),
   runtime_options: opt(T.Array(RuntimeOption), []),
   // "words" | "tags" | "sliders" — how a speech model is directed (voice_model.directedBy);
   // null for speech recognition.
@@ -1304,66 +1168,11 @@ export const ModelVariant = T.Object({
   // more — the line the tab shows and Auto decides by (decided 2026-10-12); null = neither is
   // stated ("memory not measured yet").
   need_gb: opt(nullable(T.Number()), null),
-  // Its peak on this machine's graphics card, measured at an earlier load; null = not yet.
-  measured_mb: opt(nullable(T.Integer()), null),
-  // A card load of it failed or spilled here and is remembered (manager._failedOnCard) — its
-  // row offers "Try the card again".
-  failed_on_card: opt(T.Boolean(), false),
 });
 
 export const ModelsListResponse = T.Object({
   engine_id: T.String(),
   variants: T.Array(ModelVariant),
-});
-
-export const InstallRequest = T.Object({
-  model_variant: opt(nullable(T.String()), null),
-  // Download the speech runtime (and eSpeak NG) again over the installed one.
-  repair: opt(T.Boolean(), false),
-});
-
-export const InstallResponse = T.Object({
-  engine_id: T.String(),
-  model_variant: T.String(),
-  job_id: T.String(),
-});
-
-export const LoadRequest = T.Object({
-  model_variant: opt(nullable(T.String()), null),
-  device: opt(T.String(), "auto"),
-});
-
-export const LoadResponse = T.Object({
-  engine_id: T.String(),
-  device: T.String(),
-  model_variant: opt(nullable(T.String()), null),
-});
-
-export const UnloadResponse = T.Object({
-  previous_engine: opt(nullable(T.String()), null),
-});
-
-export const UninstallResponse = T.Object({
-  engine_id: T.String(),
-  model_files_removed: T.Boolean(),
-});
-
-// ─── Jobs (install progress) ────────────────────────────────────────────
-
-// Free-form to keep room for engine-specific phases emitted by the manager.
-export const JobPhase = T.String();
-
-export const JobStatus = T.Object({
-  job_id: T.String(),
-  engine_id: T.String(),
-  model_variant: T.String(),
-  phase: JobPhase,
-  bytes_downloaded: opt(T.Integer(), 0),
-  bytes_total: opt(T.Integer(), 0),
-  current_file: opt(nullable(T.String()), null),
-  error: opt(nullable(T.String()), null),
-  // Rolling tail of download output lines — capped at 400 entries.
-  log_tail: opt(T.Array(T.String()), []),
 });
 
 // ─── External engine probe ─────────────────────────────────────────────

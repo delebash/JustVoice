@@ -28,7 +28,7 @@ import * as synthScheduler from "../src/synth_scheduler.js";
 import { writeWavContainer } from "../src/audio/wav.js";
 import { tmpDb } from "./helpers.js";
 import { bookJson, scene as jwScene } from "./jw_fixtures.js";
-import { FakeCache, FakeManager, fakeManifest, pcmOf, renderState, useManager } from "./render_helpers.js";
+import { FakeCache, FakeSpeech, fakeManifest, pcmOf, renderState, useSpeech } from "./render_helpers.js";
 
 const GAIN_UP = [{ type: "gain", params: { gain_db: 6.0 } }];
 const GAIN_DOWN = [{ type: "gain", params: { gain_db: -6.0 } }];
@@ -38,8 +38,8 @@ const GAIN_DOWN = [{ type: "gain", params: { gain_db: -6.0 } }];
 let fakeMgr;
 const useFakeMgr = () => {
   // A steady non-zero signal, so a gain effect visibly moves it.
-  fakeMgr = useManager(
-    new FakeManager({ "mock-tts": fakeManifest("mock-tts", { staticVoices: [{ id: "mv_1", name: "MV" }] }) }, { pcm: pcmOf(400, 0x1000) }),
+  fakeMgr = useSpeech(
+    new FakeSpeech({ "mock-tts": fakeManifest("mock-tts", { staticVoices: [{ id: "mv_1", name: "MV" }] }) }, { pcm: pcmOf(400, 0x1000) }),
   );
 };
 

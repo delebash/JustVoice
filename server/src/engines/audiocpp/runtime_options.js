@@ -133,8 +133,9 @@ export function chosenFor(engineId, row) {
   return out;
 }
 
-/** What `_entriesFor` passes at registration: each chosen value that isn't audio.cpp's own
- * default (16-bit Decoder weights is sent unless 32-bit is chosen). */
+/** What every load of the model registers it with (kit_hooks.js `sessionOptions`, read by the
+ * kit's runtime): each chosen value that isn't audio.cpp's own default (16-bit Decoder weights is
+ * sent unless 32-bit is chosen). */
 export function sessionOptionsFor(engineId, row) {
   const runtimeDefault = Object.fromEntries(offeredFor(row).map((o) => [o.key, o.runtime_default]));
   return Object.fromEntries(Object.entries(chosenFor(engineId, row)).filter(([k, v]) => v !== null && v !== runtimeDefault[k]));

@@ -8,7 +8,8 @@
 // one_click_alice.test.js does) and Discover's call `identify.identifySpeakers` (gemma's scan,
 // alice_fixtures.js); the speech model is `voice_preview_api.synthCandidate` for the designed
 // voices (book_voices.test.js) and `render_core.renderLine` for the takes (take_check.test.js);
-// speech recognition `captures._sttTranscribe`; the M4B the chapter join and ffmpeg
+// speech recognition `captures._sttTranscribe` (its model ready: `kit_speech.transcriptionReadiness`,
+// as take_check.test.js fakes it); the M4B the chapter join and ffmpeg
 // (export_audiobook.test.js). Everything between them is the real app: the run, its table, its
 // routes, every step's function, the render job, the take check and the export job.
 import { readFileSync } from "node:fs";
@@ -24,6 +25,7 @@ import * as bookRun from "../src/book_run.js";
 import { ACTIONS as VOICE_ACTIONS } from "../src/book_voices/prompts.js";
 import { BookRun, Generation } from "../src/database/models.js";
 import * as session from "../src/database/session.js";
+import * as kitSpeech from "../src/engines/audiocpp/kit_speech.js";
 import * as run from "../src/engines/llm/run.js";
 import * as exportAudiobook from "../src/export_audiobook.js";
 import * as identify from "../src/extraction/identify.js";
@@ -158,8 +160,9 @@ beforeEach(() => {
     const frames = 100 * [...kw.text].length;
     return new RenderedLine({ pcm: Buffer.alloc(2 * frames), sampleRate: 16000, channels: 1, effectiveDelivery: {}, inputsKey: key || "", seed: kw.seed ?? null });
   });
-  // Speech recognition hears each take's own words — but nothing at all of `deafTo`.
-  vi.spyOn(captures, "ensureSttLoaded").mockImplementation(async () => [{ currentFor: () => "asr", currentVariantId: () => "qwen3-asr-1.7b-q8" }, null]);
+  // Speech recognition (the Transcription feature's model, ready) hears each take's own words —
+  // but nothing at all of `deafTo`.
+  vi.spyOn(kitSpeech, "transcriptionReadiness").mockReturnValue({ ready: true, need: "", detail: "", model: "qwen3-asr-1.7b-q8" });
   vi.spyOn(captures, "_sttTranscribe").mockImplementation(async (file) => {
     const gen = h()
       .all(`select * from ${Generation}`, [], Generation)

@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: MIT
 // The factory reset (data_admin.runFactoryReset — POST /v1/data/reset) must survive a DB
 // whose tables drifted from the schema (user-hit 2026-06-12: a table the schema declares was
-// missing from the real database → the wipe 500'd). The port of tests/test_factory_reset.py.
-// Python monkeypatched the module globals; here the database module's `cfg` and the app
-// state's `cfg` are assigned and put back.
+// missing from the real database → the wipe 500'd), and it leaves nothing AI-resident: since
+// round E (docs/plans/2026-10-29-round-e-onto-the-kit.md) the speech models run in the kit's
+// audio.cpp runtime, whose servers the reset stops (the kit's `stopRuntimeServers`). The port of
+// tests/test_factory_reset.py. Python monkeypatched the module globals; here the database
+// module's `cfg` and the app state's `cfg` are assigned and put back.
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test } from "vitest";
+import { endSpeech, fakeSpeechRuntime } from "./engines_helpers.js";
 import * as appState from "../src/app_state.js";
 import * as dataAdmin from "../src/data_admin.js";
 import * as session from "../src/database/session.js";
-import * as managerModule from "../src/engines/manager.js";
 import { EngineRegistry } from "../src/engines/registry.js";
 import { construct, Settings } from "../src/models.js";
 import { PersonaStore } from "../src/storage/personas.js";
@@ -35,6 +37,7 @@ beforeEach(() => {
   saved = { handle: session.cfg.handle, dbPath: session.cfg.dbPath, state: appState.cfg.state };
 });
 afterEach(() => {
+  endSpeech();
   session.cfg.handle = saved.handle;
   session.cfg.dbPath = saved.dbPath;
   appState.cfg.state = saved.state;
@@ -96,17 +99,15 @@ test("factory_reset_clears_file_stores", async () => {
 });
 
 test("factory_reset_unloads_engines", async () => {
-  // A fresh install has no engine resident — reset must unload the managed slots and drop
-  // runtime-registered external providers (user-hit 2026-06-12: engine still showed loaded
-  // after reset).
+  // A fresh install has no engine resident — reset must stop the speech runtime's servers (the
+  // kit's, round E) and drop runtime-registered external providers (user-hit 2026-06-12: engine
+  // still showed loaded after reset).
   useTmpDb();
-  const unloaded = [];
-  vi.spyOn(managerModule, "getManager").mockReturnValue({
-    async unload(kind = null) {
-      unloaded.push(kind);
-      return { previous_engine: "kokoro" };
-    },
-  });
+  const stopped = [];
+  const svc = fakeSpeechRuntime({ loaded: [{ modelId: "kokoro-82m-q8" }] });
+  svc.stopServer = async () => {
+    stopped.push("audiocpp");
+  };
   const backend = {
     meta: { engineId: "ext-tts", displayName: "Ext", backend: "openai" },
     unloadCalled: false,
@@ -123,7 +124,7 @@ test("factory_reset_unloads_engines", async () => {
 
   await dataAdmin.runFactoryReset();
 
-  expect(unloaded).toEqual([null]); // all managed slots unloaded
+  expect(stopped).toEqual(["audiocpp"]); // the speech runtime's servers stopped
   expect(backend.unloadCalled).toBe(true);
   expect(state.engines).not.toBe(registry); // fresh, empty registry
   expect(state.engines.registeredIds()).toEqual([]);

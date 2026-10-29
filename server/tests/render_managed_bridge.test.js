@@ -5,8 +5,10 @@
 // Before the fix, render_line only knew the in-process registry — which holds external cloud
 // providers only — so every managed-plugin voice 404'd and the whole multi-line render family
 // (chapter, M4B, ZIP, Lines) was cloud-only. These pin the bridge: managed voices resolve via
-// manifests, load via the manager, synth via its HTTP proxy, cache like every other line — and
-// the registry branch stays first, exactly as external providers and the test fakes rely on.
+// the catalog's manifests and speak through the kit's audio.cpp runtime (round E — kit_speech.js
+// `speak`, whose line loads its model when another is resident; faked by render_helpers'
+// FakeSpeech), cache like every other line — and the registry branch stays first, exactly as
+// external providers and the test fakes rely on.
 import { realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, expect, test } from "vitest";
@@ -15,7 +17,7 @@ import { EngineMeta, PresetVoice, SynthOutput } from "../src/engines/base.js";
 import { ApiError } from "../src/errors.js";
 import { probeLineCached, renderLine } from "../src/render_core.js";
 import { tmpPath } from "./helpers.js";
-import { FakeCache, FakeManager, fakeManifest, renderState, useManager } from "./render_helpers.js";
+import { FakeCache, FakeSpeech, fakeManifest, renderState, useSpeech } from "./render_helpers.js";
 
 class FakeBackend {
   constructor(engineId, voiceIds) {
@@ -41,8 +43,8 @@ class FakeBackend {
 
 let fakeMgr;
 beforeEach(() => {
-  fakeMgr = useManager(
-    new FakeManager({
+  fakeMgr = useSpeech(
+    new FakeSpeech({
       "mock-tts": fakeManifest("mock-tts", { tags: false, staticVoices: [{ id: "mv_1", name: "MV" }] }),
       "mock-tags": fakeManifest("mock-tags", { tags: true, staticVoices: [{ id: "tv_1", name: "TV" }] }),
     }),
@@ -51,7 +53,7 @@ beforeEach(() => {
 
 const state = (opts = {}) => renderState({ enabled: opts.cache != null, ...opts });
 
-test("managed_voice_renders_via_manager", async () => {
+test("managed_voice_renders_via_the_kits_speech_runtime", async () => {
   const st = state();
   const rl = await renderLine(st, { voice: "mv_1", text: "Hello world" });
   expect(rl.sampleRate).toBe(16000);
@@ -86,7 +88,7 @@ test("managed_lines_cache_and_probe", async () => {
   expect(fakeMgr.synths.length).toBe(1); // second render was a cache hit
 });
 
-test("registry_backend_wins_over_manager", async () => {
+test("registry_backend_wins_over_the_kits_speech_runtime", async () => {
   const st = state();
   const backend = new FakeBackend("mock-tts", ["rv_1"]);
   st.engines.register(backend);

@@ -3,20 +3,20 @@
 
 import { makeHealthRouter } from "@delebash/core/platform";
 import { getState } from "../app_state.js";
-import * as manager from "../engines/manager.js";
-import { _variantRows } from "../engines/model_catalog.js";
+import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
+import { _variantRows, getManifest } from "../engines/model_catalog.js";
 import { construct, HealthResponse } from "../models.js";
 import { API_VERSION, PRODUCT, VERSION } from "../version.js";
 
-/** The loaded model's own name — its catalog row's (*Kokoro 82M*), else the engine's, else
- * whatever the registry calls it. Never the bare id when a name exists. */
+/** The loaded model's own name — its catalog row's (*Kokoro 82M*, the version the kit's runtime
+ * holds), else the engine's, else whatever the registry calls it. Never the bare id when a name
+ * exists. */
 export function loadedModelName(engineId) {
   if (!engineId) return null;
-  const mgr = manager.getManager();
-  const variant = mgr.currentVariantId(engineId);
+  const variant = kitSpeech.currentVariantId(engineId);
   const row = _variantRows(engineId).find((r) => r.id === variant);
   if (row) return row.name || variant;
-  const m = mgr.getManifest(engineId);
+  const m = getManifest(engineId);
   if (m) return m.name;
   const inst = getState().engines.get(engineId);
   return inst ? inst.meta.displayName : engineId;
@@ -38,9 +38,9 @@ export function engineHealth() {
     backend: e.meta.backend,
   }));
   // The legacy in-process registry (st.engines) tracks "current" for backends registered at
-  // boot; the EngineManager tracks the TTS slot's loaded engine independently — checking
-  // both keeps the topbar pill honest however the engine was loaded.
-  const current = manager.getManager().currentId() || st.engines.current();
+  // boot; the kit's audio.cpp runtime holds the speech model (its `loaded()`) — checking both
+  // keeps the topbar pill honest however the engine was loaded.
+  const current = kitSpeech.currentFor("tts") || st.engines.current();
   return construct(HealthResponse, {
     product: PRODUCT,
     apiVersion: API_VERSION,

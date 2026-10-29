@@ -67,7 +67,7 @@ export function lexiconReach(lex) {
 export function kokoroCantSay(entries) {
   let vocab;
   try {
-    vocab = vocabOf(blending._kokoroGguf(getState().dataDir));
+    vocab = vocabOf(blending._kokoroGguf());
   } catch {
     return []; // Kokoro isn't downloaded
   }

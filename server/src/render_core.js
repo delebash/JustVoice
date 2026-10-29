@@ -34,9 +34,12 @@ import { parseWavHeader, stripWavHeader, writeWavContainer } from "./audio/wav.j
 import { CacheKeyBuilder, packPcmWithFormat, unpackPcmWithFormat } from "./cache.js";
 import { canonicalJson } from "./delivery.js";
 import { SynthRequest } from "./engines/base.js";
+import { pieceLengthOf } from "./engines/audiocpp/kit_hooks.js";
+import { variantOf } from "./engines/audiocpp/kit_models.js";
+import * as kitSettings from "./engines/audiocpp/kit_settings.js";
+import * as kitSpeech from "./engines/audiocpp/kit_speech.js";
 import * as capabilityDetails from "./engines/capability_details.js";
-import * as runtime from "./engines/audiocpp/runtime.js";
-import * as manager from "./engines/manager.js";
+import * as modelCatalog from "./engines/model_catalog.js";
 import { badRequest, internal, notFound } from "./errors.js";
 import { ATOMIC, SPANS, strip as stripTags } from "./inline_tags.js";
 import * as self from "./render_core.js";
@@ -65,9 +68,6 @@ export function toInt(v) {
   if (typeof x === "string") return pyInt(x);
   throw new TypeError(`int() argument must be a string, a bytes-like object or a real number, not '${x === null ? "NoneType" : typeof x}'`);
 }
-
-/** A manager's `manifests()` values — a Map from the real manager, an object from a test's. */
-const valuesOf = (x) => (x instanceof Map ? [...x.values()] : Object.values(x || {}));
 
 /** `str.format(value=…)` for a tag syntax ("[{value}]"). */
 function formatSyntax(syntax, value) {
@@ -109,12 +109,8 @@ export async function _resolveEngineForVoice(state, voiceId) {
   }
   const stored = state.voices.get(voiceId);
   if (stored) return stored.engine;
-  try {
-    for (const m of valuesOf(manager.getManager().manifests())) {
-      if ((m.staticVoices || []).some((v) => v.id === voiceId)) return m.id;
-    }
-  } catch {
-    /* no manager */
+  for (const m of modelCatalog.manifests().values()) {
+    if ((m.staticVoices || []).some((v) => v.id === voiceId)) return m.id;
   }
   return null;
 }
@@ -178,25 +174,20 @@ export function descriptionSeed(voiceId) {
   return zlib.crc32(Buffer.from(voiceId, "utf8")) & 0x7fffffff;
 }
 
-/** The longest piece a line goes to its model in: the model's split size (the user's per
- * model, else the catalog's — `EngineManager.splitCharsFor`) under
- * `generation.max_chunk_chars`, which a model with none gets. A description voice keeps
+/** The longest piece a line goes to its model version `versionId` in: the model's split size
+ * (the user's per model, else the catalog's — kit_hooks.js `pieceLengthOf`, the length its price
+ * is measured at) under `generation.max_chunk_chars`, which a model with none gets — and a
+ * registry engine, which has no versions. A description voice keeps
  * `max_chunk_chars`: split, it drifted into a different person from piece to piece (the
  * user's listening verdict, 2026-10-04 — audit §13.6). The host splits at sentence ends and
  * joins; a piece under audio.cpp's own budget is never re-split with its hard join (audit §5
  * D5). */
-export function lineSplitChars(state, engineId, voice) {
-  const cap = pyInt(state.settings.get().generation?.max_chunk_chars ?? DEFAULT_MAX_CHUNK_CHARS);
+export function lineSplitChars(state, engineId, voice, versionId = null) {
+  const settings = state.settings.get();
+  const cap = pyInt(settings.generation?.max_chunk_chars ?? DEFAULT_MAX_CHUNK_CHARS);
   if (isDescriptionVoice(state, voice)) return cap;
-  let split;
-  try {
-    const mgr = manager.getManager();
-    split = mgr.splitCharsFor(engineId, mgr.currentVariantId(engineId));
-  } catch {
-    // a registry engine / bare tests: no split of its own
-    split = null;
-  }
-  return split ? Math.min(cap, split) : cap;
+  const found = versionId ? variantOf(versionId) : null;
+  return found !== null && found.engineId === engineId ? pieceLengthOf(engineId, found.row, settings) : cap;
 }
 
 /** `voiceDesignInstruct` by voice id — the form the compose sites want, since they hold an id
@@ -267,12 +258,7 @@ function _modelRow(model) {
 export function _engineTakesTags(state, engineId) {
   const engine = _registryEngine(state, engineId);
   if (engine !== null) return Boolean(engine.meta.supportsParalinguisticTags);
-  let m;
-  try {
-    m = manager.getManager().getManifest(engineId);
-  } catch {
-    return null;
-  }
+  const m = modelCatalog.getManifest(engineId);
   if (m == null) return null;
   return truthy(m.capabilities.paralinguistic_tags);
 }
@@ -358,16 +344,15 @@ export function _applyLeadTags(text, delivery, model) {
   return lead.length ? `${lead.join(" ")} ${text}` : text;
 }
 
-/** Whether this model can pronounce a word from IPA NOW: its capability row says so (the
- * pinned runtime splices it — Kokoro, gap 3) and the INSTALLED runtime is new enough. On an
- * older installed runtime an entry's respelling is used instead, as on an engine without IPA.
- * (The runtime's readers need `await runtime.ensureHardware()` at boot; before it they throw,
- * which reads as "no IPA" here, as any failure did in Python.) */
+/** Whether this model can pronounce a word from IPA NOW: its capability row says so (the build
+ * the app ships splices it — Kokoro, gap 3) and the build pinned here is new enough (kit_settings.js
+ * `runtimeHas`). On an older pinned build an entry's respelling is used instead, as on an engine
+ * without IPA. */
 export function _supportsPhonemeInput(model) {
   try {
     const cap = capabilityDetails.lookup(model);
     if (!(cap && cap.supports_phoneme_input)) return false;
-    return Boolean(runtime.hasFeature("inline_ipa"));
+    return kitSettings.runtimeHas("inline_ipa");
   } catch {
     // capability table or runtime unavailable → no IPA
     return false;
@@ -673,12 +658,12 @@ export async function renderLine(
 
   const engineId = await self._resolveEngineForVoice(state, voice);
   if (engineId === null) throw notFound(`voice ${voice}`);
-  // Registry backends (external providers + test fakes) win; managed plugin engines never sit
-  // in the registry and route via the manager below (the 2026-08-08 §7d fix — before it, every
-  // managed voice 404'd here and the whole multi-line render family was cloud-only).
+  // Registry backends (external providers + test fakes) win; managed engines never sit in the
+  // registry and speak through the kit's audio.cpp runtime below (the 2026-08-08 §7d fix — before
+  // it, every managed voice 404'd here and the whole multi-line render family was cloud-only).
   const engine = state.engines.get(engineId) ?? null;
   if (engine === null) {
-    if (manager.getManager().getManifest(engineId) == null) throw notFound(`engine ${engineId}`);
+    if (modelCatalog.getManifest(engineId) == null) throw notFound(`engine ${engineId}`);
   }
 
   // The model the voice speaks on (voice_model.js): its tags, its emotion tags, its pacing and
@@ -718,8 +703,10 @@ export async function renderLine(
   }
 
   // Auto-load on first synthesize + the per-door synth call. Registry backends keep their
-  // object door; managed engines load through the manager and synth via its HTTP proxy.
+  // object door; a managed engine's line names its model version, which the kit's runtime loads
+  // (where the user's saved choice says) and speaks on.
   let synthPiece;
+  let version = null;
   if (engine !== null) {
     if (!engine.ready()) {
       try {
@@ -728,7 +715,7 @@ export async function renderLine(
       } catch (e) {
         throw badRequest(
           `engine '${engineId}' failed to load on first use: ${errText(e)}. ` +
-            `Try POST /v1/engines/${engineId}/load with explicit device + model_variant.`,
+            `Try POST /v1/ai/runtimes/audiocpp/models/${engineId}/load with explicit device + model_variant.`,
         );
       }
     }
@@ -742,29 +729,32 @@ export async function renderLine(
       return [Buffer.from(out.bytes).subarray(offset, offset + size), fmt.sampleRate, fmt.channels];
     };
   } else {
-    const mgr = manager.getManager();
-    // The voice's own model, in the size AI Settings chose — a Turbo clone loads Turbo even
+    // The voice's own model, in the size AI Settings chose — a Turbo clone speaks on Turbo even
     // while Multilingual is resident (2026-10-03). Pocket has one model per language, so the
     // line's language picks it.
     try {
-      await voiceModel.ensureModelLoaded(engineId, model, language);
+      version = voiceModel.speakingVersion(engineId, model, language);
     } catch (e) {
       if (e instanceof voiceModel.ModelUnavailable) throw badRequest(e.message);
-      throw badRequest(
-        `engine '${engineId}' failed to load on first use: ${errText(e)}. ` +
-          `Load it on the Engines tab first, or POST /v1/engines/${engineId}/load.`,
-      );
+      throw e;
     }
     const voiceFields = voiceSynthFields(state, state.voices.get(voice));
     synthPiece = async (piece) => {
-      const [audio, meta] = await mgr.synth(engineId, { voice_id: voice, text: piece, language, delivery, seed, ...voiceFields });
+      const [audio, meta] = await voiceModel.speak(engineId, model, version, { voice_id: voice, text: piece, language, delivery, seed, ...voiceFields });
       const piecePcm = meta.is_wav_container ? stripWavHeader(audio) : audio;
       return [piecePcm, meta.sample_rate || 24000, meta.channels || 1];
     };
   }
 
   const engineFailure = (e, what) => {
-    if (e instanceof manager.TermsRequired || e instanceof manager.EngineRequestError) return e.apiError();
+    if (e instanceof modelCatalog.TermsRequired || e instanceof kitSpeech.EngineRequestError) return e.apiError();
+    if (e instanceof kitSpeech.LoadFailed) {
+      // The voice's model didn't load for its first line.
+      return badRequest(
+        `engine '${engineId}' failed to load on first use: ${errText(e)}. ` +
+          `Load it on the Engines tab first, or POST /v1/ai/runtimes/audiocpp/models/${e.versionId}/load.`,
+      );
+    }
     return internal(`${what}: ${errText(e)}`);
   };
 
@@ -772,7 +762,7 @@ export async function renderLine(
   // Above, split at sentence boundaries + join the per-chunk audio. Each model's own piece
   // length (audit 2026-10-04 §13.3) — its working memory grows with the line, and the price
   // its load was checked against was measured at this length.
-  const maxChunkChars = lineSplitChars(state, engineId, voice);
+  const maxChunkChars = lineSplitChars(state, engineId, voice, version);
   const crossfadeMs = pyInt(settings.generation?.crossfade_ms ?? 50);
 
   let pcm;

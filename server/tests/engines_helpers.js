@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Test helpers for the speech-engine layer's suites (wave B) — fake hardware, an injected
-// arbiter, WAV builders, a bare manager, an app state on a temp folder.
+// arbiter, WAV builders, the kit's audio.cpp runtime faked (round E: it runs our speech models),
+// an app state on a temp folder.
 //
 // Importing this module points the default data folder at a temp folder for the whole test
 // file (the DSP program logs there when no app state is set — never into the checkout's
@@ -10,15 +11,16 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import * as llmDb from "@delebash/core/llm/db";
-import { Mutex } from "@delebash/core/platform/asyncutil";
 import { model } from "@delebash/core/platform/models";
 import * as arbiter from "@delebash/core/runner/arbiter";
+import { configureRuntimeServices, runtimeServices } from "@delebash/core/runner/runtime_service";
+import { runtimeOf } from "@delebash/core/runner/runtimes";
 import { GpuInfo, HardwareInfo } from "@delebash/core/runner/schema";
 import * as appState from "../src/app_state.js";
 import { writeWavContainer } from "../src/audio/wav.js";
 import * as session from "../src/database/session.js";
 import * as devBuild from "../src/engines/audiocpp/dev_build.js";
-import { EngineManager } from "../src/engines/manager.js";
+import { variantOf } from "../src/engines/audiocpp/kit_models.js";
 import { tmpPath } from "./helpers.js";
 
 process.env.JUSTVOICE_DATA_DIR = mkdtempSync(path.join(tmpdir(), "jv-test-data-"));
@@ -58,23 +60,88 @@ export const resetArbiter = () => arbiter.setArbiter(null);
 /** `seconds` of 16-bit mono silence as a WAV (Python's `wave` writer, byte for byte). */
 export const wav = (seconds, rate = 24000) => writeWavContainer(Buffer.alloc(Math.trunc(seconds * rate) * 2), rate, 1);
 
-/** EngineManager.__new__ + the fields the code reads — no discovery. */
-export function bareManager() {
-  const mgr = Object.create(EngineManager.prototype);
-  Object.assign(mgr, {
-    _manifests: new Map(),
-    _loaded: new Map(),
-    _currentVariants: new Map(),
-    _lock: new Mutex(),
-    _cancelLoadRequests: new Set(),
-    _activityLocks: new Map(),
-    _resolvedDevices: new Map(),
-    _placementReasons: new Map(),
-    _hwCache: null,
-    _hwDetected: true, // never shell out to nvidia-smi in a unit test
-    _probeCache: new Map(),
-  });
-  return mgr;
+/** An audio.cpp server that answers every request and remembers it: speech `wav` (a WAV), a
+ * transcription `text`, an alignment `words`. Its `calls` are `[method, ...args]`. */
+export function fakeServer({ wav: answer = wav(0.5), text = "", words = [] } = {}) {
+  const calls = [];
+  return {
+    calls,
+    speech: async (body) => {
+      calls.push(["speech", body]);
+      return [answer, {}];
+    },
+    transcribe: async (body, timeout = null) => {
+      calls.push(["transcribe", body, timeout]);
+      return { text };
+    },
+    align: async (model, audio, said, language) => {
+      calls.push(["align", model, audio, said, language]);
+      return { words };
+    },
+  };
+}
+
+/**
+ * The kit's audio.cpp runtime, faked (round E: it loads and runs our models — kit_speech.js): what
+ * each kind holds (`loaded`: `[{modelId, placement?, kind?, reason?}]`), the model ids downloaded
+ * (`onDisk`; their files `files[id]`, else a main file of their own), whether it is `installed`,
+ * the add-ons installed (`addons`: "unidic"). A line runs on `server` (fakeServer) and holds its
+ * model after; `lines` records each `useModel` call — `{modelId, placement, sessionOptions, needs}`
+ * — `unloads` each Unload, `stops` each stop of its servers. Installed with the kit's
+ * configureRuntimeServices; `endSpeech()` puts the services back. → the fake service.
+ */
+export function fakeSpeechRuntime({ loaded = [], onDisk = [], files = {}, installed = true, addons = [], server = fakeServer() } = {}) {
+  const kindOf = (id) => (variantOf(id)?.mod.KIND === "stt" ? "stt" : "tts");
+  const held = loaded.map((l) => ({ placement: "gpu", reason: "", kind: kindOf(l.modelId), ...l }));
+  const svc = {
+    rt: runtimeOf("audiocpp"),
+    server,
+    lines: [],
+    unloads: [],
+    held,
+    loaded: () => held.map((h) => ({ ...h })),
+    installedExe: () => (installed ? "audiocpp_server" : null),
+    modelFor(id) {
+      if (!onDisk.includes(id)) throw Object.assign(new Error(`${id} isn't downloaded`), { notDownloaded: true });
+      return { key: id, files: files[id] ?? { model: path.join(process.env.JUSTVOICE_DATA_DIR, "fake-models", `${id}.gguf`) }, peakVramMb: 0 };
+    },
+    addons: () => [{ id: "unidic", installed: addons.includes("unidic") }],
+    async useModel(modelId, { placement, sessionOptions, needs = [] } = {}, fn) {
+      svc.lines.push({ modelId, placement, sessionOptions, needs });
+      const kind = kindOf(modelId);
+      for (let i = held.length - 1; i >= 0; i--) if (held[i].kind === kind && held[i].modelId !== modelId) held.splice(i, 1);
+      let h = held.find((x) => x.modelId === modelId);
+      if (!h) held.push((h = { modelId, placement: "gpu", kind, reason: "" }));
+      return fn(server, { ...h });
+    },
+    // a transcription's request, as the kit asks our hook to shape it (kit_hooks.js `transcribe`)
+    async transcriptionRequest(modelId, body) {
+      const { SPEECH_HOOKS } = await import("../src/engines/audiocpp/kit_hooks.js");
+      return SPEECH_HOOKS.transcribe(body, { id: modelId, kind: kindOf(modelId) });
+    },
+    // the kit's stopRuntimeServers (a reset, a restore, the shutdown): every model leaves
+    async stopServer() {
+      svc.stops += 1;
+      held.length = 0;
+    },
+    stops: 0,
+    async unloadModel(id) {
+      svc.unloads.push(id);
+      const i = held.findIndex((x) => x.modelId === id);
+      if (i >= 0) held.splice(i, 1);
+      return i >= 0;
+    },
+  };
+  fakeSpeech.prev ??= new Map(runtimeServices().map((s) => [s.rt.id, s]));
+  configureRuntimeServices(new Map([...fakeSpeech.prev, ["audiocpp", svc]]));
+  return svc;
+}
+const fakeSpeech = { prev: null };
+
+/** The kit's runtime services as they were before `fakeSpeechRuntime`. */
+export function endSpeech() {
+  if (fakeSpeech.prev !== null) configureRuntimeServices(fakeSpeech.prev);
+  fakeSpeech.prev = null;
 }
 
 /** create_app(data_dir=tmp)'s state half: the database at `dir` (or a new temp folder), the

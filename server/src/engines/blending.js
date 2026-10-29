@@ -8,19 +8,19 @@
 //     blend[i] = Σ(wⱼ · voiceⱼ[i]) / Σwⱼ
 //
 // — the canonical Kokoro mix (slerp/lerp retired 2026-08-19). Creating a blend needs only
-// files on disk; the engine can be unloaded. Only *hearing* a blend needs the engine, and that
+// files on disk (a downloaded Kokoro's, in the kit's models cache); the engine can be unloaded. Only *hearing* a blend needs the engine, and that
 // rides the normal synth path as the request's `voice_vector`.
 //
 // The math itself runs in `audiocpp_dsp` (audio/dsp_client.js, 2026-10-07): this module
 // resolves which voices, as raw float32 bytes, and checks shapes. Exactly one engine blends
 // today; adding a second means adding its arm here.
 
-import { readdirSync, statSync } from "node:fs";
+import { statSync } from "node:fs";
 import path from "node:path";
 import { NotImplementedError, pyRound, ValueError } from "@delebash/core/platform/py";
 import * as dspClient from "../audio/dsp_client.js";
-import * as speechCache from "../speech_cache.js";
 import { generatedEngines, kokoroVoices } from "./audiocpp/generated.js";
+import * as kitSpeech from "./audiocpp/kit_speech.js";
 import { embeddedFiles } from "./audiocpp/gguf_files.js";
 import * as self from "./blending.js";
 
@@ -60,9 +60,9 @@ export function presetLanguage(engineId, voiceId) {
  * strategy (A + B − C), where magnitude is the point (2026-08-21 ruling). MEAN_SOURCE may
  * appear in `sourceIds`.
  */
-export async function blend(engineId, sourceIds, weights, { dataDir, resolveStored, normalize = true }) {
+export async function blend(engineId, sourceIds, weights, { resolveStored, normalize = true }) {
   if (engineId !== "kokoro") throw new NotImplementedError(`engine '${engineId}' has no blend support`);
-  return kokoroBlend(sourceIds, weights, dataDir, resolveStored, normalize);
+  return kokoroBlend(sourceIds, weights, resolveStored, normalize);
 }
 
 /**
@@ -75,9 +75,9 @@ export async function blend(engineId, sourceIds, weights, { dataDir, resolveStor
  * slice runs along the LAST axis of the pack's (510, 1, 256) array, per row. Uncovered
  * features stay zero; overlapping segments resolve last-wins.
  */
-export async function recombine(engineId, segments, { dataDir, resolveStored }) {
+export async function recombine(engineId, segments, { resolveStored }) {
   if (engineId !== "kokoro") throw new NotImplementedError(`engine '${engineId}' cannot recombine`);
-  return kokoroRecombine(segments, dataDir, resolveStored);
+  return kokoroRecombine(segments, resolveStored);
 }
 
 /**
@@ -97,42 +97,20 @@ export function blendLanguage(engineId, sourceIds, { storedLanguage, default: de
 
 /** The centroid of every preset voice in the installed pack, flat (async) — the "average
  * voice" the Extrapolate strategy pushes away from. */
-export async function packMean(engineId, { dataDir }) {
+export async function packMean(engineId) {
   if (engineId !== "kokoro") throw new NotImplementedError(`engine '${engineId}' has no voice pack`);
-  return dspClient.f32List(await kokoroPackMean(dataDir));
+  return dspClient.f32List(await kokoroPackMean());
 }
 
 // ── Kokoro ───────────────────────────────────────────────────────────────
 
-function rglobGguf(dir) {
-  const out = [];
-  const walk = (d) => {
-    let names;
-    try {
-      names = readdirSync(d, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of names) {
-      const p = path.join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name.endsWith(".gguf")) out.push(p);
-    }
-  };
-  walk(dir);
-  return out.sort();
-}
-
-/** The installed Kokoro model file — any downloaded variant (their voices are the same preset
- * packs). No fetching — blending never triggers a download; the caller surfaces "download
- * Kokoro first". */
-export function _kokoroGguf(dataDir) {
+/** The installed Kokoro model file — any downloaded variant's (their voices are the same preset
+ * packs), from the kit's models cache. No fetching — blending never triggers a download; the
+ * caller surfaces "download Kokoro first". */
+export function _kokoroGguf() {
   for (const variant of generatedEngines().get("kokoro").VARIANTS) {
-    const vid = variant.id;
-    if (speechCache.variantOnDisk(dataDir, "kokoro", vid)) {
-      const hits = rglobGguf(String(speechCache.variantDir(dataDir, "kokoro", vid)));
-      if (hits.length) return hits[0];
-    }
+    const file = kitSpeech.modelFiles(variant.id)?.model;
+    if (file && String(file).endsWith(".gguf")) return String(file);
   }
   throw new LookupError("Kokoro is not downloaded — download it on AI Settings → Speech engines first");
 }
@@ -146,8 +124,8 @@ export const _PACK_CACHE = new Map();
  * and the feature count (256). Since the 2026-10-01 switch Kokoro is one audio.cpp GGUF, and
  * its voices are files embedded in it (gap 2). Read once per model file version.
  */
-export function _kokoroPack(dataDir) {
-  const gguf = self._kokoroGguf(dataDir);
+export function _kokoroPack() {
+  const gguf = self._kokoroGguf();
   const key = `${gguf}|${statSync(gguf, { bigint: true }).mtimeNs}`;
   if (_PACK_CACHE.has(key)) return _PACK_CACHE.get(key);
   const files = embeddedFiles(gguf);
@@ -168,8 +146,8 @@ export function _kokoroPack(dataDir) {
 }
 
 /** Centroid over every preset in the pack (float32 bytes, the pack's shape). */
-async function kokoroPackMean(dataDir) {
-  const [pack, names] = self._kokoroPack(dataDir);
+async function kokoroPackMean() {
+  const [pack, names] = self._kokoroPack();
   if (!names.length) throw new LookupError("kokoro voices file holds no voices");
   return dspClient.vectorsMean(names.map((n) => pack.get(n)));
 }
@@ -177,8 +155,8 @@ async function kokoroPackMean(dataDir) {
 /** Resolve ids → float32 bytes, and the pack's feature count. `shaped` (recombine) needs a
  * stored blend to have exactly a preset's size, so its feature axis lines up; otherwise (a
  * weighted average) every source just needs the same size. */
-async function kokoroVectors(sourceIds, dataDir, resolveStored, { shaped = false } = {}) {
-  const [pack, names, features] = self._kokoroPack(dataDir);
+async function kokoroVectors(sourceIds, resolveStored, { shaped = false } = {}) {
+  const [pack, names, features] = self._kokoroPack();
   if (!names.length) throw new LookupError("kokoro voices file holds no voices");
   const packSize = pack.get(names[0]).length / 4;
   let meanCache = null;
@@ -186,7 +164,7 @@ async function kokoroVectors(sourceIds, dataDir, resolveStored, { shaped = false
   for (const vid of sourceIds) {
     let arr;
     if (vid === MEAN_SOURCE) {
-      if (meanCache === null) meanCache = await kokoroPackMean(dataDir);
+      if (meanCache === null) meanCache = await kokoroPackMean();
       arr = meanCache;
     } else if (pack.has(vid)) {
       arr = pack.get(vid);
@@ -208,16 +186,16 @@ async function kokoroVectors(sourceIds, dataDir, resolveStored, { shaped = false
   return [out, features];
 }
 
-async function kokoroBlend(sourceIds, weights, dataDir, resolveStored, normalize = true) {
-  const [vecs] = await kokoroVectors(sourceIds, dataDir, resolveStored);
+async function kokoroBlend(sourceIds, weights, resolveStored, normalize = true) {
+  const [vecs] = await kokoroVectors(sourceIds, resolveStored);
   if (normalize && weights.reduce((a, w) => a + Number(w), 0) === 0) throw new ValueError("weights must sum to a non-zero value");
   return dspClient.f32List(await dspClient.vectorsBlend(vecs, weights, normalize));
 }
 
-async function kokoroRecombine(segments, dataDir, resolveStored) {
+async function kokoroRecombine(segments, resolveStored) {
   if (!segments.length) throw new ValueError("recombine needs at least one segment");
   const ids = segments.map((s) => s[0]);
-  const [vecs, features] = await kokoroVectors(ids, dataDir, resolveStored, { shaped: true });
+  const [vecs, features] = await kokoroVectors(ids, resolveStored, { shaped: true });
   const covered = new Array(features).fill(false);
   for (const [vid, start, end] of segments) {
     const lo = Math.trunc(pyRound(Math.max(0.0, Math.min(1.0, Number(start))) * features));

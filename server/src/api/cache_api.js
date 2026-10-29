@@ -8,7 +8,7 @@ import { pyRepr } from "@delebash/core/platform/pyjson";
 import { getState } from "../app_state.js";
 import { Generation } from "../database/models.js";
 import * as session from "../database/session.js";
-import * as manager from "../engines/manager.js";
+import * as modelCatalog from "../engines/model_catalog.js";
 import { badRequest } from "../errors.js";
 import { mediaFile } from "../media_paths.js";
 import { CacheStats, construct } from "../models.js";
@@ -47,7 +47,7 @@ export function modelName(model, engineId) {
  * were recorded says "managed": that is "not recorded". */
 export function engineName(engineId) {
   if (!engineId || engineId === "managed") return "not recorded";
-  const m = manager.getManager().getManifest(engineId);
+  const m = modelCatalog.getManifest(engineId);
   if (m) return m.name;
   const inst = getState().engines.get(engineId);
   return inst ? inst.meta.displayName : engineId;

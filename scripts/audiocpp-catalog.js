@@ -5,10 +5,10 @@
 // model family audio.cpp has, read at a ref of our fork's checkout beside this repo
 // (../audio.cpp), plus each package file's size and hash at the pinned model revision on
 // Hugging Face. Writes server/src/engines/audiocpp/catalog.json, which is committed — run this
-// whenever our fork moves (engines/audiocpp/release.js), and the diff shows exactly what the
-// update brings.
+// whenever our fork moves (the kit's pinned build, runner/config.js DEFAULT_AUDIOCPP_BUILD), and the
+// diff shows exactly what the update brings.
 //
-//   node scripts/audiocpp-catalog.js                 the pinned tag (release.js cfg.TAG)
+//   node scripts/audiocpp-catalog.js                 the pinned tag (the kit's DEFAULT_AUDIOCPP_BUILD)
 //   node scripts/audiocpp-catalog.js --ref <ref>     another tag, branch or commit of the checkout
 //
 // Sources, each read with `git show <ref>:<path>` so the checkout's working tree doesn't matter:
@@ -29,9 +29,17 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_AUDIOCPP_BUILD } from "@delebash/core/runner/config";
 import { _entryOid, _entrySize, _revisionSha, _tree } from "@delebash/core/runner/models";
 import { marked } from "marked";
-import { cfg, MODEL_REPO, MODEL_REVISION } from "../server/src/engines/audiocpp/release.js";
+
+// The model files: audio.cpp's own GGUF packages. Commit pinned 2026-10-15: the repo's newest
+// (2026-10-11, "Add Voxtral 4B TTS"), the first to hold every package audio.cpp v0.9.2's specs
+// name (Pocket French, Voxtral TTS, Breeze Q4_0 …). From the commit pinned before (7bf52723,
+// 2026-10-01) no file changed but README.md and .gitattributes; 81 were added. (Kept in
+// engines/audiocpp/release.js until round E, 2026-10-29.)
+export const MODEL_REPO = "audio-cpp/audio.cpp-gguf";
+export const MODEL_REVISION = "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const CHECKOUT = resolve(ROOT, "..", "audio.cpp");
@@ -493,7 +501,7 @@ export async function buildCatalog(ref) {
 
 async function main() {
   const at = process.argv.indexOf("--ref");
-  const ref = at > 0 ? process.argv[at + 1] : cfg.TAG;
+  const ref = at > 0 ? process.argv[at + 1] : DEFAULT_AUDIOCPP_BUILD;
   const catalog = await buildCatalog(ref);
   writeFileSync(OUT, `${JSON.stringify(catalog, null, 2)}\n`);
   const fams = Object.values(catalog.families);

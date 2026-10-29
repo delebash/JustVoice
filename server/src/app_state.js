@@ -40,30 +40,6 @@ export class AppState {
     this._renderCache = new RenderCache(cacheRoot(dataDir), this.settings.get().cache.max_memory_entries);
     this.lexicons = new LexiconStore(dataDir);
     this.engines = engines !== undefined ? engines : EngineRegistry ? new EngineRegistry() : null;
-    this._jobs = new Map(); // install jobs, in-memory
-  }
-
-  jobGet(jobId) {
-    return this._jobs.get(jobId) ?? null;
-  }
-
-  jobSet(jobId, status) {
-    this._jobs.set(jobId, status);
-  }
-
-  jobUpdate(jobId, patch) {
-    const job = this._jobs.get(jobId);
-    if (job) Object.assign(job, patch);
-  }
-
-  /** Append a line to the job's rolling log tail, capped at `maxLines` so a long install
-   * doesn't balloon the in-memory job state. */
-  jobAppendLog(jobId, line, maxLines = 400) {
-    const job = this._jobs.get(jobId);
-    if (!job) return;
-    job.log_tail ??= [];
-    job.log_tail.push(line);
-    if (job.log_tail.length > maxLines) job.log_tail.splice(0, job.log_tail.length - maxLines);
   }
 }
 

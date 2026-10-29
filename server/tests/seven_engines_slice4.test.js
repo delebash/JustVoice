@@ -3,21 +3,18 @@
 // (docs/plans/2026-10-13-adopt-everything-audiocpp.md §3, §5): Turbo's and Nano's own voice (F4),
 // what audio.cpp's files give them (F10), the packages it offers beside ours (E6/E14/F5, QwenCleo),
 // and audio.cpp's memory estimate (the build's answer 3). What stays the same is
-// seven_engines_unchanged.test.js.
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import * as dl from "@delebash/core/runner/download";
-import * as km from "@delebash/core/runner/models";
+// seven_engines_unchanged.test.js. Since round E (docs/plans/2026-10-29-round-e-onto-the-kit.md)
+// the kit's audio.cpp runtime downloads and registers each model from its kit row (engines/
+// audiocpp/kit_models.js) and runs our warm-up (slot.js `warmModel`, its warm hook): what is pinned
+// here is what our rows and our warm-up give it.
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
+import { runtimeModelRows } from "../src/engines/audiocpp/kit_models.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
-import { discoverEngines } from "../src/engines/manager.js";
-import { modelsFor } from "../src/engines/model_catalog.js";
-import * as speechCache from "../src/speech_cache.js";
+import { discoverEngines, modelsFor } from "../src/engines/model_catalog.js";
 import * as vmod from "../src/voice_model.js";
-import { tmpPath } from "./helpers.js";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -115,37 +112,28 @@ test("QwenCleo-ASR: its package as audio.cpp's catalog gives it, its languages i
   expect(engine("asr").DEFAULT_VARIANT_ID).toBe("qwen3-asr-1.7b-q8");
 });
 
-/** Download a row's files as the app does (speech_cache.fetchHfVariant), each 4 bytes, offline. */
-async function fetchOffline(dataDir, engineId, r) {
-  vi.spyOn(km, "selectRepoFiles").mockImplementation(async (repo, { files }) => [`sha-${repo}`, files.map((p) => ({ path: p, size: 4, oid: "x" }))]);
-  vi.spyOn(dl, "streamDownload").mockImplementation(async (_url, dest) => {
-    mkdirSync(path.dirname(dest), { recursive: true });
-    writeFileSync(dest, Buffer.alloc(4));
-  });
-  vi.spyOn(speechCache, "_downloadOptions").mockReturnValue({ segments: 1, retries: 0 });
-  await speechCache.fetchHfVariant(dataDir, engineId, r.id, r.sources);
-}
-
-test("QwenCleo-ASR registers its files where its download put them: each repository in its own folder", async () => {
+test("QwenCleo-ASR's row names each file where its download puts it: each repository its own", () => {
   // Slice 4's GPU half (2026-10-16): "model path does not exist: …\qwencleo-asr-q8\qwencleo-asr-q8_0.gguf"
-  // — its model and Qwen3's aligner come from two repositories, so the download keeps each in its own
-  // folder, and the registration left that folder out.
-  const dataDir = tmpPath();
-  vi.spyOn(slot, "_dataDir").mockReturnValue(dataDir);
-  const asr = discoverEngines().get("asr");
+  // — its model and Qwen3's aligner come from two repositories, and the registration left the
+  // model's out. The kit downloads and registers each file by its row's repository, revision and
+  // path, in its slot: the model "model", the aligner "aligner" (round E).
+  const rows = runtimeModelRows();
+  const files = (id) => rows.find((r) => r.id === id).files.map((f) => [f.slot, f.repo, f.revision, f.path]);
+  expect(files("qwencleo-asr-q8")).toEqual([
+    ["model", "mohammedaly22/QwenCleo-ASR-GGUF", "6884dc2054684a2bb5e70ac8074e43f9c9fcd78a", "qwencleo-asr-q8_0.gguf"],
+    ["aligner", "audio-cpp/audio.cpp-gguf", "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5", "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
+  ]);
+  // Qwen3-ASR's, one repository, each at its own path.
+  expect(files("qwen3-asr-1.7b-q8")).toEqual([
+    ["model", "audio-cpp/audio.cpp-gguf", "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5", "Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-q8_0.gguf"],
+    ["aligner", "audio-cpp/audio.cpp-gguf", "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5", "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
+  ]);
+  // Each registers the aligner from its slot, on the first alignment (round E, G11).
   for (const id of ["qwencleo-asr-q8", "qwencleo-asr-f16", "qwen3-asr-1.7b-q8", "qwen3-asr-0.6b-f16"]) {
-    const r = row("asr", id);
-    await fetchOffline(dataDir, "asr", r);
-    expect(speechCache.variantOnDisk(dataDir, "asr", id), id).toBe(true);
-    const [model, aligner] = slot._entriesFor(asr, r);
-    expect(existsSync(model.path), model.path).toBe(true);
-    expect(existsSync(aligner.path), aligner.path).toBe(true);
-    expect(aligner.id).toBe(`${id}::aligner`);
+    const r = rows.find((x) => x.id === id);
+    expect(r.spec.companions, id).toEqual([{ role: "aligner", family: "qwen3_forced_aligner", task: "align", slot: "aligner", onDemand: true }]);
+    expect(r.files.map((f) => f.slot), id).toEqual(["model", "aligner"]);
   }
-  // QwenCleo's model in its repository's folder; Qwen3-ASR's, one repository, at the model's own.
-  const vdir = (id) => String(speechCache.variantDir(dataDir, "asr", id));
-  expect(slot._entriesFor(asr, row("asr", "qwencleo-asr-q8"))[0].path).toBe(path.join(vdir("qwencleo-asr-q8"), "mohammedaly22--QwenCleo-ASR-GGUF", "qwencleo-asr-q8_0.gguf"));
-  expect(slot._entriesFor(asr, row("asr", "qwen3-asr-1.7b-q8"))[0].path).toBe(path.join(vdir("qwen3-asr-1.7b-q8"), "Qwen3-ASR-1.7B-GGUF", "qwen3-asr-1.7b-q8_0.gguf"));
 });
 
 test("audio.cpp's memory estimate for the seven, as for every model (the build's answer 3)", () => {
@@ -229,13 +217,9 @@ test("Pocket TTS French loads without a warm-up: it has no preset to speak one i
   // Slice 4's GPU half (2026-10-16): its load failed with "failed to open safetensors file:
   // …\french\embeddings\alba.safetensors" — the warm-up spoke every Pocket model in alba, which the
   // French download doesn't have. audio.cpp's registration reads no voice (pocket_tts/loader.cpp).
-  vi.spyOn(slot, "effectivePlacement").mockImplementation((p) => p);
   const warm = async (id, chars) => {
-    const s = new slot.AudioCppSlot(discoverEngines().get("pocket"));
-    s._row = row("pocket", id);
     const asked = [];
-    vi.spyOn(s, "_srv").mockReturnValue({ speech: async (req) => asked.push(req) });
-    return [await s._warm(chars), asked];
+    return [await slot.warmModel({ speech: async (req) => asked.push(req) }, row("pocket", id), "tts", chars), asked];
   };
   for (const id of ["pocket-fr-q8", "pocket-fr-bf16"]) expect(await warm(id, 200), id).toEqual([false, []]);
   // TASKS "Slice 4's gaps" 2: no preset in French, ours or Kyutai's cosette.
@@ -250,17 +234,13 @@ test("Pocket TTS French loads without a warm-up: it has no preset to speak one i
 test("every speech model warms up in a voice it has, or clones only and is priced by its first line", async () => {
   // Pocket TTS French warmed up in a voice its download lacks (slice 4's GPU half). A model whose
   // warm-up says nothing is one that speaks only from a clip: its first line sets its price (§7
-  // answer 5; manager._priceFirstLine).
-  vi.spyOn(slot, "effectivePlacement").mockImplementation((p) => p);
+  // answer 5; the kit's runtime_service.js `_priceFirstLine` since round E).
   const silent = [];
   for (const m of discoverEngines().values()) {
     if (m.kind !== "tts") continue;
     for (const r of m.module.VARIANTS) {
-      const s = new slot.AudioCppSlot(m);
-      s._row = r;
       const asked = [];
-      vi.spyOn(s, "_srv").mockReturnValue({ speech: async (req) => asked.push(req) });
-      const calibrated = await s._warm(200);
+      const calibrated = await slot.warmModel({ speech: async (req) => asked.push(req) }, r, "tts", 200);
       if (!asked.length) {
         silent.push(r.id);
         expect([calibrated, r.voice_cloning, r.voice_design, r.preset_voices], r.id).toEqual([false, true, false, 0]);

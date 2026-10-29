@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
 // Dictation on the server — /v1/transcribe and /v1/captures.
 //
-// A recording arrives as a multipart upload; the local speech recognizer (the `asr` engine in
-// the speech runtime) transcribes it; the cleanup pass (refinement.js) tidies it when
-// `settings.captures.auto_refine` is on; and a `captures` row keeps BOTH texts, so the Captures
-// page can show either. A cleanup that fails never loses the recording's words: the raw
-// transcript stands in for the cleaned one. `POST /v1/transcribe` is the same transcription with
-// nothing stored.
+// A recording arrives as a multipart upload; the local speech recognizer (the Transcription
+// feature's model, on the kit's audio.cpp runtime) transcribes it; the cleanup pass
+// (refinement.js) tidies it when `settings.captures.auto_refine` is on; and a `captures` row keeps
+// BOTH texts, so the Captures page can show either. A cleanup that fails never loses the
+// recording's words: the raw transcript stands in for the cleaned one. `POST /v1/transcribe` is the
+// same transcription with nothing stored.
 //
 // This module also owns two things other routers use:
 //   - the multipart form reader (`_formSpool`, `_readForm`, `_requireFile`, `_formField`) —
 //     FastAPI's `File()` / `Form()` semantics for align, voice bundles and project import;
-//   - speech recognition loaded on first use (`ensureSttLoaded`, `_sttTranscribe`) — align and
-//     the MCP `justvoice.transcribe` tool call it too.
+//   - a recording's transcript (`_sttTranscribe`) — the take check and the MCP
+//     `justvoice.transcribe` tool call it too.
 //
-// The routes reach `_sttTranscribe`, `ensureSttLoaded`, `_readForm` and `_maybeRefine` through
-// this module's own namespace (`self.`), so a test's spy on an export takes effect.
+// The routes reach `_sttTranscribe`, `_readForm` and `_maybeRefine` through this module's own
+// namespace (`self.`), so a test's spy on an export takes effect.
 
 import { closeSync, createReadStream, createWriteStream, mkdirSync, mkdtempSync, openSync, readSync, rmSync, statSync } from "node:fs";
 import { copyFile } from "node:fs/promises";
@@ -33,6 +33,7 @@ import { jsonLoads, pyJson } from "@delebash/core/platform/pyjson";
 import { attachment, Hono, input, readJson } from "@delebash/core/platform/server";
 import { getState } from "../app_state.js";
 import { parseWavHeader } from "../audio/wav.js";
+import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
 import { Capture, uuid } from "../database/models.js";
 import { getDb } from "../database/session.js";
 import { badRequest, notFound } from "../errors.js";
@@ -221,33 +222,15 @@ async function copyUpload(file, dest) {
 
 // ─── Speech recognition ─────────────────────────────────────────────────────
 
-/** `[manager, settings]`, with the speech-recognition model loaded — on first use, when the
- * runtime and the model are installed; otherwise a 400 that says what to do. Whatever recogniser
- * is loaded transcribes; `aligner`: the words' timings need Qwen3-ASR's aligner, the only one
- * audio.cpp has, so Qwen3-ASR takes the slot when another recogniser holds it (the adoption
- * plan's §7 answer 2: captions stay on Qwen3-ASR and its aligner). */
-export async function ensureSttLoaded({ aligner = false } = {}) {
-  const { getManager } = await import("../engines/manager.js");
-  const mgr = getManager();
-  const settings = getState().settings.get();
-  const loaded = mgr.loadedFor("stt");
-  if (loaded === null || (aligner && loaded.manifest.id !== "asr")) {
-    const status = mgr.status("asr");
-    if (status !== "installed") {
-      throw badRequest(`speech recognition is ${status} — install the speech runtime and its model on the AI page`);
-    }
-    log.info(`loading speech recognition (${settings.captures.stt_model}) for its first use`);
-    await mgr.load("asr", { device: "auto", variant: settings.captures.stt_model });
-  }
-  return [mgr, settings];
-}
-
-/** The recognizer's text for the file at `audioPath`. The language is `language`, else
- * `settings.captures.language`; "" or "auto" lets the recognizer detect it. */
+/** The recognizer's text for the file at `audioPath`: the Transcription feature's model (its
+ * preset — the kit loads it, where it says, downloading it first when it isn't here; round E,
+ * docs/plans/2026-10-29-round-e-onto-the-kit.md §4 step 3). The language is `language`, else
+ * `settings.captures.language`; "" or "auto" lets the recognizer detect it. A failure is the
+ * problem it answers (kit_speech.js `transcribe`). */
 export async function _sttTranscribe(audioPath, language) {
-  const [mgr, settings] = await self.ensureSttLoaded();
+  const settings = getState().settings.get();
   const lang = language || settings.captures.language;
-  return mgr.transcribe({ audio_path: audioPath, language: lang && lang !== "auto" ? lang : null });
+  return kitSpeech.transcribe({ audio_path: audioPath, language: lang && lang !== "auto" ? lang : null });
 }
 
 /** Clean `raw` with these flags; on any failure, log it and keep `raw`. */

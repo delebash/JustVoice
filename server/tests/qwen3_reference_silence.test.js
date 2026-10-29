@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import path from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
-import { discoverEngines } from "../src/engines/manager.js";
+import { discoverEngines } from "../src/engines/model_catalog.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { toSpeechRequest } from "../src/engines/audiocpp/slot.js";
 import { tmpPath } from "./helpers.js";

@@ -77,7 +77,7 @@ import * as takeCheck from "./take_check.js";
 import * as vmod from "./voice_model.js";
 import { _termsAccepted, _termsOf } from "./api/engines_api.js";
 import { engineFacts } from "./engines/audiocpp/generated.js";
-import * as manager from "./engines/manager.js";
+import * as modelCatalog from "./engines/model_catalog.js";
 
 export const log = getLogger("justvoice.book_run");
 
@@ -365,7 +365,7 @@ const modelNameOf = (m) => {
  * licence that isn't "Yes" does, before its first download); `accepted`: they are, on this machine. */
 function speechModelFacts(model) {
   const engine = vmod.engineOfModel(model);
-  const manifest = engine ? manager.getManager().getManifest(engine) : null;
+  const manifest = engine ? modelCatalog.getManifest(engine) : null;
   if (!manifest) return null;
   const licence = manifest.module ? engineFacts(manifest.module).licence : null;
   return {

@@ -28,7 +28,6 @@ export const CHECKOUT = resolve(ROOT, "..", "audio.cpp");
 export const BUILD = join(CHECKOUT, "build", "jv-dev");
 export const BIN = join(BUILD, "bin");
 export const ENV = "JUSTVOICE_AUDIOCPP_BUILD";
-const EXE = join(BIN, WIN ? "audiocpp_server.exe" : "audiocpp_server");
 const CUDA_VERSION = "12.4"; // the release's cuda12 build (release.yml windows-cuda matrix)
 const MSVC_TOOLSET = "14.44"; // the VS 2022 toolset CI builds with; CUDA 12.4 needs it
 
@@ -135,17 +134,6 @@ function copyCudaRuntime(cuda) {
   }
 }
 
-/** Stop a dev server a crashed session left behind — it holds the exe, so the build could not
- *  replace it. Only one whose JustVoice server is gone (the app's own leftover rule); one still
- *  served means the app is running (decided D5). */
-function stopLeftovers() {
-  const r = spawnSync(process.execPath, [join(ROOT, "scripts", "node24.js"),
-    join(ROOT, "server", "src", "engines", "audiocpp", "dev_build.js"), "--stop-leftovers"],
-    { cwd: ROOT, stdio: "inherit", env: { ...process.env, [ENV]: BIN } });
-  if (r.status === 3) throw new BuildError("Close the running JustVoice first.");
-  if (r.status !== 0) throw new BuildError("could not check for a running audio.cpp server.");
-}
-
 function describe() {
   const git = (...a) => sh("git", ["-C", CHECKOUT, ...a]);
   let commit = "";
@@ -163,7 +151,6 @@ function describe() {
 export function prepareAudioCppDevBuild() {
   if (!existsSync(join(CHECKOUT, "CMakeLists.txt"))) return null;
   const vs = WIN ? visualStudio() : null;
-  if (existsSync(EXE)) stopLeftovers();
   const cuda = existsSync(join(BUILD, "CMakeCache.txt")) ? configuredCuda() : configure(vs);
   if (!cuda && WIN && cudaToolkit() && vs?.toolset) {
     // Configured once as a CPU build (no CUDA toolkit or MSVC toolset then) — it never

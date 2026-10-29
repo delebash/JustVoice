@@ -3,11 +3,12 @@
 //
 // Every engine adapter — the cloud TTS providers and the external-OpenAI HTTP wrapper —
 // implements the TTSBackend shape below; the registry treats them uniformly. (Managed engines
-// run in the speech runtime through engines/manager.js and never sit in the registry.)
+// run in the kit's audio.cpp speech runtime — engines/audiocpp/kit_speech.js — and never sit in
+// the registry.)
 // Structurally typed: anything with these members is a backend.
 //
 // The dataclasses' fields are camelCase here (`voiceId`, `sampleRate`, `engineId`); the
-// manager's synth BODY is a plain object with the wire's snake_case keys.
+// speech runtime's synth BODY is a plain object with the wire's snake_case keys.
 
 /** A preset voice an engine ships. */
 export class PresetVoice {
@@ -68,7 +69,7 @@ export class EngineMeta {
     displayName,
     backend,
     supportedRuntimes,
-    // Engines split into disjoint kinds so the manager keeps one slot per kind loaded at once.
+    // Engines split into disjoint kinds, one model of each kind loaded at once.
     kind = "tts", // "tts" | "llm" | "embedding"
     supportsCloning = false,
     supportsStreaming = false,

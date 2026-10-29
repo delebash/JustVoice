@@ -4,12 +4,14 @@
 // capabilities and its model VARIANTS, each runnable in the speech runtime. Since the adoption
 // plan's slice 4 every engine is built from audio.cpp's own files (engines/audiocpp/generated.js) —
 // the seven described by our own files too, which were hand-written `engines/<id>/manifest.js`
-// files discovery scanned for until then; no engine folder holds a manifest or a program now.
+// files discovery scanned for until then; no engine folder holds a manifest or a program now. The
+// catalog is engines/model_catalog.js since round E (docs/plans/2026-10-29-round-e-onto-the-kit.md
+// — engines/manager.js held it until then), and the kit's audio.cpp runtime runs every model.
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "vitest";
 import "./engines_helpers.js";
-import { discoverEngines, ENGINES_DIR } from "../src/engines/manager.js";
+import { discoverEngines, ENGINES_DIR } from "../src/engines/model_catalog.js";
 
 test("every_engine_declares_its_id_and_name", () => {
   for (const [engineId, m] of discoverEngines()) {
@@ -24,7 +26,11 @@ test("every_engine_runs_in_the_speech_runtime", () => {
   for (const d of readdirSync(ENGINES_DIR, { withFileTypes: true }).filter((x) => x.isDirectory())) {
     for (const stray of ["engine.js", "manifest.js"]) expect(existsSync(path.join(ENGINES_DIR, d.name, stray)), `${d.name}/${stray}`).toBe(false);
   }
-  for (const [engineId, m] of discoverEngines()) expect(m.usesAudiocpp, `${engineId}: a variant has no audiocpp block`).toBe(true);
+  for (const [engineId, m] of discoverEngines()) {
+    const rows = m.module.VARIANTS || [];
+    expect(rows.length > 0 && rows.every((r) => Boolean(r.audiocpp)), `${engineId}: a variant has no audiocpp block`).toBe(true);
+    expect(m.isolation, engineId).toBe("audiocpp");
+  }
 });
 
 test("at_least_one_engine_discovered", () => {

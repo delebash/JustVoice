@@ -7,7 +7,7 @@
 // automatically. No library pollution.
 //
 // Calls a test spies on go through the module namespaces (generate_api's
-// `_generateViaManager` / `_generateViaInprocess`, the manager, voice_model, the scheduler);
+// `_generateViaManager` / `_generateViaInprocess`, voice_model, the scheduler);
 // the caches are `cfg` values a test may replace (Python monkeypatched the module globals).
 
 import { createHash, randomUUID } from "node:crypto";
@@ -26,8 +26,9 @@ import { splitTextIntoChunks } from "../audio/chunked.js";
 import * as dspClient from "../audio/dsp_client.js";
 import { parseWavHeader, writeWavContainer } from "../audio/wav.js";
 import { SynthRequest } from "../engines/base.js";
+import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
 import * as blending from "../engines/blending.js";
-import * as manager from "../engines/manager.js";
+import * as modelCatalog from "../engines/model_catalog.js";
 import { badRequest, conflict, notFound } from "../errors.js";
 import { BlendSegment, BlendStrategy, construct, Delivery, GenerateRequest, modelDump, modelFields, utcNow } from "../models.js";
 import * as synthScheduler from "../synth_scheduler.js";
@@ -202,7 +203,7 @@ export async function _resolveBlend(body, state) {
       vector = await blending.recombine(
         body.engine,
         segments.map((s) => [s.voice_id, pyFloatValue(s.start), pyFloatValue(s.end)]),
-        { dataDir: state.dataDir, resolveStored: resolve },
+        { resolveStored: resolve },
       );
     } else {
       sources = listOf(body.source_voice_ids);
@@ -216,7 +217,6 @@ export async function _resolveBlend(body, state) {
         throw badRequest("every weight is zero — there is nothing to combine");
       }
       vector = await blending.blend(body.engine, sources, weights, {
-        dataDir: state.dataDir,
         resolveStored: resolve,
         normalize: false, // applied above, per strategy
       });
@@ -262,11 +262,11 @@ export function validateCandidate(body) {
 /** The registry engine a candidate renders on (null for a managed engine, whose model this
  * checks and fixes in `body.model`). Async. */
 export async function candidateEngine(body, state) {
-  // Registry backends (external providers) keep the direct path; managed plugin engines route
-  // via the manager through the scheduler (§7d of the 2026-08-08 plan).
+  // Registry backends (external providers) keep the direct path; managed engines speak through
+  // the kit's runtime, through the scheduler (§7d of the 2026-08-08 plan).
   const engine = state.engines.get(body.engine) ?? null;
   if (engine === null) {
-    if (manager.getManager().getManifest(body.engine) == null) throw notFound(`engine ${body.engine}`);
+    if (modelCatalog.getManifest(body.engine) == null) throw notFound(`engine ${body.engine}`);
     // The model this candidate is heard on — and saved for (savePreview).
     const action =
       body.source === "cloned" || body.source === "imported" ? "clone" : body.source === "designed" ? "design" : "blend";
@@ -370,10 +370,10 @@ export async function synthCandidate(body, engine, { text, language, delivery, s
     const wav = out.isWavContainer ? out.bytes : writeWavContainer(out.bytes, out.sampleRate, out.channels);
     return [wav, out.sampleRate, out.channels];
   }
-  const mgr = manager.getManager();
   const doIt = async () => {
-    await vmod.ensureModelLoaded(body.engine, body.model || body.engine, language);
-    const [audio, meta] = await mgr.synth(body.engine, { voice_id: "__preview__", text, language, delivery, seed, ...extra });
+    const model = body.model || body.engine;
+    const version = vmod.speakingVersion(body.engine, model, language);
+    const [audio, meta] = await vmod.speak(body.engine, model, version, { voice_id: "__preview__", text, language, delivery, seed, ...extra });
     const sr = meta.sample_rate || 24000;
     const ch = meta.channels || 1;
     if (meta.is_wav_container) return [audio, sr, ch];
@@ -385,7 +385,7 @@ export async function synthCandidate(body, engine, { text, language, delivery, s
   });
   await handle.waitAsync({ signal });
   if (handle.error != null) {
-    if (handle.error instanceof manager.TermsRequired) throw handle.error.apiError();
+    if (handle.error instanceof modelCatalog.TermsRequired) throw handle.error.apiError();
     throw badRequest(`preview synthesize failed: ${errText(handle.error)}`);
   }
   return handle.items[0].result;
@@ -541,13 +541,12 @@ export async function savePreview(previewId, body) {
         vector = await blending.recombine(
           created.engine,
           (recipe.segments || []).map((s) => [s.voice_id, pyFloatValue(s.start), pyFloatValue(s.end)]),
-          { dataDir: state.dataDir, resolveStored: resolve },
+          { resolveStored: resolve },
         );
       } else {
         // The recipe's weights are already in their final form — normalized for a mix, raw for
         // an analogy — so the combine must not divide again.
         vector = await blending.blend(created.engine, [...recipe.sources], [...recipe.weights], {
-          dataDir: state.dataDir,
           resolveStored: resolve,
           normalize: false,
         });
@@ -607,7 +606,7 @@ export function _auditionLanguage(voiceId) {
  * /preview/stream), so the streaming path can't drift (async):
  *
  *   1. voice of the currently-loaded managed engine,
- *   2. static voice of an installed managed engine (load-on-consent),
+ *   2. static voice of a managed engine (its model loaded by the line, on consent),
  *   3. stored voice (clone / design / import / blend),
  *   4. in-process engine preset.
  *
@@ -616,33 +615,31 @@ export function _auditionLanguage(voiceId) {
  */
 export async function _resolveAuditionTarget(voiceId, autoLoad) {
   const st = getState();
-  const mgr = manager.getManager();
 
   // Tier 0 — a stream ticket standing in for a candidate that has no id yet. Everything
   // downstream treats it as an ordinary voice.
   const ticket = cfg._STREAM_TICKETS.get(voiceId);
   if (ticket) {
     const engineId = ticket.engine_id;
-    const m = mgr.getManifest(engineId);
+    const m = modelCatalog.getManifest(engineId);
     if (m != null) {
-      if (!m.isInstalled) throw conflict(`engine_not_installed:${engineId}`);
-      if (mgr.currentId() !== engineId) {
-        if (!autoLoad) throw conflict(`engine_not_loaded:${engineId}`);
-        await mgr.load(engineId, { device: "auto" });
-      }
+      if (!kitSpeech.installed()) throw conflict(`engine_not_installed:${engineId}`);
+      // Its model loads with the line (the kit's runtime) — once the client says it may.
+      if (kitSpeech.currentFor(m.kind) !== engineId && !autoLoad) throw conflict(`engine_not_loaded:${engineId}`);
       return ["managed", engineId, ticket.voice_fields];
     }
     return ["inprocess", engineId, ticket.voice_fields];
   }
 
-  /** The voice's own model resident, or the client's load dialog. */
+  /** The voice's own model resident, or the client's load dialog — the line loads it, once the
+   * client says it may (and a model the catalog can't speak it on is refused first). */
   const ready = async (engineId) => {
     const vm = await vmod.voiceModel(st, voiceId);
     const model = vm !== null ? vm.model : engineId;
     if (vmod.isModelLoaded(engineId, model)) return;
     if (!autoLoad) throw conflict(`engine_not_loaded:${engineId}`);
     try {
-      await vmod.ensureModelLoaded(engineId, model, _auditionLanguage(voiceId));
+      vmod.speakingVersion(engineId, model, _auditionLanguage(voiceId));
     } catch (e) {
       if (e instanceof vmod.ModelUnavailable) throw badRequest(e.message);
       throw e;
@@ -651,18 +648,16 @@ export async function _resolveAuditionTarget(voiceId, autoLoad) {
 
   const owner = await generateApi._findManagedVoiceOwner(voiceId);
   if (owner !== null) {
-    const m = mgr.getManifest(owner);
-    if (m != null && !m.isInstalled) throw conflict(`engine_not_installed:${owner}`);
+    if (!kitSpeech.installed()) throw conflict(`engine_not_installed:${owner}`);
     await ready(owner);
     return ["managed", owner, null];
   }
 
   const staticOwner = generateApi._findStaticVoiceOwner(voiceId);
   if (staticOwner !== null) {
-    const m = mgr.getManifest(staticOwner);
     // The speech runtime isn't installed yet — the UI maps this to an "install it in Engines"
     // dialog.
-    if (m != null && !m.isInstalled) throw conflict(`engine_not_installed:${staticOwner}`);
+    if (!kitSpeech.installed()) throw conflict(`engine_not_installed:${staticOwner}`);
     await ready(staticOwner);
     return ["managed", staticOwner, null];
   }
@@ -670,7 +665,7 @@ export async function _resolveAuditionTarget(voiceId, autoLoad) {
   const stored = st.voices.get(voiceId);
   if (stored) {
     const voiceFields = generateApi._voiceSynthFields(stored);
-    if (mgr.getManifest(stored.engine)) {
+    if (modelCatalog.getManifest(stored.engine)) {
       await ready(stored.engine);
       return ["managed", stored.engine, voiceFields];
     }

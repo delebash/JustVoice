@@ -1,27 +1,29 @@
 // SPDX-License-Identifier: MIT
 // A lexicon's IPA reaches Kokoro again (gap 3): canonical IPA becomes Kokoro's symbols, the
 // words of a line are marked "[word](/phonemes/)" for our audio.cpp, by the host's own rule,
-// and only when the installed runtime splices (the port of tests/test_kokoro_ipa.py).
+// and only when the build pinned here splices — since round E the build the kit's audio.cpp
+// runtime pins (kit_settings.js `runtimeHas`), the symbols Kokoro has read from its model file in
+// the kit's models cache (the port of tests/test_kokoro_ipa.py).
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
-import "./engines_helpers.js";
-import * as release from "../src/engines/audiocpp/release.js";
+import { stores } from "@delebash/core/llm";
+import { pinKey } from "@delebash/core/runner/runtimes";
+import { endSpeech, endState, fakeSpeechRuntime, useState } from "./engines_helpers.js";
+import * as kitSettings from "../src/engines/audiocpp/kit_settings.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { toSpeechRequest } from "../src/engines/audiocpp/slot.js";
-import * as blending from "../src/engines/blending.js";
 import { lacking, splice, toKokoro, vocabOf } from "../src/engines/kokoro/ipa.js";
-import * as runtime from "../src/engines/audiocpp/runtime.js";
 import { CAPABILITY_DETAILS } from "../src/engines/capability_details.js";
-import { discoverEngines } from "../src/engines/manager.js";
+import { discoverEngines } from "../src/engines/model_catalog.js";
 import * as renderCore from "../src/render_core.js";
 import { appClient, closeApps } from "./app_helpers.js";
 import { tmpPath } from "./helpers.js";
 
-const TAG = release.cfg.TAG;
 afterEach(async () => {
-  release.cfg.TAG = TAG;
+  endSpeech();
   await closeApps();
+  endState();
 });
 
 test("canonical_ipa_becomes_kokoros_symbols", () => {
@@ -77,12 +79,12 @@ test("ipa_is_used_only_when_the_installed_runtime_splices", () => {
   const had = kokoro.supports_phoneme_input;
   try {
     kokoro.supports_phoneme_input = true;
-    vi.spyOn(runtime, "hasFeature").mockImplementation((name) => name === "inline_ipa");
+    vi.spyOn(kitSettings, "runtimeHas").mockImplementation((name) => name === "inline_ipa");
     expect(renderCore._supportsPhonemeInput("kokoro")).toBe(true);
-    vi.spyOn(runtime, "hasFeature").mockReturnValue(false);
+    vi.mocked(kitSettings.runtimeHas).mockReturnValue(false);
     expect(renderCore._supportsPhonemeInput("kokoro")).toBe(false); // its respelling is used
     kokoro.supports_phoneme_input = false;
-    vi.spyOn(runtime, "hasFeature").mockReturnValue(true);
+    vi.mocked(kitSettings.runtimeHas).mockReturnValue(true);
     expect(renderCore._supportsPhonemeInput("kokoro")).toBe(false);
   } finally {
     kokoro.supports_phoneme_input = had;
@@ -90,10 +92,16 @@ test("ipa_is_used_only_when_the_installed_runtime_splices", () => {
 });
 
 test("the_capability_follows_the_pin", () => {
-  release.cfg.TAG = "v0.9.0";
-  expect(release.pinnedHas("inline_ipa")).toBe(false);
-  release.cfg.TAG = "v0.9.0-jv.4";
-  expect(release.pinnedHas("inline_ipa")).toBe(true);
+  // The build the kit pins on this computer: IPA from jv.4 on; the build the app ships has it.
+  useState();
+  expect(kitSettings.shippedHas("inline_ipa")).toBe(true);
+  expect(CAPABILITY_DETAILS.kokoro.supports_phoneme_input).toBe(true);
+  stores.getRunnerConfigStore().setSetting(pinKey("audiocpp"), "v0.9.0");
+  expect(kitSettings.runtimeHas("inline_ipa")).toBe(false);
+  expect(renderCore._supportsPhonemeInput("kokoro")).toBe(false);
+  stores.getRunnerConfigStore().setSetting(pinKey("audiocpp"), "v0.9.0-jv.4");
+  expect(kitSettings.runtimeHas("inline_ipa")).toBe(true);
+  expect(renderCore._supportsPhonemeInput("kokoro")).toBe(true);
 });
 
 // ── A symbol Kokoro lacks (decided 2026-10-15, the narrowings review F12) ───────────────────
@@ -137,9 +145,10 @@ test("a_word_with_a_symbol_kokoro_lacks_is_read_the_normal_way", () => {
   // The match is the host's still: "Mara" isn't marked inside a "Mara Vance" left alone.
   expect(splice("Mara Vance and Mara.", { "Mara Vance": "ʍ", Mara: "mæɹə" }, new Set([..."mæə"]))).toBe("Mara Vance and Mara.");
   expect(splice("Mara Vance and Mara.", { "Mara Vance": "ʍ", Mara: "mæə" }, new Set([..."mæə"]))).toBe("Mara Vance and [Mara](/mæə/).");
-  // The Kokoro request reads the symbols from the row's own file.
-  vi.spyOn(slot, "kokoroVocab").mockReturnValue(vocab);
+  // The Kokoro request reads the symbols from the row's own file, in the kit's models cache.
   const row = discoverEngines().get("kokoro").module.VARIANTS.find((r) => r.id === "kokoro-82m-q8");
+  fakeSpeechRuntime({ onDisk: [row.id], files: { [row.id]: { model: kokoroGguf(SYMBOLS) } } });
+  expect(slot.kokoroVocab(row)).toEqual(vocab);
   const req = toSpeechRequest(row, { voice_id: "af_heart", text: "Beauchamp met Whateley.", language: "en-US", delivery: { ipa_map: map } });
   expect(req.input).toBe("[Beauchamp](/ˈbiːʧəm/) met Whateley.");
 });
@@ -149,10 +158,12 @@ test("saving_a_lexicon_names_the_symbol_kokoro_lacks", async () => {
   const { c } = await appClient();
   const entries = [{ grapheme: "Whateley", phoneme_ipa: "/ˈʍeɪtli/" }, { grapheme: "Beauchamp", phoneme_ipa: "/ˈbiːtʃəm/" }];
   // Kokoro not downloaded: nothing to check against.
+  fakeSpeechRuntime();
   let r = await c.post("/v1/lexicons", { json: { name: "Names", entries } });
   expect(r.status, r.text).toBe(201);
   expect(r.json().kokoro_cant_say).toEqual([]);
-  vi.spyOn(blending, "_kokoroGguf").mockReturnValue(kokoroGguf(SYMBOLS));
+  // Downloaded: its symbols come from its model file in the kit's models cache.
+  fakeSpeechRuntime({ onDisk: ["kokoro-82m-q8"], files: { "kokoro-82m-q8": { model: kokoroGguf(SYMBOLS) } } });
   r = await c.put(`/v1/lexicons/${r.json().id}`, { json: { name: "Names", entries } });
   expect(r.status, r.text).toBe(200);
   expect(r.json().kokoro_cant_say).toEqual([{ grapheme: "Whateley", symbols: ["ʍ"] }]);

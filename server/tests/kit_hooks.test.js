@@ -2,13 +2,16 @@
 // JustVoice's hooks on the kit's audio.cpp runtime (round E, docs/plans/2026-10-29-round-e-onto-the-
 // kit.md §3.3, §4 step 1 — engines/audiocpp/kit_hooks.js): a load's warm-up and whether it calibrated,
 // the piece length a price is measured at (the 800-character cap, the catalog's piece, the user's
-// own), the load-option set, the saved load options, a transcription's request and time limit, and
-// the licence gate before a download — each read from the model's kit row.
-import { writeFileSync } from "node:fs";
+// own), the load-option set, the saved load options, a transcription's request and time limit (its
+// recording at 16 kHz for a recogniser that takes nothing else), and the licence gate before a
+// download — each read from the model's kit row.
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { endState, useState, wav } from "./engines_helpers.js";
 import { stores } from "@delebash/core/llm";
+import * as dspClient from "../src/audio/dsp_client.js";
+import { parseWavHeader } from "../src/audio/wav.js";
 import * as hooks from "../src/engines/audiocpp/kit_hooks.js";
 import { runtimeModelRows, variantOf } from "../src/engines/audiocpp/kit_models.js";
 import * as runtimeOptions from "../src/engines/audiocpp/runtime_options.js";
@@ -107,4 +110,29 @@ test("a transcription: the language named as the model takes it, the limit three
   const shaped = await hooks.transcribe({ audio_path: clip, language: "en" }, other);
   expect(shaped.body).toEqual(slot.generatedTranscribeRequest(variantOf(other.id).row, { audio_path: clip, language: "en" }, clip.replaceAll("\\", "/")));
   expect(shaped.timeout).toBe(900);
+});
+
+test("a recogniser that takes only 16 kHz hears a 16 kHz copy, and only the newest copy stays", async () => {
+  const st = useState();
+  // the DSP program's conversion, stood in for: a 16 kHz mono WAV of the same length
+  const convert = vi.spyOn(dspClient, "alignerInput").mockImplementation(async (w) => wav(parseWavHeader(w)[0].durationSec, 16000));
+  const dir = tmpPath("jv-kit-asr16-");
+  const first = path.join(dir, "first.wav");
+  const second = path.join(dir, "second.wav");
+  writeFileSync(first, wav(2, 24000));
+  writeFileSync(second, wav(3, 48000));
+  const other = rows.find((r) => r.kind === "stt" && r.spec.family !== "qwen3_asr");
+  const copies = path.join(st.dataDir, "cache", "transcription-16k");
+  const a = await hooks.transcribe({ audio_path: first, language: "en" }, other);
+  expect(a.body.audio).not.toBe(first.replaceAll("\\", "/"));
+  expect(path.dirname(a.body.audio)).toBe(copies.replaceAll("\\", "/"));
+  expect(parseWavHeader(readFileSync(a.body.audio))[0].sampleRate).toBe(16000);
+  const b = await hooks.transcribe({ audio_path: second, language: "en" }, other);
+  expect(b.body.audio).not.toBe(a.body.audio);
+  expect(readdirSync(copies)).toEqual([path.basename(b.body.audio)]);
+  // the recording itself is never changed, and Qwen3-ASR takes any rate as it is
+  expect(parseWavHeader(readFileSync(first))[0].sampleRate).toBe(24000);
+  const asr = await hooks.transcribe({ audio_path: first, language: "en" }, rowOf("qwen3-asr-1.7b-q8"));
+  expect(asr.body.audio).toBe(first.replaceAll("\\", "/"));
+  expect(convert).toHaveBeenCalledTimes(2);
 });

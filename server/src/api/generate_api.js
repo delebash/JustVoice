@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 // POST /v1/generate — single-line synthesis (the port of justvoice/api/generate_api.py).
 //
-// Dispatches voice lookup + synth through either the manager (managed engines) or the
-// in-process registry (external engines). Both paths return audio/wav bytes.
+// Dispatches voice lookup + synth through either the kit's audio.cpp runtime (managed engines: the
+// voice's model version, which its line loads) or the in-process registry (external engines). Both
+// paths return audio/wav bytes.
 //
 // Long text (> settings.generation.max_chunk_chars) is auto-chunked at sentence boundaries via
 // `audio/chunked.js`. Below the threshold, a single-shot synth call is used.
@@ -10,7 +11,7 @@
 //
 // `generate(req, {signal})` is the route's body as a function — the WAV as a Buffer — which the
 // MCP server's `justvoice.speak` calls too. Calls a test spies on go through the module
-// namespaces (render_core, voice_model, the manager, the scheduler, this module's own `self.`).
+// namespaces (render_core, voice_model, the scheduler, this module's own `self.`).
 
 import { Hono, input } from "@delebash/core/platform";
 import { cpLen, pyInt, strRepr } from "@delebash/core/platform/py";
@@ -20,7 +21,8 @@ import * as dspClient from "../audio/dsp_client.js";
 import { parseWavHeader, stripWavHeader, writeWavContainer } from "../audio/wav.js";
 import { composeInstruct, mergeDelivery } from "../delivery_merge.js";
 import { SynthRequest } from "../engines/base.js";
-import * as manager from "../engines/manager.js";
+import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
+import * as modelCatalog from "../engines/model_catalog.js";
 import { badRequest, internal, notFound } from "../errors.js";
 import { Delivery, floatify, GenerateRequest, modelDump } from "../models.js";
 import * as personaRender from "../persona_render.js";
@@ -95,21 +97,13 @@ function _chunkingParams(settings) {
 const requestDeliveryOf = (req) => (req.delivery ? floatify(Delivery, modelDump(Delivery, req.delivery, { excludeNone: true })) : {});
 
 /**
- * If `voiceId` belongs to the currently-loaded managed engine, that engine's id; else null
- * (async). Only the LOADED managed engine is asked — listing voices from an unloaded one would
- * need its process running.
+ * If `voiceId` is a voice of the managed engine whose speech model is loaded (its manifest's
+ * static voices), that engine's id; else null (async).
  */
 export async function _findManagedVoiceOwner(voiceId) {
-  const mgr = manager.getManager();
-  const cur = mgr.currentId();
+  const cur = kitSpeech.currentFor("tts");
   if (!cur) return null;
-  let voices;
-  try {
-    voices = await mgr.voices(cur);
-  } catch {
-    return null;
-  }
-  for (const v of voices) if (v?.id === voiceId) return cur;
+  for (const v of modelCatalog.getManifest(cur)?.staticVoices || []) if (v?.id === voiceId) return cur;
   return null;
 }
 
@@ -120,8 +114,7 @@ export async function _findManagedVoiceOwner(voiceId) {
  * voice (af_alloy) would get a 404.
  */
 export function _findStaticVoiceOwner(voiceId) {
-  const mgr = manager.getManager();
-  for (const m of mgr.manifests().values()) {
+  for (const m of modelCatalog.manifests().values()) {
     for (const v of m.staticVoices) if (v.id === voiceId) return m.id;
   }
   return null;
@@ -140,18 +133,13 @@ export async function generate(req, { signal = null } = {}) {
     throw badRequest(`text length ${cpLen(req.text)} > limit ${settings.limits.text_max_chars}`);
   }
 
-  const mgr = manager.getManager();
-
   // ── Voice lookup ────────────────────────────────────────────────
   // Order of precedence:
   // 1. Currently-loaded managed engine's voices.
   // 2. Stored voice → look up its engine id.
   // 3. In-process engines' voice lists.
   const managedOwner = await self._findManagedVoiceOwner(req.voice);
-  if (managedOwner !== null) {
-    await _ensureVoiceModel(st, managedOwner, req);
-    return self._generateViaManager(managedOwner, req, null, { signal });
-  }
+  if (managedOwner !== null) return self._generateViaManager(managedOwner, req, null, { signal });
 
   // Voice belongs to a managed engine that isn't the currently-loaded one? A clear error
   // rather than silently switching engines — the GUI filters its dropdown to the loaded
@@ -159,13 +147,12 @@ export async function generate(req, { signal = null } = {}) {
   // different engine by mistake.
   const staticOwner = self._findStaticVoiceOwner(req.voice);
   if (staticOwner !== null) {
-    if (mgr.currentId() !== staticOwner) {
+    if (kitSpeech.currentFor("tts") !== staticOwner) {
       throw badRequest(
         `voice ${strRepr(req.voice)} belongs to engine ${strRepr(staticOwner)} which is not currently loaded. ` +
           "Load it on the Engines tab first, or pick a voice belonging to the loaded engine.",
       );
     }
-    await _ensureVoiceModel(st, staticOwner, req);
     return self._generateViaManager(staticOwner, req, null, { signal });
   }
 
@@ -174,9 +161,8 @@ export async function generate(req, { signal = null } = {}) {
   if (stored) {
     // Stored voice's engine — may be managed or in-process.
     const voiceFields = _voiceSynthFields(stored);
-    if (mgr.getManifest(stored.engine)) {
-      // Auto-load the voice's model if it isn't the resident one.
-      await _ensureVoiceModel(st, stored.engine, req);
+    if (modelCatalog.getManifest(stored.engine)) {
+      // The voice's model speaks it, loaded by its line if it isn't the resident one.
       return self._generateViaManager(stored.engine, req, voiceFields, { signal });
     }
     // In-process engine path falls through below.
@@ -194,17 +180,15 @@ export async function generate(req, { signal = null } = {}) {
   return self._generateViaInprocess(engineId, req);
 }
 
-/** Load the model the voice speaks on (voice_model.js) — a Qwen3 speaker needs CustomVoice even
- * while Base is resident, a Turbo clone needs Turbo. The size AI Settings chose is kept. */
-async function _ensureVoiceModel(st, engineId, req) {
+/** The version of the model the voice speaks on (voice_model.js) — a Qwen3 speaker needs
+ * CustomVoice even while Base is resident, a Turbo clone needs Turbo. The size AI Settings chose is
+ * kept. The line loads it (the kit's runtime). */
+function _voiceVersion(engineId, model, req) {
   try {
-    await voiceModel.ensureModelLoaded(engineId, await renderCore._lineModel(st, req.voice, engineId), req.language);
+    return voiceModel.speakingVersion(engineId, model, req.language);
   } catch (e) {
     if (e instanceof voiceModel.ModelUnavailable) throw badRequest(e.message);
-    throw badRequest(
-      `engine '${engineId}' failed to load on first use: ${errText(e)}. ` +
-        `Click Load on the Engines tab first, or POST /v1/engines/${engineId}/load.`,
-    );
+    throw e;
   }
 }
 
@@ -237,9 +221,9 @@ export function _voiceDesignInstruct(voiceId) {
  * results joined — the chunked path wired into the single-line generate path.
  */
 export async function _generateViaManager(engineId, req, voiceFields = null, { signal = null } = {}) {
-  const mgr = manager.getManager();
   const st = getState();
   const model = await renderCore._lineModel(st, req.voice, engineId);
+  const version = _voiceVersion(engineId, model, req);
   // Every [tag] this engine can't perform goes, as in a chapter render (decided 2026-09-29) —
   // Generate used to send the text untouched, so Kokoro read "[warm]" aloud as "warm". Then the
   // lexicons (2026-09-30).
@@ -248,7 +232,7 @@ export async function _generateViaManager(engineId, req, voiceFields = null, { s
 
   const [, crossfadeMs] = _chunkingParams(st.settings.get());
   // Each model's own piece length (audit 2026-10-04 §13.3), as in a chapter render.
-  const maxChunkChars = renderCore.lineSplitChars(st, engineId, req.voice);
+  const maxChunkChars = renderCore.lineSplitChars(st, engineId, req.voice, version);
   const describe = renderCore.isDescriptionVoice(st, req.voice);
   const requestDelivery = requestDeliveryOf(req);
   const persona = req.persona_id ? st.personas.get(req.persona_id) : null;
@@ -287,7 +271,7 @@ export async function _generateViaManager(engineId, req, voiceFields = null, { s
   req = { ...req, text: textOut };
 
   const synthOne = (text, chunkSeed) =>
-    mgr.synth(engineId, { voice_id: req.voice, text, language, delivery, seed: chunkSeed, ...(voiceFields || {}) });
+    voiceModel.speak(engineId, model, version, { voice_id: req.voice, text, language, delivery, seed: chunkSeed, ...(voiceFields || {}) });
 
   // Seed resolution: the delivery's seed (or the persona's for this model) overrides the
   // top-level req.seed. Either path produces the same per-chunk seed math below.
@@ -321,7 +305,14 @@ export async function _generateViaManager(engineId, req, voiceFields = null, { s
       const pcm = await dspClient.join(pieces, crossfadeMs);
       return await _finishLine(pcm, sampleRate, channels, delivery, engineId, effects, model);
     } catch (e) {
-      if (e instanceof manager.TermsRequired || e instanceof manager.EngineRequestError) throw e.apiError();
+      if (e instanceof modelCatalog.TermsRequired || e instanceof kitSpeech.EngineRequestError) throw e.apiError();
+      if (e instanceof kitSpeech.LoadFailed) {
+        // The voice's model didn't load for the line.
+        throw badRequest(
+          `engine '${engineId}' failed to load on first use: ${errText(e)}. ` +
+            `Click Load on the Engines tab first, or POST /v1/ai/runtimes/audiocpp/models/${e.versionId}/load.`,
+        );
+      }
       throw internal(`engine synthesize: ${errText(e)}`);
     }
   };
@@ -356,7 +347,7 @@ export async function _generateViaInprocess(engineId, req) {
     } catch (e) {
       throw badRequest(
         `engine '${engineId}' failed to load on first use: ${errText(e)}. ` +
-          `Try POST /v1/engines/${engineId}/load with explicit device + model_variant.`,
+          `Try POST /v1/ai/runtimes/audiocpp/models/${engineId}/load with explicit device + model_variant.`,
       );
     }
   }

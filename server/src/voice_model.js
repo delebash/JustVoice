@@ -21,17 +21,17 @@
 // Cast and the render can never disagree.
 //
 // Async where a voice has to be looked up among the registry engines' voices (a provider's
-// list may need the network): voiceModel, voiceLanguage, modelKey, versionsOf, and
-// ensureModelLoaded (it loads a model). Everything else is synchronous.
+// list may need the network): voiceModel, voiceLanguage, modelKey, versionsOf, and speak (a line).
+// Everything else is synchronous. The kit's audio.cpp runtime loads and runs the version chosen
+// here (round E — docs/plans/2026-10-29-round-e-onto-the-kit.md §5 item 4: the voice → model →
+// version choice stays ours; the kit gets a concrete model id).
 
 import { getLogger } from "@delebash/core/platform/log";
 import { KeyError, pyRound, pySorted, pyStr, RuntimeError, strip, ValueError } from "@delebash/core/platform/py";
-import * as appState from "./app_state.js";
+import * as kitSpeech from "./engines/audiocpp/kit_speech.js";
 import * as capabilityDetails from "./engines/capability_details.js";
-import * as manager from "./engines/manager.js";
 import * as modelCatalog from "./engines/model_catalog.js";
 import * as renderCore from "./render_core.js";
-import * as speechCache from "./speech_cache.js";
 import * as self from "./voice_model.js";
 
 export const log = getLogger("justvoice.voice_model");
@@ -45,8 +45,8 @@ export const SLIDERS = "sliders";
 export const NOT_YET = "not_yet";
 
 /** Thrown when the voice's model isn't in this speech runtime, or has no model for the asked
- * language (Pocket); the message names the model. A model not yet downloaded is fetched on load
- * (doc §6.2 call 4 as amended). (was: "a render refuses rather than downloading gigabytes" —
+ * language (Pocket); the message names the model. A model not yet downloaded is fetched by its
+ * first line's load (doc §6.2 call 4 as amended; the kit's load downloads — round E, G4). (was: "a render refuses rather than downloading gigabytes" —
  * call 4 never said so, and its amendment rules it out; the narrowings review K13, 2026-10-13.) */
 export class ModelUnavailable extends RuntimeError {
   constructor(message) {
@@ -80,14 +80,10 @@ export function speaksLanguage(vm, code) {
   return Boolean(want) && vm.speaks.some((s) => baseLang(s) === want);
 }
 
-// ── The catalog, read through the manager ────────────────────────────────
+// ── The catalog ───────────────────────────────────────────────────────────
 
-const _manager = () => manager.getManager();
 /** The capability row of a model or variant id (voices_api reads it too). */
 export const _capability = (modelOrVariant) => capabilityDetails.lookup(modelOrVariant);
-
-/** A manager's `manifests()` keys — a Map from the real manager, an object from a test's. */
-const keysOf = (x) => (x instanceof Map ? [...x.keys()] : Object.keys(x || {}));
 
 /** The family a catalog variant belongs to: "chatterbox-turbo-f16" → "chatterbox-turbo",
  * "qwen3-base-0.6b-q8" → "qwen3-base". */
@@ -97,13 +93,12 @@ export function modelOfVariant(variantId) {
   return row !== null ? row.engine_id : null;
 }
 
-/** The engine's catalog rows, or [] where there is no catalog (an online provider, a test's
- * fake manager). */
+/** The engine's catalog rows, or [] where there is no catalog (an online provider). */
 export function _variantRows(engineId) {
   try {
     return [...modelCatalog._variantRows(engineId)];
   } catch {
-    // no manifest module / no manager
+    // no manifest module
     return [];
   }
 }
@@ -120,13 +115,7 @@ export function modelsOfEngine(engineId) {
 
 /** The engine whose catalog offers this family. */
 export function engineOfModel(model) {
-  let manifests;
-  try {
-    manifests = _manager().manifests();
-  } catch {
-    return null;
-  }
-  for (const engineId of keysOf(manifests)) {
+  for (const engineId of modelCatalog.manifests().keys()) {
     if (self.modelsOfEngine(engineId).includes(model)) return engineId;
   }
   return null;
@@ -139,12 +128,8 @@ function _familyRows(engineId, model) {
 export function modelName(model, engineId = null) {
   const row = _capability(model);
   if (row !== null && (row.engine_id === model || engineId == null)) return row.display_name;
-  try {
-    const m = _manager().getManifest(engineId || model);
-    if (m != null && m.name) return m.name;
-  } catch {
-    /* no manager */
-  }
+  const m = modelCatalog.getManifest(engineId || model);
+  if (m != null && m.name) return m.name;
   return model;
 }
 
@@ -189,7 +174,7 @@ export function _defaultModel(engineId, { need = null } = {}) {
   if (!families.length) return null;
   let def;
   try {
-    def = modelOfVariant(_manager().resolvedDefaultVariant(engineId));
+    def = modelOfVariant(modelCatalog.resolvedDefaultVariant(engineId));
   } catch {
     def = null;
   }
@@ -276,13 +261,7 @@ export function modelForPreset(engineId, voice = null) {
 
 /** The preset `voiceId` of `engineId` (its STATIC_VOICES row), or null. */
 function _preset(engineId, voiceId) {
-  let m;
-  try {
-    m = _manager().getManifest(engineId);
-  } catch {
-    return null;
-  }
-  return (m?.staticVoices || []).find((v) => v.id === voiceId) ?? null;
+  return (modelCatalog.getManifest(engineId)?.staticVoices || []).find((v) => v.id === voiceId) ?? null;
 }
 
 function _registryEngine(state, engineId) {
@@ -366,13 +345,7 @@ export async function voiceLanguage(state, voiceId) {
 }
 
 function _presetLanguage(engineId, voiceId) {
-  let m;
-  try {
-    m = _manager().getManifest(engineId);
-  } catch {
-    return null;
-  }
-  for (const v of m?.staticVoices || []) if (v.id === voiceId) return v.language ?? null;
+  for (const v of modelCatalog.getManifest(engineId)?.staticVoices || []) if (v.id === voiceId) return v.language ?? null;
   return null;
 }
 
@@ -383,7 +356,7 @@ export async function modelKey(state, voiceId) {
   return vm ? `${vm.engineId}:${vm.model}` : `?voice:${pyStr(voiceId)}`;
 }
 
-// ── Loading the right variant ─────────────────────────────────────────────
+// ── Speaking on the right variant ─────────────────────────────────────────
 
 const PRECISIONS = new Set(["q8", "f16", "bf16", "f32"]);
 
@@ -399,16 +372,16 @@ function _sizeTokens(variantId) {
 const langKey = (r) => JSON.stringify(r.languages || []);
 
 /**
- * The variant of `model` to load, or null where there is no catalog. Size and precision stay
- * AI Settings' choice (doc §6.2 call 4): the loaded variant if it is this family; else, among
+ * The variant of `model` a line speaks on, or null where there is no catalog. Size and precision
+ * stay AI Settings' choice (doc §6.2 call 4): the loaded variant if it is this family; else, among
  * the family's variants on disk, the user's default if it is one of them, else the one sharing
  * most of its size and precision (catalog order breaks ties). So a default that isn't
  * downloaded speaks only once a load fetches it — until then a downloaded sibling speaks, and
  * the persona page offers Load for the default (kept so, the narrowings review C5, 2026-10-13;
  * this comment said "the user's default if it is, else an installed variant", which hid the
  * on-disk condition). Nothing of the family on disk → the same pick among all of the family's
- * variants, and the load fetches its file, as a first load always has ("Load never installs a
- * program … it does fetch a missing MODEL file", manager.load). Pocket has one model per
+ * variants, and the load fetches its file, as a first load always has (the kit's load downloads a
+ * model that isn't here — round E, G4). Pocket has one model per
  * language, so its language picks among them; a language it has no model for →
  * ModelUnavailable, naming the model.
  */
@@ -422,15 +395,9 @@ export function variantForModel(engineId, model, language = null) {
     rows = byLang;
   }
   const ids = rows.map((r) => r.id);
-  const mgr = _manager();
-  const current = typeof mgr.currentVariantId === "function" ? mgr.currentVariantId(engineId) : null;
-  if (ids.includes(current) && mgr.currentFor(_kind(engineId)) === engineId) return current;
-  let def;
-  try {
-    def = mgr.resolvedDefaultVariant(engineId);
-  } catch {
-    def = null;
-  }
+  const current = kitSpeech.currentVariantId(engineId);
+  if (ids.includes(current) && kitSpeech.currentFor(_kind(engineId)) === engineId) return current;
+  const def = modelCatalog.resolvedDefaultVariant(engineId) || null;
   const want = _sizeTokens(def);
   const onDisk = ids.filter((vid) => self._onDisk(engineId, vid));
   const pool = onDisk.length ? onDisk : ids;
@@ -441,21 +408,12 @@ export function variantForModel(engineId, model, language = null) {
 }
 
 function _kind(engineId) {
-  try {
-    const m = _manager().getManifest(engineId);
-    return m?.kind || "tts";
-  } catch {
-    return "tts";
-  }
+  return modelCatalog.getManifest(engineId)?.kind || "tts";
 }
 
-export function _onDisk(engineId, variantId) {
-  try {
-    return speechCache.variantOnDisk(appState.getState().dataDir, engineId, variantId);
-  } catch {
-    // bare tests / no app state
-    return false;
-  }
+/** Whether a variant's files are all downloaded (the kit's models cache). */
+export function _onDisk(_engineId, variantId) {
+  return kitSpeech.onDisk(variantId);
 }
 
 // The speech model a line is loading right now (decided 2026-10-07): a render's model loads
@@ -464,7 +422,8 @@ export function _onDisk(engineId, variantId) {
 // state no `await` ever splits, so none is needed here.)
 export const cfg = { loading: null };
 
-/** Note a load while `fn` runs (Python's `_noting_load` context manager). */
+/** Note a load while `fn(done)` runs (Python's `_noting_load` context manager); `done()` ends
+ * the note early — the line has started, its model loaded. */
 export async function _notingLoad(engineId, model, fn) {
   let name;
   try {
@@ -473,73 +432,54 @@ export async function _notingLoad(engineId, model, fn) {
     // a name is a nicety
     name = model;
   }
-  cfg.loading = { model: name, since: performance.now() / 1000 };
+  const note = { model: name, since: performance.now() / 1000 };
+  const done = () => {
+    if (cfg.loading === note) cfg.loading = null;
+  };
+  cfg.loading = note;
   try {
-    return await fn();
+    return await fn(done);
   } finally {
-    cfg.loading = null;
+    done();
   }
 }
 
-/** `{model: "Qwen3-TTS CustomVoice", seconds: 8.2}` while a line's model loads
- * (`ensureModelLoaded`); null otherwise. */
+/** `{model: "Qwen3-TTS CustomVoice", seconds: 8.2}` while a line's model loads (`speak`); null
+ * otherwise. */
 export function loadingNow() {
   if (cfg.loading === null) return null;
   return { model: cfg.loading.model, seconds: pyRound(performance.now() / 1000 - cfg.loading.since, 1) };
 }
 
-/** Make `model` the resident speech model before a synth (async). Where the engine has no
- * catalog (a test's fake manager) this is the old engine-level rule: load the engine if it
- * isn't the resident one. A load is noted while it runs (`loadingNow`). */
-export async function ensureModelLoaded(engineId, model, language = null) {
-  const mgr = _manager();
-  const kind = _kind(engineId);
-  const rows = _familyRows(engineId, model);
-  if (!rows.length) {
+/** The version a line on `model` speaks on (`variantForModel`) — or, where the engine has no
+ * catalog of families, its default version. Throws ModelUnavailable for a model the engine's
+ * catalog doesn't have (audit §5 E4) or a language it has no model for. */
+export function speakingVersion(engineId, model, language = null) {
+  if (!_familyRows(engineId, model).length) {
     if (model !== engineId && self.modelsOfEngine(engineId).length) {
       // The engine has a catalog and this model isn't in it (audit §5 E4).
       throw new ModelUnavailable(`${modelName(model)} — this isn't in this version's speech runtime yet, so its voices can't be spoken`);
     }
-    if (mgr.currentFor(kind) !== engineId) {
-      await _notingLoad(engineId, model, () => mgr.load(engineId, { device: "auto" }));
-    }
-    return;
+    return modelCatalog.resolvedDefaultVariant(engineId) || null;
   }
-  if (self.isModelLoaded(engineId, model) && _languageResident(engineId, model, language)) return;
-  const variant = self.variantForModel(engineId, model, language);
-  await _notingLoad(engineId, model, () => mgr.load(engineId, { device: "auto", variant }));
+  return self.variantForModel(engineId, model, language);
 }
 
-/** The loaded variant — or, for a load that recorded none, the default a no-variant load
- * resolves to. */
+/** One line on version `versionId` of `model` (the kit runs it — kit_speech.js `speak`), its
+ * model's load noted while it runs when another version is resident (`loadingNow`). */
+export async function speak(engineId, model, versionId, body) {
+  if (kitSpeech.currentVariantId(engineId) === versionId) return kitSpeech.speak(engineId, versionId, body);
+  return self._notingLoad(engineId, model, (done) => kitSpeech.speak(engineId, versionId, body, { onStart: done }));
+}
+
+/** The loaded variant of `engineId`, or null. */
 function _residentVariant(engineId) {
-  const mgr = _manager();
-  let current = typeof mgr.currentVariantId === "function" ? mgr.currentVariantId(engineId) : null;
-  if (current == null) {
-    try {
-      current = mgr.resolvedDefaultVariant(engineId);
-    } catch {
-      return null;
-    }
-  }
-  return current ?? null;
-}
-
-/** Pocket has one model per language: the resident one must speak the line's. Every other
- * family speaks all its languages in one model. */
-function _languageResident(engineId, model, language) {
-  const rows = _familyRows(engineId, model);
-  if (!language || new Set(rows.map(langKey)).size <= 1) return true;
-  const current = _residentVariant(engineId);
-  const row = rows.find((r) => r.id === current);
-  const want = baseLang(language);
-  return row !== undefined && (row.languages || []).some((x) => baseLang(x) === want);
+  return kitSpeech.currentVariantId(engineId);
 }
 
 /** Is a variant of `model` the resident speech model right now? */
 export function isModelLoaded(engineId, model) {
-  const mgr = _manager();
-  if (mgr.currentFor(_kind(engineId)) !== engineId) return false;
+  if (kitSpeech.currentFor(_kind(engineId)) !== engineId) return false;
   if (!_familyRows(engineId, model).length) return true;
   return modelOfVariant(_residentVariant(engineId)) === model;
 }
@@ -569,12 +509,7 @@ export async function versionsOf(state, voiceId, language = null) {
     picked = null;
   }
   const loaded = self.isModelLoaded(vm.engineId, vm.model) ? _residentVariant(vm.engineId) : null;
-  let def;
-  try {
-    def = _manager().resolvedDefaultVariant(vm.engineId);
-  } catch {
-    def = null;
-  }
+  const def = modelCatalog.resolvedDefaultVariant(vm.engineId) || null;
   // The size the Speech engines page shows — the catalog computes it from the files; the raw
   // rows carry none.
   let sizes;

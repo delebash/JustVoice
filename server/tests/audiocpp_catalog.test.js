@@ -1,17 +1,22 @@
 // SPDX-License-Identifier: MIT
 // The speech engine list built from audio.cpp's own files (scripts/audiocpp-catalog.js →
 // engines/audiocpp/catalog.json; docs/plans/2026-10-11-audiocpp-engine-catalog.md slice 1;
-// docs/plans/2026-10-13-adopt-everything-audiocpp.md slice 1). The file must match the pin, every
-// speech family in it must carry what the app shows before anything is downloaded — a name, a
-// status, a model to register, its files' sizes, and a licence verdict in audio.cpp's own words —
+// docs/plans/2026-10-13-adopt-everything-audiocpp.md slice 1). The file must match the pin — the
+// model revision the script pins and, built at a release tag, the build the kit pins (its runner/
+// config.js DEFAULT_AUDIOCPP_BUILD; engines/audiocpp/release.js held both until round E, 2026-10-29)
+// — every speech family in it must carry what the app shows before anything is downloaded — a name,
+// a status, a model to register, its files' sizes, and a licence verdict in audio.cpp's own words —
 // and every package audio.cpp's own web UI offers must be in it, by its own rule.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { expect, test } from "vitest";
+import { DEFAULT_AUDIOCPP_BUILD } from "@delebash/core/runner/config";
 import {
   builtinVoices,
   CHECKOUT,
   installChoices,
+  MODEL_REPO,
+  MODEL_REVISION,
   packageLabel,
   parseLicences,
   parsePresets,
@@ -19,7 +24,6 @@ import {
   workflowForEntry,
 } from "../../scripts/audiocpp-catalog.js";
 import { generatedEngines } from "../src/engines/audiocpp/generated.js";
-import { cfg, MODEL_REPO, MODEL_REVISION } from "../src/engines/audiocpp/release.js";
 
 const catalog = JSON.parse(readFileSync(new URL("../src/engines/audiocpp/catalog.json", import.meta.url), "utf8"));
 const speech = Object.values(catalog.families).filter((f) => (f.tasks || []).some((t) => t === "tts" || t === "clone"));
@@ -31,12 +35,12 @@ test("the catalog was built at the pinned model revision, from a commit it recor
   expect(catalog.generated_from.audiocpp_commit).toMatch(/^[0-9a-f]{40}$/);
 });
 
-// Built at a release tag, the catalog is the pinned release's. Built at our fork's branch, it runs
-// ahead of the pin until that release exists (the adoption plan's slice 1 builds it at `jv`, v0.9.2
-// with our additions, and the pin moves only once jv.6 is published) — then the script is re-run
-// at the new tag, its default, and this holds again.
+// Built at a release tag, the catalog is the pinned release's — the kit's pinned build since round
+// E. Built at our fork's branch, it runs ahead of the pin until that release exists (the adoption
+// plan's slice 1 builds it at `jv`, v0.9.2 with our additions, and the pin moves only once jv.6 is
+// published) — then the script is re-run at the new tag, its default, and this holds again.
 test.skipIf(!/^v\d/.test(catalog.generated_from.audiocpp_ref))("a catalog built at a release tag is the pinned release's", () => {
-  expect(catalog.generated_from.audiocpp_ref).toBe(cfg.TAG);
+  expect(catalog.generated_from.audiocpp_ref).toBe(DEFAULT_AUDIOCPP_BUILD);
 });
 
 test("every speech family says what it is and how sure audio.cpp is of it", () => {

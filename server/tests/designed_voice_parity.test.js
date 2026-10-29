@@ -17,9 +17,9 @@ import { appClient, closeApps } from "./app_helpers.js";
 import { endState, useState } from "./engines_helpers.js";
 import * as vp from "../src/api/voice_preview_api.js";
 import { getState } from "../src/app_state.js";
-import * as release from "../src/engines/audiocpp/release.js";
+import { shippedHas } from "../src/engines/audiocpp/kit_settings.js";
 import { lookup } from "../src/engines/capability_details.js";
-import { discoverEngines } from "../src/engines/manager.js";
+import { discoverEngines } from "../src/engines/model_catalog.js";
 import { strip as stripTags } from "../src/inline_tags.js";
 import { utcNow } from "../src/models.js";
 import { voiceDesignInstruct, voiceDesignInstructForId, voiceSynthFields } from "../src/render_core.js";
@@ -224,10 +224,11 @@ test("the_mlx_variants_resolve_to_the_same_families", () => {
 test("only_chatterbox_claims_paralinguistic_tags_and_only_turbo_keeps_them", () => {
   // The engine flag is the fallback for an engine with no capability row; true on an engine
   // that cannot read tags puts `[laugh]` into the text, read aloud. Chatterbox claims them once
-  // the pinned runtime clones on Turbo — and a voice's own model row still decides.
+  // the build the app ships clones on Turbo (kit_settings.js `shippedHas`, round E) — and a
+  // voice's own model row still decides.
   for (const [engineId, m] of discoverEngines()) {
     const claims = m.capabilities.paralinguistic_tags ?? false;
-    expect(claims, engineId).toBe(engineId === "chatterbox" && release.pinnedHas("turbo_clone"));
+    expect(claims, engineId).toBe(engineId === "chatterbox" && shippedHas("turbo_clone"));
   }
   expect(lookup("chatterbox-multilingual").inline_tags.length).toBe(0);
   expect(lookup("chatterbox-turbo").inline_tags.reduce((n, t) => n + t.tags.length, 0)).toBe(19);
