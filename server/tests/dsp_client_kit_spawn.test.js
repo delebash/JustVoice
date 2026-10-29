@@ -6,9 +6,11 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
+import { stores } from "@delebash/core/llm";
+import { endState, useState } from "./engines_helpers.js";
 import { tmpPath } from "./helpers.js";
 
-const kit = vi.hoisted(() => ({ spawned: [], rotated: [], ports: 0, popened: [] }));
+const kit = vi.hoisted(() => ({ spawned: [], rotated: [], ports: 0, popened: [], fetches: [], health: 200 }));
 
 vi.mock("@delebash/core/platform/procs", async (importOriginal) => {
   const real = await importOriginal();
@@ -48,7 +50,13 @@ vi.mock("@delebash/core/runner/audiocpp", async (importOriginal) => {
 });
 vi.mock("@delebash/core/platform/http", async (importOriginal) => {
   const real = await importOriginal();
-  return { ...real, fetch: async () => new Response(Buffer.from("RIFF"), { status: 200 }) };
+  return {
+    ...real,
+    fetch: async (url, init = {}) => {
+      kit.fetches.push({ url, timeoutMs: init.timeoutMs });
+      return new Response(Buffer.from("RIFF"), { status: String(url).endsWith("/health") ? kit.health : 200 });
+    },
+  };
 });
 
 const dspClient = await import("../src/audio/dsp_client.js");
@@ -70,4 +78,25 @@ test("the DSP program starts on the kit's free port, log rotation and environmen
   expect(path.basename(kit.spawned[0].logPath)).toBe("audiocpp-dsp.log");
   // in its own folder, with the kit's environment for a runtime's child
   expect(kit.popened[0].opts).toMatchObject({ cwd: path.dirname(exe), env: { KIT_CHILD_ENV: "1" } });
+});
+
+test("its time limits are the kit's audio.cpp runtime's: one request's, and its start's", async () => {
+  useState();
+  try {
+    const exe = path.join(tmpPath("jv-dsp-kit-"), dspClient.EXE_NAME);
+    writeFileSync(exe, "");
+    process.env[dspClient.ENV_EXE] = exe;
+    stores.getRunnerConfigStore().setSetting("request_timeout_s:audiocpp", "7");
+    kit.fetches.length = 0;
+    await dspClient._post("shape", {}, []);
+    expect(kit.fetches.find((f) => f.url.includes("/v1/dsp/shape")).timeoutMs).toBe(7000);
+    // a program that never answers is given up on at the start limit
+    await dspClient.stop();
+    stores.getRunnerConfigStore().setSetting("start_timeout_s:audiocpp", "1");
+    kit.health = 503;
+    await expect(dspClient._post("shape", {}, [])).rejects.toThrow(/did not answer within 1 s/);
+  } finally {
+    kit.health = 200;
+    endState();
+  }
 });

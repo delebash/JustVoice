@@ -11,13 +11,12 @@
 //   - `transcribe`: a transcription's request and time limit;
 //   - `beforeDownload`: the licence the user accepts before its first download.
 
-import { stores } from "@delebash/core/llm";
 import { pyInt } from "@delebash/core/platform/py";
-import { DEFAULT_AUDIOCPP_SETTINGS } from "@delebash/core/runner/config";
 import * as appState from "../../app_state.js";
 import { DEFAULT_MAX_CHUNK_CHARS } from "../../audio/chunked.js";
 import * as manager from "../manager.js";
-import { RUNTIME, variantOf } from "./kit_models.js";
+import { variantOf } from "./kit_models.js";
+import { runtimeNumber } from "./kit_settings.js";
 import * as runtimeOptions from "./runtime_options.js";
 import * as slot from "./slot.js";
 
@@ -77,12 +76,6 @@ export async function warm({ server, row, calibrate }) {
   return slot.warmModel(server, version, row.kind, calibrate ? pieceLength(row) : 0);
 }
 
-/** One request's limit on the kit's audio.cpp runtime (its `request_timeout_s` setting), seconds. */
-function requestTimeoutS() {
-  const v = Number(stores.getRunnerConfigStore().getRuntimeConfig(RUNTIME).settings?.request_timeout_s);
-  return Number.isFinite(v) && v > 0 ? v : DEFAULT_AUDIOCPP_SETTINGS.request_timeout_s;
-}
-
 /** A transcription of `body` (`{audio_path, language}`) on a recogniser's row: `{body, timeout}` —
  * the request as the model takes it (slot.js `transcribeRequest`: the language named its way) and
  * its time limit, the runtime's request limit or three times the recording. The recording goes as
@@ -91,7 +84,7 @@ function requestTimeoutS() {
 export async function transcribe(body, row) {
   const { row: version } = versionOf(row);
   const audio = String(body?.audio_path ?? "").replaceAll("\\", "/");
-  return { body: slot.transcribeRequest(version, body, audio), timeout: slot._transcribeTimeout(audio, requestTimeoutS()) };
+  return { body: slot.transcribeRequest(version, body, audio), timeout: slot._transcribeTimeout(audio, runtimeNumber("request_timeout_s")) };
 }
 
 /** Every hook, as `installLlm`'s `runtimeSpeech.audiocpp`. */

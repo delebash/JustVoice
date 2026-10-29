@@ -14,8 +14,9 @@
 // onto-the-kit.md §4 step 7: the kit's spawnChild, findFreePort, rotateLog and childEnv) — a
 // kill-on-close Job Object on Windows, so it dies with this server however this server dies;
 // elsewhere the kit's pid file lets its next start end one a crash left — on a free loopback port,
-// logs to `<data>/logs/audiocpp-dsp.log`, and is started again if it died. Where it is, first found
-// wins:
+// logs to `<data>/logs/audiocpp-dsp.log`, and is started again if it died. Its start and one
+// request are held to the kit's audio.cpp runtime's limits (`start_timeout_s`, `request_timeout_s` —
+// engines/audiocpp/kit_settings.js), the values it read before. Where it is, first found wins:
 //   1. `JUSTVOICE_DSP_EXE` — an explicit path;
 //   2. the development build `npm run dev` names (`JUSTVOICE_AUDIOCPP_BUILD`, its bin folder);
 //   3. beside a packaged server's executable;
@@ -37,7 +38,7 @@ import { childEnv, rotateLog } from "@delebash/core/runner/audiocpp";
 import * as process_ from "@delebash/core/runner/process";
 import * as appState from "../app_state.js";
 import * as devBuild from "../engines/audiocpp/dev_build.js";
-import * as runtime from "../engines/audiocpp/runtime.js";
+import { runtimeNumber } from "../engines/audiocpp/kit_settings.js";
 import * as paths from "../paths.js";
 import * as chunked from "./chunked.js";
 import * as self from "./dsp_client.js";
@@ -119,7 +120,7 @@ class Program {
     const env = childEnv();
     const popen = (argv, opts) => procs.popen(argv, { ...opts, cwd: path.dirname(exe), env });
     [this._proc, this._job] = await process_.spawnChild(popen, [exe, "--port", String(this._port)], lp);
-    const deadline = performance.now() / 1000 + runtime.startTimeout();
+    const deadline = performance.now() / 1000 + runtimeNumber("start_timeout_s");
     while (performance.now() / 1000 < deadline) {
       const rc = process_.pollProc(this._proc);
       if (rc !== null) throw new DspError(`${EXE_NAME} exited with ${rc} on start (log: ${lp})`);
@@ -136,7 +137,7 @@ class Program {
       await sleep(50);
     }
     await this.stopLocked();
-    throw new DspError(`${EXE_NAME} did not answer within ${runtime.startTimeout().toFixed(0)} s (log: ${lp})`);
+    throw new DspError(`${EXE_NAME} did not answer within ${runtimeNumber("start_timeout_s").toFixed(0)} s (log: ${lp})`);
   }
 
   async stopLocked() {
@@ -220,7 +221,7 @@ export async function _post(op, params, parts) {
           method: "POST",
           body: form.body,
           headers: { "content-type": form.contentType },
-          timeoutMs: runtime.requestTimeout() * 1000,
+          timeoutMs: runtimeNumber("request_timeout_s") * 1000,
         }),
       );
     } catch (e) {
