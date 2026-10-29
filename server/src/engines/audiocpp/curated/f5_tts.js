@@ -51,3 +51,24 @@ export const LANGUAGES = {
   "f5-tts-habibi-sau": ["ar-SA"],
   "f5-tts-habibi-uae": ["ar-AE"],
 };
+
+// The SHA-256 of each Habibi download's vocab.txt: small files Git stores itself, so catalog.json carries only Git's
+// blob id for them (40 hex — all Hugging Face lists outside LFS), and the engine cache names and
+// checks every file by its SHA-256 (round E, docs/plans/2026-10-29-round-e-onto-the-kit.md §4 step 1).
+// Each file fetched at its revision (2026-10-29), its size and Git blob id checked against the catalog.
+export const SMALL_FILES = [
+  {
+    repo: "trklou/audio.cpp",
+    revision: "4c220adc169f56a2012125aaab1ae821d790f6ca",
+    sha256: {
+      "habibi-unified/vocab.txt": "49b8f3f126a0cb8146cd5a974cd48866acc4b292f8b59546fd51957f83251d5b",
+      "habibi-alg/vocab.txt": "a959e14efa69a068f1bd14ad5c335a82e3bcad5083ebd1c72f5c4eb3925f5c4e",
+      "habibi-egy/vocab.txt": "ceed48f51f0211ffbb8b36007ead3c9b8698fbda9709f184fd712bd3dcd095c5",
+      "habibi-irq/vocab.txt": "55484bc3dda8b8e6a7fbf04261b47a8788d4b553a85b93dc46dac6fd39c9fd88",
+      "habibi-mar/vocab.txt": "a49a0b74e12cb91de49a636f59c4045e3a1683d389fa6c223b53024faa9afbea",
+      "habibi-msa/vocab.txt": "4de4460ff1ef7cb40c2e564bc1ee2f3198164d10ce71380290986e483ba7e19c",
+      "habibi-sau/vocab.txt": "9bd4755a39ee21eafe78f54d6c32ae939f900775427f447598430c795c04362f",
+      "habibi-uae/vocab.txt": "6f249cb7a0fcef576d4e0281a9998b30a92048a72616f84020238bf743810d79",
+    },
+  },
+];

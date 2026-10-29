@@ -29,3 +29,34 @@ export const VOICES = {
   ...Object.fromEntries(ENGLISH.map((name) => [name, { language: "en" }])),
   ...Object.fromEntries(Object.entries(LANGUAGE_PRESETS).map(([name, language]) => [name, { language }])),
 };
+
+// The SHA-256 of its licence files and checksum list: small files Git stores itself, so catalog.json carries only Git's
+// blob id for them (40 hex — all Hugging Face lists outside LFS), and the engine cache names and
+// checks every file by its SHA-256 (round E, docs/plans/2026-10-29-round-e-onto-the-kit.md §4 step 1).
+// Each file fetched at its revision (2026-10-29), its size and Git blob id checked against the catalog.
+// The first revision is the pinned catalog's; the second is the one the newer catalog generated
+// from audio.cpp's `jv` branch names (not committed yet).
+export const SMALL_FILES = [
+  {
+    repo: "dignome/kitten_tts2",
+    revision: "73b762c95b07c4f0675c927c25d65741b8dab7da",
+    sha256: {
+      "LICENSE": "f2429d9172b1e192102ab07552d7ca86c981f13598cbe3b51cc1fbd94604e1a3",
+      "NOTICE": "4c38d62cf864f55f1f8e8067217d367a3a459ff406b70febda94a7596afd3a44",
+      "native/LICENSE": "4248e910a928849fe5815a0f9236e17fa07768d95b9193212752c464b93d6caa",
+      "speaker/LICENSE": "14d7016ad68e7394d6e6b78d96cc2ae431c905287b89674cfdf021e79e62b8ba",
+      "SHA256SUMS": "d6dd81428b03675b8f951a3ae5b686d4a391d885d7dcd30e97bb1ce2a175d02d",
+    },
+  },
+  {
+    repo: "dignome/kitten_tts2",
+    revision: "be39e32c4b74b6247e8fcb4fa5d06962aab297a7",
+    sha256: {
+      "LICENSE": "f2429d9172b1e192102ab07552d7ca86c981f13598cbe3b51cc1fbd94604e1a3",
+      "NOTICE": "d8d3652f8ff8ebe338fe1259e02659a67ce8dc65f34dca53ce6896fbf07560d8",
+      "native/LICENSE": "4248e910a928849fe5815a0f9236e17fa07768d95b9193212752c464b93d6caa",
+      "speaker/LICENSE": "14d7016ad68e7394d6e6b78d96cc2ae431c905287b89674cfdf021e79e62b8ba",
+      "SHA256SUMS": "ae8039b0e806d7770b7c62566825a72e3d692bb34dfbdcdc400f2991cf47c81f",
+    },
+  },
+];

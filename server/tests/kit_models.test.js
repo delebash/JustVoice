@@ -35,13 +35,34 @@ test("every model version our engines offer is one row, its files pinned, its ma
     for (const f of r.files) {
       expect(f.repo && f.revision && f.path, `${r.id} ${f.path}`).toBeTruthy();
       expect(f.bytes, `${r.id} ${f.path}`).toBeGreaterThan(0);
-      // every weights file carries its SHA-256 (a small non-LFS file's catalog id is git's — round E's open item)
-      if (f.bytes > 64 * 1024) expect(f.sha256, `${r.id} ${f.path}`).toMatch(SHA256);
+      // every file carries its SHA-256 — the kit's download checks it
+      expect(f.sha256, `${r.id} ${f.path}`).toMatch(SHA256);
     }
     expect(r.spec.family && r.spec.task, r.id).toBeTruthy();
     // the card estimate is audio.cpp's, in MB
     expect(r.peakVramMb, r.id).toBe(Math.round((variantOf(r.id).row.min_vram_gb || 0) * 1024));
   }
+});
+
+test("a small file Git stores itself carries the SHA-256 its family file gives it, at its revision", () => {
+  // catalog.json gives such a file Git's blob id (40 hex), all Hugging Face lists for it
+  const gitIds = new Map();
+  for (const fam of Object.values(generated.CATALOG.families)) {
+    for (const p of fam.packages || []) for (const f of p.source?.files || []) if (/^[0-9a-f]{40}$/.test(f.sha256 || "")) gitIds.set(`${p.source.repo}\u0000${p.source.revision}\u0000${f.path}`, f);
+  }
+  let seen = 0;
+  for (const r of rows) {
+    for (const f of r.files) {
+      const git = gitIds.get(`${f.repo}\u0000${f.revision}\u0000${f.path}`);
+      if (!git) continue;
+      seen += 1;
+      const entry = Object.values(CURATED).flatMap((c) => c.SMALL_FILES ?? []).find((e) => e.repo === f.repo && e.revision === f.revision);
+      expect(f.sha256, `${r.id} ${f.path}`).toBe(entry?.sha256[f.path]);
+      expect(f.bytes, `${r.id} ${f.path}`).toBe(git.size_bytes);
+    }
+  }
+  expect(seen).toBeGreaterThan(0);
+  expect(rowOf("sanotts-orig").files.find((f) => f.path === "gguf/config.json").sha256).toMatch(SHA256);
 });
 
 test("Pocket TTS's preset voices carry their SHA-256 from its family file, at the pinned revision", () => {

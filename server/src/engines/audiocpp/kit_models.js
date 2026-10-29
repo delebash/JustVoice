@@ -6,8 +6,9 @@
 //
 // A row is `{runtime, id, name, kind, license, files, peakVramMb, minRamMb, refSpeed, spec}`
 // (the kit's llm/seed.js seedRuntimeModels): its files pinned by repository, revision, path, SHA-256
-// and size — each one's hash and size from catalog.json, a Pocket TTS preset voice's from its family
-// file (curated/pocket_tts.js `VOICE_FILES`) — each in a slot, the main file's "model"; its memory on
+// and size — each one's hash and size from catalog.json, a small file Git stores itself (catalog.json
+// has only Git's id for it) its family file's `SMALL_FILES`, a Pocket TTS preset voice's its family
+// file's `VOICE_FILES` — each in a slot, the main file's "model"; its memory on
 // the card before a load measures it audio.cpp's estimate (`min_vram_gb`); its CPU speed our
 // measured reference (`cpu_realtime`); and how the runtime registers it (`spec`, the kit's
 // RuntimeService.entriesFor): its family and task, a companion file given as a session option
@@ -41,9 +42,31 @@ function catalogFiles() {
   return _catalogFiles;
 }
 
-/** A file's SHA-256 and size: the catalog's, else a Pocket TTS preset voice's (its family file). */
+let _smallFiles = null;
+
+/** Every small file's SHA-256 our family files give (`SMALL_FILES`), by repository, revision and path. */
+function smallFiles() {
+  if (_smallFiles === null) {
+    _smallFiles = new Map();
+    for (const c of Object.values(CURATED)) {
+      for (const e of c.SMALL_FILES ?? []) for (const [file, sha256] of Object.entries(e.sha256)) _smallFiles.set(key(e.repo, e.revision, file), sha256);
+    }
+  }
+  return _smallFiles;
+}
+
+const SHA256 = /^[0-9a-f]{64}$/;
+
+/** A file's SHA-256 and size: the catalog's — where the catalog has only Git's blob id for a small
+ * file Git stores itself, the SHA-256 its family file gives (`SMALL_FILES`) — else a Pocket TTS
+ * preset voice's (its family file). */
 function pinOf(repo, revision, file) {
   const known = catalogFiles().get(key(repo, revision, file));
+  if (known && !SHA256.test(String(known.sha256 ?? ""))) {
+    const sha256 = smallFiles().get(key(repo, revision, file));
+    if (!sha256) throw new Error(`${file} (${repo}@${revision}) has only Git's id in catalog.json and no SHA-256 in our family files`);
+    return { sha256, bytes: known.bytes };
+  }
   if (known) return known;
   const voice = revision === VOICE_FILES.revision ? VOICE_FILES.sha256[file] : undefined;
   if (voice) {
