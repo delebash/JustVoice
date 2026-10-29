@@ -228,7 +228,7 @@ const voiceEmptyHint = computed(() => {
     return "No voice of this kind matches these filters.";
   }
   return {
-    builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
+    builtin: "No built-in voices — install a speech model on AI Settings → Speech.",
     clone: "No cloned voices yet — make one on the right.",
     design: "No designed voices yet — make one on the right.",
     blend: "No blended voices yet — make one on the right.",
@@ -909,7 +909,7 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
               </template>
               <p v-else class="jv-hint">Pick a voice to see what its model can do.</p>
               <UiButton intent="ghost" size="small" label="Compare models →"
-                @click="router.push({ path: '/ai', query: { tab: 'speech-engines' } })" />
+                @click="router.push({ path: '/ai', query: { tab: 'runtime-audiocpp' } })" />
             </div>
           </div>
 

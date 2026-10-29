@@ -1,5 +1,5 @@
 {
- "_source": "The server's own answers for the seven engines described by our own files (Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Speech recognition), computed from this checkout's code on 2026-10-16 (6a020731) by scripts/mock-snapshots.js, the pinned speech runtime taken as installed: /v1/engines/capabilities, /v1/voices (presets), /v1/engines (terms), /v1/effects/catalog. Model languages: what /v1/voices says each model speaks; versions: /v1/voices/{id}/model-version's rows.",
+ "_source": "The server's own answers for the seven engines described by our own files (Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Speech recognition), computed from this checkout's code on 2026-10-16 (6a020731) by scripts/mock-snapshots.js, the pinned speech runtime taken as installed: /v1/engines/capabilities, /v1/voices (presets), /v1/engines (each engine's row, and its terms), /v1/effects/catalog. Model languages: what /v1/voices says each model speaks; versions: /v1/voices/{id}/model-version's rows.",
  "capabilities": {
   "kokoro": {
    "engine_id": "kokoro",
@@ -4279,5 +4279,252 @@
     }
    ]
   }
- }
+ },
+ "engines": [
+  {
+   "id": "kokoro",
+   "name": "Kokoro",
+   "description": "Kokoro-82M — 54 preset voices in 9 languages, fast on any machine. Runs in the audio.cpp speech runtime from one 190 MB model file.",
+   "kind": "tts",
+   "kinds": [
+    "tts"
+   ],
+   "default_variant_id": "kokoro-82m-q8",
+   "supported_oses": [
+    "windows",
+    "linux",
+    "macos"
+   ],
+   "supported_on_this_os": true,
+   "deprecated": "",
+   "licence": {
+    "name": "Apache-2.0",
+    "commercial": "Yes",
+    "table": "Yes",
+    "summary": "Yes. Apache-2.0, and its maker welcomes commercial use.",
+    "url": "https://huggingface.co/hexgrad/Kokoro-82M",
+    "checked": "2026-10-11"
+   },
+   "catalog_status": "community",
+   "tested": {
+    "record": "docs/engines.md",
+    "note": "Measured by JustVoice."
+   },
+   "best_for": [
+    "Ready-made voices, fast, on any machine"
+   ],
+   "terms": null
+  },
+  {
+   "id": "kitten",
+   "name": "KittenTTS",
+   "description": "KittenTTS Mini 0.8 — eight English preset voices from a small model made to run without a graphics card. Runs in the audio.cpp speech runtime from one 302 MB model file.",
+   "kind": "tts",
+   "kinds": [
+    "tts"
+   ],
+   "default_variant_id": "kitten-mini-0.8",
+   "supported_oses": [
+    "windows",
+    "linux",
+    "macos"
+   ],
+   "supported_on_this_os": true,
+   "deprecated": "",
+   "licence": {
+    "name": "Apache-2.0",
+    "commercial": "Yes",
+    "table": "Yes",
+    "summary": "Yes. Apache-2.0, nothing added.",
+    "url": "https://huggingface.co/KittenML/kitten-tts-mini-0.8",
+    "checked": "2026-10-11"
+   },
+   "catalog_status": "community",
+   "tested": {
+    "record": "docs/engines.md",
+    "note": "Measured by JustVoice."
+   },
+   "best_for": [
+    "English voices made for the CPU"
+   ],
+   "terms": null
+  },
+  {
+   "id": "pocket",
+   "name": "Pocket TTS",
+   "description": "Kyutai's small cloning model — clones a voice from a short clip and speaks 20 preset voices, fast enough on the CPU. One model per language: English, German, Italian, Portuguese, Spanish, and French for cloning only. Runs in the audio.cpp speech runtime.",
+   "kind": "tts",
+   "kinds": [
+    "tts"
+   ],
+   "default_variant_id": "pocket-en-q8",
+   "supported_oses": [
+    "windows",
+    "linux",
+    "macos"
+   ],
+   "supported_on_this_os": true,
+   "deprecated": "",
+   "licence": {
+    "name": "CC-BY-4.0",
+    "commercial": "Yes",
+    "table": "Yes",
+    "summary": "Yes. CC-BY-4.0. Kyutai’s terms forbid cloning a voice without that person’s explicit consent and passing the audio off as a real recording. JustVoice leaves out its non-commercial preset voices.",
+    "url": "https://huggingface.co/kyutai/pocket-tts",
+    "checked": "2026-10-11"
+   },
+   "catalog_status": "supported",
+   "tested": {
+    "record": "docs/engines.md",
+    "note": "Measured by JustVoice."
+   },
+   "best_for": [
+    "Someone’s own voice on a modest machine"
+   ],
+   "terms": {
+    "owner": "Kyutai",
+    "title": "Kyutai's terms for Pocket TTS",
+    "text": "Prohibited use: Use of our model must comply with all applicable laws and regulations and must not result in, involve, or facilitate any illegal, harmful, deceptive, fraudulent, or unauthorized activity. Prohibited uses include, without limitation, voice impersonation or cloning without explicit and lawful consent; misinformation, disinformation, or deception (including fake news, fraudulent calls, or presenting generated content as genuine recordings of real people or events); and the generation of unlawful, harmful, libelous, abusive, harassing, discriminatory, hateful, or privacy-invasive content. We disclaim all liability for any non-compliant use.",
+    "url": "https://huggingface.co/kyutai/pocket-tts",
+    "gates": "cloning"
+   }
+  },
+  {
+   "id": "qwen3",
+   "name": "Qwen3-TTS",
+   "description": "Alibaba's open-weight TTS, 10 languages. CustomVoice — 9 preset speakers you can direct in plain words; Base — clones a voice from a short clip; VoiceDesign — a voice from a written description. Runs in the audio.cpp speech runtime.",
+   "kind": "tts",
+   "kinds": [
+    "tts"
+   ],
+   "default_variant_id": "qwen3-cv-1.7b-q8",
+   "supported_oses": [
+    "windows",
+    "linux",
+    "macos"
+   ],
+   "supported_on_this_os": true,
+   "deprecated": "",
+   "licence": {
+    "name": "Apache-2.0",
+    "commercial": "Yes",
+    "table": "Yes",
+    "summary": "Yes. Apache-2.0, nothing added.",
+    "url": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    "checked": "2026-10-11"
+   },
+   "catalog_status": "supported",
+   "tested": {
+    "record": "docs/engines.md",
+    "note": "Measured by JustVoice."
+   },
+   "best_for": [
+    "To direct performances in words (CustomVoice)",
+    "Someone’s own voice, in 10 languages (Base)",
+    "A voice designed from a description (VoiceDesign)"
+   ],
+   "terms": null
+  },
+  {
+   "id": "chatterbox",
+   "name": "Chatterbox",
+   "description": "Resemble AI's open-source cloning TTS. Multilingual: 500M parameters, 23 languages, zero-shot voice cloning, per-line exaggeration / CFG / temperature. Runs in the audio.cpp speech runtime.",
+   "kind": "tts",
+   "kinds": [
+    "tts"
+   ],
+   "default_variant_id": "chatterbox-multilingual-v2-q8",
+   "supported_oses": [
+    "windows",
+    "linux",
+    "macos"
+   ],
+   "supported_on_this_os": true,
+   "deprecated": "",
+   "licence": {
+    "name": "MIT",
+    "commercial": "Yes",
+    "table": "Yes",
+    "summary": "Yes. MIT, nothing added.",
+    "url": "https://huggingface.co/ResembleAI/chatterbox",
+    "checked": "2026-10-11"
+   },
+   "catalog_status": "supported",
+   "tested": {
+    "record": "docs/engines.md",
+    "note": "Measured by JustVoice."
+   },
+   "best_for": [
+    "Someone’s own voice, with per-line emotion tags (Turbo, Nano)",
+    "Someone’s own voice in another language (Multilingual)"
+   ],
+   "terms": null
+  },
+  {
+   "id": "voxcpm2",
+   "name": "VoxCPM2",
+   "description": "OpenBMB's 2B model, 30 languages: clones a voice from a short clip and its transcript, or designs one from a written description. Runs in the audio.cpp speech runtime.",
+   "kind": "tts",
+   "kinds": [
+    "tts"
+   ],
+   "default_variant_id": "voxcpm2-q8",
+   "supported_oses": [
+    "windows",
+    "linux",
+    "macos"
+   ],
+   "supported_on_this_os": true,
+   "deprecated": "",
+   "licence": {
+    "name": "Apache-2.0",
+    "commercial": "Yes",
+    "table": "Yes",
+    "summary": "Yes — “free for commercial use”, in its makers’ words (Apache-2.0). They ask that AI-generated audio be labelled.",
+    "url": "https://huggingface.co/openbmb/VoxCPM2",
+    "checked": "2026-10-11"
+   },
+   "catalog_status": "supported",
+   "tested": {
+    "record": "docs/engines.md",
+    "note": "Measured by JustVoice."
+   },
+   "best_for": [
+    "Cloning, designing and written direction together"
+   ],
+   "terms": null
+  },
+  {
+   "id": "asr",
+   "name": "Speech recognition",
+   "description": "Turns speech into text for dictation, clone transcripts and captions (with word timings). Runs in the audio.cpp speech runtime.",
+   "kind": "stt",
+   "kinds": [
+    "stt"
+   ],
+   "default_variant_id": "qwen3-asr-1.7b-q8",
+   "supported_oses": [
+    "windows",
+    "linux",
+    "macos"
+   ],
+   "supported_on_this_os": true,
+   "deprecated": "",
+   "licence": {
+    "name": "Apache-2.0",
+    "commercial": "Yes",
+    "table": "Yes",
+    "summary": "Yes. Apache-2.0, nothing added.",
+    "url": "https://huggingface.co/Qwen/Qwen3-ASR-0.6B",
+    "checked": "2026-10-11"
+   },
+   "catalog_status": "supported",
+   "tested": {
+    "record": "docs/engines.md",
+    "note": "Measured by JustVoice."
+   },
+   "best_for": [],
+   "terms": null
+  }
+ ]
 }

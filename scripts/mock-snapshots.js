@@ -1,24 +1,23 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: MIT
-// Re-takes the two snapshots the in-app mocks read (CLAUDE.md "A mock is built in the app itself";
+// Re-takes the snapshot the in-app mocks read (CLAUDE.md "A mock is built in the app itself";
 // "production minus the plumbing"): the server's own answers, computed in-process from this
 // checkout's server code on an app state over a temp data folder — no HTTP server, no speech
 // runtime, no model loads, nothing on the GPU, nothing in the app's data folder.
 //
-//   src/services/mock/speechEnginesSnapshot.json   #/mock/speech-engines: every managed engine as
-//       /v1/engines lists it, and its models as /v1/engines/{id}/models answers them — how each is
-//       directed, its load options (each set stored once, in `load_option_sets`) — without this
-//       machine's state (on disk, loaded, where it runs, measured), which speechEnginesMock.js
-//       makes up.
-//   src/services/mock/liveSnapshot.json            #/mock/personas: the seven engines described by
-//       our own files — /v1/engines/capabilities, /v1/voices (presets), /v1/engines (terms),
-//       /v1/effects/catalog, what each model speaks, and its versions (the rows of
-//       /v1/voices/{id}/model-version).
+//   src/services/mock/liveSnapshot.json            #/mock/personas, #/mock/voices: the seven engines
+//       described by our own files — /v1/engines/capabilities, /v1/voices (presets), /v1/engines
+//       (each engine's row, and its terms), /v1/effects/catalog, what each model speaks, and its
+//       versions (the rows of /v1/voices/{id}/model-version).
+//
+// (The Speech engines mock's snapshot, speechEnginesSnapshot.json, went with that mock in round E,
+// 2026-10-29: the Speech tab is the kit's audio.cpp runtime tab; the Voices mock's engine rows moved
+// here.)
 //
 // Run it when what the mocks show has moved under them: after scripts/audiocpp-catalog.js
 // rewrites catalog.json, after a family's notes (engines/audiocpp/curated/) or the capability rows
-// change, or when a mock reads a field the snapshot doesn't carry yet. The diff of the two JSON
-// files is what the mocks will show differently. On Electron's Node, as the server runs (its SQLite
+// change, or when a mock reads a field the snapshot doesn't carry yet. The diff of the JSON file is
+// what the mocks will show differently. On Electron's Node, as the server runs (its SQLite
 // module is built for it):
 //
 //   node scripts/node24.js scripts/mock-snapshots.js
@@ -58,7 +57,6 @@ appState.setState(st);
 const modelCatalog = await server("engines/model_catalog.js");
 const enginesApi = await server("api/engines_api.js");
 const voicesApi = await server("api/voices_api.js");
-const runtimeOptions = await server("engines/audiocpp/runtime_options.js");
 const caps = await server("engines/capability_details.js");
 const vmod = await server("voice_model.js");
 const models = await server("models.js");
@@ -67,55 +65,18 @@ const { EFFECT_CATALOG } = await server("audio/effect_catalog.js");
 const SEVEN = ["kokoro", "kitten", "pocket", "qwen3", "chatterbox", "voxcpm2", "asr"];
 const commit = execFileSync("git", ["rev-parse", "--short=8", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
 const today = new Date().toISOString().slice(0, 10);
-const catalogRef = (await server("engines/audiocpp/generated.js")).CATALOG.generated_from;
 
-// ── #/mock/speech-engines ───────────────────────────────────────────────────
+// ── #/mock/personas, #/mock/voices ──────────────────────────────────────────
+// Each of the seven engines' rows as /v1/engines lists them (the Voices mock's engine list; where
+// each stands is the mock machine's, personaMock.js modelStatus).
 const ENGINE_KEYS = [
   "id", "name", "description", "kind", "kinds", "default_variant_id", "supported_oses", "supported_on_this_os",
   "deprecated", "licence", "catalog_status", "tested", "best_for", "terms",
 ];
-const VARIANT_KEYS = [
-  "id", "name", "description", "size_mb", "languages", "languages_note", "voice_cloning", "voice_design",
-  "preset_voices", "hf_repo", "min_vram_gb", "need_gb",
-];
-const optionSets = [];
-const optionIndex = new Map();
-const engines = [];
-for (const m of modelCatalog.manifests().values()) {
-  const info = enginesApi._infoFromManifest(m, "installed");
-  const e = Object.fromEntries(ENGINE_KEYS.map((k) => [k, info[k] ?? null]));
-  const rows = new Map(modelCatalog._variantRows(m.id).map((r) => [r.id, r]));
-  e.variants = modelCatalog.modelsFor(m.id).map((v) => {
-    const row = rows.get(v.id);
-    const out = Object.fromEntries(VARIANT_KEYS.map((k) => [k, v[k] ?? null]));
-    out.cpu_realtime = row?.cpu_realtime ?? null;
-    out.directed_by = m.kind === "tts" ? vmod.directedBy(vmod.modelOfVariant(v.id)) : null;
-    const options = row ? runtimeOptions.describe(m.id, row) : [];
-    const key = JSON.stringify(options);
-    if (!optionIndex.has(key)) {
-      optionIndex.set(key, optionSets.length);
-      optionSets.push(options);
-    }
-    out.runtime_options = optionIndex.get(key);
-    return out;
-  });
-  engines.push(e);
-}
-const enginesSource =
-  `The server's own answers, computed from this checkout's code on ${today} (${commit}; catalog.json from ` +
-  `the fork's ${catalogRef.audiocpp_ref} ${String(catalogRef.audiocpp_commit).slice(0, 8)}, models ` +
-  `${String(catalogRef.model_revision).slice(0, 8)}) by scripts/mock-snapshots.js: /v1/engines (each managed ` +
-  "engine) and /v1/engines/{id}/models (its models, with how each is directed and its load options — each " +
-  "variant's `runtime_options` an index into `load_option_sets`, the sets being shared) — without this " +
-  "machine's state (on disk, loaded, where it runs, measured memory), which speechEnginesMock.js makes up.";
-// One engine, and one option set, per line: a re-take's diff reads per engine.
-writeFileSync(
-  path.join(OUT, "speechEnginesSnapshot.json"),
-  `{\n"_source": ${JSON.stringify(enginesSource)},\n"load_option_sets": [\n${optionSets.map((x) => JSON.stringify(x)).join(",\n")}\n],\n` +
-    `"engines": [\n${engines.map((x) => JSON.stringify(x)).join(",\n")}\n]\n}\n`,
-);
-
-// ── #/mock/personas ─────────────────────────────────────────────────────────
+const engines = SEVEN.map((id) => {
+  const info = enginesApi._infoFromManifest(modelCatalog.getManifest(id), "installed");
+  return Object.fromEntries(ENGINE_KEYS.map((k) => [k, info[k] ?? null]));
+});
 const sevenVariants = new Set(SEVEN.flatMap((id) => modelCatalog.modelsFor(id).map((v) => v.id)));
 const capabilities = {};
 for (const [key, detail] of Object.entries(caps.CAPABILITY_DETAILS)) {
@@ -152,7 +113,7 @@ const personaSource =
   "The server's own answers for the seven engines described by our own files (Kokoro, KittenTTS, Pocket TTS, " +
   `Qwen3-TTS, Chatterbox, VoxCPM2, Speech recognition), computed from this checkout's code on ${today} ` +
   `(${commit}) by scripts/mock-snapshots.js, the pinned speech runtime taken as installed: ` +
-  "/v1/engines/capabilities, /v1/voices (presets), /v1/engines (terms), /v1/effects/catalog. Model languages: " +
+  "/v1/engines/capabilities, /v1/voices (presets), /v1/engines (each engine's row, and its terms), /v1/effects/catalog. Model languages: " +
   "what /v1/voices says each model speaks; versions: /v1/voices/{id}/model-version's rows.";
 writeFileSync(
   path.join(OUT, "liveSnapshot.json"),
@@ -166,13 +127,14 @@ writeFileSync(
       effects: EFFECT_CATALOG,
       languages,
       versions,
+      engines,
     },
     null,
     1,
   )}\n`,
 );
 
-console.log(`${engines.length} engines, ${optionSets.length} load-option sets; ${Object.keys(capabilities).length} capability rows, ${presets.length} presets`);
+console.log(`${engines.length} engines, ${Object.keys(capabilities).length} capability rows, ${presets.length} presets`);
 session.closeDb();
 try {
   rmSync(dataDir, { recursive: true, force: true });

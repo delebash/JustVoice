@@ -28,7 +28,7 @@ import PlayTransport from "../../components/PlayTransport.vue";
 import { usePagePlayer } from "../../composables/usePagePlayer.js";
 import { rowOptions } from "../../services/capabilities.js";
 import { facetChoices, facetCounts, facetOptions, facetTotal, narrowed } from "../../services/facets.js";
-import enginesSnapshot from "../../services/mock/speechEnginesSnapshot.json";
+import liveSnapshot from "../../services/mock/liveSnapshot.json";
 import { capabilities, keepVoice, modelStatus, silentWav, store, wait } from "../../services/mock/personaMock.js";
 import { DIRECTION_OPTIONS, VOICE_KINDS, baseLang, directionCell, tagCount, voiceKind, voiceKindLabel } from "../../services/personaFacts.js";
 import { genderWord, voiceGender } from "../../services/voiceGender.js";
@@ -50,7 +50,7 @@ const personasByVoice = computed(() => {
 });
 // The engines as /v1/engines lists them; where each stands is this mock machine's.
 const engines = computed(() =>
-  enginesSnapshot.engines
+  liveSnapshot.engines
     .filter((e) => e.kind === "tts")
     .map((e) => ({ ...e, backend: "managed", status: modelStatus[e.id] || "not_loaded" })));
 const capabilityRows = capabilities;
@@ -279,10 +279,10 @@ function voiceTypeVariant(kind) {
     <UiChip
       as="a"
       :selected="!!loadedTtsEngine"
-      href="#/mock/speech-engines"
+      href="#/ai?tab=runtime-audiocpp"
       :title="loadedTtsEngine
         ? `${loadedTtsEngine.name || loadedTtsEngine.id} is loaded — previews play instantly. Click to manage engines.`
-        : 'No voice model loaded — the first preview will offer to load one. Click to manage speech engines.'"
+        : 'No voice model loaded — the first preview will offer to load one. Click to open AI Settings → Speech.'"
     >{{ loadedTtsEngine ? `● ${loadedTtsEngine.name || loadedTtsEngine.id} loaded` : "○ no voice model loaded" }}</UiChip>
     <div class="jv-filters-fold" :class="{ 'is-open': filtersOpen }">
       <div class="voices-view__chips">
@@ -414,9 +414,9 @@ function voiceTypeVariant(kind) {
       icon="Sparkle"
       title="No voices registered"
       message="Load a speech model to see its built-in voices, or make one — clone, design or blend — on a persona's page."
-      action-label="Open Speech engines"
+      action-label="Open Speech"
       compact
-      @action="router.push('/mock/speech-engines')"
+      @action="router.push({ path: '/ai', query: { tab: 'runtime-audiocpp' } })"
     />
     <p v-else class="jv-muted" style="padding: 24px 0; text-align: center; font-style: italic;">
       No voices match "{{ search }}" or filter "{{ TYPE_FILTERS.find((f) => f.id === typeFilter)?.label || typeFilter }}".
