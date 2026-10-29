@@ -154,8 +154,8 @@ stops, the other kind's model stays loaded. Their logs are
 `audiocpp-server-stt.log` and `audiocpp-server-cpu-stt.log` (speech
 recognition), beside the AI model engine's own logs: in the data folder's
 `ai-runtime/logs/` when the models cache is shared with another app, else
-`ai-cache/llamacpp/logs/`. Settings → Storage counts and clears them with the
-engine spawn logs. A log over 10 MB is kept as `….1.log` the next time its
+`ai-cache/llamacpp/logs/`. Settings → Storage counts and clears them under
+**Engine logs**. A log over 10 MB is kept as `….1.log` the next time its
 process starts, so the logs don't grow without end.
 
 **Engine settings.** Under the add-ons, every setting of the runtime, each with
