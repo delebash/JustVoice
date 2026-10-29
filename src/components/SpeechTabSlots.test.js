@@ -8,6 +8,7 @@
 import { h, nextTick } from "vue";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { DOMWrapper } from "@vue/test-utils";
 import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 const api = vi.hoisted(() => ({ del: vi.fn(), put: vi.fn(), post: vi.fn(), safeRequest: vi.fn(), request: vi.fn(), patch: vi.fn() }));
@@ -100,7 +101,7 @@ test("an engine's foot says its licence waits, and deletes each of its downloade
 
   ui.confirmDialog.mockResolvedValue(true);
   api.del.mockResolvedValue({});
-  el.querySelectorAll("button")[1].click();
+  await new DOMWrapper(el.querySelectorAll("button")[1]).trigger("click");
   await flush();
   expect(api.del.mock.calls.map((c) => c[0])).toEqual(["/v1/ai/runtimes/audiocpp/models/pocket-en", "/v1/ai/runtimes/audiocpp/models/pocket-de"]);
   expect(refresh).toHaveBeenCalledOnce();
@@ -140,7 +141,7 @@ test("an engine's head: its kind, its licence in plain words, testing, and Set a
   expect(texts(".ev-gnote > span")[0]).toBe("Clones on the CPU.");
   expect(texts(".ev-gnote > span")[1]).toBe("Best for: cloning");
   api.patch.mockResolvedValue({});
-  el.querySelector("button").click();
+  await new DOMWrapper(el.querySelector("button")).trigger("click");
   await flush();
   expect(api.patch).toHaveBeenCalledWith("/v1/settings", { engines: { default_tts_engine: "pocket" } });
   expect(texts("button")).toEqual(["Default ✓"]);
@@ -152,6 +153,6 @@ test("the filters edit the tab's own object; Fits this card shows only with a ca
   await mount(SpeechFilters, { filters });
   await flush();
   expect(texts(".chip")).toEqual(["Cloning", "Built-in voices", "Tested by JustVoice", "Takes direction", "Fits this card"]);
-  el.querySelectorAll(".chip")[0].click();
+  await new DOMWrapper(el.querySelectorAll(".chip")[0]).trigger("click");
   expect(filters.cloning).toBe(true);
 });
