@@ -11,6 +11,12 @@
 // model, voice, setting and price key there before must still be there, the same. What an approved
 // decision changes is named below with its decision; nothing else may differ.
 //
+// Checked against the catalog rebuilt from the merged fork (ea2f01fc, 886403f3 — 2026-10-29): of
+// the seven, only two things differ from the snapshot, both decided and named below — the
+// Japanese dictionary's refusal names the Speech tab (REWORDED), and the model revision moved to
+// 661a224e (REVISION_MOVED). Every request, registration, warm-up, transcription and alignment is
+// the same bytes; the snapshot stays the one from main.
+//
 // Since round E (docs/plans/2026-10-29-round-e-onto-the-kit.md) the kit's audio.cpp runtime loads,
 // registers and runs each model; what is ours is what it is handed — the model's kit row (engines/
 // audiocpp/kit_models.js) and our hooks (kit_hooks.js: the warm-up, the load options, a
@@ -316,9 +322,13 @@ test("the seven's snapshot from main exists (written there with JV_SEVEN_BEFORE=
 const before = () => JSON.parse(readFileSync(BEFORE, "utf8"));
 
 // What an approved decision rewords in a refusal: Turbo's names what it speaks since F4 (decided
-// 2026-10-16, TASKS "Slice 4's gaps" 5).
+// 2026-10-16, TASKS "Slice 4's gaps" 5); the Japanese dictionary's names the tab by its name since
+// round E — the kit's Speech tab replaced Speech engines (plan §5 item 6, a8544707).
+const DICTIONARY = ["install it on AI Settings → Speech engines.", "install it on AI Settings → Speech."];
 const REWORDED = {
   "chatterbox/chatterbox-turbo-f16 · a Turbo voice with no clip": ["speaks only cloned voices", "speaks only a cloned voice or its own built-in one"],
+  "kokoro/kokoro-82m-q8 · a Japanese Kokoro voice without the dictionary": DICTIONARY,
+  "chatterbox/chatterbox-multilingual-v2-q8 · Chatterbox in Japanese without the dictionary": DICTIONARY,
 };
 
 test("a persona of each of the seven sends audio.cpp the same bytes as before", () => {
@@ -420,8 +430,29 @@ const RANGES = {
   voxcpm2: { retry_badcase_max_times: "open top", retry_badcase_ratio_threshold: "open" },
 };
 
+// The revision audio.cpp's own model repository is pinned at moved with the fork's merge (decided
+// 2026-10-29, RESEARCH §1.4 "MODEL_REVISION 661a224e"; 886403f3): the last revision before that
+// repository's embedded-spec refresh, every file downloaded here the same SHA-256 at both — so the
+// same files, at another commit's name. Each source of the seven there before names the new one.
+const REVISION_MOVED = { repo: "audio-cpp/audio.cpp-gguf", from: "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5", to: "661a224e9d9adbd49c01626f85e426f5f425d771" };
+function revisionMoved(was) {
+  let moved = 0;
+  for (const engine of Object.values(was)) {
+    for (const m of Object.values(engine.models)) {
+      for (const s of m.row.sources || []) {
+        if (s.hf_repo !== REVISION_MOVED.repo || s.revision !== REVISION_MOVED.from) continue;
+        s.revision = REVISION_MOVED.to;
+        moved++;
+      }
+    }
+  }
+  return moved;
+}
+
 test("every model, voice and price key there before is there, the same — but what a decision changed", () => {
   const was = before().facts;
+  // the seven's 29 models on audio.cpp's repository (our own conversions are in ours)
+  expect(revisionMoved(was)).toBe(29);
   const is = facts();
   const found = {};
   for (const engineId of SEVEN) {
