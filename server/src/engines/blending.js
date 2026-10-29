@@ -112,7 +112,7 @@ export function _kokoroGguf() {
     const file = kitSpeech.modelFiles(variant.id)?.model;
     if (file && String(file).endsWith(".gguf")) return String(file);
   }
-  throw new LookupError("Kokoro is not downloaded — download it on AI Settings → Speech engines first");
+  throw new LookupError("Kokoro is not downloaded — download it on AI Settings → Speech first");
 }
 
 // One model file version's pack: key "<path>|<mtimeNs>" → [pack Map, names, features].

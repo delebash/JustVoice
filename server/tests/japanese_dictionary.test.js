@@ -31,7 +31,7 @@ const CB = { id: "chatterbox-multilingual-v2-q8", audiocpp: { family: "chatterbo
 test("a_japanese_line_is_refused_by_name_until_the_dictionary_is_here", async () => {
   fakeSpeechRuntime();
   expect(() => slot.toSpeechRequest(kokoroRow(), { voice_id: "jf_alpha", text: "こんにちは。" })).toThrow(
-    "Japanese needs the Japanese dictionary — install it on AI Settings → Speech engines.",
+    "Japanese needs the Japanese dictionary — install it on AI Settings → Speech.",
   );
   expect(() => slot.toSpeechRequest(CB, { text: "こんにちは。", language: "ja", audio_prompt_path: "C:/v.wav" })).toThrow(/Japanese dictionary/);
   // A line asks for it as one it can't take (400), in those words; nothing is spoken.

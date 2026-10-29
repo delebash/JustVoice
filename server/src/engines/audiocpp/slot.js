@@ -238,7 +238,7 @@ export function featuresNeeded(row, body) {
 export function featureRefusal(feature) {
   const words = get(FEATURE_WORDS, feature) ?? feature;
   if (kitSettings.shippedHas(feature)) {
-    return `${words} — this needs the speech runtime update. Update it on AI Settings → Speech engines.`;
+    return `${words} — this needs the speech runtime update. Update it on AI Settings → Speech.`;
   }
   return `${words} — this isn't in this version's speech runtime yet.`;
 }
@@ -292,7 +292,7 @@ export function checkLine(found, body) {
     throw new modelCatalog.TermsRequired(
       engineId,
       `${name} clones a voice only after you accept ${terms.owner ?? "its makers"}'s terms — ` +
-        `open Voices → Clone with ${name}, or AI Settings → Speech engines, to read and accept them.`,
+        `open Voices → Clone with ${name}, or AI Settings → Speech, to read and accept them.`,
     );
   }
 }
@@ -578,7 +578,7 @@ async function warmGenerated(srv, row, kind, text, n, calibrateChars) {
 // ─── Our request → audio.cpp's (plan §3.4) ──────────────────────────────────
 
 export const JAPANESE_DICTIONARY_MISSING =
-  "Japanese needs the Japanese dictionary — install it on AI Settings → Speech engines.";
+  "Japanese needs the Japanese dictionary — install it on AI Settings → Speech.";
 
 /** Kokoro's Japanese voices and Chatterbox in Japanese read MeCab's UniDic dictionary — the
  * runtime's optional add-on (gap 7; the kit's "unidic"); without it, refused by name. */
