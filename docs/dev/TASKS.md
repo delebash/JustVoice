@@ -124,6 +124,20 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Our audio.cpp fork is released with the family, once every app is done
+STATE:  DECIDED 2026-10-29 — "do a release once all apps bugs are finished i already stated that, once all apps
+        bugs fixes features are done all apps get a release including anything we forked". (The family rule:
+        just-core TASKS "The family releases together".)
+WHY:    the packaged app and `npm run server` run the pinned `v0.9.2-jv.6`, which has no Fish Audio Drama 3; only
+        `npm run dev` runs the fork's `jv` branch.
+BUILT:  nothing. FINDING 2026-10-29: `jv` (1de98891, 2026-10-19) is 150 commits behind upstream main (5951ca47,
+        2026-10-29) and lacks upstream's v0.9.3 (2026-10-26); 46 commits are ours. The only fork any family app uses
+        (`gh repo list delebash --fork`; the others have no checkout here and no app references them).
+OPEN:   whether upstream is merged into `jv` before the release — your call. Then: tag `v0.9.2-jv.7` (or on v0.9.3),
+        the kit's audiocpp rows and pin moved (the pin is the kit's since round E), the catalog regenerated at the
+        tag and committed (it replaces the uncommitted `catalog.json`).
+GO:     given for the release's timing; the merge needs its own.
+
 ### Round E — JustVoice's audio.cpp engine, its Speech engines tab and its jobs onto the kit's (J1)
 STATE:  DECIDED 2026-10-29 — the kit's half landed (just-core adb9805 … ed72ce6, 3dc2db9; its tests
         not yet run). My rec: "yes, as reading and writing the plan only. That means comparing each
