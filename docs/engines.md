@@ -9,7 +9,14 @@ app. Each engine is then a set of model files the runtime can load, and each
 model runs on your graphics card or your CPU — chosen per model, see
 [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu).
 
-**The list of models is audio.cpp's own.** AI Settings → Speech engines lists
+Everything about it is on one tab: **AI Settings → Speech**. It is the same
+tab every app of the family uses for an AI engine that runs models of its own —
+the engine's install, its settings and its models with their sizes, Download,
+Load and Delete — with JustVoice's own pieces inside it: each engine's licence
+and testing, what each model can do, its load options, and the speech servers
+and cloud services you add yourself.
+
+**The list of models is audio.cpp's own.** AI Settings → Speech lists
 every model audio.cpp runs that turns text into speech or speech into text, and
 builds each one from audio.cpp's description of it: what it does, its languages,
 its built-in voices, its settings and load options, every download audio.cpp's
@@ -17,7 +24,7 @@ own model manager offers for it, how much memory audio.cpp says it needs, and it
 licence. When audio.cpp adds a model, the next JustVoice update lists it. So this
 page doesn't copy each model's facts — the list shows them, and they are always
 the current ones. It explains how to read the list
-([Reading AI Settings → Speech engines](#reading-ai-settings--speech-engines)),
+([Reading AI Settings → Speech](#reading-ai-settings--speech)),
 what JustVoice adds to audio.cpp's description, and what JustVoice measured.
 
 Until 2026-10-01 each engine was its own Python program in its own Python
@@ -40,7 +47,7 @@ What the switch cost is listed under
 numbers look good.
 
 > **Licences are shown, not hidden.** Every model keeps the licence of the
-> people who trained it, and some don't allow commercial use. Speech engines
+> people who trained it, and some don't allow commercial use. The Speech tab
 > labels each engine *Commercial use: Yes, Conditional, Separate licence, No or Unclear*, and
 > says in plain words what that means for selling an audiobook you made with
 > it — hover the label, or open the engine. A model that isn't a plain "Yes"
@@ -51,22 +58,27 @@ numbers look good.
 
 ## The speech runtime
 
-The **Speech runtime** row sits at the top of **AI Settings → Speech
-engines → Local · free**, above the engines it runs. It shows the runtime's
-version, the build in use and whether it is running:
+The top of **AI Settings → Speech** is the runtime itself, under the heading
+**Engine: audio.cpp**. Its first line says where it stands:
 
-- **Install speech runtime** — one-time. Downloads the runtime for this
-  machine, checks that it starts, and puts it in place. Models download
-  separately, per engine. Voice engine setup (the first-run wizard) does the
-  same thing.
-- **Backend** — which build runs. **Auto** picks CUDA on an NVIDIA card,
-  Vulkan on AMD or Intel graphics, Metal on a Mac, and the CPU build when
-  there is no usable GPU. Pick one yourself to override it. Changing the
-  backend unloads the speech models and stops the runtime; the next load
-  starts the build you chose. A build you have not downloaded yet shows as
-  **not installed** until you click Install.
-- **GPU** — which graphics card the runtime uses. Shown only on a machine
-  with more than one.
+- *Not installed — ‹size› to download.* with **Install (‹size›)** — one time,
+  for every engine. It downloads the build that suits this machine, checks that
+  it starts, and only then puts it in place. A bar under the buttons shows how
+  far along it is, with **Cancel**; a cancelled install changes nothing. Models
+  download separately, per model. The Voice engine setup wizard runs the same
+  install.
+- *Installed — build v0.9.2-jv.6.* once it is in place, or *Installed — build
+  v0.9.2-jv.6, running ‹model›* while it holds models (each loaded model by its
+  id). Then **Reinstall** and **Remove**.
+- When this computer can't run the build — Microsoft's Visual C++ runtime is
+  missing, macOS or Linux is older than the build needs, or a file of it is
+  missing (an antivirus may have quarantined it) — a red note under the line
+  says which, and what to do; Install waits until then.
+
+**Remove** asks first — *This removes the engine from this computer. Its models
+stay; install it again to use them.* If another app of the family shares this
+computer's models cache and still uses the same build, the build stays and the
+app says so (*Kept for ‹app› — still in use there.*).
 
 The builds audio.cpp publishes, and what each costs to download:
 
@@ -76,7 +88,8 @@ The builds audio.cpp publishes, and what each costs to download:
 | Windows, NVIDIA GeForce 50-series (Blackwell) and newer | CUDA 13.3, plus the CUDA runtime libraries |
 | Windows, AMD or Intel graphics | Vulkan |
 | Linux, any GPU | Vulkan |
-| macOS | Metal |
+| macOS, Apple silicon | Metal |
+| macOS, Intel | Metal, the Intel build |
 | Any machine, no usable GPU | CPU |
 
 The Windows CUDA 12.4 build is a 467 MB download plus 607 MB of NVIDIA's CUDA
@@ -84,15 +97,18 @@ runtime libraries (about 2 GB once unpacked), the CUDA 13.3 build 279 MB plus
 575 MB, and the Vulkan build 67 MB — the files of v0.9.2-jv.6. Vulkan also
 runs on NVIDIA cards, more slowly than CUDA. The CPU build is the portable one,
 which also runs on older processors (the other CPU build stops at start on a
-processor without the newest instructions).
+processor without the newest instructions). Which build runs is the **Build**
+setting below; see also [GPU → Which build the runtime uses](gpu.md#which-build-the-runtime-uses).
 
 Every file of the runtime is checked against the checksum published with its
 release before anything is unpacked, and a download that stops resumes where
-it stopped on the next attempt. **Reinstall** on the runtime row downloads the
-runtime and eSpeak NG again over the installed ones — for a runtime that won't
-start, or a file an antivirus took. The speech models unload while it runs and
-load again on their next use; your downloaded models stay. (Under `npm run dev`
-the app runs the build it made itself, so the row has no Reinstall.)
+it stopped on the next attempt. The release's Python scripts are left out — the
+app never runs them. **Reinstall** downloads the build pinned here again over
+the installed one — for a runtime that won't start, or a file an antivirus
+took. Before the new files go in, the speech processes stop, once a line that
+is speaking has finished; your models load again on their next use, and your
+downloaded models stay. (Run from source with `npm run dev`, the app runs the
+build it made itself, and the line reads *Installed — build dev · ‹commit›*.)
 
 The runtime is pinned to one build of JustVoice's copy of audio.cpp — today
 **v0.9.2-jv.6** (since 2026-10-16), audio.cpp v0.9.2 with JustVoice's changes: the
@@ -108,51 +124,74 @@ pronunciations (IPA) on Kokoro; Qwen3-TTS's memory fixes (up to 2.3 GB less whil
 it speaks); models joining their process without restarting it; and, from the
 first build (jv.1), VoxCPM2 using a clip's transcript and word times right at any
 sample rate. (Build numbers 2 and 3 were never published.) When a JustVoice update
-moves to a newer build, the build you have
-keeps working and the row offers **Update to** the new version. Clicking it
-downloads the new build — the bar shows how far along it is — and unloads
-whatever was loaded; load it again to use it. The older build is then deleted
-(about 2 GB for a CUDA build); your downloaded models stay.
+moves to a newer build, the build you have keeps working and the engine offers
+**Update to ‹build›**. Clicking it downloads the new build — the bar shows how far
+along it is — and stops the speech processes once a line that is speaking has
+finished; load a model again to use it. If the new build doesn't install, the one
+you had stays. Once it is in, the older build is deleted (about 2 GB for a CUDA
+build), unless another app sharing the models cache still uses it; your
+downloaded models stay.
 
-**The Japanese dictionary.** Kokoro's Japanese voices and Chatterbox in Japanese
-read Japanese text with MeCab and its UniDic dictionary. MeCab comes inside the
-runtime; the dictionary is an optional download, on its own row under the runtime
-row: **Japanese dictionary · UniDic 1.0.8 · Install** (about 260 MB on disk). A
-Japanese line without it stops with *"Japanese needs the Japanese dictionary —
-install it on AI Settings → Speech engines."* Nothing else needs it.
+**Add-ons — the Japanese dictionary.** Kokoro's Japanese voices and Chatterbox in
+Japanese read Japanese text with MeCab and its UniDic dictionary. MeCab comes
+inside the runtime; the dictionary is an add-on, listed under **Add-ons** below
+the engine: **Japanese dictionary (UniDic)** — *Not installed — 45 MB to
+download, 248 MB once installed.* — with **Install (45 MB)**, which waits until
+the runtime is installed, and **Remove** once it is. It stays installed when the
+runtime moves to a newer build. Installing or removing it starts the speech
+processes again, once a line that is speaking has finished. A Japanese line
+without it stops with *"Japanese needs the Japanese dictionary — install it on
+AI Settings → Speech."* Nothing else needs it.
 
-**Two slots, a process for each.** The runtime holds at most one speech model
-and one speech-recognition model at a time — the same two slots as before.
-Loading a second speech model unloads the first. Each slot runs in a process of
-its own — one on the graphics card and one on the CPU, each started only when a
-model is placed there — so up to four, none with a window of its own. Because
-they are separate, downloading or deleting a model never restarts the other
-slot's model, and if one process stops, the other slot's model stays loaded.
-Their logs are in your data folder: `logs/audiocpp-server.log` and
-`logs/audiocpp-server-cpu.log` (speech), `logs/audiocpp-server-stt.log` and
-`logs/audiocpp-server-cpu-stt.log` (speech recognition). A log over 10 MB is
-kept as `….1.log` the next time its process starts, so the logs don't grow
-without end.
+**Two kinds, a process for each.** The runtime holds at most one speech model
+and one speech-recognition model at a time. Loading a second speech model
+unloads the first. Each kind runs in a process of its own — one on the graphics
+card and one on the CPU, each started only when a model is placed there — so up
+to four, none with a window of its own. Because they are separate, downloading
+or deleting a model never restarts the other kind's model, and if one process
+stops, the other kind's model stays loaded. Their logs are
+`audiocpp-server.log` and `audiocpp-server-cpu.log` (speech),
+`audiocpp-server-stt.log` and `audiocpp-server-cpu-stt.log` (speech
+recognition), beside the AI model engine's own logs: in the data folder's
+`ai-runtime/logs/` when the models cache is shared with another app, else
+`ai-cache/llamacpp/logs/`. Settings → Storage counts and clears them with the
+engine spawn logs. A log over 10 MB is kept as `….1.log` the next time its
+process starts, so the logs don't grow without end.
 
-- **CPU threads** — how many threads the models on the CPU compute with, next
-  to the Backend select. It starts at your machine's physical core count, which
-  is the fastest setting measured: Kokoro speaks 3.2× real time at 8 threads and
-  2.3× at 4 on an 8-core Ryzen 7 5700X. Changing it reloads the models on the
-  CPU; it is not shown when the runtime is the CPU build, which runs everything
-  at this setting anyway.
-- **Card overflow limit (MB)** — beside it (since 2026-10-15): *A card load that
-  puts more than this in the computer's memory counts as not fitting; Auto then
-  runs the model on the CPU.* It starts at 256; see
-  [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu)
-  for how a load is measured. Changing it restarts nothing — the next load on the
-  card reads it. It shows only on Windows, the one system where that overflow is
-  measured, and, like CPU threads, not when the runtime is the CPU build.
+**Engine settings.** Under the add-ons, every setting of the runtime, each with
+its value; change any of them and press **Save** — one Save for all:
+
+| Setting | What it does | Starts at |
+|---|---|---|
+| **Build** | Which build runs: **Auto**, or one this machine can run — **CUDA (NVIDIA)**, **Vulkan**, **CPU**, **Metal (Apple GPU)**. **Auto** picks CUDA on an NVIDIA card, Vulkan on AMD or Intel graphics, Metal on a Mac, and the CPU build when there is no usable GPU. A build you haven't downloaded yet makes the engine read *Not installed* until you click **Install** | Auto |
+| **Graphics card** | Which card the runtime uses, by its number and name. Shown only on a machine with more than one | 0 |
+| **CPU threads (0: one per core)** | How many threads the models on the CPU compute with; *of N* beside it is this machine's physical cores. 0 is one per physical core, the fastest setting measured: Kokoro speaks 3.2× real time at 8 threads and 2.3× at 4 on an 8-core Ryzen 7 5700X | 0 |
+| **Fast enough on the CPU at (× real time)** | How fast a model must speak on the CPU before Auto runs it there to keep the graphics card for the AI model ([Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu)) | 2 |
+| **Counts as spilled past (MB of shared memory)** | A card load that puts more than this in the computer's memory counts as not fitting; Auto then runs the model on the CPU. Shown only where that overflow can be measured — an NVIDIA card on Windows | 256 |
+| **A runaway line: seconds per character** and **A runaway line: at least (seconds)** | A line whose audio runs longer than both ran away: what its process holds afterwards no longer counts as the model's memory ([Long lines](#long-lines-and-what-a-model-costs)), and the take check fails such a take ([Studio → Checking takes](studio.md#checking-takes)) | 0.5 and 30 |
+| **Headroom on the card (MB)** | The room a speech model not yet measured on this machine is held to on the graphics card, beside its free memory ([the speech margin](#where-each-model-runs--the-graphics-card-or-the-cpu)) | 512 |
+| **The card process's CPU threads** | The threads the graphics-card process uses for its work off the card (reading text, sampling) | 4 |
+| **Start timeout (seconds)** | How long a runtime process may take to start | 60 |
+| **Request timeout (seconds)** | How long one line or one model load may run; a transcription always gets at least three times its recording's length | 900 |
+
+A change to the build, the graphics card or a thread count reaches a process the
+next time it starts: the next load starts it again with the new value. The other
+settings are read by the next load or line. Changing one restarts nothing by
+itself.
+
+Two more fields sit under the engine's first line. **Let go after idle
+(minutes)** is how long the runtime keeps a model in memory with no work; it
+starts at 0, which keeps it — a speech model stays loaded until you unload it,
+load another of its kind, or close the app. **Speech speed bands (× real time)**
+and **Transcription speed bands (× real time)** are where a model's speed reads
+*fast*, *fine* or *slow* on its row (**Fast at ≥** 5, **Fine at ≥** 2, **Slow at
+≥** 1; anything slower is *very slow*); each row has its own **Save**.
 
 **eSpeak NG.** Kokoro and KittenTTS read text through eSpeak NG, the open-source
 pronunciation library. Installing the runtime also downloads eSpeak NG
-(GPL-3.0) onto your machine from its published Python package; JustVoice
-itself never ships it. Both models use that copy, even when another eSpeak NG
-is installed on the computer.
+(GPL-3.0) onto your machine from its published Python package, into the build's
+own folder; JustVoice itself never ships it. Both models use that copy, even
+when another eSpeak NG is installed on the computer.
 
 ## Where the list comes from
 
@@ -160,8 +199,8 @@ audio.cpp describes every model it runs in its own files: a *model spec* per
 family (what the model does, its voices, its settings and load options, its
 downloads) and a catalog (which downloads its own model manager offers, how much
 memory each model needs, its licence). JustVoice ships a copy of that description
-with each release, read from JustVoice's copy of audio.cpp, and builds Speech
-engines from it:
+with each release, read from JustVoice's copy of audio.cpp, and builds the
+Speech tab's list from it:
 
 - **Which models are listed.** Every model audio.cpp marks *supported*,
   *community* or *experimental* that is on one of audio.cpp's own *Text to
@@ -209,85 +248,72 @@ every other engine's do, and they show on the list the same way; what each sends
 the runtime didn't change. Their own section is
 [below](#the-seven-engines-described-by-our-own-files).
 
-## Reading AI Settings → Speech engines
+## Reading AI Settings → Speech
 
 ### From the top
 
-**Local · free** and **Online · metered** are two folder tabs. *Local · free*
-holds everything JustVoice installs, plus the speech servers you run yourself;
-*Online · metered* holds the cloud speech services, billed to your account (see
-[Online + self-hosted providers](#online--self-hosted-providers-llm--tts)).
-Under *Local · free*, from top to bottom:
+The tab reads, from top to bottom:
 
-1. **The search and the kind chips** — the search finds engines and models by
-   name and description, and opens the groups it matches. **All · TTS · STT ·
-   Cloning · Built-in voices** narrow the list to speech, to speech recognition,
-   to the models that copy a voice from a clip, or to the models with built-in
-   voices.
-2. **The filter row** — **Commercial use**, **Tested by JustVoice**, **Takes
-   direction**, **Fits this card** and **Sort**; see
-   [Finding a model](#finding-a-model).
-3. **Loaded now** — one slot for **Speech** and one for **Transcription**, each
+1. **Engine: audio.cpp** — the runtime: its install, **Update to**, **Reinstall**
+   and **Remove**, how long it keeps an idle model, and its speed bands; then
+   **Add-ons** (the Japanese dictionary) and **Engine settings** — see
+   [The speech runtime](#the-speech-runtime).
+2. **Loaded now** — one slot for **Speech** and one for **Transcription**, each
    naming the model loaded in it and where it runs (**Graphics card** or
    **CPU**; hover it for why), with **Unload** to free the slot (the files stay
    on disk), or *— nothing loaded*.
-4. **The speech runtime row** and, under it, **the Japanese dictionary row** —
-   see [The speech runtime](#the-speech-runtime).
-5. **Picking an engine is picking what a voice can do** — a table of what each
+3. **Picking an engine is picking what a voice can do** — a table of what each
    main engine is for and what you give up with it; see
    [below](#picking-an-engine-is-picking-what-a-voice-can-do).
-6. **Voice generation — TTS** and then **Transcription — STT** — the engines.
-   Each heading counts its engines and their models, and says what its slot is
-   for: *one model loaded at a time — loading another swaps the TTS slot*.
-   **What for?** beside the Transcription heading explains speech recognition
-   ([Speech recognition](#speech-recognition)).
-7. **Self-hosted servers** — the speech servers you run yourself.
+4. **Models** — every speech and speech-recognition model, grouped by engine.
+   Above them: **All · Speech · Transcription** (which kind to list), **Find a
+   model**, and JustVoice's filters — see [Finding a model](#finding-a-model).
+5. **Self-hosted servers — speech servers you run**, then **Online · metered** —
+   *Cloud speech APIs — your account, billed by the provider*: the speech
+   services you add yourself (see
+   [Online + self-hosted providers](#online--self-hosted-providers-llm--tts)).
 
-When the filters leave nothing, the list says *No engines match these filters.*
-and offers **Clear filters**. With the server unreachable, the tab says *No
-engines listed — the server may not be running* and points to Settings →
-Server.
+When the choices leave nothing, the list says *No model matches these choices.*
+When the server can't be reached, the tab says *Couldn't read this engine's
+state from the server.*
 
 ### An engine
 
-An engine is one line, closed until you open it. Its head reads, left to right:
+Each engine is a heading over its models, closed until you open it. It reads,
+left to right:
 
-- **its name** and **its id** (`kokoro`, `index_tts2`);
+- **its name** — click it to show or hide its models;
+- **how many models it has, and how many are on this computer** — *12 models*,
+  or *12 models, 2 on this computer*;
 - **TTS** or **STT** — whether it speaks or recognises speech;
 - **Commercial use: Yes** (or *Conditional*, *Separate licence*, *No*,
   *Unclear*) — the licence in one word, coloured by it; hover it for the licence
   in plain words ([Commercial use](#commercial-use-in-plain-words));
 - **TESTED BY JUSTVOICE** or **NOT TESTED BY JUSTVOICE YET** — hover it for what
   JustVoice found ([Tested by JustVoice](#tested-by-justvoice));
-- **its description** — audio.cpp's, or, for the seven, JustVoice's;
-- **how many models it has and how many are on disk** — *12 models · 2 on
-  disk*, or *none on disk*;
-- **● ‹model› loaded · CUDA** when one of its models is loaded, with where it
-  runs (`CUDA`, `VULKAN`, `CPU`);
+- *not available on this OS* for an engine this computer's system can't run, and
+  *⚠ marked for removal* for one that is going;
 - **Set as default** (speech engines only) — the engine new voices and a first
   render's setup prefer; the default one reads **Default ✓**.
 
-While the runtime isn't installed, every engine says **needs the speech
-runtime**: its models can still download, and Load waits for the runtime. While
-something on the engine runs, its head reads *working… · click to expand*.
+Under it, a line of notes: **its description** (audio.cpp's, or, for the seven,
+JustVoice's), **Best for** (what JustVoice recommends it for), **Tested by
+JustVoice** and what we found, and **Commercial use** in plain words, with whose
+reading it is and a link to the licence at its source.
 
-Click the head to open it. An engine opens by itself when one of its models is
-loaded, while one of its tasks runs, while a search is typed, and while a filter
-about models is on (Cloning, Built-in voices, Takes direction, Fits this card) —
-so you see which of its models match. Opened, it shows first a line of notes —
-**Best for** (what JustVoice recommends it for), **Tested by
-JustVoice** and what we found, and **Commercial use** in plain words with whose
-reading it is and a link to the licence at its source — then its models, one row
-each, and at the bottom its foot:
+An engine opens by itself while a search is typed, while a filter leaves some of
+its models out — so you see which of them match — and while one of its models is
+loaded, loading or downloading. Once you open or close it yourself, it stays
+that way. Opened, it shows its models, one row each, and at the bottom its foot:
 
 - **its licence or terms** — *Downloads wait until you accept its licence
   (‹licence›)* with **Read and accept**, then *Licence accepted — downloads are
   on*; or, on Pocket TTS, *Cloning waits until you accept Kyutai's terms*, then
   *Kyutai's terms accepted — cloning is on*;
-- **Delete downloaded models** — when any of its models is on disk; deletes them
-  all at once (the speech runtime stays installed). If a file is still in use —
-  Windows will not delete a file a program holds open — it says so and names the
-  folder, instead of claiming a delete that did not happen.
+- **Delete downloaded models** — when any of its models is on this computer;
+  deletes them all at once (the speech runtime stays installed), after asking.
+  A model that can't be deleted — one that is downloading or speaking — is named
+  in the message, with why.
 
 ### A model's row
 
@@ -299,63 +325,61 @@ Each model row reads, left to right:
    Irodori-TTS's *(Anime Q8)* — and where a model has both 16-bit kinds, each
    says which: *(16-bit, bf16)*, *(16-bit, f16)*. See
    [Downloads and precisions](#downloads-and-precisions).
-2. **Its chips** — the facts that decide what a voice on it can do:
-   - **its languages** — the language's name for a model that speaks one
-     (*English*), else how many (*23 languages*; hover for them by name), or
-     audio.cpp's own words where it describes rather than lists (*100+
-     languages*, *600+ languages*, *multilingual*). *auto* — the model detects
-     the language — isn't counted as one;
-   - **CLONING** — it copies a voice from a short clip
-     ([Copying a voice, and making one from words](#copying-a-voice-and-making-one-from-words));
-   - **BUILT-IN · N** — it speaks N voices of its own, no clip needed
-     ([Built-in voices](#built-in-voices));
-   - **how it is directed** — `✓ WRITTEN DIRECTION`, `✓ TAGS`, `SLIDERS ONLY`
-     or `CAN'T BE DIRECTED YET`, the same words Cast and a persona's page use
-     ([How a model takes direction](#how-a-model-takes-direction)). Speech
-     recognition has none;
-   - **audio.cpp's status** for the model's family — `SUPPORTED`, `COMMUNITY` or
-     `EXPERIMENTAL`, audio.cpp's own word for how far along it is.
-3. **Its download size**, and *· on disk* once every file is present at its
-   recorded size — a half-fetched folder never counts.
-4. **Its line** — what differs about this download: *16-bit weights.*, or, on
-   the seven, a sentence of ours (*Clones a voice from a short clip, in French.
-   8-bit weights.*).
-5. **Its memory** — before a load, what it needs against your card
-   ([Memory, before you load](#memory-before-you-load)); on the loaded row,
-   **● Loaded** and what a load measured: *2.9 GB measured*, *~2.9 GB in
-   memory* (read from the whole card's change while it loaded — a reading of the
-   model's own process replaces it when one becomes possible), or *not measured
-   yet* on its first load. A model loaded on the CPU, on a machine with a
-   graphics card of its own, holds no graphics memory and shows no number.
-6. **Its verbs** — **Download (‹size›)** while it isn't on disk; **Load model**
-   once it is (*Load into the TTS slot*); **Unload model** on the loaded row
-   (the files stay on disk). Then **Set as default** — the version this engine
-   loads when nothing picks one, the same choice as a persona's **Version** —
-   or **Default ✓**, and the **⋯** menu:
-   - **Re-download** — deletes the local files and downloads fresh. Use it when
-     a download looks corrupted.
-   - **Open folder** — opens the model's folder in your file explorer (desktop
-     app only; the browser UI can't reach your file manager and says so).
-   - **View on Hugging Face** — the download's repository page.
-   - **Delete downloaded model** — removes the downloaded files; the engine and
-     its other models stay, and the model downloads again on demand. (Unload it
-     first — a loaded model's files can't be deleted.)
-
-   These are the same four verbs, in the same order and with the same words,
-   as the **⋯** menu on an AI model row under **LLM providers**.
+2. **Its fit** — **Fits**, **Tight** or **Won't fit** against your graphics card
+   (**CPU** on a machine without one), and once the model has spoken here, its
+   speed beside it: *fast*, *fine*, *slow* or *very slow* — see
+   [Memory, before you load](#memory-before-you-load).
+3. **Its size, its licence and its state** — *1.8 GB · Apache-2.0 — on this
+   computer*. The state is *not downloaded*, *on this computer*, *running*,
+   *loading…*, or *downloading, then loading*. A model counts as on this
+   computer once every file it needs is there.
+4. **Its buttons** — **Download (‹size›)** while it isn't on this computer. Once
+   it is: where it loads — **Auto**, **Graphics card** or **CPU**, saved for the
+   model ([Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu))
+   — then **Load**, and **Delete**. On the loaded row, **Unload** (the files stay
+   on disk), and **Delete** waits until it's unloaded. While it loads, **Cancel**.
+   **Delete** asks first — *This frees ‹size›. The model stays in the list and
+   downloads again when you need it.*
 
 Under the row:
 
-- **Runs on** — **Auto · GPU · CPU**, then where the model runs, or would load
-  now, and why: *Loads on the CPU — 3.2× real time here, which keeps the
-  graphics card for the AI model*. After a failed card load, **Try the card
-  again**. See [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu).
+- **Where it runs, and why** — before a load, where it would load now: *Would
+  load on the CPU — 3.2× real time here, which keeps the graphics card for the AI
+  model*; on the loaded row, *Loaded on the graphics card — it fits in the card's
+  free memory*. After a card load that failed, **Try the card again**. See
+  [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu).
+- **Its chips** — the facts that decide what a voice on it can do:
+  - **its languages** — the language's name for a model that speaks one
+    (*English*), else how many (*23 languages*; hover for them by name), or
+    audio.cpp's own words where it describes rather than lists (*100+
+    languages*, *600+ languages*, *multilingual*). *auto* — the model detects
+    the language — isn't counted as one;
+  - **CLONING** — it copies a voice from a short clip
+    ([Copying a voice, and making one from words](#copying-a-voice-and-making-one-from-words));
+  - **BUILT-IN · N** — it speaks N voices of its own, no clip needed
+    ([Built-in voices](#built-in-voices));
+  - **how it is directed** — `✓ WRITTEN DIRECTION`, `✓ TAGS`, `SLIDERS ONLY`
+    or `CAN'T BE DIRECTED YET`, the same words Cast and a persona's page use
+    ([How a model takes direction](#how-a-model-takes-direction)). Speech
+    recognition has none;
+  - **audio.cpp's status** for the model's family — `SUPPORTED`, `COMMUNITY` or
+    `EXPERIMENTAL`, audio.cpp's own word for how far along it is.
+- **Its line** — what differs about this download: *16-bit weights.*, or, on
+  the seven, a sentence of ours (*Clones a voice from a short clip, in French.
+  8-bit weights.*).
+- **View on Hugging Face** — the download's repository page; and, on a speech
+  model, **Set as default** — the version this engine loads when nothing picks
+  one, the same choice as a persona's **Version** — or **Default ✓**.
 - **Load options** — the options JustVoice measured stay on their own line
   (Qwen3-TTS's **Speed mode** and **Decoder weights**, Chatterbox
   Multilingual's **Checkpoint**), followed by *Read when the model loads — a
   change reloads it.* The rest fold under **Load options (N)**. See
   [Load options](#load-options).
-- **A progress bar** while it downloads or loads — see
+- **A note** when a load that ran on its own — after its download, or one a page
+  of the app started — failed, in the runtime's words; and, for a model that
+  reads **Won't fit**, *The estimate says this PC doesn't have the memory for it.
+  You can still load it — the engine will try, and backs off if the load fails.*
+- **A progress bar** while it downloads — see
   [Cancelling an in-flight load](#cancelling-an-in-flight-load).
 
 ### Downloads and precisions
@@ -503,49 +527,58 @@ finds the earlier measurement. They are saved per model in
 
 ### Memory, before you load
 
-Each model row says how much graphics memory it needs before you download it:
+Each model row says before you download it whether it fits your graphics card —
+the same chip, in the same words, as an AI model's row on **LLM providers**:
 
-- **about X GB, measured here** — an earlier load measured it on this machine.
-  That number wins, and it is weighed as it is: it **fits this card** when it
-  fits the card's free memory, with no speech margin on top (since 2026-10-16 —
-  the margin is for estimates; below), and when it is more than the whole card,
-  *more than this card has*.
-- **needs about X GB · fits this card** — for a model JustVoice hasn't measured
-  yet: audio.cpp's own estimate, or the size of its download when that is more.
-  audio.cpp gives one estimate per model, shared by all its precisions, so a
-  16-bit or original download can be bigger than the estimate (FireRedAudio's
-  original weights are 23 GB against an estimate of 10) — and the weights alone
-  take at least their own size. A model with no estimate — MOSS-TTSD, JustVoice's
-  own conversions — is judged by its files. An estimate that fits the card only
-  without the speech margin — audio.cpp's 8 GB for Qwen3-TTS Base 1.7B on an
-  8 GB card — still reads *fits this card* here, and its *Runs on* line says the
-  card is tried first, as below (since 2026-10-16; before, that line gave no
-  reason).
-- **needs about X GB · too big for this card — Load runs it on the CPU** —
-  that number is more than your card has, so *Auto* loads it on the CPU, and the
-  row's *Runs on* line says why: *audio.cpp says it needs about 18 GB, more than
-  this card's 8 GB — this may be slow on the CPU*, or *its files are about 12 GB,
-  more than this card's 8 GB — this may be slow on the CPU*. Unlike Auto's other
-  move to the CPU, this one doesn't wait for a model to be fast there — OmniVoice
-  ran about 17 times slower than real time — so once it has spoken a line, the
-  line shows its measured speed in place of the warning (*— 0.1× real time
-  here*). Once a load measures it on your card, the measurement decides instead.
-- **needs about X GB · more than this card has** — only audio.cpp's estimate is
-  too big: the model's files, with the speech margin, fit your card. Such an
-  estimate can be far off — OmniVoice's is 10 GB, and on an 8 GB card its 1.3 GB
-  of files took 1.2 GB — so Auto tries the card first and the *Runs on* line says
-  so: *audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it
-  tries the graphics card first; if it doesn't fit, Load runs it on the CPU*.
-- **memory not measured yet** — neither number is known. Every model audio.cpp
-  describes has at least its download's size, so this shows only for one with no
-  number at all. (Until 2026-10-16 the seven engines described by our own files
-  said this until their first load; they now show audio.cpp's estimate, or their
-  files where those are more, like every model — Kokoro *needs about 1 GB*,
-  Chatterbox Multilingual *needs about 12 GB*, audio.cpp's own estimate for it.)
+- **Fits** — audio.cpp's estimate of the graphics memory the model needs fits
+  your card, with the kit's safety margin (1 GB) to spare.
+- **Tight** — it needs up to half as much again as that.
+- **Won't fit** — more than that. The row adds *The estimate says this PC
+  doesn't have the memory for it. You can still load it — the engine will try,
+  and backs off if the load fails.* Auto runs such a model on the CPU (below).
+- **CPU** — on a machine without a graphics card of its own, or when the
+  runtime is the CPU build: nothing goes on a card, so there is nothing to fit.
+- **—** for a model audio.cpp gives no estimate for (MOSS-TTSD, JustVoice's own
+  conversions).
 
-Without a graphics card of its own — a Mac, or graphics that share the computer's
-memory — the row shows the number without *fits this card*: there is no card to
-fit. The **Fits this card** filter keeps the models whose number fits your card.
+audio.cpp gives one estimate per model, shared by all its precisions, so a 16-bit
+or original download can be bigger than the estimate (FireRedAudio's original
+weights are 23 GB against an estimate of 10). The chip reads the estimate alone.
+Where the model would really load is decided by more — what a load measured on
+this machine, the size of its files, what else is on the card — and the line
+under the row says it before you load: *Would load on the graphics card — it
+fits in the card's free memory*, or *Would load on the CPU — audio.cpp says it
+needs about 18 GB, more than this card's 8 GB — this may be slow on the CPU*.
+The cases:
+
+- **Measured here** — an earlier load measured the model on this machine. That
+  number wins, and it is weighed as it is, with no speech margin on top: a model
+  that took more than the whole card runs on the CPU (*it took about 9.1 GB on
+  this card before, more than this card has*).
+- **Too big by audio.cpp's estimate or its files** — Auto loads it on the CPU,
+  and the line says why: *audio.cpp says it needs about 18 GB, more than this
+  card's 8 GB — this may be slow on the CPU*, or *its files are about 12 GB, more
+  than this card's 8 GB — …*. Unlike Auto's other move to the CPU, this one
+  doesn't wait for a model to be fast there — OmniVoice ran about 17 times slower
+  than real time — so once it has spoken a line, the line shows its measured
+  speed in place of the warning (*— 0.1× real time here*). Once a load measures
+  it on your card, the measurement decides instead.
+- **Only the estimate is too big** — the model's files, with the speech margin,
+  fit your card. Such an estimate can be far off — OmniVoice's is 10 GB, and on
+  an 8 GB card its 1.3 GB of files took 1.2 GB — so Auto tries the card first:
+  *audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it
+  tries the graphics card first; if it doesn't fit, Load runs it on the CPU*. An
+  estimate that fits the card only without the speech margin — audio.cpp's 8 GB
+  for Qwen3-TTS Base 1.7B on an 8 GB card — says the same.
+- **Nothing known** — no measurement, no estimate and no card reading: *memory
+  not measured yet*, and the model's first load measures it.
+
+Once a model has spoken on this machine, its speed shows beside the chip —
+*fast* at 5× real time or more, *fine* at 2×, *slow* at 1×, *very slow* below —
+by the speed bands under the engine's first line. Before that, a model loaded on
+the CPU — or any model, when the runtime is the CPU build — shows the speed
+measured on JustVoice's reference machine, marked *~*. The
+**Fits this card** filter keeps the models that read **Fits**.
 
 ### Commercial use, in plain words
 
@@ -570,11 +603,14 @@ The **Commercial use** filter above the list shows the same meanings under each
 choice.
 
 **A model that isn't a plain *Yes* asks you to accept its licence once, before
-its first download.** **Download** (or **Load model**) on any of its rows opens
-the licence in plain words — *‹Engine›'s licence isn't a plain yes for commercial
-use, so it's yours to read before you download the model* — with **Accept the
-licence** and **Not now**; the engine's foot offers **Read and accept** too. You accept once, on this install. (Pocket TTS's
-prompt is Kyutai's terms, before cloning — see [Pocket TTS](#pocket-tts).)
+its first download.** **Download** on any of its rows — or a **Load** anywhere
+in the app of a model not on this computer yet — opens the licence in plain
+words — *‹Engine›'s licence isn't a plain yes for commercial use, so it's yours
+to read before you download the model* — with **Accept the licence** and **Not
+now**. Accept it and the Download or Load you asked for goes ahead; until then
+nothing downloads. The engine's foot offers **Read and accept** too. You accept
+once, on this install. (Pocket TTS's prompt is Kyutai's terms, before cloning —
+see [Pocket TTS](#pocket-tts).)
 
 **Where JustVoice's answer differs from audio.cpp's.** audio.cpp keeps a
 licence table of its own, and it mostly reads a licence's title. Where reading
@@ -621,28 +657,39 @@ set.
 
 ### Speech recognition
 
-The engines under **Transcription — STT** recognise speech; they don't speak.
-**What for?** beside the heading says what they serve: *Speech recognition is not
-a voice — nothing here speaks. It turns speech into text: Captures' dictation, the
-words of a capture you clone a voice from (they fill in its transcript), and, for
-other apps, transcripts and caption timings.* Other apps reach them through
-`/v1/transcribe`, `/v1/align` and the MCP tool `justvoice.transcribe`. The take
-check reads a chapter's takes back with them too, to find a take that skipped
-words or ran on ([Studio → Checking takes](studio.md#checking-takes)).
+The engines whose models are under **Transcription** (the kind picker above the
+list) recognise speech; they don't speak. They turn speech into text: Captures'
+dictation, the words of a capture you clone a voice from (they fill in its
+transcript), the take check, which reads a chapter's takes back to find one that
+skipped words or ran on ([Studio → Checking takes](studio.md#checking-takes)),
+and, for other apps, transcripts and caption timings through `/v1/transcribe`,
+`/v1/align` and the MCP tool `justvoice.transcribe`.
 
-Load a recogniser on its row and it is the one that transcribes. With none
-loaded, Qwen3-ASR 1.7B loads on first use (`settings.captures.stt_model`). Word
-timings — chapter captions and `/v1/align` — need an aligner, and audio.cpp has
-only Qwen3's, so a caption request loads Qwen3-ASR in the speech-recognition slot,
-whichever recogniser was there. Each recogniser hears the recording at 16 kHz
-mono, as audio.cpp's own page sends it: several (OWSM, CrisperWhisper,
-MOSS-Transcribe-Diarize, Hviske v6) can't take any other rate. Where a model adds
-times or speaker labels to its text (MOSS-Transcribe-Diarize, VibeVoice-ASR
-Streaming), JustVoice keeps the words alone (since 2026-10-15; before, a
-transcript read *[0.06][S01] …* or *Speaker 0: …*). Where a family both speaks
-and recognises speech (FireRedAudio, LFM2.5-Audio), each has its own engine, and
-the two share one download: on disk once, shown as downloaded on both, deleted
-from both together.
+**Which model transcribes is the Transcription feature's**, on **AI Settings →
+Routing by feature** (in the Editing group: *Turns speech into text — your
+dictation, the read-back that checks each take, and agents' transcriptions.*).
+JustVoice ships it on Qwen3-ASR 1.7B (8-bit). Its card there also says where it
+runs: *auto* — the model's own **Auto · Graphics card · CPU** choice on the
+Speech tab — or *gpu* or *cpu*, which win over that choice. Loading another
+recogniser on the Speech tab doesn't change which one transcribes. When the
+feature's model isn't on this computer yet, the card says so with **Download the
+model (‹size›)**, and the first transcription downloads it, then loads it; with
+the runtime not installed, it offers **Install the engine (‹size›)**.
+
+Word timings — chapter captions and `/v1/align` — need an aligner, and audio.cpp
+has only Qwen3's. They run on the Transcription feature's model when it carries
+one (Qwen3-ASR's three models do), else on Qwen3-ASR's default model. The aligner
+is part of Qwen3-ASR's download, and it is loaded only the first time a caption
+request needs it, so a dictation or a read-back doesn't hold its 1.1 GB. Each
+recogniser hears the recording at 16 kHz mono, as audio.cpp's own page sends it:
+several (OWSM, CrisperWhisper, MOSS-Transcribe-Diarize, Hviske v6) can't take any
+other rate. Where a model adds times or speaker labels to its text
+(MOSS-Transcribe-Diarize, VibeVoice-ASR Streaming), JustVoice keeps the words
+alone (since 2026-10-15; before, a transcript read *[0.06][S01] …* or *Speaker 0:
+…*). Where a family both speaks and recognises speech (FireRedAudio,
+LFM2.5-Audio), each has its own engine, and the two share one download: on disk
+once and shown as on this computer on both; deleting one keeps the files the
+other still needs.
 
 ### Languages
 
@@ -673,25 +720,27 @@ section.
 
 ### Finding a model
 
-The filter row narrows and orders the list:
+The row above the models narrows the list:
 
-- **Commercial use** — *Any commercial use*, or one of the five labels, each with
-  its meaning under it.
+- **All · Speech · Transcription** — every model, the models that speak, or the
+  speech-recognition models.
+- **Find a model** — finds models by their name or their engine's name, and
+  opens the engines it matches.
+- **Cloning** — only models that copy a voice from a clip.
+- **Built-in voices** — only models with voices of their own.
+- **Commercial use** — *Any commercial use*, or one of the five labels
+  (*Commercial use: Yes* …), each with its meaning under it.
 - **Tested by JustVoice** — only engines we have tested.
 - **Takes direction** — only models that take written direction or tags.
-- **Fits this card** — only models whose memory fits your graphics card
-  (shown when there is one).
-- **Sort** — by name, download size, memory needed or commercial use. Size and
-  memory sort an engine by its smallest model; an engine none of whose models
-  has a known memory sorts last.
+- **Fits this card** — only models that read **Fits** (shown on a machine with a
+  graphics card of its own).
 
-A filter about models (Cloning, Built-in voices, Takes direction, Fits this card)
-shows only the models that match, and opens their engines; an engine with none
-drops out.
+A filter shows only the models that match and opens their engines; an engine
+with none drops out.
 
 ## Picking an engine is picking what a voice can do
 
-The Speech engines tab shows this table above the engines. A persona's voice
+The Speech tab shows this table above the models. A persona's voice
 brings its model, and the model decides what that persona can do on every line:
 whether it can clone someone's voice, and whether it takes written direction,
 tags, or only pace, pitch and gain.
@@ -805,7 +854,7 @@ naming the model to load, rather than reading German with English sounds.
   cloning a voice without that person's consent, nothing deceptive, nothing
   presented as a genuine recording of a real person. A persona's New clone shows
   the terms with an **Accept** button when Pocket TTS is the chosen model, the
-  Pocket TTS engine's foot on Speech engines has **Read and accept**, and a Pocket TTS
+  Pocket TTS engine's foot on the Speech tab has **Read and accept**, and a Pocket TTS
   clone asked for anywhere else (a chapter, a persona's Hear it, JustWrite, the API) stops
   with a message until you have. Built-in voices need no acceptance.
 - **The weights are CC-BY-4.0**, which permits commercial use; the credit it
@@ -936,11 +985,12 @@ original precision.
 
 ## Where each model runs — the graphics card or the CPU
 
-Each model runs either on your graphics card or on your CPU, and every model
-row on Speech engines has its own line saying which: **Runs on** with an
-**Auto · GPU · CPU** choice, followed by where it runs — or would load now —
-and why ("Loads on the CPU — 3.2× real time here, which keeps the graphics
-card for the AI model"). The reason it matters: on an 8 GB card, Kokoro on the
+Each model runs either on your graphics card or on your CPU. Every model on
+this computer has, on its row on the Speech tab, a choice beside **Load** —
+**Auto**, **Graphics card** or **CPU** — and under the row a line saying where
+it would load now and why (*Would load on the CPU — 3.2× real time here, which
+keeps the graphics card for the AI model*), or, once loaded, where it runs
+(*Loaded on the CPU — …*). The reason it matters: on an 8 GB card, Kokoro on the
 graphics card pushed a 6.8 GB language model out, while on the CPU it speaks
 three times faster than real time and takes nothing from the card.
 
@@ -964,9 +1014,8 @@ moves to the CPU (below). Then Auto decides, in this order:
    model (its peak at the length it speaks in — see
    [Long lines](#long-lines-and-what-a-model-costs)).
 2. **Otherwise the CPU**, if the model speaks at least **2× real time** there.
-3. **Otherwise the graphics card, with the AI model unloaded first.** A toast
-   names what was unloaded; the AI model loads itself back the next time a
-   feature needs it.
+3. **Otherwise the graphics card, with the AI model unloaded first.** The AI
+   model loads itself back the next time a feature needs it.
 
 A model that has never run on your card has no measured size yet, so while an
 AI model is on the card it counts as not fitting — nothing is ever guessed.
@@ -979,8 +1028,8 @@ on the reference machine and none on yours yet: Qwen3-TTS, Chatterbox, Pocket
 TTS French and audio.cpp's other models — isn't sent to the CPU by Auto for its
 speed; Qwen3-TTS and Chatterbox run several times slower than real time there.
 
-**What the *Runs on* line can say**, and when — the server's own words, with your
-numbers in them. Where a line ends *— this may be slow on the CPU*, it shows the
+**What the line under the row can say**, and when — the server's own words, with
+your numbers in them. Where a line ends *— this may be slow on the CPU*, it shows the
 model's measured speed there instead once it has one (*— 0.1× real time here*):
 
 | The line says | It runs on | When |
@@ -995,13 +1044,13 @@ model's measured speed there instead once it has one (*— 0.1× real time here*
 | *audio.cpp says it needs about 18 GB, more than this card's 8 GB — …* · *its files are about 12 GB, more than this card's 8 GB — …* | the CPU | Not measured here, and too big for the card ([Memory, before you load](#memory-before-you-load)) |
 | *it took about 9.1 GB on this card before, more than this card has — …* | the CPU | Measured here, and more than the whole card |
 | *it didn't load on the graphics card — this may be slow on the CPU* | the CPU | A load on the card failed or overflowed (below); **Try the card again** beside it |
-| *your choice* · *your choice — 3.2× real time here* | where you pinned it | You picked **GPU** or **CPU** |
-| *your choice — it took about … GB here before and about … GB of the card is free, so it may spill …* · *your choice — about … GB of it spilled …* | the graphics card | You picked **GPU** and it may not fit, or it spilled (since 2026-10-16) |
+| *your choice* · *your choice — 3.2× real time here* | where you pinned it | You picked **Graphics card** or **CPU** |
+| *your choice — it took about … GB here before and about … GB of the card is free, so it may spill …* · *your choice — about … GB of it spilled …* | the graphics card | You picked **Graphics card** and it may not fit, or it spilled (since 2026-10-16) |
 | *the graphics share this machine's memory, so the CPU would free none of it* | the graphics | A Mac, or graphics that share the computer's memory |
 | *this machine's speech runtime is the CPU build* | the CPU | The runtime is the CPU build |
 
-A loaded model's line starts *Running on* instead of *Loads on*, with the reason
-it was given when it loaded.
+A loaded model's line starts *Loaded on the graphics card* or *Loaded on the CPU*
+instead of *Would load on …*, with the reason it was given when it loaded.
 
 On a Mac, or any machine whose graphics share the computer's memory, Auto
 keeps every model on the graphics and says why: moving one to the CPU would
@@ -1009,26 +1058,29 @@ free nothing.
 
 **When the graphics card can't take a model, Auto moves it to the CPU.** If a
 load Auto put on the card fails, the same click loads it on the CPU instead, and
-its *Runs on* line says *it didn't load on the graphics card — this may be slow on
-the CPU* (or its measured speed, once it has spoken). On Windows a load can also
+the line under its row says *it didn't load on the graphics card — this may be
+slow on the CPU* (or its measured speed, once it has spoken). On Windows a load can also
 "succeed" without fitting: NVIDIA's driver can put what the card has no room for
 in the computer's memory instead of failing, and the model then runs slowly. So
 after each such load JustVoice reads how much of the computer's memory the speech
 runtime's graphics allocations use (Windows' *Shared GPU memory* for that
 process); a model that fits leaves it where it was, and one that grew it by more
-than the runtime row's **Card overflow limit (MB)** (`speech_runtime.spill_mb`,
-256 MB unless you change it) is unloaded and loaded on the CPU too.
+than **Counts as spilled past (MB of shared memory)** in the engine settings
+(256 MB unless you change it) is unloaded and loaded on the CPU too.
 Either way JustVoice remembers it, for this machine and this speech runtime
 build, so the next load goes straight to the CPU; a new speech runtime build
-tries the card again, and so does pinning the model to **GPU** — once a load
-measures it there, the card is used again. **Try the card again** on the
-model's *Runs on* line forgets the failure now, keeping what the model measured.
+tries the card again, and so does pinning the model to **Graphics card** — once a
+load measures it there, the card is used again. **Try the card again** under the
+model's row forgets the failure now, keeping what the model measured.
 A model whose measured size is more than the whole card goes to the CPU the same
 way instead of being refused.
 
-**GPU** and **CPU** pin the model there, whatever Auto would do. Changing a
-loaded model's place reloads it in its new place. A machine whose speech
-runtime is the CPU build runs everything on the CPU and says so.
+**Graphics card** and **CPU** pin the model there, whatever Auto would do. The
+choice is saved for the model, on this computer, and every load reads it — the
+Speech tab's **Load**, a render, a persona's **Hear it**, a preview, a capture.
+The choice shows while the model isn't loaded: to move a loaded model, **Unload**
+it, pick, and **Load** it again. A machine whose speech runtime is the CPU build
+runs everything on the CPU and says so.
 
 **The speech margin** (since 2026-10-16). On the graphics card a speech model
 JustVoice hasn't measured yet is held to 0.5 GB of headroom on top of the card's
@@ -1040,11 +1092,11 @@ sent it to the CPU at 0.2× real time; on the card it made 93 takes at about 5 s
 each with nothing spilled). If a longer line than the measured ones does push it
 past the card, it spills into the computer's memory and runs slower — it doesn't
 stop — and the next load goes to the CPU (*it didn't load on the graphics card*,
-with **Try the card again**). The margin is a setting,
-`speech_runtime.card_margin_mb` (512); the AI model keeps its own 1 GB for its
-layers. A model you pin to **GPU** is never refused for memory: the load makes what room it can —
+with **Try the card again**). The margin is **Headroom on the card (MB)** in the
+engine settings (512); the AI model keeps its own 1 GB for its
+layers. A model you pin to **Graphics card** is never refused for memory: the load makes what room it can —
 unloading the other speech model and the AI model — and goes ahead. When it may
-not fit, its *Runs on* line says so: *your choice — it took about 7.3 GB here
+not fit, the line under its row says so: *your choice — it took about 7.3 GB here
 before and about 7.1 GB of the card is free, so it may spill into this machine's
 memory and run slowly*; and if it does spill, *your choice — about 0.4 GB of it
 spilled into this machine's memory, so it runs slowly; Auto would run it on the
@@ -1075,12 +1127,13 @@ loaded — a large one can hold more of this memory than any speech model — th
 message names it and suggests unloading it first, unless the check already
 counted the AI model's memory as given back.
 
-The 2× bar is `speech_runtime.cpu_min_realtime` in the settings, the spill
-threshold `speech_runtime.spill_mb` (also on the runtime row), and what counts as a runaway line
-`speech_runtime.runaway_s_per_char` and `runaway_min_s` (see
-[Settings reference](settings-reference.md); the take check fails a take past the same
-limit — [Studio → Checking takes](studio.md#checking-takes)); the CPU threads are on the
-runtime row.
+The 2× bar is **Fast enough on the CPU at (× real time)**, the spill threshold
+**Counts as spilled past (MB of shared memory)**, what counts as a runaway line
+**A runaway line: seconds per character** and **A runaway line: at least
+(seconds)** (the take check fails a take past the same limit —
+[Studio → Checking takes](studio.md#checking-takes)), and the CPU threads **CPU
+threads (0: one per core)** — all under **Engine settings** on the Speech tab
+([The speech runtime](#the-speech-runtime)).
 
 ## What each engine can be tuned with
 
@@ -1217,19 +1270,29 @@ bracketed text such as `[sic]`.
 
 ## Loading and unloading
 
-One model is **loaded** per slot (one speech, one speech recognition). A load
-takes a few seconds. The Speech engines tab shows each engine's state:
+One model is **loaded** per kind — one speech model and one speech-recognition
+model. A load takes a few seconds. **Loaded now**, above the models on the
+Speech tab, shows what each kind holds, where it runs and **Unload**; each
+model's row says its state: *not downloaded*, *on this computer*, *loading…*,
+*downloading, then loading* or *running*.
 
-- **needs the speech runtime** — the runtime is not installed yet. Models can
-  still download; Load waits for the runtime.
-- **installed** — the runtime is there; the engine's models load on demand.
-- **loaded** — resident and ready to render, with where it runs
-  (`· CUDA`, `· VULKAN`, `· CPU`).
+On the Speech tab, a model that isn't on this computer shows **Download
+(‹size›)** — download only; once its files are on this computer the row shows
+**Load**, which loads it where its **Auto · Graphics card · CPU** choice says.
+**Load** waits until the runtime is installed. Loading a model unloads the one
+its kind held before.
 
-The verbs split the same way as the AI model catalog: a model that isn't on
-disk shows **Download (N GB)** — download only; once its files are on disk
-the row shows **Load model**. A load of a model that is not downloaded yet
-downloads it first. Loading a model unloads the same slot's previous one.
+**A load anywhere else downloads first.** A persona's **Load**, a render, a
+preview or a capture that needs a model not on this computer yet downloads it,
+then loads it — asking for its licence first when it has one
+([Commercial use](#commercial-use-in-plain-words)). The model's row on the
+Speech tab shows that download's bar while it runs.
+
+**Unload during a load cancels it.** While a model loads, its row shows
+**Cancel**; while it downloads to load, its bar's own **Cancel** does the same.
+Either stops the load where it is — its download included — and lets go of the
+memory it had reserved. A persona page's **Load** bar has a Cancel that does the
+same.
 
 **F5-TTS unloads by stopping its process.** F5-TTS (the Habibi-TTS models) keeps
 its weights and working memory for as long as its speech process runs, so asking
@@ -1237,8 +1300,8 @@ it to unload gave nothing back: after three Habibi models, 6.2 GB of the card an
 7.2 GB of the computer's memory stayed taken. Unloading an F5-TTS model, or
 loading another speech model in its place, now stops the speech process instead,
 which returns all of it; the next speech model starts a new process. Only the
-speech slot's process stops — a speech-recognition model stays loaded — and
-every other engine still unloads without a restart.
+speech process stops — a speech-recognition model stays loaded — and every other
+engine still unloads without a restart.
 
 **A render loads the model each voice needs.** A voice remembers the model it
 was made for ([Voices → Every voice knows the model that speaks it](voices.md#every-voice-knows-the-model-that-speaks-it)),
@@ -1252,21 +1315,19 @@ downloaded, that one keeps speaking — in renders too — until you load the ch
 one; when no version is downloaded yet, the first load fetches the chosen one, as
 any first load does. Pocket TTS picks its model by the line's language.
 
-The runtime never outlives JustVoice: closing the window stops it, and the
-server stops one left over from an earlier session when it starts — see
-[GPU → Engines left over from an earlier session](gpu.md#engines-left-over-from-an-earlier-session).
+The runtime never outlives JustVoice: its processes stop when the app closes —
+see [GPU → The speech runtime never outlives the app](gpu.md#the-speech-runtime-never-outlives-the-app).
 
 ### Loading and the memory budget
 
 Loads run against the **shared memory budget** — the memory strip at the top
-of AI Settings, which shows measured use, a cell for each loaded speech model
-with its real memory take, the language model, and other apps. For a model
-JustVoice has measured before on this machine: if the pool is short, it frees
-the least-recently-used *idle* model and toasts what it unloaded; if
-everything resident is busy, the load refuses with a message quoting the
-measured numbers instead of an out-of-memory crash. The check runs before
-anything else happens, so a refused load has downloaded nothing and unloaded
-nothing. A model's first-ever load on the graphics card carries no number yet
+of AI Settings, which shows measured use, a cell for each speech or
+speech-recognition model holding graphics memory with its memory take, the
+language model, and other apps. For a model JustVoice has measured before on
+this machine: if the pool is short, it frees the least-recently-used *idle*
+model; if everything resident is busy, the load refuses with a message quoting
+the measured numbers instead of an out-of-memory crash. The check runs before
+the load changes anything, so a refused load has unloaded nothing. A model's first-ever load on the graphics card carries no number yet
 ("not measured yet"): it loads, measures itself (below), and is remembered.
 
 #### Long lines, and what a model costs
@@ -1299,13 +1360,13 @@ speech-recognition model hears silence. Models that can only speak from a clip
 clone-only models) measure themselves on their first real lines instead. The cost
 only goes up after that: a line that takes more is remembered too — except after
 a line that ran away (its audio longer than 0.5 s a character of its text and
-than 30 s, `speech_runtime.runaway_s_per_char` and `runaway_min_s`): what that
+than 30 s — the two runaway settings under **Engine settings**): what that
 model's process holds is never remembered as its cost again. When the model's
 own process can't be read at that first load, how much the whole card's use went
 up across the load is remembered instead — for a model that spoke a warm-up
 piece. A model that measures itself on its first line remembers what its process
 holds after that line, or, where the process can't be read, how much the whole
-card's use went up from before its load — once the model before it in that slot
+card's use went up from before its load — once the model its kind held before
 has left the card — to after that line (since 2026-10-15; before, it remembered
 nothing). That reading can include another program that took card memory at the
 same moment, so it errs high. The reading is taken before that first line lets
@@ -1315,8 +1376,9 @@ whose line was followed at once by another model's load often kept no cost, as
 Qwen3-TTS Base 1.7B did, or a far too small one, as Chatterbox Multilingual's
 105 MB was, and the "before" reading counted the model before it).
 
-Each slot's cell shows its own process's measured memory: the model, plus the
-process's own share of the card (about 100 MB). The full story is in
+The memory strip's cell for a loaded model shows its own process's measured
+memory: the model, plus the process's own share of the card (about 100 MB). The
+full story is in
 [GPU](gpu.md#the-shared-memory-budget).
 
 #### Long text, cut into pieces
@@ -1367,69 +1429,80 @@ whole, at the full `max_chunk_chars` length (above).
 
 ### Cancelling an in-flight load
 
-Downloads run from the row's **Download** button and go through the **speech
-cache**: plain files fetched by the same chunked, resumable downloader the AI
-models use — a dropped connection resumes past the completed chunks instead
-of starting over. While a load or download is in progress:
+Downloads run from the row's **Download** button — or from a load anywhere in the
+app that needs the model first — into the models cache (below). While a download
+or a load is in progress:
 
-- A progress bar appears **on the engine's own row**, naming the model and the
-  stage it's in. Downloads show real bytes and percent; a load shows the stage
-  it has reached, because a model load reports no percentage and JustVoice
-  does not invent one.
-- The bar has a **Cancel** button while it runs.
+- A progress bar appears **on the model's own row** on the Speech tab while it
+  downloads, with the real bytes and percent. A load shows *loading…* in the
+  row's state, because a model load reports no percentage and JustVoice does not
+  invent one.
+- **Cancel** stops it: the bar's own while it downloads, the row's while it
+  loads.
 - A cancelled or failed bar stays on the row with its error and offers
   **Retry** and **Dismiss**. It doesn't clear itself — you decide when you've
   read it.
 
-The row is deliberately the *only* place these appear. The full-width strip at
-the top of the screen is the **AI task** queue: it is for work that queries a
-language model and for long renders. Installing, downloading and loading are
-file and process work, so they live on the row that owns them.
+The row is the place these appear. The full-width strip at the top of the
+screen is the **AI task** queue: it is for work that queries a language model
+and for long renders. Installing, downloading and loading are file and process
+work, so they live on the row that owns them.
 
 ## Which engines run on your operating system
 
 Every engine runs on Windows, Linux and macOS — the runtime is built for
 each. What differs is the backend:
 
-| | NVIDIA | AMD / Intel graphics | Apple Silicon | CPU only |
+| | NVIDIA | AMD / Intel graphics | Apple | CPU only |
 |---|:--:|:--:|:--:|:--:|
 | **Windows** | CUDA | Vulkan | — | CPU |
 | **Linux** | Vulkan | Vulkan | — | CPU |
-| **macOS** | — | — | Metal | — |
+| **macOS** | — | — | Metal (Apple silicon and Intel) | — |
 
 Windows with an AMD or Intel GPU is now accelerated for every engine — before
 the switch only Kokoro was. Linux NVIDIA users run the Vulkan build, because
 audio.cpp publishes no Linux CUDA build. The Linux builds are for x86-64 only:
 there is none for Linux on ARM yet.
 
-## Where model files live — the speech cache
+## Where model files live
 
-Downloaded speech models live in **the speech cache**: one plain folder per
-model at `<data dir>/speech-cache/<engine>/<model>/`, holding the model's file
-exactly as it is named upstream, plus a small `files.json` recording where it
-came from (repository and pinned revision), its expected size, and its
-upstream checksum id.
+Downloaded speech models live in the **AI models cache** — the same folder as
+the language models behind Compose, attribution and the rest. By default it is
+`ai-cache/` in the data folder. When no folder was chosen, JustVoice's own holds
+no models yet, and another app of the family on this computer already keeps
+models in its own, JustVoice shares that folder, so a model both apps use is on
+disk once.
 
-- **Downloads resume.** A dropped connection resumes past the completed chunks
-  on the next attempt.
-- **Checked on arrival.** Each model file is checked against the checksum its
-  repository publishes for it; a file that doesn't match is deleted and the
-  download stops saying so. Two downloads of the same model never run at once
-  (they used to, and the second deleted what the first had just finished).
-- **"Downloaded" means downloaded.** A model only counts as on disk when every
-  file in its record is present at its recorded size. A half-fetched folder
-  never shows a Load button.
-- **No symlinks, no privileges.** What you see in the folder is the model.
-- **Delete really deletes.** "Delete downloaded model" removes that one
-  model's folder.
+Inside it, `hf/` holds every model file the way Hugging Face's own cache does:
+one folder per repository (`models--<owner>--<name>/`), each file stored once
+under `blobs/`, named by its SHA-256, and linked into `snapshots/<revision>/` under
+its upstream name.
 
-To reclaim the whole store at once, **Settings → Storage → Disk usage →
-Speech models → Clear** deletes every downloaded speech model in one step
-(each re-downloads on demand) — see
+- **Pinned and checked.** Each file is fetched from the repository and commit
+  JustVoice pins it to, and checked against its SHA-256 when it arrives; a file
+  that doesn't match is deleted and the download stops saying so.
+- **No room, no download.** A download that wouldn't fit the drive is refused
+  before it starts, with how much it needs and how much is free.
+- **Once per file.** Two models that use the same file — a family that both
+  speaks and recognises speech, Pocket TTS's preset voices — share one copy. A
+  file already there is kept, so a download that stopped part way fetches only
+  what it didn't finish.
+- **"On this computer" means on this computer.** A model only counts as on this
+  computer when every file it needs is there; a half-fetched model never shows
+  a **Load** button.
+- **Delete really deletes.** **Delete** removes that model's files; a file
+  another model still uses stays.
+
+To reclaim the whole store at once, **Settings → Storage → Disk usage → AI models
+cache → Clear** deletes every downloaded model — speech and language models
+alike — in one step (each downloads again when it's needed). It unloads the
+speech models first, and refuses while a language model is loaded or a speech
+model is downloading, loading or speaking. In a folder other apps of the family share, it
+deletes only JustVoice's own models. See
 [Backup and data](backups-and-data.md#disk-usage).
 
-The runtime itself lives under `engines-runtime/audiocpp/<release>/<build>/`
-next to the app (in a source checkout, next to the engine catalog).
+The runtime itself lives in the same cache, under `audiocpp/<release>/<build>/`
+(eSpeak NG beside it), and its add-ons under `audiocpp/_addons/`.
 
 ## Not available yet
 
@@ -1464,7 +1537,8 @@ Back since v0.9.0-jv.4: Chatterbox Turbo (cloning, inline tags), Chatterbox in
 Hebrew, Japanese, Russian and Chinese, Kokoro blends, Kokoro's Japanese voices,
 and a lexicon's exact pronunciations on Kokoro. A runtime still on an older
 build refuses a line that needs one of them, by name — *"… — this needs the
-speech runtime update"* — and **Update to** on the runtime row brings it.
+speech runtime update"* — and **Update to** under **Engine: audio.cpp** on the
+Speech tab brings it.
 
 **Removed for good:** LuxTTS, TADA and the old MOSS-TTSD engine. LuxTTS was the one engine
 that cloned quickly on a CPU; Pocket TTS took its place on 2026-10-02. TADA and
@@ -1489,12 +1563,12 @@ providers are a separate flow:
 - **TTS providers** — ElevenLabs, Speechify, Speechmatics, OpenAI TTS, OpenAI-compatible self-hosted servers (Kokoro-FastAPI, Chatterbox-TTS-Server, Dia-TTS-Server, Qwen3-TTS).
 
 Language-model providers register on the AI page's **LLM providers** tab.
-Speech providers register on the **Speech engines** tab: cloud APIs under
-**Online · metered** → **+ Add provider**; servers you run yourself under
-**Local · free** → **Self-hosted servers** → **+ Add self-hosted server**.
-The inline form handles API key, base URL, the TTS model, voice multi-select
-(with Fetch voices), and Test verification. See [ai-providers.md](ai-providers.md)
-for the full flow.
+Speech providers register at the bottom of the **Speech** tab, under the models:
+servers you run yourself under **Self-hosted servers** → **+ Add self-hosted
+server**; cloud APIs under **Online · metered** → **+ Add provider**. The inline
+form handles API key, base URL, the TTS model, voice multi-select (with ⟳ Fetch
+voices), and **Test connection**. A saved provider works at once, without a
+restart. See [ai-providers.md](ai-providers.md) for the full flow.
 
 After registering one or more LLM providers, open **AI Settings → Routing by
 feature** to point specific features (Compose, Speaker attribution, etc.) at
