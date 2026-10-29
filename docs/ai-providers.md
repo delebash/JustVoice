@@ -45,7 +45,7 @@ provider** flow.
      on the Voices page and in a persona's **Voice** list. **⟳ Fetch voices** asks the server for
      its list so you can pick instead of type.
 4. **Test connection** checks the URL + key round-trip before you commit.
-5. Click **Save provider**.
+5. Click **Save provider**. It is ready at once — no restart.
 
 ## Which attribution route runs (LLM)
 
@@ -62,8 +62,10 @@ preset ships with it off; turn it on on a card's preset to test it.
 
 ## Editing or removing
 
-- **Edit** — click Edit on the row. The form expands in place.
-- **Remove provider** — inside the Edit form. Confirms before removing.
+- **Edit** — click Edit on the row. The form expands in place; **Save** puts
+  the change to work at once.
+- **Remove provider** — inside the Edit form. Confirms before removing, and
+  the provider is gone at once.
   A persona whose voice is on this provider falls back at render time.
 
 ## Self-hosted TTS — Kokoro / Chatterbox / Dia / Qwen3-TTS

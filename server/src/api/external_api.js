@@ -6,7 +6,7 @@ import { Hono, input } from "@delebash/core/platform";
 import * as http from "@delebash/core/platform/http";
 import { isDict, strip } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
-import { ExternalOpenAiTtsBackend } from "../engines/external_openai.js";
+import { buildExternalEngine } from "../engines/tts_providers/index.js";
 import { badRequest, conflict, notFound } from "../errors.js";
 import { construct, ExternalEngineConfig, ProbeRequest, ProbeResponse } from "../models.js";
 
@@ -114,25 +114,28 @@ export function router() {
     );
   });
 
+  // Save one: registered at once and kept in settings.engines.external (what the boot registers).
+  // Saving a saved one again is its edit — it replaces the one registered; an id that something
+  // else holds stays refused. Built first, with the boot's own adapter for its provider_type, so a
+  // config that can't be built changes nothing.
   app.post("/v1/engines/external", input({ body: ExternalEngineConfig }), (c) => {
     const cfg = c.req.valid("json");
     const st = getState();
     if (!strip(cfg.id)) throw badRequest("id must not be empty");
     if (!strip(cfg.base_url)) throw badRequest("base_url must not be empty");
-    if (st.engines.has(cfg.id)) throw conflict(`Engine id '${cfg.id}' is already registered.`);
+    const current = st.settings.get();
+    const saved = current.engines.external.some((e) => e.id === cfg.id);
+    if (st.engines.has(cfg.id) && !saved) throw conflict(`Engine id '${cfg.id}' is already registered.`);
 
-    const backend = new ExternalOpenAiTtsBackend({
-      id: cfg.id,
-      name: cfg.name,
-      baseUrl: cfg.base_url,
-      apiKey: cfg.api_key,
-      model: cfg.model,
-      voices: cfg.voices,
-      responseFormat: cfg.response_format,
-    });
+    let backend;
+    try {
+      backend = buildExternalEngine(cfg);
+    } catch (e) {
+      throw badRequest(String(e?.message ?? e));
+    }
+    st.engines.unregister(cfg.id);
     st.engines.register(backend);
 
-    const current = st.settings.get();
     current.engines.external = current.engines.external.filter((e) => e.id !== cfg.id);
     current.engines.external.push(cfg);
     st.settings.patch({ engines: current.engines });

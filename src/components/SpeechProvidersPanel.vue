@@ -8,7 +8,9 @@
     scope="cloud"      → the Online half (cloud speech APIs)
   The store is exactly this app's own: settings.engines.external
   (ExternalEngineConfig — snake_case on the wire; the snake↔camel boundary
-  lives at this panel's read + write edges). The LLM residue died with the old
+  lives at this panel's read + write edges), read from GET /v1/settings and
+  written through POST /v1/engines/external and DELETE /v1/engines/external/{id},
+  which register and unregister the provider at once (2026-10-29). The LLM residue died with the old
   EnginesView in the parity batch.
 -->
 <script setup>
@@ -90,35 +92,35 @@ function cancelEdit() {
   draft.value = null;
 }
 
+// Save and Remove go through the server's own routes, which register (or unregister) the provider
+// at once and keep settings.engines.external, what the boot registers — a settings PATCH reached
+// the running server only at its next start. Saving a saved one again is its edit. The
+// snake↔camel translation lives only at this write boundary (and loadProviders' read).
 async function saveProvider(payload) {
   try {
-    // Read current settings, splice/replace, PATCH back — the snake↔camel
-    // translation lives only at this write boundary (and loadProviders' read).
-    const current = await api.request("/v1/settings");
-    const externals = [...(current?.engines?.external || [])];
-    const filtered = externals.filter((e) => e.id !== payload.id);
     // Blank key on an existing entry preserves the stored one.
     let apiKey = payload.apiKey || null;
     if (!payload.apiKey) {
-      const prev = externals.find((e) => e.id === payload.id);
+      const current = await api.request("/v1/settings");
+      const prev = (current?.engines?.external || []).find((e) => e.id === payload.id);
       if (prev?.api_key) apiKey = prev.api_key;
     }
-    filtered.push({
-      id: payload.id,
-      name: payload.name || payload.id,
-      provider_type: payload.providerType === "openai" ? "openai-compat" : (payload.providerType || "openai-compat"),
-      base_url: payload.baseUrl || "",
-      api_key: apiKey,
-      model: payload.tts_model || "",
-      voices: Array.isArray(payload.voices) ? payload.voices : [],
-      response_format: payload.response_format || "wav",
-      self_hosted: !!payload.self_hosted,
-    });
-    await api.request("/v1/settings", {
-      method: "PATCH",
+    await api.request("/v1/engines/external", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ engines: { external: filtered } }),
+      body: JSON.stringify({
+        id: payload.id,
+        name: payload.name || payload.id,
+        provider_type: payload.providerType === "openai" ? "openai-compat" : (payload.providerType || "openai-compat"),
+        base_url: payload.baseUrl || "",
+        api_key: apiKey,
+        model: payload.tts_model || "",
+        voices: Array.isArray(payload.voices) ? payload.voices : [],
+        response_format: payload.response_format || "wav",
+        self_hosted: !!payload.self_hosted,
+      }),
     });
+    window.dispatchEvent(new Event("jv:health-refresh")); // the stores list it now
     pushToast({ message: `${payload.name || payload.id} saved.`, kind: "success" });
     cancelEdit();
     await loadProviders();
@@ -137,16 +139,8 @@ async function deleteProvider() {
   });
   if (!ok) return;
   try {
-    const current = await api.request("/v1/settings");
-    const externals = current?.engines?.external || [];
-    const filtered = externals.filter((e) => e.id !== draft.value.id);
-    if (filtered.length !== externals.length) {
-      await api.request("/v1/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ engines: { external: filtered } }),
-      });
-    }
+    await api.request(`/v1/engines/external/${encodeURIComponent(draft.value.id)}`, { method: "DELETE" });
+    window.dispatchEvent(new Event("jv:health-refresh"));
     pushToast({ message: `${draft.value.name || draft.value.id} deleted.`, kind: "success" });
     cancelEdit();
     await loadProviders();

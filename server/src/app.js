@@ -35,7 +35,6 @@ import {
 } from "@delebash/core/platform";
 import { purePath } from "@delebash/core/platform/data_paths";
 import { getLogger } from "@delebash/core/platform/log";
-import { ValueError } from "@delebash/core/platform/py";
 import { stopRuntimeServers } from "@delebash/core/runner/runtime_service";
 // ── The routers (registered below in app.py's order) ──
 import { router as activeTasksRouter } from "./api/active_tasks_api.js";
@@ -87,8 +86,8 @@ import { initDb, getDb } from "./database/session.js";
 import * as devBuild from "./engines/audiocpp/dev_build.js";
 import { SPEECH_HOOKS } from "./engines/audiocpp/kit_hooks.js";
 import { runtimeModelRows } from "./engines/audiocpp/kit_models.js";
-import { ExternalOpenAiTtsBackend } from "./engines/external_openai.js";
 import * as modelCatalog from "./engines/model_catalog.js";
+import { buildExternalEngine } from "./engines/tts_providers/index.js";
 import { FEATURE_CATALOG, PREFER_LOCAL_FEATURES } from "./feature_catalog.js";
 import * as lineTakes from "./line_takes.js";
 import { clientIdStamp } from "./mcp/context.js";
@@ -157,56 +156,18 @@ export function _registerExistingEngines(_state, _dataDir) {
   log.info(`discovered ${ids.length} managed engines: ${[...ids].sort().join(", ") || "(none)"}`);
 }
 
-/** Register every configured external TTS provider (`provider_type` picks the adapter). */
+/** Register every configured external TTS provider (`provider_type` picks the adapter — buildExternalEngine,
+ * which POST /v1/engines/external builds a saved one through too). */
 export async function _registerExternalEngines(state) {
   const settings = state.settings.get();
   for (const cfg of settings.engines.external) {
     try {
-      state.engines.register(await _buildExternalEngine(cfg));
+      state.engines.register(buildExternalEngine(cfg));
       log.info(`external TTS provider registered: id=${cfg.id} type=${cfg.provider_type}`);
     } catch (e) {
       log.warning(`external TTS provider ${cfg.id} skipped at boot: ${e?.message ?? e}`);
     }
   }
-}
-
-/** The right adapter class for `cfg.provider_type`. */
-export async function _buildExternalEngine(cfg) {
-  const pt = (cfg.provider_type || "openai-compat").toLowerCase();
-  if (pt === "openai-compat" || pt === "openai-tts" || pt === "external-openai-tts") {
-    // OpenAI TTS uses the same /v1/audio/speech shape as openai-compat; they're the same
-    // adapter with a different default base_url.
-    const baseUrl = cfg.base_url || (pt === "openai-tts" ? "https://api.openai.com" : "");
-    if (!baseUrl) throw new ValueError(`${cfg.id}: openai-compat external engine needs a base_url`);
-    return new ExternalOpenAiTtsBackend({
-      id: cfg.id,
-      name: cfg.name,
-      baseUrl,
-      apiKey: cfg.api_key,
-      model: cfg.model || "tts-1",
-      voices: cfg.voices,
-      responseFormat: cfg.response_format,
-    });
-  }
-  const providers = {
-    elevenlabs: ["./engines/tts_providers/elevenlabs.js", "ElevenLabsBackend", "eleven_flash_v2_5"],
-    speechify: ["./engines/tts_providers/speechify.js", "SpeechifyBackend", "simba-multilingual"],
-    speechmatics: ["./engines/tts_providers/speechmatics.js", "SpeechmaticsBackend", "default"],
-  };
-  if (Object.hasOwn(providers, pt)) {
-    const [file, cls, model] = providers[pt];
-    const Backend = (await import(file))[cls];
-    return new Backend({
-      id: cfg.id,
-      name: cfg.name,
-      apiKey: cfg.api_key || "",
-      model: cfg.model || model,
-      voices: cfg.voices,
-      baseUrl: cfg.base_url,
-      responseFormat: cfg.response_format,
-    });
-  }
-  throw new ValueError(`unknown TTS provider_type: '${pt}'`);
 }
 
 /**
