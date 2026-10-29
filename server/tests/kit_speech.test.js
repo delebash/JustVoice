@@ -10,6 +10,7 @@ import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { stores } from "@delebash/core/llm";
+import { runtimeProblem } from "@delebash/core/llm/runtimes_api";
 import { ApiError } from "@delebash/core/platform/errors";
 import { AudioCppError } from "@delebash/core/runner/audiocpp";
 import { endSpeech, endState, fakeServer, fakeSpeechRuntime, useState, wav } from "./engines_helpers.js";
@@ -59,14 +60,26 @@ test("what_a_line_cant_have_is_refused_before_anything_loads", async () => {
   expect(svc.lines).toEqual([]);
 });
 
-test("the_kits_refusals_and_audiocpps_answers_are_ours", () => {
+test("the_kits_refusals_are_the_kits_problems_and_audiocpps_answers_ours", () => {
   const e = (fields, msg = "no") => Object.assign(new Error(msg), fields);
+  // every refusal as the kit's routes answer it (llm/runtimes_api.js runtimeProblem — one mapping)
   const memory = Object.assign(new Error("needs 6 GB"), { name: "NotEnoughMemoryError", where: "card", neededMb: 6000, freeMb: 2000 });
+  for (const refusal of [
+    memory,
+    e({ loadCancelled: { modelId: "m" } }),
+    e({ diskFull: { needBytes: 2, freeBytes: 1 } }),
+    e({ busy: "model-busy" }),
+    e({ need: { reason: "update-engine", detail: "update it" } }),
+    e({ notFound: true }),
+    e({ nothingToInstall: true }),
+  ]) {
+    const kit = runtimeProblem(refusal);
+    expect(kitSpeech.engineError(refusal).apiError()).toMatchObject({ statusCode: kit.statusCode, slug: kit.slug, extra: kit.extra });
+  }
   expect(kitSpeech.engineError(memory).apiError()).toMatchObject({ statusCode: 409, slug: "not-enough-memory", extra: { where: "card", neededMb: 6000, freeMb: 2000 } });
-  expect(kitSpeech.engineError(e({ loadCancelled: { modelId: "m" } })).apiError()).toMatchObject({ statusCode: 409, slug: "load-cancelled", extra: { modelId: "m" } });
-  expect(kitSpeech.engineError(e({ diskFull: { needBytes: 2, freeBytes: 1 } })).apiError()).toMatchObject({ statusCode: 507, slug: "disk-full" });
-  expect(kitSpeech.engineError(e({ busy: "model-busy" })).apiError()).toMatchObject({ statusCode: 409, slug: "model-busy" });
-  expect(kitSpeech.engineError(e({ need: { reason: "update-engine" } }, "update it")).apiError()).toMatchObject({ statusCode: 409, slug: "engine-cant-run-here" });
+  // what the kit leaves as it is stays as it is (a runtime not installed: a line says it failed to load)
+  const notInstalled = e({ notInstalled: true }, "audio.cpp isn't installed");
+  expect(kitSpeech.engineError(notInstalled)).toBe(notInstalled);
   // the licence a download waits for: the engine named, as our routes always said it
   const terms = kitSpeech.engineError(e({ termsRequired: { modelId: "index_tts2-indextts2-q8" } }, "Accept its licence"));
   expect(terms).toBeInstanceOf(TermsRequired);

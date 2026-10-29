@@ -10,9 +10,11 @@
 //
 // Also what the app reads of the runtime: what each kind holds now (the kit's `loaded()`), whether
 // it is installed, a model's files in the kit's models cache — and a refusal of the kit's as our
-// EngineRequestError, with the same problem the kit's own routes answer (llm/runtimes_api.js).
+// EngineRequestError carrying the problem the kit's own routes answer (llm/runtimes_api.js
+// `runtimeProblem`).
 
 import { resolveRuntimeFeature } from "@delebash/core/llm/image_dispatch";
+import { runtimeProblem } from "@delebash/core/llm/runtimes_api";
 import { speechFeatureReadiness, transcribeFeature, withSpeechModel } from "@delebash/core/llm/speech_dispatch";
 import { RuntimeError } from "@delebash/core/platform/py";
 import { AudioCppError, wavSeconds } from "@delebash/core/runner/audiocpp";
@@ -64,24 +66,17 @@ export class LoadFailed extends RuntimeError {
   }
 }
 
-/** A refusal of the kit's as ours — the problem its routes answer for it (llm/runtimes_api.js
- * `asProblem`, which the kit keeps to its routes): a licence not accepted (TermsRequired, naming
- * the engine), not enough memory, a load an Unload cancelled, what this computer lacks, no room on
- * the drive, a busy model; audio.cpp's own answer with its status; the kit's problems as they are.
- * Anything else is returned as it is. */
+/** A refusal of the kit's as ours, carrying the problem its routes answer for it (the kit's
+ * `runtimeProblem`: not enough memory, a load an Unload cancelled, what this computer lacks, no room
+ * on the drive, a busy model …); the kit's problems as they are. Ours on top: audio.cpp's own answer
+ * with its status, and a licence not accepted as our TermsRequired, naming the engine — the app's
+ * terms dialog opens on it (src/services/engineTerms.js). Anything else is returned as it is. */
 export function engineError(e, engineId = null) {
   if (e instanceof EngineRequestError || e instanceof modelCatalog.TermsRequired || e instanceof LoadFailed) return e;
   if (e instanceof AudioCppError) return new EngineRequestError(e.status >= 400 && e.status < 600 ? e.status : 500, e.message);
-  if (e instanceof ApiError) return new EngineRequestError(e.statusCode, String(e.detail ?? e.message), e);
-  const refused = (status, slug, title, extra = null) => new EngineRequestError(status, e.message, new ApiError(status, slug, title, e.message, extra));
   if (e?.termsRequired) return new modelCatalog.TermsRequired(engineId ?? variantOf(e.termsRequired.modelId)?.engineId ?? null, e.message);
-  if (e?.loadCancelled) return refused(409, "load-cancelled", "The load was cancelled", { modelId: e.loadCancelled.modelId });
-  if (e?.name === "NotEnoughMemoryError") return refused(409, "not-enough-memory", "Not enough memory", { where: e.where, neededMb: e.neededMb, freeMb: e.freeMb });
-  if (e?.need) return refused(409, "engine-cant-run-here", "This computer can't run this engine yet", { need: e.need });
-  if (e?.diskFull) return refused(507, "disk-full", "Not enough room on the drive", e.diskFull);
-  if (e?.busy) return refused(409, e.busy, e.busy === "model-busy" ? "The model is busy" : "The engine is busy");
-  if (e?.notFound) return new EngineRequestError(404, e.message);
-  if (e?.notInstalled || e?.notDownloaded) return new EngineRequestError(409, e.message);
+  const problem = runtimeProblem(e);
+  if (problem instanceof ApiError) return new EngineRequestError(problem.statusCode, String(problem.detail ?? problem.message), problem);
   return e;
 }
 
