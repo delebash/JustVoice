@@ -84,6 +84,9 @@ import * as dspClient from "./audio/dsp_client.js";
 import { readAuth } from "./auth.js";
 import { getDataRouter } from "./data_admin.js";
 import { initDb, getDb } from "./database/session.js";
+import * as devBuild from "./engines/audiocpp/dev_build.js";
+import { SPEECH_HOOKS } from "./engines/audiocpp/kit_hooks.js";
+import { runtimeModelRows } from "./engines/audiocpp/kit_models.js";
 import * as runtime from "./engines/audiocpp/runtime.js";
 import { ExternalOpenAiTtsBackend } from "./engines/external_openai.js";
 import * as manager from "./engines/manager.js";
@@ -391,6 +394,14 @@ export async function createApp(dataDir = null) {
     // Names JustVoice in the family cache registry so a sibling app's Quick Setup can offer to
     // SHARE the engine + model cache instead of re-downloading.
     product: PRODUCT,
+    // The kit's audio.cpp runtime, our speech models its rows and our hooks its warm-up, piece
+    // length, load options, transcription shaping and licence gate; `npm run dev` runs our
+    // checkout's build in place of an installed one (round E, docs/plans/2026-10-29-round-e-onto-
+    // the-kit.md §4 step 1).
+    runtimes: ["audiocpp"],
+    runtimeModels: runtimeModelRows(),
+    runtimeSpeech: { audiocpp: SPEECH_HOOKS },
+    runtimeExeOverrides: { audiocpp: () => devBuild.current() },
     // The AI model's RAM refusal names a loaded speech model on the card or the CPU (the
     // narrowings review, M3).
     speechModelsFn: () => manager.getManager().loadedSpeechModels(),
