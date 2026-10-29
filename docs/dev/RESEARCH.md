@@ -674,6 +674,34 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
   for every recogniser's variant, as it did for the generated ones. (was: Qwen3-TTS's row —
   until 2026-10-16.)
 
+### 1.7 Round E — the kit's audio.cpp runtime against ours (read 2026-10-29)
+
+The plan: [`2026-10-29-round-e-onto-the-kit.md`](../plans/2026-10-29-round-e-onto-the-kit.md). The kit's own facts
+are its RESEARCH §12. All *code* at just-core `75d07f8` / JustVoice `78ca4a0e` unless marked.
+
+- **What the kit ported matches ours:** `runner/audiocpp.js` `AudioCppServer`/`AudioCppPool` is our `runtime.js`
+  near line for line; `runner/speech_placement.js` keeps the 512 MB speech card margin, the GPU pin never refused,
+  the CPU speed as the best of the newest five at the current thread count, the first line's price inside the
+  kind's lock; the nine pinned archives' SHA-256s equal ours (`release.js:86-96`). — *code*.
+- **What it changed or left out:** the ledger id is `<kind>:audiocpp:<version>` (ours `<kind>:<engine>:<version>`)
+  and the installed build's card word its folder, `cuda12` (ours `cuda`); a transcription load registers its
+  companions at once — Qwen3-ASR's aligner, `qwen3-forced-aligner-0.6b-q8_0.gguf`, 1,078 MB on disk here (ours on
+  the first alignment); no load downloads, no load cancels; no dead-server drop; no stop at quit; macOS Intel gone.
+  The bugs found are the plan's §3.1. — *code; the file size measured*.
+- **Its chat load does both:** it downloads (status "downloading", `lifecycle.js` `load`) and cancels — a stop during
+  "downloading" or "starting" sets the load's token (`:2284-2289`), checked through `_runLoad`. (was, in my first
+  draft of the plan: "the chat load has no cancel" — corrected the same day.) — *code*.
+- **Our data against it, on this PC:** 779 speech measurement rows in the kit's own `model_measurements`, none under
+  the kit's ids; only 6 models' card prices are for the build running now (`dev · 1de98891`); 39 CPU-speed rows
+  (11 models) are build-free. `data/speech-cache`: 32 complete versions, 173 files, 93.6 GB (89.7 GB once
+  de-duplicated by SHA-256 — `indextts/indextts-25-q8` is `index_tts2-indextts25-q8`'s bytes), every file's
+  manifest id a SHA-256; 23 versions were downloaded before the SHA-256 check (2026-10-04). The installed build is
+  `v0.9.0-jv.4/cuda12` (2.0 GB), not the jv.6 pin. The 11 `speech_runtime` settings have the kit's names and
+  defaults, and every value here is at its default. JustVoice's `cache_root` is JustWrite's `data/ai-cache`. —
+  *measured, read-only, 2026-10-29*.
+- **Pocket TTS's 198 voice files carry no SHA-256 in our seeds** (`curated/pocket_tts.js:118` — size only); the kit
+  names and checks a model's files by SHA-256. — *code*.
+
 ---
 
 ## 2 · Speech memory (graphics memory and the booking)

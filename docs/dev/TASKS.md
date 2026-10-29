@@ -124,6 +124,20 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Round E — JustVoice's audio.cpp engine, its Speech engines tab and its jobs onto the kit's (J1)
+STATE:  DECIDED 2026-10-29 — the kit's half landed (just-core adb9805 … ed72ce6, 3dc2db9; its tests
+        not yet run). My rec: "yes, as reading and writing the plan only. That means comparing each
+        kit piece against our code and listing everything that changes, with the searches that
+        prove it. It includes a researched rec for each of the four unported items. No code changes
+        until the kit's tests pass and you've approved the plan." The user: "your rec go".
+WHY:    round E comes before the family release (just-core TASKS "Finish the kit", item 30; its
+        design decided by the user there, 2026-10-29).
+NOT:    building before the kit's suites are green and the plan is approved.
+BUILT:  nothing. The kit's half is green at just-core `75d07f8` (its session, 2026-10-29).
+OPEN:   the plan is written — `docs/plans/2026-10-29-round-e-onto-the-kit.md`; its §5 (14 decisions) waits on the
+        user's word, and its §3 (the kit's bugs B1–B14 and gaps G1–G12) goes to the kit before JustVoice builds.
+GO:     given 2026-10-29 for the plan only; the build needs its own go.
+
 ### Adopt everything audio.cpp has in engines; what we add, in a standard way — and a review of every narrowing I added unasked (decided 2026-10-13)
 STATE:  DECIDED 2026-10-13 — I had said "One rule from slice 2: a family is offered only if it
         can copy a voice from a clip". The user: "what does this mean i did not make any rule so
