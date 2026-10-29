@@ -26,7 +26,6 @@
 
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -40,13 +39,14 @@ const dataDir = mkdtempSync(path.join(tmpdir(), "jv-mock-snapshots-"));
 process.env.JUSTVOICE_DATA_DIR = dataDir;
 delete process.env.JUSTVOICE_AUDIOCPP_BUILD;
 
-// The kit resolved as the server resolves it, so the database it configures is the server's.
-const serverRequire = createRequire(path.join(SERVER, "app_state.js"));
-const kit = (spec) => import(pathToFileURL(serverRequire.resolve(spec)).href);
+// The server's modules, imported once the data folder above is set.
 const server = (rel) => import(pathToFileURL(path.join(SERVER, rel)).href);
 
 const session = await server("database/session.js");
-const llmDb = await kit("@delebash/core/llm/db");
+// The kit as the server has it: the root's and the server's `@delebash/core` are the one checkout
+// (each a `file:` dependency on ../just-core/packages/core, one link in the root's node_modules),
+// so this is the module the server's database code configures.
+const llmDb = await import("@delebash/core/llm/db");
 const appState = await server("app_state.js");
 session.initDb(dataDir);
 llmDb.configureStorage(session.cfg.handle);
