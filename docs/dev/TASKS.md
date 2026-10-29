@@ -133,10 +133,13 @@ STATE:  DECIDED 2026-10-29 — the kit's half landed (just-core adb9805 … ed72
 WHY:    round E comes before the family release (just-core TASKS "Finish the kit", item 30; its
         design decided by the user there, 2026-10-29).
 NOT:    building before the kit's suites are green and the plan is approved.
-BUILT:  nothing. The kit's half is green at just-core `75d07f8` (its session, 2026-10-29).
-OPEN:   the plan is written — `docs/plans/2026-10-29-round-e-onto-the-kit.md`; its §5 (14 decisions) waits on the
-        user's word, and its §3 (the kit's bugs B1–B14 and gaps G1–G12) goes to the kit before JustVoice builds.
-GO:     given 2026-10-29 for the plan only; the build needs its own go.
+        Then on the plan's 14 decisions (§5): "think adverserilly on you recs make sure you check facts, then your
+        rec go" — the recs as shown, re-attacked; the one change: the final pass measures Qwen3-ASR on the CPU once
+        (§5 item 10). The deletions in items 9 and 11 still wait for the user's word, as the recs said.
+BUILT:  nothing. The kit's half is green at just-core `75d07f8`; the kit took the plan's §3 (bugs B1–B13, gaps
+        G1–G12) the same day and is building it.
+OPEN:   JustVoice's move, the plan's §4 — it starts when the kit sends its final shapes and a green run.
+GO:     given 2026-10-29 for the plan, then for its recs.
 
 ### Adopt everything audio.cpp has in engines; what we add, in a standard way — and a review of every narrowing I added unasked (decided 2026-10-13)
 STATE:  DECIDED 2026-10-13 — I had said "One rule from slice 2: a family is offered only if it

@@ -1,6 +1,10 @@
 # Round E — JustVoice's audio.cpp engine, its Speech engines tab and its jobs onto the kit's (J1)
 
-**State: PLAN — waiting on the user's word (2026-10-29).** Nothing is built. The go given was for this plan only
+**State: DECIDED 2026-10-29 — the user on §5: "think adverserilly on you recs make sure you check facts, then your
+rec go".** The re-attack's changes are marked "Re-attacked" in §5. The kit took §3 from this file the same day
+(its session: B1–B13 and G1–G12 being built; B14 dropped — the per-line pass covers a rise; B11 settled as one
+field, the row's `peakVramMb`). JustVoice's §4 starts when the kit sends its final shapes and a green run.
+Nothing is built. The go given was for this plan only
 (TASKS "Round E"): "your rec go" on "reading and writing the plan only … No code changes until the kit's tests pass
 and you've approved the plan". The kit's half landed (just-core adb9805 … ed72ce6, 3dc2db9) and is green at
 just-core `75d07f8` (its session, 2026-10-29: core 1593, template unit 126 + e2e 15, the guard clean, and
@@ -202,8 +206,8 @@ Each slice: its own test red then green while building; the full suites, the bui
 1. **Seeds.** `runtimeModels` from the catalog (`generated.js` `variantRow` → `{runtime, id, name, kind, license,
    files: [{slot, repo, revision, path, sha256, bytes}], peakVramMb, minRamMb, refSpeed: {cpu}, spec}`): a `slot` per
    file (the main one `"model"`), each file's `sha256`/`bytes` from `catalog.json`, companions and session files by
-   slot, `spec.espeak` for `kitten_tts`, `spec.unloadStopsProcess` for F5-TTS, `spec.minVramGb`, `refSpeed.cpu` from
-   `cpu_realtime`. **Pocket TTS's 198 voice files have no SHA-256 in our seeds** (`curated/pocket_tts.js:118`) — add
+   slot, `spec.espeak` for `kitten_tts`, `spec.unloadStopsProcess` for F5-TTS, `peakVramMb` = `min_vram_gb` × 1024
+   (the kit's B11 fix: one field, read by placement and the fit word), `refSpeed.cpu` from `cpu_realtime`. **Pocket TTS's 198 voice files have no SHA-256 in our seeds** (`curated/pocket_tts.js:118`) — add
    them from Hugging Face's LFS ids (7 variants' are in their `files.json` already). `installLlm` gets `runtimes:
    ["audiocpp"]`, `runtimeModels`, `runtimeSpeech` (`warm` ← `slot.js` `_warm`/`_warmGenerated`; `pieceLength` ←
    `manager.js` `effectiveSplit` — the 800 cap included, not `split_chars` alone: 252 of 301 stored rows are at 800;
@@ -249,7 +253,8 @@ Each slice: its own test red then green while building; the full suites, the bui
 9. **Docs and records.** User docs (§6.3), `docs/dev/RESEARCH.md` §1–§2 (what moved, with the was:), TASKS.
 10. **The final pass.** `npm run lint`, `test:server`, `test:unit`, the family guard, the build, the gate against the
     running app, and the real app under `npm run dev`: install, Load on Auto/GPU/CPU, a render, a preview, a
-    capture, a Kokoro Japanese line (the dictionary), an export.
+    capture, a Kokoro Japanese line (the dictionary), an export — and one Qwen3-ASR line on the CPU, so Auto has this
+    PC's speed again (§5 item 10).
 
 ## 5 · Decisions for your word
 
@@ -269,11 +274,19 @@ Each slice: its own test red then green while building; the full suites, the bui
 6. **The tab's name.** Rec: the kit's word, **"Speech"** (`kit.aiTabs.kinds.tts`), as every app's runtime tab is named
    by its kind; the deep links and docs follow. Attack: "Speech engines" is what the docs and seven links say today —
    but keeping it needs a kit label override for one app, and there are no users yet. Changed: nothing.
+   Re-attacked: the kit is adding a label prop anyway (its session, 2026-10-29), so "Speech engines" would cost
+   nothing in the kit — but the docs are rewritten in round E either way, and the family names a runtime's tab by
+   its kind. Changed: nothing.
 7. **Transcription's feature.** Rec: **one** stt feature for captures, read-back, alignment and the MCP tool — today
    it's one setting (`captures.stt_model`) — named **"Transcription"** (the kit's own kind word). Attack: separate
    features would let read-back use a faster model than dictation, but nobody asked for that, and each is another
    preset to set up. Changed: nothing.
+   Re-attacked: read-back today uses the capture model or whichever recogniser is already loaded
+   (`take_check.js:302-306` → `captures.ensureSttLoaded`); on the feature it always uses the preset's model — the
+   same one unless someone loaded another by hand. Changed: nothing.
 8. **The aligner loads on first use** (G11). Rec as in §3.2.
+   Re-attacked: only `/v1/align` (chapter captions, `api/align_api.js:35`) aligns; read-back and captures only
+   transcribe — so on-demand saves the 1.1 GB on every capture and read-back. Changed: nothing.
 9. **The 89.7 GB of model files: adopt them once, with the kit's `adoptModel`, from a one-off command I run on this
    PC — no code shipped** — the kit hashing every file (23 versions were downloaded before the SHA-256 check).
    Then the emptied `data/speech-cache` and its 3.5 GB duplicate (`indextts/indextts-25-q8`, the same bytes as
@@ -281,12 +294,21 @@ Each slice: its own test red then green while building; the full suites, the bui
    Attack: "no migrations" — but nothing ships, the reset keeps model files on purpose (`data_admin.js:135`), and the
    alternative is 89.7 GB downloaded again. The files land in JustWrite's cache folder (`cache_root`), so B12 must
    be fixed first. Changed: hash everything instead of vouching for the old manifests.
+   Re-attacked: the move needs the rows first, Pocket's with their SHA-256s (§4 step 1), or its 7 downloaded
+   versions can't be adopted; JustWrite's own reset doesn't empty the cache (its `data_admin.js` unloads models,
+   it doesn't remove `ai-cache`). The deletions after it still wait for your word when they come up — the rec said
+   "on your word". Changed: nothing.
 10. **The stored measurements: let them go.** 779 rows under the old ids (`tts:<engine>:<version>`) aren't read by the
     kit (`tts:audiocpp:<version>`). Only 6 models' card prices are for the build running now; each re-measures on its
     first load (about 17 s for Qwen3 1.7B). The real loss is 11 models' CPU speeds (39 rows): Qwen3-ASR 1.7B's
     reference 2.6× replaces its measured 1.66×, so Auto may put it on the CPU once, measure it, and move it back.
     Attack: a one-time rename keeps them — a migration, which the rule forbids, for a loss that heals itself.
     Changed: nothing.
+    Re-attacked: it heals only at the next load — speech models stay loaded (the runtime never idles them,
+    `idleSeconds` 0), so Qwen3-ASR could sit on the CPU at 1.66× for a whole session. Its reference 2.6×
+    (`curated/qwen3_asr.js:80`) against Auto's 2× bar (`models.js:441`) is what sends it there. Changed: the final
+    pass runs one Qwen3-ASR line on the CPU (§4 step 10), so this PC's speed is measured again before anyone
+    relies on it.
 11. **The old engine install: the kit installs fresh, then the old one is deleted on your word.** 1.08 GB down — the
     same download our own pending jv.4 → jv.6 update needs — plus 47 MB for the dictionary; `data/engines-runtime`
     (2.4 GB) and `data/engines-runtime-config` deleted after. Attack: moving the dictionary's folder into the kit's
@@ -301,6 +323,8 @@ Each slice: its own test red then green while building; the full suites, the bui
     - the old mock Speech engines page.
     Rec: all go. Attack: the kit's pid-file sweep is unit-tested only (no Mac or Linux box here); an operator behind
     a firewall loses the mirror (the kit's HTTP honours proxies). Changed: nothing.
+    Re-attacked: the DSP already starts through the kit's `spawnChild` (`audio/dsp_client.js:119`), so the kit's
+    seam covers it; no screen calls the mirror's routes (grep `/sources` in `src/`: none). Changed: nothing.
 13. **Exports onto the kit's job registry in round E; render jobs and book runs stay.** They persist and resume
     after a restart; the kit's registry lives in memory only (`platform/jobs.js:20-35`). Rec: as said; the
     persistence gap goes to the kit's list for after the release. Attack: two job systems is what §19 calls a bug —
