@@ -20,6 +20,7 @@ is the **AI Settings** page in the sidebar.
 | **Voices from the book** | Describes the voice each main speaker should have from how the book shows them, and the narrator's from the book's genre and tone — the one-click audiobook's voices step | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook); three routes too, one per step — [Voices from the book](#voices-from-the-book) |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
 | **Dictation cleanup** | Raw speech → clean text before paste | Captures — runs after a dictation when auto-refine is on |
+| **Transcription** | Turns speech into text — your dictation, the read-back that checks each take, and agents' transcriptions | Captures, a capture's transcript, Render's take check, chapter captions, `/v1/transcribe` and the MCP tool — [below](#transcription) |
 | **Voice gender guess** | Labels fetched voices the built-in dictionary doesn't know | Voices → ✨ Guess unknown genders (only when you click) |
 
 ## How routing works
@@ -142,9 +143,7 @@ on the built-in provider's engine panel.
 
 ### The catalog row's controls
 
-An AI model row and a **speech** model row (Speech engines → the engine's model
-list) work the same way, in the same order, with the same words — the two
-catalogs are one interaction grammar, not two:
+An AI model row reads:
 
 **Download** (until the files are on disk) → **Load model** / **Unload model**
 (warm it now, or free its memory) → **Set as default** → the **⋯** menu.
@@ -154,6 +153,12 @@ model's own folder in your file explorer — desktop app only), **View on Huggin
 Face** (the upstream repository page), **Delete downloaded model** (frees the
 disk, keeps the catalog row) and **Delete from catalog**. Full detail on the
 shared catalog: [JustWrite's model docs](../../justwrite-app/docs/models.md).
+
+A **speech** model's row, on the **Speech** tab, carries the same fit chip and
+speed band, and its own buttons — **Download** until it is on this computer,
+then **Auto · Graphics card · CPU**, **Load** / **Unload** and **Delete** — with
+JustVoice's facts about the model and its **Set as default** under it; see
+[Engines → A model's row](engines.md#a-models-row).
 
 ## Prompts are editable — and Dictation cleanup is one card with sections
 
@@ -678,6 +683,30 @@ extraction**, thinking off.
 | `narrator_words` | 2000 | How much of the book's opening the Local recipe reads for the narrator, in words. |
 | `audition_words` | 25 | The length, in words, of the line a voice's audition speaks. |
 
+## Transcription
+
+**Transcription** is the one feature here that isn't a language model: it turns
+speech into text, on a speech-recognition model of the speech runtime.
+Everything in JustVoice that hears speech uses it — Captures' dictation and a
+capture's transcript, the take check's read-back
+([Studio → Checking takes](studio.md#checking-takes)), chapter captions' word
+timings, `/v1/transcribe` and the MCP tool `justvoice.transcribe`.
+
+On **AI Settings → Routing by feature** it sits in the **Editing** group, beside
+Dictation cleanup: *Turns speech into text — your dictation, the read-back that
+checks each take, and agents' transcriptions.* Its card has no prompt. It shows
+the transcription preset the feature runs — JustVoice ships one, *Transcription —
+qwen3-asr-1.7b-q8* (Qwen3-ASR 1.7B, 8-bit) — and where its model runs: *auto*
+leaves it to the model's own **Auto · Graphics card · CPU** choice on the Speech
+tab, and *gpu* or *cpu* win over that choice; **Save** keeps the change on the
+preset. When the speech runtime isn't installed, or the model isn't on this
+computer yet, the card says so — *Transcription needs its model, ‹model›, which
+isn't on this computer yet.* — with **Install the engine (‹size›)** or
+**Download the model (‹size›)**; the first transcription also downloads it.
+
+Loading another recogniser on the Speech tab doesn't change which one
+transcribes. See [Engines → Speech recognition](engines.md#speech-recognition).
+
 ## Show notes (podcast projects)
 
 `POST /v1/projects/{id}/show-notes` drafts podcast show notes from the
@@ -711,7 +740,7 @@ Two kinds of work get a strip, and only these two:
   check, and Lines' *Re-render changed*.
 
 Installing an engine, downloading a model and loading a model are not tasks:
-each reports on its own row on Speech engines (see
+each reports on its own row on the Speech tab (see
 [Engines](engines.md#cancelling-an-in-flight-load)).
 
 ### A strip's life

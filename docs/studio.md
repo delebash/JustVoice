@@ -137,7 +137,7 @@ change it — and its recipe (**Local** or **Frontier**,
 step on this computer: *Every AI step runs on this computer — nothing is sent
 anywhere, nothing to pay.* A speech model whose licence isn't a plain *yes* to
 selling what it makes carries its licence word beside its name, as the
-[Speech engines](engines.md) list shows it: the characters' model, BreezeTTS 2,
+[Speech tab](engines.md) shows it: the characters' model, BreezeTTS 2,
 reads *Commercial use: Separate licence* — hover it for the licence's own
 words (since 2026-10-18). What stops it starting is said on the card: no
 language model set up, the book's **Language** not set (its voices are made in
@@ -1505,9 +1505,10 @@ and Render doesn't mark a flagged take on its line yet.
 What it does, for every line whose take in use was made from what the line is now
 (a stale line, or one with no take, is left alone — render it first):
 
-1. **It reads each take back** with your speech-recognition model — the one loaded,
-   else the one Dictation uses (`captures.stt_model`), loaded once for the whole
-   chapter — in the line's language. Then it lines up what it heard against the
+1. **It reads each take back** with the **Transcription** feature's model — the one
+   Dictation uses too ([AI features → Transcription](ai-features.md#transcription)),
+   loaded once for the whole pass, and downloaded first if it isn't on this
+   computer yet — in the line's language. Then it lines up what it heard against the
    line's words, after putting both through Whisper's standard text normaliser: case,
    punctuation and symbols don't count, and words in brackets — a performed tag such
    as `[laugh]` — aren't expected to be heard.

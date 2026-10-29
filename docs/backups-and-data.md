@@ -70,23 +70,24 @@ with a **Clear** verb per reclaimable store — all three follow the same rule:
 *clearing loses nothing permanently, it only trades disk for a later re-download
 or re-render*:
 
-- **AI models cache** — the language models behind Compose, attribution, and
-  friends. Cleared models re-download on demand; refuses while a model is
-  loaded (unload first).
-- **Speech models** — every downloaded TTS/STT model, in the speech cache
-  (`speech-cache/` in the data folder). One number, one Clear — the catalog
-  keeps every model and each re-downloads when next loaded. Refuses while a
-  speech model is loaded. Models downloaded before the 2026-10-01 switch to
-  the speech runtime are a format it can't use; they still sit in the speech
-  cache, are counted here, and go with Clear — the engines' new models
-  download fresh. (Older still: models from before 2026-08-14 lived in
-  per-engine folders, which are no longer counted.)
+- **AI models cache** — every downloaded model: the language models behind
+  Compose, attribution and friends, and the speech and speech-recognition
+  models (`ai-cache/` in the data folder, unless it is shared with another app
+  of the family — see [Engines → Where model files live](engines.md#where-model-files-live)).
+  Cleared models re-download on demand. Clear unloads the speech models first,
+  and refuses while a language model is loaded (unload first) or a speech
+  model is downloading, loading or speaking. In a cache other apps of the
+  family share, it removes only JustVoice's own models.
+- **Speech models** — the size of the speech-models folder older versions of
+  JustVoice downloaded into (`speech-cache/` in the data folder), shown with no
+  Clear; the speech models download into the AI models cache now.
 - **Render cache** — cached renders; an identical render computes again
   instead of returning instantly. Settings → Cache offers scoped clears (by age)
   when you don't want to drop everything.
 
-Engine spawn logs get the same per-row Clear; database, server logs, and
-engine builds are shown for the full picture.
+**Engine logs** — the AI model engine's and the speech runtime's — get the
+same per-row Clear; **Database**, server logs and **Engine builds** are shown
+for the full picture.
 
 ## Backup
 
@@ -106,8 +107,8 @@ For scripts, the same backup streams from `GET /v1/data/backup`
 reloads the app — no restart step. Restore is whole-state: it is the
 disaster-recovery path, not a merge. A backup made without generated audio
 restores everything else and leaves whatever audio is currently on disk in
-place. Loaded speech engines are unloaded during a restore; load one again from
-the AI page when you need it.
+place. Loaded speech models are unloaded during a restore; load one again from
+the AI page's Speech tab when you need it.
 
 A restore is all or nothing: the backup's folders are swapped in whole, then its
 tables, and if anything fails the old folders go back and nothing has changed.

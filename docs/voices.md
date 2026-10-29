@@ -32,7 +32,7 @@ render loads *that* model:
 - **A blend** is Kokoro's.
 
 The model's *size and precision* — Qwen3 1.7B or 0.6B, 8-bit or 16-bit — stay
-your choice on [AI Settings → Speech engines](engines.md): the render uses the
+your choice on [AI Settings → Speech](engines.md): the render uses the
 size you loaded or set as default. Voices made before 2026-10-03 did not record
 a model; they render on their engine's default model that can speak them.
 

@@ -197,7 +197,7 @@ one.*
 
 | Type | Lists | Made on |
 |---|---|---|
-| Built-in | The models' own voices — Kokoro's `af_heart`, Qwen3 CustomVoice's Sohee | AI Settings → Speech engines, by installing a model |
+| Built-in | The models' own voices — Kokoro's `af_heart`, Qwen3 CustomVoice's Sohee | AI Settings → Speech, by downloading a model |
 | Cloned | Voices cloned from a recording, imported ones too | This page — [New clone](#new-clone) |
 | Designed | Voices designed from a description, with or without a kept clip | This page — [New design](#new-design) |
 | Blended | Kokoro blends of two or more voices | This page — [New blend](#new-blend) |
@@ -210,7 +210,7 @@ only.* — Built-in lists Chatterbox Turbo's and Nano's own voices there, *Turbo
 Built-in voice is on a tag model — Chatterbox Turbo and Nano voices are Cloned*).
 Under **Written direction**, Blended is off the same way. Blended is also
 off while the installed speech runtime can't play a blend: *Blends need a speech
-runtime that can play them — update it on AI Settings → Speech engines when an
+runtime that can play them — update it on AI Settings → Speech when an
 update is offered.* If the choice you were on goes off, the page moves to the
 first one that can, and moves back when you leave that direction — pick
 **Tags** and *Type* goes to *Cloned*; go back to **Any** and it is *Built-in*
@@ -267,7 +267,7 @@ model, so every persona on it uses the same one* — is which size and precision
 of its model speaks it — *1.7B*, *0.6B (16-bit)* — and under it the page says what speaks right
 now: *Speaks with Qwen3-TTS CustomVoice 1.7B · loaded*. A version is chosen per
 **model**, not per persona: picking one here makes it that model's default, the
-same as **Set as default** on AI Settings → Speech engines, so every persona on
+same as **Set as default** on AI Settings → Speech, so every persona on
 that model speaks with it. (Two versions of one model can't be loaded at once
 beside the AI model on an 8 GB card.) A version you haven't downloaded says
 *not downloaded*. While another version of the model is downloaded, that one
@@ -284,7 +284,9 @@ and its **Version** lists the same way — *sanoTTS Nano (German)* for a German
 persona (since 2026-10-15). Whenever what speaks isn't the
 chosen version, the page offers **Load 0.6B**, with its progress bar, which
 fetches the version if it isn't downloaded (since 2026-10-13; before, only while
-another version was loaded). (Since 2026-10-05 — before, no persona screen said
+another version was loaded) — asking for its licence first when it has one, and
+loading once you accept it. **Cancel** on the bar stops the load, its download
+included. (Since 2026-10-05 — before, no persona screen said
 which version spoke.)
 
 **Speaks** is the language this persona speaks. Picking a voice sets it to that
@@ -573,7 +575,7 @@ the words Voices' *Can be directed* column uses — **✓ written direction**,
 **✓ 7 tags** or **sliders only** — the tags by kind (Emotion, Register,
 Non-verbal), the languages it
 speaks, ✓/✗ cloning and ✓/✗ seed. **Compare models →** opens AI Settings →
-Speech engines.
+Speech.
 
 **Used by** lists every speaker the persona plays as
 `Cael Ferren — The Ninth Facet · 25 lines`, with the total line count beside the heading.

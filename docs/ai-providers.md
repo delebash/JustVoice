@@ -6,10 +6,10 @@ JustVoice's AI page handles two kinds of provider, each on its own tab:
 - **Online + self-hosted providers** — Anthropic Claude / OpenAI / Gemini / Ollama / DeepSeek / OpenRouter for LLM; ElevenLabs / Speechify / Speechmatics / OpenAI TTS / OpenAI-compatible servers for TTS. These talk HTTP, don't install anything locally, and need an API key + base URL.
 
 Language models live on the **LLM providers** tab; everything speech lives on
-the **Speech engines** tab, which splits into **Local · free** (engines
-JustVoice installs, plus self-hosted servers you run) and **Online · metered**
-(cloud speech APIs). This doc covers the **online + self-hosted speech
-provider** flow.
+the **Speech** tab: the speech runtime and the models JustVoice installs, and,
+under them, **Self-hosted servers** (speech servers you run) and **Online ·
+metered** (cloud speech APIs). This doc covers the **online + self-hosted
+speech provider** flow.
 
 ## When to add a provider
 
@@ -23,13 +23,13 @@ provider** flow.
 
 ## Adding a speech provider
 
-1. **Open the AI page → Speech engines tab**, then pick the half that matches
-   where it runs: **Online · metered** for a cloud API, or **Local · free** →
-   the *Self-hosted servers* section for a server you run yourself.
+1. **Open the AI page → Speech tab** and scroll past the models to the section
+   that matches where it runs: **Self-hosted servers** for a server you run
+   yourself, or **Online · metered** for a cloud API.
    (Language models: the LLM providers tab has its own form — connect
    Claude / OpenAI / Ollama and the rest there.)
-2. Click **+ Add provider** (Online) or **+ Add self-hosted server** (Local).
-   An inline editor expands.
+2. Click **+ Add self-hosted server** or **+ Add provider**. An inline editor
+   expands.
 3. Fill in the form:
    - **Name** — what shows in dropdowns: the Voices page and a persona's **Voice** list.
    - **Base URL** — the API root. Examples:
@@ -71,7 +71,7 @@ preset ships with it off; turn it on on a card's preset to test it.
 ## Self-hosted TTS — Kokoro / Chatterbox / Dia / Qwen3-TTS
 
 
-If you're running a self-hosted TTS server (community-published OpenAI-compatible projects exist for each), add it under **Speech engines → Local · free → Self-hosted servers** with its base URL — no key needed for local servers. The setup-hint band in the form links to each known project's canonical GitHub. JustVoice speaks the standard `POST /v1/audio/speech` shape; non-standard fields (for example Chatterbox's `exaggeration` / `cfg_weight`) ride through `params` JSON.
+If you're running a self-hosted TTS server (community-published OpenAI-compatible projects exist for each), add it under **Speech → Self-hosted servers** with its base URL — no key needed for local servers. The setup-hint band in the form links to each known project's canonical GitHub. JustVoice speaks the standard `POST /v1/audio/speech` shape; non-standard fields (for example Chatterbox's `exaggeration` / `cfg_weight`) ride through `params` JSON.
 
 ## What about feature routing?
 
