@@ -285,7 +285,7 @@ them; there is no per-engine program. **Cloning is not Chatterbox-only.**
 
 Every variant is an audio.cpp package (two for speech recognition: its aligner rides as a
 companion, `COMPANIONS`) at the repository and commit `seed_audiocpp_catalog.json` pins it to —
-`audio-cpp/audio.cpp-gguf` at `release.js` `MODEL_REVISION`, or our own conversions in our fork's
+`audio-cpp/audio.cpp-gguf` at `scripts/audiocpp-catalog.js` `MODEL_REVISION` (was: `release.js`'s, until round E), or our own conversions in our fork's
 catalog (`qwen3-cv-0.6b-q8`, gap 4, `docs/plans/2026-10-02-gap-4-customvoice-0.6b.md`; Turbo and
 Nano, gap 1), or QwenCleo-ASR's own. Our ids are `<the note's id>-<precision>` (Kitten's
 `kitten-mini-0.8` by name). **Every 8-bit row has a 16-bit sibling** (gap 9), named by the rule
@@ -392,19 +392,22 @@ stays, tested against Turbo's set written out in `test_emotion_wiring.py`.
 
 Every manifest declares `SUPPORTED_OSES` explicitly (`test_os_gate.py` fails
 if one leans on the default), and since the switch all four declare all three
-OSes: the runtime ships a build for each (`release.binaries()`). The gate is
-still **`install_engine()`** (`manager.py`) — the first thing it does, before
-any install work, raising `InstallError` naming the host OS and the declared
-list. `EngineInfo.supported_on_this_os` carries the verdict to the client
-(computed server-side — the renderer may be a browser on another machine);
-`SpeechEnginesTab.vue:osBlocked()` reads it.
+OSes: the runtime ships a build for each (the kit's `DEFAULT_AUDIOCPP_BINARIES`). Since round E
+nothing installs per engine — the runtime is the kit's, installed once — so the gate is only
+what the client is told: `EngineManifest.supportsCurrentOs()` (`engines/model_catalog.js`) →
+`EngineInfo.supported_on_this_os` (`api/engines_api.js`, computed server-side — the renderer may
+be a browser on another machine), which `SpeechEngineHead.vue` (`osBlocked`) and
+`SpeechModelFacts.vue` read. (was: `install_engine()`'s `InstallError`, read by
+`SpeechEnginesTab.vue` — until round E.)
 
-### 3e. The speech runtime — install, process, slots, state
+### 3e. The speech runtime — the kit's, with our rows, hooks and requests (round E, 2026-10-29)
 
-**One audio.cpp server runs every model** (`server/justvoice/engines/audiocpp/`;
-it has no `manifest.py`, so discovery skips it). `EngineManifest.isolation`
-answers `"audiocpp"` for every engine; `uses_audiocpp` is true when every
-variant row carries an `audiocpp` block.
+**The kit runs every speech model** (`docs/plans/2026-10-29-round-e-onto-the-kit.md`; the kit's
+facts in its RESEARCH §12, ours in RESEARCH §1.7). Its `audiocpp` runtime installs the pinned fork
+build, runs the servers, places and books each model, and owns the screen; JustVoice gives it rows,
+hooks and each family's request. `server/src/app.js` wires it: `installLlm({ runtimes: ["audiocpp"],
+runtimeModels: runtimeModelRows(), runtimeSpeech: { audiocpp: SPEECH_HOOKS }, runtimeExeOverrides:
+{ audiocpp: () => devBuild.current() } })`.
 
 **Every other audio.cpp speech model is generated, not hand-written** (since
 2026-10-11; plan `docs/plans/2026-10-11-audiocpp-engine-catalog.md`):
@@ -418,17 +421,17 @@ family that speaks is a speech engine, its models doing what the spec says
 (`speechFactsOf`: `clone`, `design` from a `vdes` entry, built-in `voices` as its
 `STATIC_VOICES` via `builtinVoicesOf`, else its one voice, "‹Model› (built-in)"), and its
 Speech to text entries are a speech-recognition engine (`generatedRecognisers`,
-`<family>_asr` where the family also speaks, keeping its files in the speech model's
-folder when they share a package — `speech_cache.shareVariantFiles`) — the adoption plan's slice 2,
+`<family>_asr` where the family also speaks; a package the two share is one set of files in
+the kit's cache, where every file is kept once by its SHA-256) — the adoption plan's slice 2,
 `docs/plans/2026-10-13-adopt-everything-audiocpp.md` (`generatedEngines()`, joined in
-`manager.discoverEngines`). Its speech models become capability rows
+`model_catalog.discoverEngines`). Its speech models become capability rows
 (`capability_details.js`, `settingsOf` for typed settings), its requests
 `slot.generatedSpeechRequest` (a clip, a built-in voice as `voice`, or a description
 in the spec's design option; a speaker script, `asSpeakerScript`; the language at the top level,
 or in the options where the family's session reads it only there) and
 `slot.generatedTranscribeRequest` (its transcript `slot.plainTranscript`), and a first load
-warms up (`slot._warmGenerated`) — a clone-only model is priced after its first line
-(`manager._priceFirstLine`). What a spec can't say — how direction reaches the
+warms up (`slot.warmModel`, the kit's `warm` hook) — a clone-only model is priced after its first
+line (the kit's `useModel`, inside the kind's lock). What a spec can't say — how direction reaches the
 model, what testing found, a voice's gender and language from audio.cpp's docs — is
 one file per family in `engines/audiocpp/curated/<family>.js` (`LICENCE`,
 `DIRECTION`, `PLAIN`, `TESTED`, `BEST_FOR`, `HIDDEN_OPTIONS`, `VOICES`, `NOT_OFFERED`,
@@ -445,115 +448,52 @@ shows audio.cpp's licence table (`engineFacts`, `by: "audio.cpp"`). `LICENCE` is
 reading of the licence at its source (RESEARCH §10.13); `generated.engineFacts`
 serves it, audio.cpp's status, tested and best for on each engine
 (`engines_api._infoFromManifest`), and a licence our reading doesn't call "Yes"
-gates downloads (`TERMS.gates: "download"`, `manager.requireDownloadTerms`).
-A model's memory before a load is `measured_mb` (`manager.measuredMbFor`), else
-a generated model's `need_gb` — the larger of audio.cpp's `min_vram_gb` and its
-download (2026-10-12); Auto runs an unmeasured generated model on the CPU when
-that is more than the card, or tries the card first when only the estimate is
-(2026-10-12; words 2026-10-13; `manager.placementFor`). A measured size fits the
-card with the safety margin, which `/v1/engines/vram` sends as
-`safety_margin_mb` (the narrowings review, M4). The
-Speech engines tab's words for all of it are `src/services/engineFacts.js`,
-shared with its mock.
+gates downloads (`TERMS.gates: "download"`, `model_catalog.requireDownloadTerms`, the kit's
+`beforeDownload` hook). A model's memory before a load is its row's `peakVramMb` (audio.cpp's
+`min_vram_gb`) until a load measures it; where Auto puts it is the kit's `SpeechPlacement`
+(the files-against-estimate rule of 2026-10-12, words 2026-10-13, ported as they were). The
+Speech tab's words for our facts are `src/services/engineFacts.js`.
 
 | Piece | Where | What it does |
 |---|---|---|
-| pinned release | `release.py` | `TAG` (`v0.9.0`), the `BinaryAsset` rows per platform/GPU (Windows cuda12 + cudart 12.4, cuda13 + cudart 13.3, vulkan, cpu; Linux vulkan, cpu; macOS metal), `MODEL_REPO`/`MODEL_REVISION`, `model_source()` |
-| install | `runtime.install()` → kit `llm_runner.runner.binary.acquire_runtime` | staged download → launch-verify (`--no-ui --max-loaded-models 0 --version`) → atomic swap into `<engines_runtime_root>/audiocpp/<tag>/<gpu>/`; `installed_exe()` is cached, `forget_installed()` drops it |
-| eSpeak NG | `espeak.py` | fetches the `espeakng-loader` 0.2.4 wheel for this platform from PyPI (`wheel_matches`: any one of a name's platform tags), checks its pinned sha256, unpacks the library + `espeak-ng-data` into `<root>/audiocpp/espeak-ng-0.2.4/`. Kokoro reads its paths from the runtime's environment (`AUDIOCPP_ESPEAK_LIBRARY` / `_DATA`, `runtime._child_env`); KittenTTS from its own `kitten_tts.espeak_*` session options (`slot._entries_for`) |
-| backend choice | `runtime.configured_backend()/configured_gpu()` ← `settings.engines.speech_runtime` | `auto` = `select_runtime_asset` (the kit's GPU preference; cuda12 vs cuda13 by compute capability via `concrete_gpu`); a pinned backend that isn't installed reads as not installed |
-| the processes | `AudioCppServer.ensure()`, one per placement AND kind (`runtime.get_server("gpu" \| "cpu", "tts" \| "stt")`, `runtime.servers()`; 2026-10-04 audit §13.2) | writes `<data_dir>/engines-runtime-config/audiocpp-server[-cpu][-stt].json` — the CPU process is the same build with `backend: cpu` at `speech_runtime.cpu_threads` (0 = physical cores). A build with `model_management` (`slot.managed_runtime()` ← `release.FEATURES`) starts with `"model_management": true` and no models; `slot._load` registers its model (`AudioCppServer.register` → `POST /v1/models/load`, loads now) and `_align` the aligner on first use, so nothing downloaded or deleted restarts it. An older build's config lists the kind's on-disk variants + companions as `<id>::<role>` (`installed_entries(kind)`, `lazy_load: true`). Restarts when the signature changes (exe, backend, device, threads, model list on an older build, the `AUDIOCPP_*` environment), spawns through the kit's `spawn_child` (Windows kill-on-close Job Object + virus-scanner retry) with `JUSTVOICE_SERVER_PID` set, `--no-ui`, log `<data_dir>/logs/audiocpp-server[-cpu][-stt].log`. A CPU-build runtime has only the CPU ones (`slot.effective_placement`) |
-| a slot | `slot.AudioCppSlot(manifest, placement)` (`manager._new_slot`) | answers the manager's old engine-process calls against its placement's and kind's process: `/load` (model on disk? register it on a managed process, then warm it), `is_dead()` (it had loaded and its process is gone — `manager.loaded_for` then drops it and its booking), `/synth` (refuses a Pocket TTS reference clip with 403 `terms_required` until the manifest TERMS are accepted), `/transcribe`, `/align`, `terminate` = `unload_models` |
-| the API | `api/speech_runtime_api.py` | `GET /v1/speech-runtime` (release, build, backend setting, builds for this OS, GPUs, running/pid); `PUT` saves backend/gpu, unloads the speech slots, stops the server |
+| the runtime, its builds, pin, install, Update, Reinstall, Remove | kit `runner/runtimes.js` (`audiocpp`), `runner/config.js` (`DEFAULT_AUDIOCPP_BUILD`, `DEFAULT_AUDIOCPP_BINARIES`, `AUDIOCPP_FEATURES`, `AUDIOCPP_DROP_FILES`), `runner/runtime_service.js` `RuntimeService` | the pinned fork release per platform/GPU (Windows cuda12 + cudart 12.4, cuda13 + cudart 13.3, vulkan, cpu-portable; Linux vulkan, cpu-portable; macOS metal arm64 and x64), each archive's SHA-256; install into `<cache>/audiocpp/<build>/<gpu>/`, its `.py` files left out; Install/Update/Reinstall stop the servers once no line runs; older builds swept after |
+| eSpeak NG, the Japanese dictionary | kit `runner/runtime_extras.js` (`installArchive`), the build rows' `extras`, `AUDIOCPP_ADDONS` | eSpeak NG into the build's `_extras` (`AUDIOCPP_ESPEAK_LIBRARY`/`_DATA` in the servers' environment); UniDic into `<cache>/audiocpp/_addons/`, installed on demand (`POST /v1/ai/runtimes/audiocpp/addons/unidic/install`) |
+| the runtime's settings | kit `DEFAULT_AUDIOCPP_SETTINGS`, `AUDIOCPP_SETTINGS_UI`, runner settings `<name>:audiocpp` | backend, gpu, cpu_threads, cpu_min_realtime, spill_mb, runaway_s_per_char, runaway_min_s, card_margin_mb, gpu_threads, start_timeout_s, request_timeout_s — `PUT /v1/ai/runtimes/audiocpp/settings`; ours read them through `engines/audiocpp/kit_settings.js` (`runtimeNumber`, `runawayLimitS`, `shippedHas`/`runtimeHas` — a build's features, the dev build all) |
+| the servers | kit `runner/audiocpp.js` `AudioCppServer`, `AudioCppPool` | one per placement AND kind (gpu/cpu × tts/stt), `audiocpp-server[-cpu][-stt]`; models registered at run time (`model_management`); spawned through the kit's `spawnChild` (Job Object on Windows, the pid-file sweep elsewhere); killed at exit (`killRuntimeServersSync`); the shutdown route stops them first (`makeShutdownRouter({ beforeStop: stopRuntimeServers })`, `app.js`) |
+| where a model runs, its memory | kit `runner/speech_placement.js` `SpeechPlacement`, the arbiter | Auto / GPU / CPU (saved per model as runner setting `placement:audiocpp:<model>`), the reasons, the card margin, the spill and card-failure memory, the CPU speeds, the RAM check, the ledger `<kind>:audiocpp:<model>` |
+| one line | kit `llm/speech_dispatch.js` `withSpeechModel` → `RuntimeService.useModel` | loads the model (downloading it first), holds the kind's lock, prices the first line |
+| our models | `engines/audiocpp/kit_models.js` (`runtimeModelRows`, `rowOf`, `variantOf`) | every model version of `generated.js`'s engines as a `runtime_model` row: files by slot with SHA-256 and size (`seed_audiocpp_catalog.json`, `seed_file_hashes.js`), `peakVramMb` = `min_vram_gb` × 1024, `refSpeed.cpu`, `spec` (family, task, companions — the aligner `onDemand` —, eSpeak, `unloadStopsProcess`) |
+| our hooks | `engines/audiocpp/kit_hooks.js` `SPEECH_HOOKS` | `warm` (`slot.warmModel`), `pieceLength`, `loadOptionsKey` (`runtime_options.priceKeyFor`), `sessionOptions` (`runtime_options.sessionOptionsFor`), `transcribe` (16 kHz copy, language, time limit), `beforeDownload` (`model_catalog.requireDownloadTerms`) |
+| speaking, transcribing, aligning | `engines/audiocpp/kit_speech.js` (`speak`, `transcribe`, `align`, `transcriptionModel`, `transcriptionReadiness`, `engineError`, `LoadFailed`) → `slot.js` (`speak`, `checkLine`, `transcribeRequest`, `plainTranscript`) | a line through `withSpeechModel`; transcription through the kit's `transcribeFeature("transcription")` (the feature, `feature_catalog.js`; its preset `p_transcription`, `seed_presets.js`); alignment with `needs: ["aligner"]` |
+| the dev build | `engines/audiocpp/dev_build.js` (`current()`), `scripts/audiocpp-dev.js` | `npm run dev`'s build of `../audio.cpp` handed to the kit as its exe, backend and version (`dev · <commit>`); the build script's guard against a running app (`guardRunningBuild`) |
+| the routes | kit `llm/runtimes_api.js` under `/v1/ai/runtimes/audiocpp/` | `engine/status`, `engine/install`, `engine/update`, `engine` (DELETE), `settings`, `addons/:id/install`, `models`, `models/:id/download`, `…/load` (202 while it downloads), `…/unload` (cancels a load), `…/placement`, `…/try-card`, `models/:id` (DELETE); refusals by `runtimeProblem` |
+| the screen | kit `LuRuntimeTab.vue` in `AiModelsArea.vue` (`runtimeTabs`), our slots in `src/pages/AiPage.vue` | `SpeechEngineHead`/`SpeechEngineFoot` (group head/foot), `SpeechFilters` (+ `services/speechTab.js` `groupOf`, `modelShown`), `SpeechModelFacts` (model), `SpeechLoadedRail` + `SpeechPickingCard` (before-models), `SpeechProvidersPanel` (after-models); our facts from `stores/engines.js` (`factsOf`); a page's own Load `services/speechLoad.js`; the memory cells the kit's `useMemoryCells` |
 
-**Install = the runtime, once.** `install_engine()` (any engine) →
-`_install_audiocpp_runtime()`: runtime, then eSpeak NG. Models are separate:
-`installer.spawn_prefetch` → `speech_cache.fetch_hf_variant` (pinned files,
-plain layout), and a cold `manager.load` fetches a missing variant first
-(`_ensure_variant_local`). `manager.uninstall()` deletes the engine's
-speech-cache folder and raises `InstallError` (409 at the API) if a file
-survives — Windows won't delete a file the runtime holds open.
+**What JustVoice still serves about its engines:** `GET /v1/engines` and `GET
+/v1/engines/:id/models` (our facts — licence, testing, a model's languages, cloning, voices,
+direction, load options — `api/engines_api.js`, `api/models_api.js`), `GET /v1/engines/capabilities`,
+`PUT /v1/engines/:id/models/:variant/runtime-options`, `POST /v1/engines/:id/terms`, the external
+providers (`POST /v1/engines/external`, `DELETE /v1/engines/external/:id`, `…/probe` —
+`api/external_api.js`, registered at once).
 
-**Source and state are different roots.** `ENGINES_DIR` is the catalog source
-(read-only when frozen); `engines_runtime_root()` is mutable state —
-`ENGINES_DIR` unfrozen (so the runtime lands inside `engines/audiocpp/`,
-gitignored), `<data_dir>/engines-runtime` frozen.
+**Gone with round E** (removed everywhere; git is the archive): `engines/manager.js` (the slots,
+load, placement, booking, the CPU speeds), `engines/audiocpp/runtime.js` (`AudioCppServer` — the
+kit's port), `release.js` (the pin — the kit's `config.js`; `MODEL_REVISION` is
+`scripts/audiocpp-catalog.js`'s), `espeak.js`, `japanese.js`, `speech_cache.js` (files in the kit's
+models cache), `installer.js` and `AppState._jobs` (`/v1/jobs/:id` is the kit's job registry, for
+exports), `engines/leftovers.js` (the kit's spawn seam), `api/engines_models_api.js`,
+`api/speech_runtime_api.js`, `api/engine_sources_api.js`, `/v1/engines/vram`,
+`/v1/engines/speech-cache/clear`; in the renderer `SpeechEnginesTab.vue`, `LeftoverEnginesHelp.vue`,
+`services/ttsJobChannel.js`, `services/vramFeed.js`, the Speech engines mock. Tests renamed for
+what they kept: `cpu_placement` → `kitten_pocket_lines`, `engine_vram_wiring` →
+`scheduler_busy_and_align_refusal`, `engine_sources_and_prefetch` → `models_list_files`,
+`engine_local_load` → `engine_installed_state`; `runtime_life`, `speech_cache` and
+`engine_activity_guard` went.
 
-**Placement — the graphics card or the CPU, per model** (2026-10-02,
-`docs/plans/2026-10-02-cpu-placement.md` §8). `manager.placement_for(m, kind,
-variant)` → (`"gpu"` | `"cpu"`, the reason the row says, unload-the-AI-model?):
-a CPU-build runtime → cpu; the user's `engine_overrides[id].placements[variant]`
-→ that; else Auto — cpu when this load's card try failed or spilled, when
-`_failedOnCard` finds a `source="no_card"` row (this machine and runtime build)
-newer than the newest card `"peak"`, or when the price plus the safety margin is
-more than the card; a generated model whose estimate alone is too big but whose
-files plus the margin fit the card tries the card first (`cardFirst`, its
-reason); else gpu when no un-slept, unpinned `llm` reservation is on the
-card (`_ai_model_on_card`) or the variant's price (`_price_mb` — below)
-fits `_free_card_mb`; else cpu when `cpu_speed` (newest `source="speed"`,
-`backend="cpu"` row on this machine, else the manifest variant's `cpu_realtime`
-reference) ≥ `speech_runtime.cpu_min_realtime`; else gpu, and when the size was
-never measured `_unload_ai_model` runs `make_room(total, protected tts/stt)`
-(the kit's eviction event → the app's toast) and waits for the memory to drain.
-`load()` resolves it before anything moves, reloads a loaded model whose place changed, and records the
-reason (`placement_reason_for`); a load Auto put on the card that fails, or whose slot's shared
-GPU memory (`_slotSharedMb`, the kit's `processTreeSharedMb`) grows past
-`speech_runtime.spill_mb`, drops the slot and calls `load()` again with `cardFailed`, which lands
-on the CPU and, once there, writes the `no_card` row (`_recordCardFailure`); `synth`/`transcribe` on a CPU slot record the
-first real-time factor after each load (`_record_cpu_speed`, kit column
-`realtime_x`). The device is then `cpu` for a CPU placement, else
-`_resolve_device` = `backend_of(installed_exe())`; `_books_memory` books VRAM for
-anything but `cpu`.
-
-**The price and the order of a load** (2026-10-04, audit §13.3). A variant may
-carry `split_chars` (Qwen3 CustomVoice/Base 200, VoxCPM2 200, Kokoro 240); the user's
-`engine_overrides[id].split_chars[variant]` wins; `manager.effective_split` caps it at
-`generation.max_chunk_chars`, and `render_core.line_split_chars` sends a line in pieces of
-it (chapter render and Generate) — a description voice (`is_description_voice`) keeps the
-cap and, with no seed, `description_seed(voice)`. `_price_mb(kind, engine, variant,
-device)` = the largest `"peak"` measurement row of exactly that variant on this machine and
-device at its effective split (flag `split_chars`, kept 5 per fingerprint by
-`_record_speech_load`). `load()`: placement → `_admit_memory(price, credit_mb=the
-same-kind occupant's booking)` + an early booking at the price → `_ensure_variant_local`
-→ `_unload_ai_model` (unpriced Auto loads only) → spawn → `/load` with `calibrate_chars`
-(unpriced loads on the card: `slot._warm` speaks `CALIBRATION_TEXT` cut to that length,
-never past audio.cpp's own piece budget, `slot.familyBudget` — the spec's `text_chunk_size`; speech recognition 30 s of silence) → book
-`max(measured, price)`, record a peak when it calibrated or measured above the price. The
-high-water bump records higher readings after lines.
-
-**Memory: each kind books its own process.** Speech and speech recognition run in
-processes of their own (2026-10-04, audit §13.2), so the per-PID-tree probe of a
-slot's process is that one model's memory plus the process's own ~100 MB. (Until
-then they shared one process and `manager._own_share_mb` subtracted the other
-kind's booking — a computed share that went wrong whenever that booking was stale.)
-A slot whose process died is dropped with its booking by `loaded_for`; Cancel frees
-its booking; the engine endpoints are plain `def` (FastAPI's thread pool), so a load
-never holds the event loop.
-
-**Alignment quirk.** audio.cpp v0.9.0's `/v1/audio/alignments` converts sample
-positions to seconds with the INPUT rate after resampling to 16 kHz, so a
-24 kHz render came back at 2/3 of its real word times; `slot.as_16k_mono`
-sends 16 kHz mono so the seconds are right (measured 2026-10-01).
-
-**The runtime never outlives its server.** On Windows the kill-on-close Job
-Object ends it with the server however the server dies (pinned with real
-processes in `test_engine_lifetime.py`). `engines/leftovers.py` finds this
-install's runtime processes (argv[0] under the runtime folder) whose server is
-gone — `JUSTVOICE_SERVER_PID` from the environment, else the parent — measures
-them with the kit's ONE whole-machine `gpu_processes` query, and stops them;
-`serve.py` runs it once before uvicorn starts, and `GET`/`POST
-/v1/engines/leftovers[/stop]` serve the boot splash's **Stop them and retry**
-(`LeftoverEnginesHelp.vue` in the kit `BootModelLoad`'s `#failed` slot).
-`POST /v1/shutdown` (loopback only, `api/system_api.py`) runs
-`shutdown_manager()` — unload every slot, stop the runtime — then sets the
-uvicorn `Server.should_exit` that `serve.py` parks on `app.state`; the Tauri
-shell's `stop_child()` calls it on every close/stop/restart and hard-kills only
-when it doesn't answer. It carries no token, so `app.py` passes
-`loopback_open_paths=("/v1/shutdown",)` to the kit's `BearerAuthMiddleware`.
-
-**Dev tools:** `server/scripts/harvest_revisions.py` prints the current commit
-sha for every HF source, for pinning. (`npm run check:engines`, the venv drift
-checker, went with the venvs.)
+**Alignment quirk.** audio.cpp v0.9.0's `/v1/audio/alignments` converted sample positions to
+seconds with the INPUT rate after resampling to 16 kHz, so a 24 kHz render came back at 2/3 of its
+real word times; `slot.asAudio16kMono` sends 16 kHz mono so the seconds are right (measured
+2026-10-01; fixed in our fork's jv.1).
 
 ---
 
@@ -818,9 +758,9 @@ preset_effects)`.
 
 ### What actually reaches the engine — the delivery matrix
 
-`render_core.render_line` passes the whole `delivery` dict to the manager, and the
-slot maps it onto audio.cpp's request (`engines/audiocpp/slot.py:
-to_speech_request`, per family — §3b). **The host-applied fields work on every
+`render_core.render_line` passes the whole `delivery` dict to `voice_model.speak` →
+`kit_speech.speak`, and `slot.js` maps it onto audio.cpp's request (`slot.speak`, per family —
+§3b) inside the kit's `withSpeechModel`. **The host-applied fields work on every
 engine; everything else is engine-specific.** Speed, gain and pitch are applied
 to the finished line by one function, `render_core.apply_line_delivery`, which
 `/v1/generate` calls too (`generate_api._finish_line`) — until 2026-10-02
@@ -838,7 +778,7 @@ Generate applied none of the three.
 | `temperature` | engine | **chatterbox**, **qwen3** (`options.temperature`) |
 | `engine.*` subdict | engine | chatterbox · qwen3 (§3b's mapping). **Fixed 2026-08-17** — `nest_engine_keys()` in `delivery_merge.py` moves flat capability keys into `engine` before the merge, so the UI's flat save now arrives nested |
 | `seed` | host | `delivery.seed` wins over `req.seed` — a deliberate override |
-| `emotion` | **host, two ways** | **The only cross-engine direction control.** An enum compiles where prose cannot: composed into `instruct` for prose engines (Qwen3 CustomVoice / VoiceDesign), and compiled into a token by `render_core._apply_emotion_tag` for engines whose capability row declares an `inline_tags` set with `category="emotion"` and a `value_map` — Chatterbox Turbo and Nano (their rows declare one; `turbo_clone`, since v0.9.0-jv.4). Variant-precise via `manager.current_variant_id`. Applied after the lexicon and mirrored in `probe_line_cached`, or the cache probe lies. Had **no writer in `src/` at all** until 2026-08-17 |
+| `emotion` | **host, two ways** | **The only cross-engine direction control.** An enum compiles where prose cannot: composed into `instruct` for prose engines (Qwen3 CustomVoice / VoiceDesign), and compiled into a token by `render_core._apply_emotion_tag` for engines whose capability row declares an `inline_tags` set with `category="emotion"` and a `value_map` — Chatterbox Turbo and Nano (their rows declare one; `turbo_clone`, since v0.9.0-jv.4). Variant-precise via the model version the line speaks with (`voice_model.variantForModel`; was: `manager.current_variant_id`). Applied after the lexicon and mirrored in `probe_line_cached`, or the cache probe lies. Had **no writer in `src/` at all** until 2026-08-17 |
 | `pause_before` / `pause_after` | **host** | **Wired 2026-08-17** — `concat_lines` uses them per join. Blank = the project gap; a value replaces it; both sides of a join add. `0` is a deliberate butt-join |
 
 **Design consequence, and it is a big one:** tuning does **not** move cleanly with
@@ -1160,7 +1100,7 @@ The ones marked ✓ were re-read by hand; the rest come from a code-reading agen
 | Render lines (keeps takes) | `POST /v1/render_jobs`, `POST /v1/scenes/:id/render_lines` — `api/render_jobs_api.js:79`, `api/render_lines_api.js:117` | takes; jobs in `render_jobs` tables, resumed after a restart (`app.js:246` ✓) |
 | Render a chapter to hear it | `POST /v1/render_chapter` — `api/render_chapter_api.js:469` | a mastered WAV monitor; no takes; refuses a line with no speaker, persona or voice |
 | Check the takes (slice 6, 2026-10-16) | `take_check.checkTakes(state, sceneIds, {redo, signal, onProgress})`; `POST /v1/scenes/:scene_id/check_takes` (`api/render_lines_api.js`) | each line's `metadata_json.take_check` (the finding about its take in use, shown as `check` on `GET …/render_lines`); a failed take's one re-render as a render job made with `newTake` (`render_jobs.createJob`) |
-| Export | `POST /v1/projects/:id/export_m4b/start` (M4B with chapter marks; its body `startM4bExport` since 2026-10-16, for the run), `…/export_chapters/start` (zip of raw + mastered WAVs) — `api/export_jobs_api.js` | the file; jobs held in memory (`_jobs = new Map()` ✓ `:47`), lost on a restart |
+| Export | `POST /v1/projects/:id/export_m4b/start` (M4B with chapter marks; its body `startM4bExport` since 2026-10-16, for the run), `…/export_chapters/start` (zip of raw + mastered WAVs) — `api/export_jobs_api.js` | the file; jobs in the kit's job registry (`jobs = new JobRegistry(…)`, followed at `/v1/jobs/:id` — `makeJobsRouter`, `app.js`; round E), in memory, lost on a restart |
 | **The one-click run** (slice 5, 2026-10-16) | `POST /v1/book_runs`, `GET /v1/book_runs/:id`, `…/cancel`, `…/resume`, `GET /v1/projects/:id/book_run` — `api/book_runs_api.js`; the runner `book_run.js` (`createRun`, `startRun`, `_runBook`, `STEP_FNS`, `planRun`, `estimateRun`, `runReview`); the screen `src/components/StudioBookRun.vue` → `BookRunCard.vue` on Overview, `src/services/bookRun.js` | its `book_runs` row (not synced); every step above through its own function, in the plan's order — RESEARCH §10.21 |
 | ACX check | `GET /v1/projects/:id/qc` — `api/projects_api.js:1343` | — |
 | The chapter run | `src/services/chapterRun.js` — chains Analyze, the second look and Discover, chapter by chapter, as kit AI tasks | renderer memory: survives leaving Studio, not closing the window |
