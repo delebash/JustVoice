@@ -463,12 +463,12 @@ export const CALIBRATION_TEXT =
   "twice and then fell silent, as if it too were waiting to see what the night would bring.";
 /** audio.cpp's own piece budget for a family, in characters — it splits longer input itself, so a
  * calibrating piece is never longer (audit §5 D5): its spec's `text_chunk_size` default
- * (Chatterbox and Turbo 128, Kokoro 240, Kitten 400, Kitten TTS 2's 380, Breeze's 600) — null
- * where it gives none. (was: the first four copied here by hand — until the adoption plan's slice
- * 4, F10.) */
+ * (Chatterbox and Turbo 128, Kitten 400, Kitten TTS 2's 380, Breeze's 600), else the one its family
+ * file keeps where the spec now gives none (Kokoro 240, FireRedTTS3 600, Magpie 300, MOSS-TTS Nano
+ * 256; generated.js `textChunkSize`) — null where neither gives one. (was: the first four copied
+ * here by hand — until the adoption plan's slice 4, F10.) */
 export function familyBudget(family) {
-  const def = generated.requestOptionsOf(family).get("text_chunk_size")?.default;
-  return Number.isFinite(Number(def)) && Number(def) > 0 ? Number(def) : null;
+  return generated.textChunkSize(family);
 }
 
 // The description a design model's warm-up speaks from — the words Qwen3 VoiceDesign's warm-up

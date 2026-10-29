@@ -30,6 +30,7 @@ import * as fish_audio from "./fish_audio.js";
 import * as fish_drama3 from "./fish_drama3.js";
 import * as gigaam_asr from "./gigaam_asr.js";
 import * as glm_tts from "./glm_tts.js";
+import * as gradium_phonon from "./gradium_phonon.js";
 import * as granite5asr from "./granite5asr.js";
 import * as higgs_audio_stt from "./higgs_audio_stt.js";
 import * as higgs_audio_tts from "./higgs_audio_tts.js";
@@ -45,8 +46,11 @@ import * as kokoro_tts from "./kokoro_tts.js";
 import * as kroko_asr from "./kroko_asr.js";
 import * as kugelaudio from "./kugelaudio.js";
 import * as lfm2_audio from "./lfm2_audio.js";
+import * as lfm3_audio from "./lfm3_audio.js";
 import * as magpie_tts from "./magpie_tts.js";
 import * as maya1 from "./maya1.js";
+import * as ming3_audio from "./ming3_audio.js";
+import * as ming3_tts from "./ming3_tts.js";
 import * as miotts from "./miotts.js";
 import * as moonshine_asr from "./moonshine_asr.js";
 import * as moss_transcribe_diarize from "./moss_transcribe_diarize.js";
@@ -80,6 +84,7 @@ import * as voxcpm1 from "./voxcpm1.js";
 import * as voxcpm2 from "./voxcpm2.js";
 import * as voxtral_realtime from "./voxtral_realtime.js";
 import * as voxtral_tts from "./voxtral_tts.js";
+import * as xtts_v2 from "./xtts_v2.js";
 import * as zipvoice from "./zipvoice.js";
 
 export const CURATED = {
@@ -105,6 +110,7 @@ export const CURATED = {
   fish_drama3,
   gigaam_asr,
   glm_tts,
+  gradium_phonon,
   granite5asr,
   higgs_audio_stt,
   higgs_audio_tts,
@@ -120,8 +126,11 @@ export const CURATED = {
   kroko_asr,
   kugelaudio,
   lfm2_audio,
+  lfm3_audio,
   magpie_tts,
   maya1,
+  ming3_audio,
+  ming3_tts,
   miotts,
   moonshine_asr,
   moss_transcribe_diarize,
@@ -155,5 +164,6 @@ export const CURATED = {
   voxcpm2,
   voxtral_realtime,
   voxtral_tts,
+  xtts_v2,
   zipvoice,
 };

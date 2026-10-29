@@ -6,8 +6,8 @@
 // (../audio.cpp), plus each package file's size and hash at the pinned model revision on
 // Hugging Face. Writes server/src/engines/audiocpp/seed_audiocpp_catalog.json, which is committed
 // (seed data: the kit's family guard allows a quoted SHA-256 only in a seed file — named
-// catalog.json until 2026-10-29) — run this whenever our fork moves (the kit's pinned build, runner/config.js DEFAULT_AUDIOCPP_BUILD), and the
-// diff shows exactly what the update brings.
+// catalog.json until 2026-10-29) — run this whenever our fork moves (the kit's pinned build,
+// runner/config.js DEFAULT_AUDIOCPP_BUILD), and the diff shows exactly what the update brings.
 //
 //   node scripts/audiocpp-catalog.js                 the pinned tag (the kit's DEFAULT_AUDIOCPP_BUILD)
 //   node scripts/audiocpp-catalog.js --ref <ref>     another tag, branch or commit of the checkout
@@ -137,6 +137,10 @@ async function pinnedSource(pkg, defaults, trees) {
 // `family`, as catalog.ts builds them from model_specs/*.json.
 
 const EXPOSE_ALL_GGUF_PACKAGE_FAMILIES = new Set([
+  "ming3_tts",
+  "ming3_audio",
+  "latentsync",
+  "xtts_v2",
   "canary_asr",
   "cohere_asr",
   "moss_transcribe_diarize",
@@ -154,6 +158,7 @@ const EXPOSE_ALL_GGUF_PACKAGE_FAMILIES = new Set([
   "midashenglm_gen",
   "sanotts",
   "mossformer2",
+  "plapre",
   "voxtral_tts",
 ]);
 // installChoices' first case: families whose packages relate by their id's stem.
@@ -226,7 +231,7 @@ export function relatedPackages(entry, packages) {
 function relatedExposeAllGgufPackages(entry, packages) {
   const family = packages.filter((p) => p.family === entry.family && p.format === "gguf");
   if (!family.length) return [];
-  if (entry.family === "sanotts") return family;
+  if (entry.family === "sanotts" || entry.family === "xtts_v2") return family;
   if (!entry.download_id) return family;
   const exact = family.find((p) => p.id === entry.download_id);
   if (!exact) return relatedPackages(entry, packages);
@@ -303,16 +308,11 @@ export function packageLabel(p) {
   return `GGUF ${p.precision.toUpperCase()}`;
 }
 
+// Since upstream's #1127 (2026-10) a package's load target is the server's to resolve ("Static paths
+// are display/install placeholders. Managed loads use the server's model-local resolution"): the
+// path is the first GGUF file, and no package carries session options of its own any more.
 function packageModelPath(p) {
-  let modelFile;
-  if (p.format === "gguf" && p.family === "minimax_h3") {
-    const entryName = p.id.includes("int8_dit") ? "dit_int8.gguf" : "dit.gguf";
-    modelFile = p.files?.find((file) => file.toLowerCase().endsWith(`/${entryName}`));
-  } else if (p.format === "gguf" && ["auk", "lfm2_audio", "liveavatar", "minimax_music3", "yue2"].includes(p.family)) {
-    return `models/${p.target_directory}`;
-  } else if (p.format === "gguf") {
-    modelFile = p.files?.find((file) => file.toLowerCase().endsWith(".gguf"));
-  }
+  const modelFile = p.format === "gguf" ? p.files?.find((file) => file.toLowerCase().endsWith(".gguf")) : undefined;
   if (!modelFile) return `models/${p.target_directory}`;
   let relative = modelFile.replace(/\\/g, "/");
   const prefix = (p.strip_prefix || "").replace(/\\/g, "/").replace(/\/$/, "");
@@ -320,45 +320,7 @@ function packageModelPath(p) {
   return `models/${p.target_directory}/${relative}`.replace(/\/+/g, "/");
 }
 
-function packageSessionOptions(p) {
-  if (p.family === "lfm2_audio") {
-    // Every quantization installs into the same directory as Liquid's GGUF repo, so name this
-    // package's backbone; the loader pairs its mmproj.
-    const backbone = p.files?.find((file) => !file.startsWith("mmproj-"));
-    return backbone ? { "lfm2_audio.model_gguf": backbone } : undefined;
-  }
-  if (p.family === "minimax_music3") {
-    if (p.id === "minimax_music3_q8_0") {
-      return {
-        "minimax_music3.language_model_gguf": "language_model_q8_0.gguf",
-        "minimax_music3.rvq_depth_decoder_gguf": "rvq_depth_decoder_q8_0.gguf",
-        "minimax_music3.flow_transformer_gguf": "transformer_q8_0.gguf",
-      };
-    }
-    if (p.id === "minimax_music3_bf16") {
-      return {
-        "minimax_music3.language_model_gguf": "language_model_bf16.gguf",
-        "minimax_music3.rvq_depth_decoder_gguf": "rvq_depth_decoder_bf16.gguf",
-        "minimax_music3.flow_transformer_gguf": "transformer_bf16.gguf",
-      };
-    }
-    if (p.id === "minimax_music3_q4_0") {
-      return {
-        "minimax_music3.language_model_gguf": "language_model_q4_0.gguf",
-        "minimax_music3.rvq_depth_decoder_gguf": "rvq_depth_decoder_q8_0.gguf",
-        "minimax_music3.flow_transformer_gguf": "transformer_q4_0.gguf",
-      };
-    }
-  }
-  return undefined;
-}
-
-const choice = (p, withSession = true) => {
-  const out = { id: p.id, label: packageLabel(p), path: packageModelPath(p), format: p.format, precision: p.precision };
-  const session = withSession ? packageSessionOptions(p) : undefined;
-  if (session) out.session_options = session;
-  return out;
-};
+const choice = (p) => ({ id: p.id, label: packageLabel(p), path: packageModelPath(p), format: p.format, precision: p.precision });
 
 /** The packages audio.cpp's web UI offers to install for a catalog entry, first = its default. */
 export function installChoices(entry, packages) {
@@ -367,7 +329,7 @@ export function installChoices(entry, packages) {
     return packages
       .filter((p) => p.family === entry.family && p.format === "gguf" && p.id.replace(STEM_TAIL, "") === stem)
       .sort((left, right) => Number(right.id === entry.download_id) - Number(left.id === entry.download_id))
-      .map((p) => choice(p, false));
+      .map((p) => choice(p));
   }
   const exposesAllGguf = EXPOSE_ALL_GGUF_PACKAGE_FAMILIES.has(entry.family);
   if (entry.family === "auk" || entry.family === "yue2") {

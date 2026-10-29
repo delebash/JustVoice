@@ -475,8 +475,11 @@ files a model needs are JustVoice's to give.
 The ones JustVoice measured stay on the row itself:
 
 - **Attention** (Qwen3-TTS) — *Exact* or *Flash attention*: about 9 % faster
-  and 0.2 GB less at the peak, and the same seed gives a different take. Only
-  the 8-bit rows offer it: the runtime refuses it on 16-bit weights.
+  and 0.2 GB less at the peak, and the same seed gives a different take
+  (measured on the 8-bit row). Every row offers it, at any precision. A third
+  choice, *cuda_perf* (audio.cpp's own name), adds audio.cpp's other speed-ups
+  for the graphics card on top of flash attention — it may change the audio and
+  the memory taken; JustVoice hasn't measured it.
 - **Decoder weights** (Qwen3-TTS) — *16-bit* (the default) or *32-bit*. 16-bit
   takes about 0.5 GB less at the peak; at the same seed the two measure slightly
   apart, but in a listening test no difference could be heard, so 16-bit became
@@ -590,12 +593,15 @@ licence table says "No"*). JustVoice's readings that differ, and why:
 | sanoTTS | **Unclear** | Depends on the voice: heart, heart-nano and kristin learned from openly licensed voices; the others from Piper voices whose own cards name non-commercial or unknown recordings |
 | VibeVoice | **Unclear** | MIT, but Microsoft's card limits it to research use, and Microsoft has withdrawn its speech code and its own 7B model |
 | CrisperWhisper 2.0, Hviske ASR (v5.3) | **Separate licence** | Non-commercial, and each maker offers a separate commercial licence — the plain words say who to ask |
+| XTTS v2 | **No** | audio.cpp's table has no row for it. Its converted files say MPL-2.0, but they are Coqui's weights, whose own licence allows only non-commercial use of the model and of what it makes |
 
 **A model JustVoice hasn't read the licence of yet** — one audio.cpp adds in a
 later update — shows audio.cpp's own word and notes from its licence table until
 JustVoice reads it, and asks you to accept its licence before its first download
 the same way when it isn't a *Yes* there. Every model listed today has
-JustVoice's own reading (since 2026-10-15).
+JustVoice's own reading (since 2026-10-15; the five audio.cpp added in its
+2026-10-29 update — Gradium Phonon, LFM3-Audio, Ming 3.0 TTS, Ming 3.0 Audio
+Tiny and XTTS v2 — were read the same day).
 
 ### Tested by JustVoice
 

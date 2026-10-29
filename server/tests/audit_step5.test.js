@@ -238,13 +238,18 @@ test("kokoro_and_chatterbox_texts_count_what_is_offered", () => {
 
 // ─── 5h: runtime options ─────────────────────────────────────────────────────
 
-test("flash_attention_is_offered_only_on_8bit_qwen3", () => {
+test("flash_attention_is_offered_on_every_qwen3_row", () => {
   // Every load option the spec lists is offered since the adoption plan's E4 (was: these two
-  // alone); flash attention still only where audio.cpp accepts it, on Q8_0 weights.
+  // alone). audio.cpp takes flash attention on any weights since upstream's v0.9.3 merge (our
+  // fork's dacb0d7f), so every row offers it, with audio.cpp's three presets. (was: on Q8_0 rows
+  // only, which audio.cpp alone accepted — until then.)
   for (const r of discoverEngines().get("qwen3").module.VARIANTS) {
-    const keys = runtimeOptions.offeredFor(r).map((o) => o.key);
-    expect(keys.includes("qwen3_tts.perf_mode"), r.id).toBe(r.id.endsWith("-q8"));
-    expect(keys, r.id).toContain("qwen3_tts.conv_weight_type");
+    const offered = runtimeOptions.offeredFor(r);
+    const perf = offered.find((o) => o.key === "qwen3_tts.perf_mode");
+    expect(perf, r.id).toBeTruthy();
+    expect(perf.choices.map(([c]) => c), r.id).toEqual(["off", "flash_attention", "cuda_perf"]);
+    expect(perf.hint, r.id).not.toMatch(/8-bit|Q8/);
+    expect(offered.map((o) => o.key), r.id).toContain("qwen3_tts.conv_weight_type");
   }
 });
 

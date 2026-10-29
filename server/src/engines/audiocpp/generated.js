@@ -312,6 +312,17 @@ export function requestOptionsOf(family) {
   return _requestOptions.get(family);
 }
 
+/** audio.cpp's own piece budget for a family, in characters — it splits longer text itself: its
+ * spec's `text_chunk_size` default, else the one its family file keeps (`TEXT_CHUNK_SIZE`: where
+ * upstream's specs since v0.9.3 give none because it depends on the language, the spec's value
+ * before, which the runtime still uses outside Chinese, Japanese and Korean — each spec says its
+ * own rule) — null where neither gives one. A model's piece length (`split_chars: "spec"`) and a
+ * calibrating piece read it. */
+export function textChunkSize(family) {
+  const def = requestOptionsOf(family).get("text_chunk_size")?.default ?? CURATED[family]?.TEXT_CHUNK_SIZE;
+  return Number.isFinite(Number(def)) && Number(def) > 0 ? Number(def) : null;
+}
+
 /** The family's load options (its spec's typed `options.session`, read when the model loads). */
 export function sessionOptionsOf(family) {
   return (catalogFamily(family)?.options || {}).session || [];
@@ -770,7 +781,7 @@ function ownModel(engineId, family, note) {
   }
   const defaultVoice = voices.find((v) => v.audiocpp_voice === entry.default_voice) ?? voices[0] ?? null;
   const facts = { voices: voices.length, languages: languages.length };
-  const split = note.split_chars === "spec" ? requestOptionsOf(family).get("text_chunk_size")?.default : note.split_chars;
+  const split = note.split_chars === "spec" ? textChunkSize(family) : note.split_chars;
   const lic = licenceOf(fam);
   const rows = packages.map(({ pkg, main, ourId }, i) => {
     const tail = PRECISION_TAIL[pkg.precision] || slug(pkg.precision || "gguf");

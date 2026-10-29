@@ -37,16 +37,13 @@ export const OLD_OPTION_NAMES = {
 // 1.7B, a 752-character line in 200-character pieces, on an 8 GB card (RESEARCH §2.1):
 // `perf_mode=flash_attention` 194 MB less at the peak and 9 % faster, a different take for the
 // same seed; `conv_weight_type=f16` 492 MB less, the audio 2.04 dB (log-spectral) from the 32-bit
-// take. `only_8bit`: audio.cpp accepts it only with Q8_0 weights ("qwen3_tts.perf_mode=
-// flash_attention is supported only with Q8_0 GGUF weights", ../audio.cpp
-// src/models/qwen3_tts/session.cpp). `default`: the app's own, sent unless another is chosen —
+// take. `default`: the app's own, sent unless another is chosen —
 // the user couldn't tell 16-bit decoder weights from 32-bit by ear (2026-10-04), so 16-bit is
 // the default, where audio.cpp's own is 32-bit.
 export const LOAD_OPTIONS = {
   perf_mode: {
     label: "Attention",
     choices: { off: "Exact", flash_attention: "Flash attention" },
-    only_8bit: true,
     hint: "Flash attention: about 9 % faster and 0.2 GB less at the peak; the same seed gives a different take.",
   },
   conv_weight_type: {

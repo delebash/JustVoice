@@ -4,7 +4,7 @@
 // values other than the default), and passed as the model's session options when it is
 // registered. A change reloads a loaded model (api/models_api.js).
 //
-// Every option the family's spec lists (its `options.session`, catalog.json), at audio.cpp's own
+// Every option the family's spec lists (its `options.session`, seed_audiocpp_catalog.json), at audio.cpp's own
 // default — the adoption plan's E4 (docs/plans/2026-10-13-adopt-everything-audiocpp.md §3; was:
 // only the two Qwen3 options whose effect was measured, audit 2026-10-04 §13.5, until the
 // narrowings review's E4/F1). audio.cpp's own UI folds its model's options the same way ("Model
@@ -15,7 +15,7 @@
 // `session_options`).
 //
 // What JustVoice knows about an option is its family file's `LOAD_OPTIONS`
-// (curated/<family>.js): its words, a value audio.cpp refuses on some weights, a default of the
+// (curated/<family>.js): its words, a default of the
 // app's own. Such an option shows on the row itself; the rest are folded. Each option has its
 // `default` (what the model loads with when nothing is set: the app's, else audio.cpp's, else
 // none) and audio.cpp's own `runtime_default` (never sent). They differ for Qwen3's decoder
@@ -32,11 +32,6 @@ import * as self from "./runtime_options.js";
 
 // The spec's option types → the control the row shows.
 const CONTROL = { enum: "choice", bool: "switch", boolean: "switch", int: "number", float: "number", number: "number" };
-
-// The catalog's own mark: every 8-bit row's id ends "-q8" (a sibling at another precision ends
-// with its own: "-bf16", "-f16", "-orig" — generated.js). A file name is not one — Base 1.7B's is
-// "…-q8_0_v2.gguf".
-const is8bit = (row) => String(row.id ?? "").endsWith("-q8");
 
 /** A spec default as the text audio.cpp reads, or null. */
 const asText = (v) => (v === undefined || v === null || v === "" ? null : typeof v === "boolean" ? String(v) : String(v));
@@ -62,7 +57,6 @@ export function offeredFor(row) {
     const key = `${family}.${o.name}`;
     if (isFileOption(o) || appSets.has(key)) continue;
     const k = known[o.name] ?? null;
-    if (k?.only_8bit && !is8bit(row)) continue;
     const type = CONTROL[o.type] ?? "text";
     // A choice's words: its spec's values (a preset's written out by the catalog script).
     if (type === "choice" && !(Array.isArray(o.values) && o.values.length)) continue;

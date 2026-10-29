@@ -48,7 +48,7 @@ export const ENGINE = {
 // Its one model, its downloads as audio.cpp's packages, in our ids (`<id>-<precision>`).
 // `languages: "voices"` — a Kokoro voice speaks its own language, so the model speaks its voices'.
 // `split_chars: "spec"` — the longest piece a line reaches it in is audio.cpp's own Kokoro budget
-// (its spec's `text_chunk_size`, 240), so it never re-splits a piece with a hard join (audit
+// (`TEXT_CHUNK_SIZE` below, 240), so it never re-splits a piece with a hard join (audit
 // 2026-10-04 §13.3); a 240-character piece peaked at about 2,700 MB on the card.
 export const MODELS = [
   {
@@ -63,6 +63,13 @@ export const MODELS = [
     packages: ["kokoro_82m_q8_0", "kokoro_82m_bf16"],
   },
 ];
+
+// audio.cpp's own piece budget for Kokoro, in characters: its spec's `text_chunk_size` default
+// until upstream's v0.9.3 made it depend on the voice ("Default 100 for Chinese and Japanese
+// voices, otherwise 240", model_specs/kokoro_tts.json; `kDefaultTextChunkSize`,
+// src/models/kokoro_tts/session.cpp:37) and the spec stopped giving one. Kept so a line's pieces
+// and the price measured at them stay what they were (generated.js `textChunkSize`).
+export const TEXT_CHUNK_SIZE = 240;
 
 // Seconds of audio per second of work on the CPU on the reference machine (Ryzen 7 5700X, 8
 // threads) until a render measures this one (docs/plans/2026-10-02-cpu-placement.md §6): the 8-bit

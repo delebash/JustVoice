@@ -17,3 +17,10 @@ export const LICENCE = {
 export const OLD_OPTION_NAMES = {
   instruction: "instruct",
 };
+
+// audio.cpp's own piece budget for FireRedTTS3, in characters: its spec's `text_chunk_size` default
+// until upstream's v0.9.3 made it depend on the text ("default 80 when hanzi, kana and Hangul
+// outnumber other letters and digits (except edits), otherwise 600", model_specs/fireredtts3.json;
+// src/models/fireredtts3/session.cpp:25) and the spec stopped giving one. Kept so a calibrating
+// piece, and the price measured at it, stays what it was (generated.js `textChunkSize`).
+export const TEXT_CHUNK_SIZE = 600;

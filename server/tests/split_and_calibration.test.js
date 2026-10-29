@@ -13,6 +13,7 @@ import { AudioCppError } from "@delebash/core/runner/audiocpp";
 import { afterEach, expect, test } from "vitest";
 import { endSpeech, fakeSpeechRuntime } from "./engines_helpers.js";
 import { parseWavHeader } from "../src/audio/wav.js";
+import * as generated from "../src/engines/audiocpp/generated.js";
 import { pieceLengthOf } from "../src/engines/audiocpp/kit_hooks.js";
 import { variantOf } from "../src/engines/audiocpp/kit_models.js";
 import * as slotMod from "../src/engines/audiocpp/slot.js";
@@ -170,6 +171,18 @@ test("a_calibrating_warm_up_is_a_full_length_piece", async () => {
     expect(await warm(variant, srv, 0)).toBe(false);
     expect(srv.calls[0].input.endsWith("Ready.")).toBe(true);
   }
+});
+
+test("audio.cpp's budget where its spec now gives none is the one the family's file keeps", () => {
+  // upstream's v0.9.3 specs made these depend on the language and dropped the default; the value
+  // before stays, so a piece and the price measured at it don't move
+  const kept = { kokoro_tts: 240, fireredtts3: 600, magpie_tts: 300, moss_tts_nano: 256 };
+  for (const [family, chars] of Object.entries(kept)) {
+    expect(generated.requestOptionsOf(family).get("text_chunk_size")?.default ?? null, family).toBeNull();
+    expect(slotMod.familyBudget(family), family).toBe(chars);
+  }
+  // a spec that gives one still wins
+  expect(slotMod.familyBudget("chatterbox")).toBe(128);
 });
 
 test("voicedesign_warms_from_words_and_a_clip_only_family_cannot_calibrate", async () => {
