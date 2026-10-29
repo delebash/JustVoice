@@ -297,6 +297,35 @@ Each slice: its own test red then green while building; the full suites, the bui
     capture, a Kokoro Japanese line (the dictionary), an export — and one Qwen3-ASR line on the CPU, so Auto has this
     PC's speed again (§5 item 10).
 
+### 4.1 Progress and the decisions taken while building (2026-10-29)
+
+Under the user's go: "do it all dont stop if you find bugs are thing sto fix or add think adversirlay on it … take
+your recs geti all finished go". Each change ran its own test, red then green; lint, the full suites, the build and
+the gate wait for step 10 (the user's rule, 2026-10-28).
+
+- **Step 1 + 7 BUILT** (d3a1c12b … 8223b4e1): `kit_models.js` (the rows), `kit_hooks.js`, `kit_settings.js`, the
+  wiring, the settings' retirement, the DSP on the kit's port, log and environment; Pocket's 99 voice files' and 36
+  small files' SHA-256s (fetched at their pinned revisions). The kit fixed G1's order on our report (52e663c: the
+  transcription hook runs under the stt lock), and the 16 kHz copy was built on it.
+- **Steps 2–4 BUILT** (5b6f56a4 + 00cc9407 … e1764725): speech through `withSpeechModel` (`kit_speech.js`),
+  transcription as one "Transcription" feature on preset `p_transcription` (group "Editing", hint "Turns speech into
+  text — your dictation, the read-back that checks each take, and agents' transcriptions."), the old engine code and
+  routes removed, the kit's `runtimeProblem` for refusals (kit 284c67f; not installed → 409 `engine-not-installed`,
+  kit later). Decided while building: `npm run dev`'s guard against a running app comes back in
+  `scripts/audiocpp-dev.js`; `engine_overrides.*.placements` dropped (this PC's two were "auto"); the external
+  path's messages point at "Try Test connection on AI Settings → Speech"; server messages say "AI Settings → Speech".
+- **Steps 5–6 BUILT** (ba5ec71e … 4d480b6c): the kit's Speech tab with our slots; exports on the kit's job registry
+  at `/v1/jobs`. Decided while building: online and self-hosted speech providers sit under the models in
+  `after-models` (the old Local/Online folder tabs would need two kit features for one switch); Re-download, Open
+  folder and the TTS/STT headings dropped; "Set as default" for speech only (transcription's model is its preset's).
+  Asked of the kit: a sort for the tab (G6 left it out — my miss), the model Load as a kit service, the job strip's
+  note, evictions announced. Follow-ups running: the "Loaded now" rail back, the chat model's on-demand claim, the
+  repeated deep link, `mock-snapshots.js` off `createRequire`, a self-hosted server registered on save.
+- **The fork** (the user: "merge it"): upstream merged into `jv` as dacb0d7f, pushed, unbuilt — its build and ctest
+  run in step 10. The catalog is being rebuilt from it as `seed_audiocpp_catalog.json` (the kit's guard: seed data
+  under the `seed_` prefix), the small-file hashes moving into `seed_file_hashes.js`.
+- **Still to do:** step 9 (docs), step 8 (this PC's data — the deletions included, under the go), step 10.
+
 ## 5 · Decisions for your word
 
 1. **Send §3 to the kit session to fix and fill before JustVoice builds.**
