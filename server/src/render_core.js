@@ -752,7 +752,7 @@ export async function renderLine(
       // The voice's model didn't load for its first line.
       return badRequest(
         `engine '${engineId}' failed to load on first use: ${errText(e)}. ` +
-          `Load it on the Engines tab first, or POST /v1/ai/runtimes/audiocpp/models/${e.versionId}/load.`,
+          `Load it on AI Settings → Speech first, or POST /v1/ai/runtimes/audiocpp/models/${e.versionId}/load.`,
       );
     }
     return internal(`${what}: ${errText(e)}`);

@@ -9,7 +9,7 @@
 // `speak`, whose line loads its model when another is resident; faked by render_helpers'
 // FakeSpeech), cache like every other line — and the registry branch stays first, exactly as
 // external providers and the test fakes rely on.
-import { realpathSync, writeFileSync } from "node:fs";
+import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, expect, test } from "vitest";
 import "./engines_helpers.js";
@@ -108,6 +108,16 @@ test("cloned_voice_passes_reference_wav", async () => {
   const voices = { get: (vid) => (vid === "v1" ? stored : null), refWavPath: () => ref };
   await renderLine(state({ voices }), { voice: "v1", text: "Hello" });
   expect(fakeMgr.synths.at(-1)[1].audio_prompt_path).toBe(realpathSync.native(ref));
+});
+
+test("a_model_that_wont_load_points_at_ai_settings_speech_never_the_engines_tab", () => {
+  // The tab is "Speech" since round E (decided): a line's load failure and a voice of an unloaded
+  // engine say "AI Settings → Speech", as the server's other messages do (a8544707).
+  for (const file of ["../src/render_core.js", "../src/api/generate_api.js"]) {
+    const src = readFileSync(new URL(file, import.meta.url), "utf8");
+    expect(src, file).not.toMatch(/Engines tab/);
+    expect(src, file).toMatch(/on AI Settings → Speech first, or POST \/v1\/ai\/runtimes\/audiocpp\/models\//);
+  }
 });
 
 test("a_registry_backend_that_wont_load_points_at_its_test_connection", async () => {

@@ -150,7 +150,7 @@ export async function generate(req, { signal = null } = {}) {
     if (kitSpeech.currentFor("tts") !== staticOwner) {
       throw badRequest(
         `voice ${strRepr(req.voice)} belongs to engine ${strRepr(staticOwner)} which is not currently loaded. ` +
-          "Load it on the Engines tab first, or pick a voice belonging to the loaded engine.",
+          "Load it on AI Settings → Speech first, or pick a voice belonging to the loaded engine.",
       );
     }
     return self._generateViaManager(staticOwner, req, null, { signal });
@@ -310,7 +310,7 @@ export async function _generateViaManager(engineId, req, voiceFields = null, { s
         // The voice's model didn't load for the line.
         throw badRequest(
           `engine '${engineId}' failed to load on first use: ${errText(e)}. ` +
-            `Click Load on the Engines tab first, or POST /v1/ai/runtimes/audiocpp/models/${e.versionId}/load.`,
+            `Click Load on AI Settings → Speech first, or POST /v1/ai/runtimes/audiocpp/models/${e.versionId}/load.`,
         );
       }
       throw internal(`engine synthesize: ${errText(e)}`);
