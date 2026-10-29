@@ -10,10 +10,11 @@
 // models and no GPU, so it works with nothing installed — cloud voices included). The C++ was
 // proven against the Python it replaced, output for output (the fork's `dsp/tests/parity/`).
 //
-// It starts on first use through the kit's spawn door — a kill-on-close Job Object on
-// Windows, so it dies with this server however this server dies; elsewhere
-// `JUSTVOICE_SERVER_PID` lets the leftover sweep find it — on a free loopback port, logs to
-// `<data>/logs/audiocpp-dsp.log`, and is started again if it died. Where it is, first found
+// It starts on first use through the kit's spawn door (round E, docs/plans/2026-10-29-round-e-
+// onto-the-kit.md §4 step 7: the kit's spawnChild, findFreePort, rotateLog and childEnv) — a
+// kill-on-close Job Object on Windows, so it dies with this server however this server dies;
+// elsewhere the kit's pid file lets its next start end one a crash left — on a free loopback port,
+// logs to `<data>/logs/audiocpp-dsp.log`, and is started again if it died. Where it is, first found
 // wins:
 //   1. `JUSTVOICE_DSP_EXE` — an explicit path;
 //   2. the development build `npm run dev` names (`JUSTVOICE_AUDIOCPP_BUILD`, its bin folder);
@@ -32,6 +33,7 @@ import { getLogger } from "@delebash/core/platform/log";
 import * as procs from "@delebash/core/platform/procs";
 import { RuntimeError } from "@delebash/core/platform/py";
 import { pyFloatValue, pyJson } from "@delebash/core/platform/pyjson";
+import { childEnv, rotateLog } from "@delebash/core/runner/audiocpp";
 import * as process_ from "@delebash/core/runner/process";
 import * as appState from "../app_state.js";
 import * as devBuild from "../engines/audiocpp/dev_build.js";
@@ -111,10 +113,10 @@ class Program {
       this._job = null;
     }
     const exe = self.findExe();
-    this._port = await runtime._freePort();
+    this._port = await process_.findFreePort();
     const lp = logPath();
-    runtime._rotateLog(lp);
-    const env = runtime._childEnv();
+    rotateLog(lp);
+    const env = childEnv();
     const popen = (argv, opts) => procs.popen(argv, { ...opts, cwd: path.dirname(exe), env });
     [this._proc, this._job] = await process_.spawnChild(popen, [exe, "--port", String(this._port)], lp);
     const deadline = performance.now() / 1000 + runtime.startTimeout();
