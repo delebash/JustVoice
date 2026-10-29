@@ -540,12 +540,13 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   dacb0d7f`.
 - **The catalog at the merge** (JustVoice `ea2f01fc`; the file is `seed_audiocpp_catalog.json` since
   `a3686de1` — the kit's family guard allows a quoted SHA-256 only in a seed file): built at `jv`
-  `dacb0d7f`. 132 families (57 speech), 428 packages, 342 offered by audio.cpp's web UI; 77 engines
-  (50 speech, 27 transcription), 237 model versions. New engines: Gradium Phonon, LFM3-Audio (and its
-  recogniser), Ming 3.0 TTS, Ming 3.0 Audio Tiny (and its recogniser), XTTS v2, beside Fish Audio
-  Drama 3 (and its small IQ3_XXS download) from the uncommitted catalog of 2026-10-18 (`jv`
-  `9106c13a`), which this replaces; LatentSync, Magenta RealTime 2 and openWakeWord are no speech
-  entry, Plapre has no complete package at the pinned revision. Our port of audio.cpp's web UI rule
+  `dacb0d7f`, model revision `661a224e` (below). 132 families (57 speech), 428 packages, 342 offered by
+  audio.cpp's web UI; 79 engines (51 speech, 28 transcription), 240 model versions. New engines: Gradium
+  Phonon, LFM3-Audio (and its recogniser), Ming 3.0 TTS, Ming 3.0 Audio Tiny (and its recogniser),
+  Plapre 3, Whistle ASR, XTTS v2, beside Fish Audio Drama 3 (and its small IQ3_XXS download) from the
+  uncommitted catalog of 2026-10-18 (`jv` `9106c13a`), which this replaces; LatentSync, Magenta
+  RealTime 2 and openWakeWord are no speech entry. (was: at `f861648c`, 77 engines (50, 27), 237
+  versions, Plapre and Whistle without their files — JustVoice `ea2f01fc`, the same day.) Our port of audio.cpp's web UI rule
   follows upstream's #1127 (a package's load target is the server's; the path is its first GGUF and
   it carries no session options — none of ours read them) and its five new expose-all families. The
   package of another repository is pinned at what its revision resolves to on the day: Kitten TTS 2's
@@ -553,16 +554,23 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   the packaged app and `npm run server` run v0.9.2-jv.6, which lists these engines without loading
   them, until the family release ships v0.9.2-jv.7 (TASKS "Our audio.cpp fork is released with the
   family"). (was: the catalog at the pin v0.9.2-jv.6 — 122 families (50 speech), 386 packages, 69
-  engines (44, 25), 215 versions — until 2026-10-29.) **`MODEL_REVISION` stays `f861648c`:** the
-  merged specs name 22 files missing there — the 13 of v0.9.2 and 9 added to `audio-cpp/audio.cpp-gguf`
+  engines (44, 25), 215 versions — until 2026-10-29.) **`MODEL_REVISION` `661a224e`** (decided 2026-10-29): the
+  merged specs name 22 files missing at `f861648c` — the 13 of v0.9.2 and 9 added to `audio-cpp/audio.cpp-gguf`
   since (Irodori v4.1 Small MeanFlow ×2, Kitten TTS 2 20261021 ×2, openWakeWord Alexa, Plapre 3 ×2,
   VoxCPM2 VocalRender Pro, Whistle), all at its main `874fcb41` (2026-10-27) — but at main 145 of the
   446 files at `f861648c` have other bytes (137 a few KB longer: "Refresh embedded GGUF specs for
   v0.9.2 (#19)", `6f45df32`, 2026-10-19), 28 of them downloaded here (27 versions: Kokoro, Qwen3 ×4,
-  Chatterbox ×2, Pocket ×7, VoxCPM2 ×2, Qwen3-ASR and its aligner …), which a move would make
-  download again. `661a224e` (2026-10-18), the last before that refresh, adds Plapre, openWakeWord
-  and Whistle and changes only MicroWakeWord's file. The move is the user's (open). — *git + HF API +
-  the downloaded manifests + tests, 2026-10-29*.
+  Chatterbox ×2, Pocket ×7, VoxCPM2 ×2, Qwen3-ASR and its aligner …), which a move to main would
+  download again for embedded specs a release build doesn't read (it reads its built-in copy, §1.2).
+  `661a224e` (2026-10-18, 452 files), the last before that refresh, adds Plapre 3, openWakeWord and
+  Whistle and changes only MicroWakeWord's GGUF (not offered, not downloaded) and `.gitattributes`:
+  all 168 audio.cpp-gguf files downloaded here keep their SHA-256 there, as do Pocket TTS's 99 preset
+  voice files (`POCKET_VOICE_FILES` moved with it), and the kit keys a blob by its SHA-256, so the move
+  costs a snapshot link per file and no download. 18 files are still missing: the 13 of v0.9.2 and
+  the five that wait on a later revision — Kitten TTS 2's 20261021 package ×2 (its new default, so
+  Kitten TTS 2 keeps its `dignome/kitten_tts2` downloads), Irodori v4.1 Small MeanFlow ×2, VoxCPM2
+  VocalRender Pro. (was: `f861648c` — until JustVoice `ea2f01fc`'s follow-up, 2026-10-29.) — *git +
+  HF API + the downloaded manifests + tests, 2026-10-29*.
 
 ### 1.5 audio.cpp's own web UI
 
@@ -3471,14 +3479,17 @@ title; ten of 32 answers differ from it (eight until "Separate licence" was adde
   from an undisclosed source; Soprano's 1,000 hours are unnamed; Hviske v5.3's GGUF is
   `mirek190/audio.cpp`'s, whose card says Apache-2.0; SenseVoice's own GGUF repo says
   apache-2.0. — *agent + web, 2026-10-15*
-- **The five the merge of upstream v0.9.3 brought** (our fork's `dacb0d7f`; read at their source
+- **The seven the merge of upstream v0.9.3 brought** (our fork's `dacb0d7f`; read at their source
   2026-10-29, the HF API and each card or licence file):
   - **XTTS v2** — not in the table; ours **No**. Its GGUF repo (`onicubag/xTTSv2-GGUF`) is tagged
     `mpl-2.0`, the licence of Coqui's code, but the files are Coqui's XTTS-v2 weights, whose
     `LICENSE.txt` is the Coqui Public Model License 1.0.0: "This license allows only non-commercial
     use of a machine learning model and its outputs", non-commercial "only so far as you do not
     receive any direct or indirect payment arising from the use of the model or its output".
-  - **Yes, as the table says:** Gradium Phonon 31M English ("The weights, tokenizer and voices in
+  - **Yes, as the table says:** Plapre 3 (its card `license: cc-by-4.0`, nothing added — credit
+    syv.ai; audio.cpp's table adds its Kanade codec MIT and WavLM / CosyVoice2 HiFT notices), Whistle
+    ASR (Apache-2.0, its LICENSE file, nothing added; both offered once the model revision moved to
+    `661a224e`), Gradium Phonon 31M English ("The weights, tokenizer and voices in
     this repository are released under Apache 2.0, which allows commercial use"; its 40M siblings
     are CC BY-NC 4.0 and not packaged), Ming 3.0 TTS 0.5B (MIT; the card asks that cloning not be
     used "to impersonate a real person without consent"), Ming 3.0 Audio Tiny (MIT; the LEGAL.md it
@@ -3486,7 +3497,7 @@ title; ten of 32 answers differ from it (eight until "Separate licence" was adde
   - **Conditional, as the table says:** LFM3-Audio 2B — its LICENSE is LFM2.5-Audio's LFM Open
     License v1.0 word for word (both fetched and compared), so it reads as LFM2.5-Audio's does. —
     *web, 2026-10-29* · JustVoice `ea2f01fc` (`curated/xtts_v2.js`, `gradium_phonon.js`,
-    `ming3_tts.js`, `ming3_audio.js`, `lfm3_audio.js`).
+    `ming3_tts.js`, `ming3_audio.js`, `lfm3_audio.js`; then `plapre.js`, `whistle_asr.js`).
 
 ### 10.14 The download test — every speech model through the app (2026-10-11)
 

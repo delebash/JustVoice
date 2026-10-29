@@ -68,6 +68,7 @@ import * as owsm from "./owsm.js";
 import * as owsm_ctc from "./owsm_ctc.js";
 import * as parakeet_tdt from "./parakeet_tdt.js";
 import * as piper_tts from "./piper_tts.js";
+import * as plapre from "./plapre.js";
 import * as pocket_tts from "./pocket_tts.js";
 import * as qwen3_asr from "./qwen3_asr.js";
 import * as qwen3_tts from "./qwen3_tts.js";
@@ -84,6 +85,7 @@ import * as voxcpm1 from "./voxcpm1.js";
 import * as voxcpm2 from "./voxcpm2.js";
 import * as voxtral_realtime from "./voxtral_realtime.js";
 import * as voxtral_tts from "./voxtral_tts.js";
+import * as whistle_asr from "./whistle_asr.js";
 import * as xtts_v2 from "./xtts_v2.js";
 import * as zipvoice from "./zipvoice.js";
 
@@ -148,6 +150,7 @@ export const CURATED = {
   owsm_ctc,
   parakeet_tdt,
   piper_tts,
+  plapre,
   pocket_tts,
   qwen3_asr,
   qwen3_tts,
@@ -164,6 +167,7 @@ export const CURATED = {
   voxcpm2,
   voxtral_realtime,
   voxtral_tts,
+  whistle_asr,
   xtts_v2,
   zipvoice,
 };

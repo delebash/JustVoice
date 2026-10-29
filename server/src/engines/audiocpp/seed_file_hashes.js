@@ -77,9 +77,10 @@ export const SMALL_FILES = {
 // at the pinned model revision (its API's tree listing, `lfs.oid`, read 2026-10-29). The 79 English,
 // German, Spanish and Portuguese files downloaded here before (their `files.json`) carry the same
 // ids; the Italian ones were not downloaded. A language's two precisions share its folder, so each
-// file is one entry. French has no presets.
+// file is one entry. French has no presets. At the model revision 661a224e every one of the 99 has the id
+// it had at f861648c (both tree listings, 2026-10-29). (was: pinned at f861648c — until that move.)
 export const POCKET_VOICE_FILES = {
-  revision: "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+  revision: "661a224e9d9adbd49c01626f85e426f5f425d771",
   sha256: {
     // english
     "PocketTTS-GGUF/english/embeddings/anna.safetensors": "5ea82f78db006c9fd34e32ddd5aae82674b5b32646097977436458d00af80dfa",

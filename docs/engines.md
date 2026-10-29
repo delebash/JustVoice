@@ -600,9 +600,9 @@ licence table says "No"*). JustVoice's readings that differ, and why:
 later update — shows audio.cpp's own word and notes from its licence table until
 JustVoice reads it, and asks you to accept its licence before its first download
 the same way when it isn't a *Yes* there. Every model listed today has
-JustVoice's own reading (since 2026-10-15; the five audio.cpp added in its
+JustVoice's own reading (since 2026-10-15; the seven audio.cpp added in its
 2026-10-29 update — Gradium Phonon, LFM3-Audio, Ming 3.0 TTS, Ming 3.0 Audio
-Tiny and XTTS v2 — were read the same day).
+Tiny, Plapre 3, Whistle ASR and XTTS v2 — were read the same day).
 
 ### Tested by JustVoice
 

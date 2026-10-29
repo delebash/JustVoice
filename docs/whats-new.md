@@ -4,8 +4,8 @@
 
 - **audio.cpp's update of 2026-10-29: new models, flash attention at any precision** — the speech
   engines list now has what audio.cpp added since: Gradium Phonon, LFM3-Audio (speech and speech
-  recognition), Ming 3.0 TTS, Ming 3.0 Audio Tiny (speech and speech recognition), XTTS v2 and a
-  smaller Fish Audio Drama 3 download, each with JustVoice's reading of its licence
+  recognition), Ming 3.0 TTS, Ming 3.0 Audio Tiny (speech and speech recognition), Plapre 3 (Danish),
+  Whistle ASR (speech recognition), XTTS v2 and a smaller Fish Audio Drama 3 download, each with JustVoice's reading of its licence
   ([Speech engines → Commercial use, in plain words](engines.md#commercial-use-in-plain-words)). Qwen3-TTS's **Attention** load option is now **Speed mode**, on
   every row, not just the 8-bit ones, with a third choice, *All speed-ups (CUDA)* — flash attention
   plus audio.cpp's other speed-ups for an NVIDIA card, not yet measured by JustVoice. They load with

@@ -34,13 +34,17 @@ import { DEFAULT_AUDIOCPP_BUILD } from "@delebash/core/runner/config";
 import { _entryOid, _entrySize, _revisionSha, _tree } from "@delebash/core/runner/models";
 import { marked } from "marked";
 
-// The model files: audio.cpp's own GGUF packages. Commit pinned 2026-10-15: the repo's newest
-// (2026-10-11, "Add Voxtral 4B TTS"), the first to hold every package audio.cpp v0.9.2's specs
-// name (Pocket French, Voxtral TTS, Breeze Q4_0 …). From the commit pinned before (7bf52723,
-// 2026-10-01) no file changed but README.md and .gitattributes; 81 were added. (Kept in
-// engines/audiocpp/release.js until round E, 2026-10-29.)
+// The model files: audio.cpp's own GGUF packages. Commit pinned 2026-10-29: 661a224e (2026-10-18,
+// "Update microWakeWord embedded spec"), the last before the repo's "Refresh embedded GGUF specs
+// for v0.9.2 (#19)" (6f45df32, 2026-10-19), which gave 145 files other bytes — 28 of them
+// downloaded on the user's PC — for embedded specs a release build doesn't read (decided
+// 2026-10-29). From f861648c it adds Plapre 3, openWakeWord and Whistle, and changes no file but
+// MicroWakeWord's GGUF and .gitattributes. Waiting on a later revision: Kitten TTS 2's 20261021
+// package, Irodori v4.1 Small MeanFlow, VoxCPM2 VocalRender Pro. (was: f861648c, 2026-10-11 —
+// from 7bf52723 no file changed but README.md and .gitattributes, 81 added — until 2026-10-29;
+// kept in engines/audiocpp/release.js until round E.)
 export const MODEL_REPO = "audio-cpp/audio.cpp-gguf";
-export const MODEL_REVISION = "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5";
+export const MODEL_REVISION = "661a224e9d9adbd49c01626f85e426f5f425d771";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const CHECKOUT = resolve(ROOT, "..", "audio.cpp");

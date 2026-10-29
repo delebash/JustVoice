@@ -40,6 +40,17 @@ test("every engine is built from audio.cpp's files; the seven described by our o
   expect(found.has("kokoro")).toBe(true);
 });
 
+test("the model revision 661a224e brings Plapre and Whistle, pinned there", () => {
+  // Moved from f861648c on 2026-10-29: the last revision before the repo's embedded-spec refresh,
+  // so no file downloaded before changes bytes (RESEARCH §1.4).
+  expect(generated.CATALOG.generated_from.model_revision).toBe("661a224e9d9adbd49c01626f85e426f5f425d771");
+  for (const id of ["plapre", "whistle_asr"]) {
+    const mod = engines.get(id);
+    expect(mod?.VARIANTS.length, id).toBeGreaterThan(0);
+    for (const v of mod.VARIANTS) expect(v.sources[0].revision, v.id).toBe("661a224e9d9adbd49c01626f85e426f5f425d771");
+  }
+});
+
 test("every generated model is one download per precision, a speech one with a capability row", () => {
   for (const [id, mod] of engines) {
     const ids = mod.VARIANTS.map((v) => v.id);

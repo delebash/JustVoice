@@ -94,7 +94,7 @@ test("QwenCleo-ASR: its package as audio.cpp's catalog gives it, its languages i
     { hf_repo: "mohammedaly22/QwenCleo-ASR-GGUF", revision: "6884dc2054684a2bb5e70ac8074e43f9c9fcd78a", size_bytes: 2_477_476_256, files: ["qwencleo-asr-q8_0.gguf"] },
     {
       hf_repo: "audio-cpp/audio.cpp-gguf",
-      revision: "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+      revision: "661a224e9d9adbd49c01626f85e426f5f425d771",
       size_bytes: 1_129_966_496,
       files: ["Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
     },
@@ -121,12 +121,12 @@ test("QwenCleo-ASR's row names each file where its download puts it: each reposi
   const files = (id) => rows.find((r) => r.id === id).files.map((f) => [f.slot, f.repo, f.revision, f.path]);
   expect(files("qwencleo-asr-q8")).toEqual([
     ["model", "mohammedaly22/QwenCleo-ASR-GGUF", "6884dc2054684a2bb5e70ac8074e43f9c9fcd78a", "qwencleo-asr-q8_0.gguf"],
-    ["aligner", "audio-cpp/audio.cpp-gguf", "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5", "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
+    ["aligner", "audio-cpp/audio.cpp-gguf", "661a224e9d9adbd49c01626f85e426f5f425d771", "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
   ]);
   // Qwen3-ASR's, one repository, each at its own path.
   expect(files("qwen3-asr-1.7b-q8")).toEqual([
-    ["model", "audio-cpp/audio.cpp-gguf", "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5", "Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-q8_0.gguf"],
-    ["aligner", "audio-cpp/audio.cpp-gguf", "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5", "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
+    ["model", "audio-cpp/audio.cpp-gguf", "661a224e9d9adbd49c01626f85e426f5f425d771", "Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-q8_0.gguf"],
+    ["aligner", "audio-cpp/audio.cpp-gguf", "661a224e9d9adbd49c01626f85e426f5f425d771", "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
   ]);
   // Each registers the aligner from its slot, on the first alignment (round E, G11).
   for (const id of ["qwencleo-asr-q8", "qwencleo-asr-f16", "qwen3-asr-1.7b-q8", "qwen3-asr-0.6b-f16"]) {

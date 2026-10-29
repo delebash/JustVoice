@@ -3,7 +3,7 @@
     "audiocpp_ref": "jv",
     "audiocpp_commit": "dacb0d7f08b1582cedc5fcbe5cd6acb4e0303f30",
     "model_repo": "audio-cpp/audio.cpp-gguf",
-    "model_revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5"
+    "model_revision": "661a224e9d9adbd49c01626f85e426f5f425d771"
   },
   "families": {
     "ace_step": {
@@ -617,7 +617,7 @@
           "strip_prefix": "ACE-Step1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -639,7 +639,7 @@
           "strip_prefix": "ACE-Step1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -660,7 +660,7 @@
           "strip_prefix": "ACE-Step1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -681,7 +681,7 @@
           "strip_prefix": "ACE-Step1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -1009,7 +1009,7 @@
           "strip_prefix": "Apollo-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -1194,7 +1194,7 @@
           "strip_prefix": "AST-AudioSet-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -1374,7 +1374,7 @@
           "strip_prefix": "Audio8-ASR-0.1B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -1394,7 +1394,7 @@
           "strip_prefix": "Audio8-ASR-0.1B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -2401,7 +2401,7 @@
           "strip_prefix": "AudioSR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -3694,7 +3694,7 @@
           "strip_prefix": "Breeze-TTS-2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -3716,7 +3716,7 @@
           "strip_prefix": "Breeze-TTS-2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -3738,7 +3738,7 @@
           "strip_prefix": "Breeze-TTS-2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -3992,7 +3992,7 @@
           "strip_prefix": "BS-RoFormer-ep368-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -4438,7 +4438,7 @@
           "strip_prefix": "Canary-180M-Flash-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -4459,7 +4459,7 @@
           "strip_prefix": "Canary-180M-Flash-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -4638,7 +4638,7 @@
           "strip_prefix": "CED-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -4659,7 +4659,7 @@
           "strip_prefix": "CED-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -4680,7 +4680,7 @@
           "strip_prefix": "CED-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -4701,7 +4701,7 @@
           "strip_prefix": "CED-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -5144,7 +5144,7 @@
           "strip_prefix": "Chatterbox-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -5165,7 +5165,7 @@
           "strip_prefix": "Chatterbox-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -5509,7 +5509,7 @@
           "strip_prefix": "Chatterbox-Turbo-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -5530,7 +5530,7 @@
           "strip_prefix": "Chatterbox-Turbo-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -5814,7 +5814,7 @@
           "strip_prefix": "Citrinet-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -6034,7 +6034,7 @@
           "strip_prefix": "Cohere-Transcribe-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -6055,7 +6055,7 @@
           "strip_prefix": "Cohere-Transcribe-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -6076,7 +6076,7 @@
           "strip_prefix": "Cohere-Transcribe-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -6983,7 +6983,7 @@
           "strip_prefix": "Confucius4-TTS-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -7204,7 +7204,7 @@
           "strip_prefix": "ControlFoley-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -7226,7 +7226,7 @@
           "strip_prefix": "ControlFoley-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -7622,7 +7622,7 @@
           "strip_prefix": "CosyVoice3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -7644,7 +7644,7 @@
           "strip_prefix": "CosyVoice3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8110,7 +8110,7 @@
           "strip_prefix": "CrisperWhisper2.0-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8132,7 +8132,7 @@
           "strip_prefix": "CrisperWhisper2.0-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8153,7 +8153,7 @@
           "strip_prefix": "CrisperWhisper2.0-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8663,7 +8663,7 @@
           "strip_prefix": "DotTTS-SOAR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8685,7 +8685,7 @@
           "strip_prefix": "DotTTS-SOAR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8707,7 +8707,7 @@
           "strip_prefix": "DotTTS-MF-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8729,7 +8729,7 @@
           "strip_prefix": "DotTTS-MF-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8751,7 +8751,7 @@
           "strip_prefix": "DotTTS-Edit-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8773,7 +8773,7 @@
           "strip_prefix": "DotTTS-Edit-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -9195,7 +9195,7 @@
           "strip_prefix": "DramaBox-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -10578,7 +10578,7 @@
           "strip_prefix": "FireRedAudio-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -10600,7 +10600,7 @@
           "strip_prefix": "FireRedAudio-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -11258,7 +11258,7 @@
           "strip_prefix": "FireRedVAD-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -11279,7 +11279,7 @@
           "strip_prefix": "FireRedVAD-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -11612,7 +11612,7 @@
           "strip_prefix": "FireRedTTS3-Instruct-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -11634,7 +11634,7 @@
           "strip_prefix": "FireRedTTS3-Instruct-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -11655,7 +11655,7 @@
           "strip_prefix": "FireRedTTS3-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -11676,7 +11676,7 @@
           "strip_prefix": "FireRedTTS3-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -12326,7 +12326,7 @@
           "strip_prefix": "Fish-Audio-S2-Pro-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -12347,7 +12347,7 @@
           "strip_prefix": "Fish-Audio-S2-Pro-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13486,7 +13486,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13507,7 +13507,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13528,7 +13528,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13549,7 +13549,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13570,7 +13570,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13591,7 +13591,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13612,7 +13612,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13633,7 +13633,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -14639,7 +14639,7 @@
           "strip_prefix": "Granite-Speech-5.0-470M-TurboCTC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15086,7 +15086,7 @@
           "strip_prefix": "HeartMuLa-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15107,7 +15107,7 @@
           "strip_prefix": "HeartMuLa-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15406,7 +15406,7 @@
           "strip_prefix": "Higgs-Audio-v3-STT-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15427,7 +15427,7 @@
           "strip_prefix": "Higgs-Audio-v3-STT-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15775,7 +15775,7 @@
           "strip_prefix": "Higgs-Audio-v3-TTS-4B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15796,7 +15796,7 @@
           "strip_prefix": "Higgs-Audio-v3-TTS-4B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15931,7 +15931,7 @@
           "strip_prefix": "HTDemucs-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15952,7 +15952,7 @@
           "strip_prefix": "HTDemucs-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -16087,7 +16087,7 @@
           "strip_prefix": "HTDemucs-6stems-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -16108,7 +16108,7 @@
           "strip_prefix": "HTDemucs-6stems-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -16659,7 +16659,7 @@
           "strip_prefix": "Hviske-v6-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -16680,7 +16680,7 @@
           "strip_prefix": "Hviske-v6-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -17540,7 +17540,7 @@
           "strip_prefix": "IndexTTS2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -17561,7 +17561,7 @@
           "strip_prefix": "IndexTTS2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -17582,7 +17582,7 @@
           "strip_prefix": "IndexTTS2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -17723,7 +17723,7 @@
           "strip_prefix": "IndexTTS2.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -17744,7 +17744,7 @@
           "strip_prefix": "IndexTTS2.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -17765,7 +17765,7 @@
           "strip_prefix": "IndexTTS2.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -18027,7 +18027,7 @@
           "strip_prefix": "Inflect-Micro-v2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -18502,7 +18502,7 @@
           "strip_prefix": "Irodori-TTS-v4-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -18523,7 +18523,7 @@
           "strip_prefix": "Irodori-TTS-v4-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -18544,7 +18544,7 @@
           "strip_prefix": "Irodori-TTS-v4-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -18565,7 +18565,7 @@
           "strip_prefix": "Irodori-TTS-600M-v3-VoiceDesign-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -18586,7 +18586,7 @@
           "strip_prefix": "Irodori-TTS-600M-v3-VoiceDesign-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -18607,7 +18607,7 @@
           "strip_prefix": "Irodori-TTS-500M-v3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -18628,7 +18628,7 @@
           "strip_prefix": "Irodori-TTS-v4-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -18648,7 +18648,7 @@
           "strip_prefix": "Irodori-TTS-v4-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -18668,7 +18668,7 @@
           "strip_prefix": "Irodori-TTS-500M-v3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -19123,7 +19123,7 @@
           "strip_prefix": "KittenTTS-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -19754,7 +19754,7 @@
           "strip_prefix": "KittenTTS2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -19775,7 +19775,7 @@
           "strip_prefix": "KittenTTS2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -20369,7 +20369,7 @@
           "strip_prefix": "Kokoro-82M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -20390,7 +20390,7 @@
           "strip_prefix": "Kokoro-82M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -20682,7 +20682,7 @@
           "strip_prefix": "Kroko-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -20996,7 +20996,7 @@
           "strip_prefix": "KugelAudio-0-Open-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -21018,7 +21018,7 @@
           "strip_prefix": "KugelAudio-0-Open-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -21040,7 +21040,7 @@
           "strip_prefix": "KugelAudio-0-Open-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -24435,7 +24435,7 @@
           "strip_prefix": "MagpieTTS-Multilingual-357M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -24457,7 +24457,7 @@
           "strip_prefix": "MagpieTTS-Multilingual-357M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -24754,7 +24754,7 @@
           "strip_prefix": "Maya1-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -24776,7 +24776,7 @@
           "strip_prefix": "Maya1-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -24950,7 +24950,7 @@
           "strip_prefix": "MeanVC2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -24972,7 +24972,7 @@
           "strip_prefix": "MeanVC2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -25123,7 +25123,7 @@
           "strip_prefix": "Mel-Band-RoFormer-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -25144,7 +25144,7 @@
           "strip_prefix": "Mel-Band-RoFormer-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -25333,14 +25333,14 @@
           "strip_prefix": "MicroWakeWord-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MicroWakeWord-GGUF/micro-wake-word-okay-nabu-f32.gguf",
-                "size_bytes": 186912,
-                "sha256": "e0a36b1a4a092dfaed1a92a30c3c0da5d19c93152a09c754e625d36d3c2cd506"
+                "size_bytes": 187264,
+                "sha256": "8ad059f6312cc1db68d9f748d4fb6251717f48baef94d0b7527192d59ec206ca"
               }
             ]
           }
@@ -25538,7 +25538,7 @@
           "strip_prefix": "MiDashengLM-Gen-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -25560,7 +25560,7 @@
           "strip_prefix": "MiDashengLM-Gen-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -30512,7 +30512,7 @@
           "strip_prefix": "MiniMax-H3-Q4-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -30589,7 +30589,7 @@
           "strip_prefix": "MiniMax-H3-Q4-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -31410,7 +31410,7 @@
           "strip_prefix": "MioCodec-25Hz-44.1kHz-v2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -31431,7 +31431,7 @@
           "strip_prefix": "MioCodec-25Hz-44.1kHz-v2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -31452,7 +31452,7 @@
           "strip_prefix": "MioCodec-25Hz-44.1kHz-v2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -31846,7 +31846,7 @@
           "strip_prefix": "MioTTS-1.7B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -31867,7 +31867,7 @@
           "strip_prefix": "MioTTS-1.7B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -31888,7 +31888,7 @@
           "strip_prefix": "MioTTS-1.7B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -32342,7 +32342,7 @@
           "strip_prefix": "MMS-Forced-Aligner-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -32403,7 +32403,7 @@
           "strip_prefix": "MMS-Forced-Aligner-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -32612,7 +32612,7 @@
           "strip_prefix": "Moonshine-Streaming-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -32633,7 +32633,7 @@
           "strip_prefix": "Moonshine-Streaming-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -32654,7 +32654,7 @@
           "strip_prefix": "Moonshine-Streaming-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -32934,7 +32934,7 @@
           "strip_prefix": "MOSS-Transcribe-Diarize-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -32955,7 +32955,7 @@
           "strip_prefix": "MOSS-Transcribe-Diarize-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -32976,7 +32976,7 @@
           "strip_prefix": "MOSS-Transcribe-Diarize-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -33306,7 +33306,7 @@
           "strip_prefix": "MOSS-TTS-Local-v1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -33327,7 +33327,7 @@
           "strip_prefix": "MOSS-TTS-Local-v1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -33743,7 +33743,7 @@
           "strip_prefix": "MOSS-TTS-Nano-100M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -33764,7 +33764,7 @@
           "strip_prefix": "MOSS-TTS-Nano-100M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -34668,7 +34668,7 @@
           "strip_prefix": "MOSS-VoiceGenerator-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -34825,7 +34825,7 @@
           "strip_prefix": "MossFormer2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -34847,7 +34847,7 @@
           "strip_prefix": "MossFormer2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -35127,7 +35127,7 @@
           "strip_prefix": "MuScriptor-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -35720,7 +35720,7 @@
           "strip_prefix": "Nemotron-3.5-ASR-Streaming-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -35741,7 +35741,7 @@
           "strip_prefix": "Nemotron-3.5-ASR-Streaming-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -36113,7 +36113,7 @@
           "strip_prefix": "NeuTTS-2E-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -36300,7 +36300,7 @@
           "strip_prefix": "Niagara-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -36321,7 +36321,7 @@
           "strip_prefix": "Niagara-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -36774,7 +36774,7 @@
           "strip_prefix": "OmniVoice-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -36795,7 +36795,7 @@
           "strip_prefix": "OmniVoice-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -36816,7 +36816,7 @@
           "strip_prefix": "OmniVoice-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -37130,13 +37130,14 @@
           "strip_prefix": "OpenWakeWord-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OpenWakeWord-GGUF/open-wake-word-alexa-f32.gguf",
-                "missing": true
+                "size_bytes": 2260928,
+                "sha256": "649c2b6e10f9ffc23923250931e58edfe9c42d293660e02b32aba09383d9a509"
               }
             ]
           }
@@ -37876,7 +37877,7 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -37898,7 +37899,7 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -37920,7 +37921,7 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -37942,7 +37943,7 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -37964,7 +37965,7 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -37986,7 +37987,7 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38008,7 +38009,7 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38030,7 +38031,7 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38452,7 +38453,7 @@
           "strip_prefix": "OWSM-CTC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38474,7 +38475,7 @@
           "strip_prefix": "OWSM-CTC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38818,7 +38819,7 @@
           "strip_prefix": "Parakeet-TDT-0.6B-v3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38839,7 +38840,7 @@
           "strip_prefix": "Parakeet-TDT-0.6B-v3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38860,7 +38861,7 @@
           "strip_prefix": "Orukeet-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38880,7 +38881,7 @@
           "strip_prefix": "Orukeet-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -39266,7 +39267,7 @@
           "strip_prefix": "PersonaPlex-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -39288,7 +39289,7 @@
           "strip_prefix": "PersonaPlex-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -39628,7 +39629,7 @@
           "strip_prefix": "Piper-TTS-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -39968,13 +39969,14 @@
           "strip_prefix": "Plapre-3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Plapre-3-GGUF/plapre-3-bf16.gguf",
-                "missing": true
+                "size_bytes": 1145069888,
+                "sha256": "8baa6069d5cd81bc01bfc039bfcb7c4b7406e659157b3c768fa2bc839fdfc9a1"
               }
             ]
           }
@@ -39989,13 +39991,14 @@
           "strip_prefix": "Plapre-3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Plapre-3-GGUF/plapre-3-f32.gguf",
-                "missing": true
+                "size_bytes": 2284552288,
+                "sha256": "fd320031dbb46efa91541044a0e484e4be1dba5e0cfa657bcc75a914ec7b9e60"
               }
             ]
           }
@@ -40440,7 +40443,7 @@
           "strip_prefix": "PocketTTS-GGUF/english",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40466,7 +40469,7 @@
           "strip_prefix": "PocketTTS-GGUF/english",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40492,7 +40495,7 @@
           "strip_prefix": "PocketTTS-GGUF/french",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40518,7 +40521,7 @@
           "strip_prefix": "PocketTTS-GGUF/french",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40544,7 +40547,7 @@
           "strip_prefix": "PocketTTS-GGUF/german",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40565,7 +40568,7 @@
           "strip_prefix": "PocketTTS-GGUF/german",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40586,7 +40589,7 @@
           "strip_prefix": "PocketTTS-GGUF/italian",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40607,7 +40610,7 @@
           "strip_prefix": "PocketTTS-GGUF/italian",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40628,7 +40631,7 @@
           "strip_prefix": "PocketTTS-GGUF/portuguese",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40649,7 +40652,7 @@
           "strip_prefix": "PocketTTS-GGUF/portuguese",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40670,7 +40673,7 @@
           "strip_prefix": "PocketTTS-GGUF/spanish",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40691,7 +40694,7 @@
           "strip_prefix": "PocketTTS-GGUF/spanish",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41060,7 +41063,7 @@
           "strip_prefix": "PulseVAD-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41081,7 +41084,7 @@
           "strip_prefix": "PulseVAD-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41419,7 +41422,7 @@
           "strip_prefix": "Qwen3-ASR-1.7B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41440,7 +41443,7 @@
           "strip_prefix": "Qwen3-ASR-1.7B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41461,7 +41464,7 @@
           "strip_prefix": "Qwen3-ASR-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41482,7 +41485,7 @@
           "strip_prefix": "Qwen3-ASR-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41954,7 +41957,7 @@
           "strip_prefix": "Qwen3-ForcedAligner-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41975,7 +41978,7 @@
           "strip_prefix": "Qwen3-ForcedAligner-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42652,7 +42655,7 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42673,7 +42676,7 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42694,7 +42697,7 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42715,7 +42718,7 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42736,7 +42739,7 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42757,7 +42760,7 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42778,7 +42781,7 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42799,7 +42802,7 @@
           "strip_prefix": "Qwen3-TTS-12Hz-0.6B-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42820,7 +42823,7 @@
           "strip_prefix": "Qwen3-TTS-12Hz-0.6B-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -43777,7 +43780,7 @@
           "strip_prefix": "RVC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -44482,7 +44485,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -44503,7 +44506,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -44524,7 +44527,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -44545,7 +44548,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -44566,7 +44569,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -44587,7 +44590,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -45779,7 +45782,7 @@
           "strip_prefix": "SeedVC-MLX-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -45800,7 +45803,7 @@
           "strip_prefix": "SeedVC-MLX-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -45821,7 +45824,7 @@
           "strip_prefix": "SeedVC-MLX-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -46631,7 +46634,7 @@
           "strip_prefix": "Sherpa-KWS-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -46741,7 +46744,7 @@
           "strip_prefix": "Sidon-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -46871,7 +46874,7 @@
           "strip_prefix": "Smart-Turn-v3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -47717,7 +47720,7 @@
           "strip_prefix": "Sortformer-Diar-4spk-v1-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -47738,7 +47741,7 @@
           "strip_prefix": "Sortformer-Diar-4spk-v1-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -47995,7 +47998,7 @@
           "strip_prefix": "Sortformer-Diar-v2.1-local",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -48024,7 +48027,7 @@
           "strip_prefix": "Sortformer-Diar-v2.1-local",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -48044,7 +48047,7 @@
           "strip_prefix": "Sortformer-Diar-v2.1-local",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -48340,7 +48343,7 @@
           "strip_prefix": "Stable-Audio-3-Medium-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -48361,7 +48364,7 @@
           "strip_prefix": "Stable-Audio-3-Medium-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -48382,7 +48385,7 @@
           "strip_prefix": "Stable-Audio-3-Small-Music-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -48403,7 +48406,7 @@
           "strip_prefix": "Stable-Audio-3-Small-Music-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -48424,7 +48427,7 @@
           "strip_prefix": "Stable-Audio-3-Small-SFX-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -48445,7 +48448,7 @@
           "strip_prefix": "Stable-Audio-3-Small-SFX-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -48892,7 +48895,7 @@
           "strip_prefix": "Supertonic-3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -48913,7 +48916,7 @@
           "strip_prefix": "Supertonic-3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -48935,7 +48938,7 @@
           "strip_prefix": "Supertonic-3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -49257,7 +49260,7 @@
           "strip_prefix": "TF-GridNet-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -49402,7 +49405,7 @@
           "strip_prefix": "Tone-Color-VC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -49424,7 +49427,7 @@
           "strip_prefix": "Tone-Color-VC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -49667,7 +49670,7 @@
           "strip_prefix": "UniverSR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -49688,7 +49691,7 @@
           "strip_prefix": "UniverSR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -50151,7 +50154,7 @@
           "strip_prefix": "Vevo2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -50172,7 +50175,7 @@
           "strip_prefix": "Vevo2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -50193,7 +50196,7 @@
           "strip_prefix": "Vevo2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -50876,7 +50879,7 @@
           "strip_prefix": "VibeVoice-1.5B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -50897,7 +50900,7 @@
           "strip_prefix": "VibeVoice-1.5B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -51309,7 +51312,7 @@
           "strip_prefix": "VibeVoice-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -51330,7 +51333,7 @@
           "strip_prefix": "VibeVoice-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -52611,7 +52614,7 @@
           "strip_prefix": "VoxCPM1-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53160,7 +53163,7 @@
           "strip_prefix": "VoxCPM2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53181,7 +53184,7 @@
           "strip_prefix": "VoxCPM2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53202,7 +53205,7 @@
           "strip_prefix": "VoxCPM2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53223,7 +53226,7 @@
           "strip_prefix": "VoxCPM2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53619,7 +53622,7 @@
           "strip_prefix": "Voxtral-Mini-4B-Realtime-2602-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53640,7 +53643,7 @@
           "strip_prefix": "Voxtral-Mini-4B-Realtime-2602-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53661,7 +53664,7 @@
           "strip_prefix": "Voxtral-Mini-4B-Realtime-2602-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53985,7 +53988,7 @@
           "strip_prefix": "Voxtral-4B-TTS-2603-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -54007,7 +54010,7 @@
           "strip_prefix": "Voxtral-4B-TTS-2603-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -54164,13 +54167,14 @@
           "strip_prefix": "Whistle-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5",
+            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Whistle-GGUF/whistle-f32.gguf",
-                "missing": true
+                "size_bytes": 220833184,
+                "sha256": "7e63a44b77d5e4a347f3b15a6d098037cc91f4225fe48b4ed820e072e04d3ff3"
               }
             ]
           }
