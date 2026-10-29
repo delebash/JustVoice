@@ -18,7 +18,6 @@ import { useServerStore } from "../stores/server.js";
 import AudioKeepAlive from "../components/AudioKeepAlive.vue";
 import QuickSetup from "../components/QuickSetup.vue";
 import KeyboardCheatsheet from "../components/KeyboardCheatsheet.vue";
-import LeftoverEnginesHelp from "../components/LeftoverEnginesHelp.vue";
 // An engine's own terms (Pocket TTS — Kyutai's, before the first clone): one dialog for the
 // whole app, opened by `jv:engine-terms` (services/engineTerms.js).
 import EngineTermsDialog from "../components/EngineTermsDialog.vue";
@@ -68,7 +67,7 @@ const VIEWS = [
   { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-persona override.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "A persona's effects chain. It never changes audio you already have: editing a chain makes the lines its speakers say stale on Render, and rendering them again makes new takes — the old ones are kept.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   // (The Voice engines page left the sidebar in the parity batch, 2026-08-06 —
-  // the installed-engine catalog is the AI console's Speech engines tab now;
+  // the installed-engine catalog is the AI console's Speech tab now;
   // /engines redirects there.)
   // Always visible (ruling 4, 2026-08-05): the shared AI area — providers,
   // model catalog, routing by feature, usage, the AI engine console.
@@ -605,14 +604,14 @@ onMounted(async () => {
 
         <!-- Engine pills — what is loaded right now: the voice engine, and the
              language model the AI features run on. Each opens its page in the
-             AI console (voice: the Speech engines tab via the /engines
+             AI console (voice: the Speech tab via the /engines
              redirect). -->
         <button
           v-if="health"
           type="button"
           class="jv-topbar__engine-pill gt-xs"
           :class="{ 'jv-topbar__engine-pill--empty': !health.current_engine }"
-          :title="health.current_engine ? `Voice model loaded: ${health.current_model || health.current_engine}. Click to manage speech engines.` : 'No voice model loaded. Click to load one.'"
+          :title="health.current_engine ? `Voice model loaded: ${health.current_model || health.current_engine}. Click to open AI Settings → Speech.` : 'No voice model loaded. Click to load one.'"
           @click="goView('engines')"
         >
           <span class="jv-topbar__engine-icon">🔊</span>
@@ -726,9 +725,7 @@ onMounted(async () => {
       <img class="splash__logo" src="/justtts.svg" alt="" />
       <div class="splash__name">JustVoice</div>
       <div class="splash__strip">
-        <BootModelLoad>
-          <template #failed="{ task }"><LeftoverEnginesHelp :task="task" /></template>
-        </BootModelLoad>
+        <BootModelLoad />
       </div>
     </div>
   </q-layout>
