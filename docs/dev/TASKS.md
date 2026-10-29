@@ -136,6 +136,9 @@ NOT:    building before the kit's suites are green and the plan is approved.
         Then on the plan's 14 decisions (§5): "think adverserilly on you recs make sure you check facts, then your
         rec go" — the recs as shown, re-attacked; the one change: the final pass measures Qwen3-ASR on the CPU once
         (§5 item 10). The deletions in items 9 and 11 still wait for the user's word, as the recs said.
+        Then, on "so whats next" (the remaining steps listed): "do it all dont stop if you find bugs are thing sto fix
+        or add think adversirlay on it think adverserily on these isses and take your recs geti all finished go" —
+        every remaining step, the deletions of items 9 and 11 included, and what the work finds fixed on my recs.
 BUILT:  nothing. The kit's half is green at just-core `75d07f8`; the kit took the plan's §3 (bugs B1–B13, gaps
         G1–G12) the same day and is building it.
 OPEN:   JustVoice's move, the plan's §4 — it starts when the kit sends its final shapes and a green run.
