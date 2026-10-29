@@ -136,6 +136,10 @@ BUILT:  nothing. FINDING 2026-10-29: `jv` (1de98891, 2026-10-19) is 150 commits 
 OPEN:   whether upstream is merged into `jv` before the release — your call. Then: tag `v0.9.2-jv.7` (or on v0.9.3),
         the kit's audiocpp rows and pin moved (the pin is the kit's since round E), the catalog regenerated at the
         tag and committed (it replaces the uncommitted `catalog.json`).
+        And the standing rule, 2026-10-29: "before we do any work on audio cpp nextime we should update the fork
+        and test it in our app, this should be in i guess the core or jv, this should be true for any forks for
+        futre apps that we may use" — in the kit's `docs/family-rules.md` (every web app imports it) and
+        JustStage's `AGENTS.md`.
 GO:     given for the release's timing; the merge needs its own.
 
 ### Round E — JustVoice's audio.cpp engine, its Speech engines tab and its jobs onto the kit's (J1)
