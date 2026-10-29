@@ -163,7 +163,8 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   server) with the same paths and bodies JustVoice sends (`/health` :42, `/v1/models/load` :59,
   `/v1/audio/speech` :100, `/transcriptions/details` :115, `/alignments` :121, the unload routes
   :139, :142), and an invalid request is an `InvalidRequestError` → 400 (:154), which
-  `runtime.js` `_raiseFor` passes through. — *code, 2026-10-15* · our fork's merge of v0.9.2
+  `runtime.js` `_raiseFor` passed through (moved to the kit with round E — just-core
+  `runner/audiocpp.js` `AudioCppServer.raiseFor`). — *code, 2026-10-15* · our fork's merge of v0.9.2
   (`85d97a43`).
 - A runtime log over 10 MB becomes `<name>.1.log` at its process's next start, and an error
   quotes only the log's last 64 KB. (was: never rotated, and read whole for every error —
@@ -185,7 +186,8 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
 - Only Kokoro and Kitten reject an unknown option name; Qwen3, Chatterbox, Turbo, VoxCPM2 and
   Pocket ignore it silently. — *agent, 2026-10-04* · audit §5 (group D). Since v0.9.2 the check
   reads the runtime's specs (`package.cpp:508-532`): a dev build reads `model_specs/<family>.json`
-  from the server's working folder upward (`runtime.js` starts it in `bin/`, so
+  from the server's working folder upward (the server starts it in its exe's folder, `bin/` —
+  `runtime.js` did, the kit's `runner/audiocpp.js` since round E — so
   `../audio.cpp/model_specs`), a release (`AUDIOCPP_DEPLOYMENT_BUILD=ON`) its built-in copy, the
   GGUF's embedded spec last (`model_spec_override: "embedded"` exists; unused). At v0.9.2 the
   qwen3_tts, chatterbox, voxcpm2 and pocket specs list their request options (at jv.5 none did),
@@ -194,7 +196,7 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   `duration_scale`, Chatterbox `s3gen_cfg_rate` → `flow_guidance_scale`, Turbo `max_tokens` —
   each family's code still reads the old name, but no spec has an alias field (a few say so in
   a description). So a setting saved under an old name needs our own map once `catalog.json`
-  is built from v0.9.2's specs. — *code, 2026-10-15* · the v0.9.2 merge's spec diff.
+  (`seed_audiocpp_catalog.json` since JustVoice `a3686de1`) is built from v0.9.2's specs. — *code, 2026-10-15* · the v0.9.2 merge's spec diff.
 - v0.9.2's specs drop numeric bounds the runtime doesn't enforce (ZipVoice shift / feat_scale /
   target_rms, GLM-TTS top_p, Echo TTS max_duration_sec's minimum, IndexTTS duration_scale), as
   `model_specs.md` says; `model_params.json` still names some options the old way (ZipVoice
@@ -402,7 +404,8 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   2026-10-10.) Features: `voxcpm2_transcript` jv.1; `voice_pack`, `inline_ipa`, `turbo_clone`,
   `chatterbox_he_ru_zh`, `japanese`, `model_management` jv.4. (was: pinned jv.1, with jv.2 / jv.3
   placeholders — until 2026-10-04.) — *code + GitHub API + measured, 2026-10-10* ·
-  `server/src/engines/audiocpp/release.js`.
+  `server/src/engines/audiocpp/release.js` (moved to the kit with round E — just-core
+  `runner/config.js` `DEFAULT_AUDIOCPP_BUILD`, `DEFAULT_AUDIOCPP_BINARIES`, `AUDIOCPP_FEATURES`).
 - Tags `v0.9.0-jv.2` (`42db68d9`) and `v0.9.0-jv.3` (`3865d245`) exist on commits whose macOS
   build failed; nothing was published for them, and their names are not reused (decided
   2026-10-04). — *git, 2026-10-04* · audit §5 E2.
@@ -486,7 +489,8 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   isn't compiled `/utf-8`, so its IPA literals break on code page 1252; `lfm2_audio_assets_test`
   needs a model folder). v0.9.2's release workflow adds `lib-*` archives,
   `server-config-examples.zip` and a Windows Vulkan-portable build; the `bin-*` names
-  `release.js` pins are unchanged. — *git + build + ctest, 2026-10-15*.
+  `release.js` pins are unchanged (the kit's `runner/config.js` pins them since round E). — *git +
+  build + ctest, 2026-10-15*.
 - **The catalog at v0.9.2** (adoption slice 1, JustVoice `439d904`): built at `jv` `4d2f1a2b`
   — the merge plus our additions in our fork's own specs (`68c3ead0`: Kokoro `voice_pack`,
   Chatterbox he/ru/zh/ja, Turbo/Nano cloning packages, VoxCPM2 `reference_text`), catalog
@@ -499,7 +503,8 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   at their sources (audio8_asr ×2, upstream's `chatterbox-turbo-f16.gguf`, mms_forced_aligner
   q8, Orukeet ×2, reuse ×2, sortformer_diar_v2 ×5). — *git + HF API + tests, 2026-10-15*.
   **Pinned to v0.9.2-jv.6 on 2026-10-16** (bcc5dfbb, published 16:35 UTC, 32 assets; the ten
-  archives the app downloads checked by their published sha256, `release.js`); the catalog
+  archives the app downloads checked by their published sha256, `release.js` — the kit's
+  `runner/config.js` since round E); the catalog
   rebuilt at the tag changed only its `generated_from` (every spec the same as at `jv`
   4d2f1a2b), so the pin test runs again and the seven engines' proof test passes unchanged.
   (was: the catalog built ahead of the pin, the pin test skipped, the packaged and headless app
@@ -627,7 +632,7 @@ All *code*, our checkout at `55b150f4`, read 2026-10-11 — `../audio.cpp/webui/
 ### 1.6 The seven engines described by our own files, on audio.cpp's path (slice 4)
 
 The adoption plan's slice 4 (`docs/plans/2026-10-13-adopt-everything-audiocpp.md` §5), built
-2026-10-16 (JustVoice `0e3a89bf`, branch `slice4`) on `catalog.json` as slice 1 left it (fork `jv` `4d2f1a2b`, models `f861648c`). All
+2026-10-16 (JustVoice `0e3a89bf`, branch `slice4`) on `catalog.json` (`seed_audiocpp_catalog.json` since JustVoice `a3686de1`) as slice 1 left it (fork `jv` `4d2f1a2b`, models `f861648c`). All
 *code + tests, 2026-10-16* unless marked; the engines are `generated.ownEngine`, their notes each
 family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
 
@@ -703,6 +708,9 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
   folder), as MioTTS's codec does. The 24 downloads on the user's disk all resolve, at the same
   paths as before. (was: the variant's folder — until 2026-10-16.) — *code + tests, 2026-10-16* ·
   `speech_cache.js` `variantFilePath`, `slot._entriesFor`; TASKS, slice 4's "GPU half, 2026-10-16".
+  (Since round E the files are the kit's models cache, each pinned by repository, revision, path and
+  SHA-256 in its row's slot — `engines/audiocpp/kit_models.js` `rowOf` — and the registration reads
+  each slot's file from the kit, `RuntimeService.entriesFor`; `speech_cache.js` went.)
 - **Pocket TTS French loads with no voice; only our warm-up asked for alba.** audio.cpp's
   registration reads no voice: the model's voice folder is its file's own folder
   (`pocket_tts/assets.cpp:158`), and a preset's file is opened only when a request names it
@@ -762,7 +770,7 @@ The plan: [`2026-10-29-round-e-onto-the-kit.md`](../plans/2026-10-29-round-e-ont
 are its RESEARCH §12. All *code* at just-core `75d07f8` / JustVoice `78ca4a0e` unless marked.
 
 - **What the kit ported matches ours:** `runner/audiocpp.js` `AudioCppServer`/`AudioCppPool` is our `runtime.js`
-  near line for line; `runner/speech_placement.js` keeps the 512 MB speech card margin, the GPU pin never refused,
+  (gone since JustVoice `5b6f56a4`, with `release.js`) near line for line; `runner/speech_placement.js` keeps the 512 MB speech card margin, the GPU pin never refused,
   the CPU speed as the best of the newest five at the current thread count, the first line's price inside the
   kind's lock; the nine pinned archives' SHA-256s equal ours (`release.js:86-96`). — *code*.
 - **What it changed or left out:** the ledger id is `<kind>:audiocpp:<version>` (ours `<kind>:<engine>:<version>`)
@@ -821,6 +829,23 @@ are its RESEARCH §12. All *code* at just-core `75d07f8` / JustVoice `78ca4a0e` 
   engineTerms.js`). A runtime not installed (`notInstalled`) is in no mapping: a line says it failed to load. A line
   never gets the load route's 202 "downloading": `useModel` waits for the download (G4). (was: the mapping private
   to the kit's routes, ours a copy of it — until just-core `284c67f`.) — *code, just-core `284c67f`, 2026-10-29*.
+- **What the Speech tab shows, read for the user docs** (step 9): on the tab a model not on disk shows Download
+  only (`LuRuntimeTab.vue:658-661`) — the download-then-load path is every other door's (a persona's Load, a
+  render, a preview, a capture); the Auto / Graphics card / CPU select shows only while the model is on disk and
+  not loaded (`:665`), so a loaded model is unloaded to move; the fit chip reads the row's `peakVramMb` alone
+  against the card's total less the kit's 1,024 MB `safety_margin_mb` (`runtime_service.js` `_rating`,
+  `fit.coarseFit`: ok ≤ 1×, tight ≤ 1.5×), measured memory only in the "Would load on" reason; the speed band
+  needs a measurement on this build, the CPU reference showing only on a model loaded on the CPU or a CPU build
+  (`refSpeed` has `cpu` alone). Reinstall (`force`) downloads the build again but skips an eSpeak NG already in
+  its `_extras` (`runtime_service.js` `_run`, `extraInstalled`). Loaded now shows before an install too (the pool
+  exists from the service's start, so `loaded` is always an array). The Transcription card on Routing by feature is
+  the kit's `LuRuntimePresetPane` with no words for kind `stt`: its model select and empty state fall back to the
+  image words ("Image model", `:62` — `kit.runtimes.preset.{model,choose,none}.stt` don't exist) and its one
+  field shows as `placement` with values auto / gpu / cpu (`fields.placement` and its values don't exist); it
+  picks among the stt presets — one seeded — and has no control for the preset's model. With no chat model loaded
+  and no app claim the strip's LLM cell is "—" (`useMemoryCells.js`, committed `e45086d`; the kit's working tree
+  adds its own on-demand claim). The setting `models.url_overrides` (`models.js:444`) has no reader, before
+  round E or after. — *code, just-core `538ce18b` + working tree, JustVoice `5c1b20bf`, 2026-10-29*.
 
 ---
 
@@ -901,7 +926,7 @@ unloaded — audit §3.1 has the method.
   2026-10-04.) — *code + tests, 2026-10-04* · audit §5 B2, B5, §13.3.
 - **A first line's price** (a model that speaks only from a clip, §7 answer 5) is read while that
   line still holds the slot (`manager._priceFirstLine`, inside `synth`'s and `transcribe`'s
-  activity lock), so the next load can't unload the model first; it costs that line one
+  activity lock — the kit's `RuntimeService.useModel` inside the kind's lock since round E), so the next load can't unload the model first; it costs that line one
   per-process probe (a second or two on Windows), once per load. Slice 4's GPU half (2026-10-16)
   found the two ways it failed, both in a render that loads the next persona's model at once:
   the after-line reading ran in the background, found the slot given to the next model and
@@ -919,7 +944,10 @@ unloaded — audit §3.1 has the method.
   Multilingual's first line, with nothing loaded after it, priced 2,595 MB on the card
   (2026-10-16 06:32 UTC). (was: the background probe and the engine-id re-check — until
   2026-10-16.) — *code + tests + the user's database, 2026-10-16* · `manager.js`
-  `_priceFirstLine`, `_settled`, `load`; `engine_vram_wiring.test.js`.
+  `_priceFirstLine`, `_settled`, `load`; `engine_vram_wiring.test.js` (moved to the kit with round E —
+  just-core `runner/runtime_service.js` `useModel`, `runner/speech_placement.js`, their tests
+  `runtime_service.test.js` and `speech_placement.test.js`; ours renamed
+  `scheduler_busy_and_align_refusal.test.js`, these cases gone with `manager.js`).
 - **A price belongs to the runtime build that measured it** (flag `runtime`); a new build
   calibrates again, because a price only rises within a build. — *code, 2026-10-04* · audit §13.4.
 - Each kind books its own process's measured memory — its model plus ~100 MB of process. (was:
@@ -932,42 +960,51 @@ unloaded — audit §3.1 has the method.
   and 2.91×). (was: the newest reading alone, any thread count — one slow line kept a model off
   the CPU for good; 16-bit rows had no speed, so Auto unloaded the AI model for a 212 MB Kokoro —
   until 2026-10-04.) — *code + measured, 2026-10-04* · `manager.py` `cpu_speed`; audit §5 B6,
-  B7, §13.5.
+  B7, §13.5 (moved to the kit with round E — just-core `runner/speech_placement.js` `cpuSpeed`).
 - On a machine whose graphics share its memory, Auto places on the graphics and says the CPU
   would free nothing. (was: always "nothing else is on the graphics card" — until 2026-10-04.) —
-  *code, 2026-10-04* · `manager.py` `_card_is_its_own_memory`; audit §5 B9.
-- Speech's card margin is its own, 512 MB (`speech_runtime.card_margin_mb`), for Auto's
-  placement, the card's admission and `/v1/engines/vram`; the system-memory check keeps the kit's
+  *code, 2026-10-04* · `manager.py` `_card_is_its_own_memory`; audit §5 B9 (moved to the kit with
+  round E — just-core `runner/speech_placement.js`).
+- Speech's card margin is its own, 512 MB (`speech_runtime.card_margin_mb` — the kit's runner
+  setting `card_margin_mb:audiocpp` since round E), for Auto's placement and the card's admission
+  (and `/v1/engines/vram`, until that route went with round E); the system-memory check keeps the kit's
   1,024 MB `safety_margin_mb`, as the AI model's layer split does. A model pinned to GPU is held
   to no margin and never refused for memory — the admission makes what room it can and the load
   goes on, its reason saying it may spill, or that it did (decided 2026-10-16, the user: "do 1
   and 2", after BreezeTTS 2 — measured 7.3 GB at guidance 4 — was refused on an 8 GB card even
   pinned: 7.4 GB + 1 GB against about 7.7 GB free). (was: the kit's 1,024 MB for both, and a pin
   refused like Auto — until 2026-10-16.) — *code + tests, 2026-10-16* · `manager.js`
-  `_cardMarginMb`, `_admitMemory`; `engine_vram_wiring.test.js`.
+  `_cardMarginMb`, `_admitMemory`; `engine_vram_wiring.test.js` (moved to the kit with round E —
+  just-core `runner/speech_placement.js`, `runner/runtime_service.js`; their tests the kit's).
 - An unmeasured model whose estimate fits the card only without the margin (Qwen3-TTS Base 1.7B's
   8 GB on an 8 GB card), its files fitting with it, says the card-first words; it is placed as
   before — its estimate, not its files, is the size weighed, so what other programs hold is not
   checked. A model too big by its files says their size in `_gb`'s words (9.5, 12). (was: no
   reason after "Loads on the graphics card", and the files rounded whole — "10 GB" beside the
   row's "9.5 GB" — until 2026-10-16.) — *code + tests, 2026-10-16* · `manager.js` `placementFor`;
-  `cpu_placement.test.js`; TASKS "Slice 5's findings: what each one gets" 3.
+  `cpu_placement.test.js`; TASKS "Slice 5's findings: what each one gets" 3 (moved to the kit with
+  round E — just-core `runner/speech_placement.js` `placementFor`, its `speech_placement.test.js`;
+  ours renamed `kitten_pocket_lines.test.js`, its placement cases gone with `manager.js`).
 
 ### 2.4 What the app shows of it
 
 - AI Settings' strip reads `GET /v1/llm-runner/resident`: `vramTotalMb`, `usedMb` (measured;
   null on a box with no probe → the strip says "reserved" and uses `committedMb` /
   `remainingMb`), `memArch` ("discrete" → VRAM, else "Memory") and `models[]` (`status`,
-  `vramMb` — the LLM cell sums the awake ones). The cells are built inside the kit's
-  `AiModelsArea.vue` (`memCells`, not exported) with SCOPED styles (`.lu-hwstat`), so no other
-  screen can borrow either. JustVoice adds TTS · STT (and Busy) from `/v1/engines/vram`
-  through `services/vramFeed.js` `hostCells`. — *code + live, 2026-10-06* (live: 8,192 MB
-  total, 855 MB used, discrete).
-- Home shows the same cells — VRAM used · Free · LLM through JustVoice's copy of that reading
-  (`vramFeed.residentCells`, the kit left untouched by the user's word) and TTS · STT from
-  `hostCells` — and nothing else; checked cell for cell against AI Settings. (was: Home read
-  `gpus[0].vram_used_mb` from `/v1/system/info`, a field that endpoint never had — "VRAM NaN /
-  8 GB" — until 2026-10-06.) — *code + live, 2026-10-06* · `HomeView.vue` (`memoryCells`).
+  `vramMb` — the LLM cell sums the awake ones) and `runtime_bookings` (`{key, kind, runtime,
+  placement, modelId, mb, source}` — a cell each: "Speech · Graphics card", plain when measured,
+  "~" when it is the model's stated need, the model's id under it). The cells are the kit's
+  `useMemoryCells` (`ui/src/composables/useMemoryCells.js`, exported), which the strip and an app's
+  Home both read; JustVoice adds none. (was: built inside `AiModelsArea.vue` (`memCells`, not
+  exported), JustVoice adding TTS · STT (and Busy) from `/v1/engines/vram` through
+  `services/vramFeed.js` `hostCells` — until round E, 2026-10-29, the kit's G10.) — *code + live,
+  2026-10-06; code, just-core `e45086d`, 2026-10-29* (live: 8,192 MB total, 855 MB used, discrete).
+- Home shows the same cells and nothing else — the kit's `useMemoryCells()`, polled while Home is
+  on screen (`src/pages/HomePage.vue`). (was: JustVoice's copy of that reading,
+  `vramFeed.residentCells`, and TTS · STT from `hostCells`, checked cell for cell against AI
+  Settings — until round E, 2026-10-29; before that Home read `gpus[0].vram_used_mb` from
+  `/v1/system/info`, a field that endpoint never had — "VRAM NaN / 8 GB" — until 2026-10-06.) —
+  *code + live, 2026-10-06; code, 2026-10-29* · `HomePage.vue` (`memoryCells`).
 - `/v1/health` carries `current_model`, the loaded speech model's catalog name (*Kokoro 82M*),
   beside `current_engine` (the id). The top bar's pill shows the name. — *code + live,
   2026-10-06* · `api/health_api.py` (`loaded_model_name`).
