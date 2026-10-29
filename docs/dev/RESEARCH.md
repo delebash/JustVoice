@@ -699,8 +699,22 @@ are its RESEARCH §12. All *code* at just-core `75d07f8` / JustVoice `78ca4a0e` 
   `v0.9.0-jv.4/cuda12` (2.0 GB), not the jv.6 pin. The 11 `speech_runtime` settings have the kit's names and
   defaults, and every value here is at its default. JustVoice's `cache_root` is JustWrite's `data/ai-cache`. —
   *measured, read-only, 2026-10-29*.
-- **Pocket TTS's 198 voice files carry no SHA-256 in our seeds** (`curated/pocket_tts.js:118` — size only); the kit
-  names and checks a model's files by SHA-256. — *code*.
+- **Pocket TTS's preset voice files carry their SHA-256** (`curated/pocket_tts.js` `VOICE_FILES`): 99 files, 198
+  entries over its 10 rows, each Hugging Face's LFS id at the pinned revision `f861648c` (its API's tree listing,
+  `lfs.oid`); the 79 already downloaded here (English, German, Spanish, Portuguese) carry the same ids in their
+  `files.json` (147 entries checked, models included), and every size is the file's `file_bytes`. (was: size only
+  — until 2026-10-29.) — *web + the downloaded manifests, 2026-10-29*.
+- **A small file Git stores itself has no SHA-256 in `catalog.json`:** its `sha256` is Git's blob id (40 hex, SHA-1),
+  which is all Hugging Face lists for a file outside LFS. 29 offered rows on the working tree's catalog have one:
+  F5-TTS Habibi's 8 `vocab.txt`, KittenTTS 2's LICENSE, NOTICE, two more LICENSEs and SHA256SUMS in each of its 3
+  versions, sanoTTS's 18 `config.json` (all under 13 KB). The kit's download checks SHA-256 and removes a file that
+  doesn't match (`runner/models.js` `acquireFileSet`), so those models can't download through it until their
+  SHA-256s are known. — *code + the catalog, 2026-10-29* · `engines/audiocpp/kit_models.js`.
+- **audio.cpp's JSON transcription takes only a path on the server's computer** — "audio.cpp's native JSON request
+  only takes a server-local path" (`app/server/runtime.cpp:1247-1251`); a multipart `file` part is spooled to a temp
+  file by the server. `audio_base64` is read only by task requests (`handle_generic_run`, `:1951-1975`). So a 16 kHz
+  copy made for a recogniser is a file, and the kit's transcription hook (`{body, timeout}`) has no step after the
+  request that could remove it. — *code, our fork at `1de98891`, 2026-10-29*.
 
 ---
 
