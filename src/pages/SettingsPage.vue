@@ -745,30 +745,8 @@ const storageShell = {
   useDefault: storageUseDefault,
 };
 // Phase ④ (the speech-catalog redesign): per-store clear verbs in ONE grammar with the kit's rows —
-// the same confirm-with-size, the same refusal while loaded. `run` is the panel's: busy while it runs,
-// the sizes read again after.
-async function clearSpeechCache(usage, run) {
-  const size = fmtBytes(usage?.extras?.speechCache) || "0 MB";
-  const yes = await confirmDialog({
-    title: "Clear downloaded speech models?",
-    message: `This frees ${size} of downloaded speech-model files. The catalog keeps every model; each one re-downloads on demand.`,
-    confirmLabel: "Clear speech models",
-  });
-  if (!yes) return;
-  await run("speech", async () => {
-    const res = await api.request("/v1/engines/speech-cache/clear", { method: "POST" });
-    if (res?.ok === false) {
-      pushToast({
-        kind: "error",
-        title: res.detail === "unload engines first"
-          ? "A speech engine is loaded — unload it first (AI Settings → Speech engines), then try again."
-          : res.detail || "Couldn't clear the speech models.",
-      });
-    }
-  });
-  // Cleared models flip to "Download" on the speech catalog.
-  window.dispatchEvent(new Event("jv:health-refresh"));
-}
+// the same confirm-with-size. `run` is the panel's: busy while it runs, the sizes read again after.
+// The speech models are the kit's models cache since round E (2026-10-29): its one Clear does them.
 async function clearRenderCache(usage, run) {
   const size = fmtBytes(usage?.extras?.renderCache) || "0 MB";
   const yes = await confirmDialog({
@@ -921,7 +899,7 @@ onMounted(() => {
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/personas</code></td><td>List personas (voice binding, note, effects chain, lexicon).</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/engines</code></td><td>Engine catalog + load state.</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/engines/capabilities</code></td><td>Per-engine knob + inline-tag manifest (drives UI gating).</td></tr>
-            <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/engines/{id}/load</code></td><td>Load an engine into memory.</td></tr>
+            <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/ai/runtimes/audiocpp/models/{id}/load</code></td><td>Load a speech model into memory.</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/lexicons</code></td><td>Pronunciation dictionaries.</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/takes/recent</code></td><td>Last N generations across the whole DB.</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/settings</code></td><td>Operator-tunable settings (mastering target, paths, cache, etc.).</td></tr>
@@ -1054,12 +1032,10 @@ onMounted(() => {
     <div v-show="activeSub === 'storage'" class="jv-section">
       <StoragePanel :data-dir="dataDir" :shell="storageShell" saves="projects, voices, the database">
         <template #extra="{ usage, size, busy, run }">
+          <!-- what is left in the old speech cache until this computer's files move into the kit's models
+               cache (round E, plan §4 step 8) — the kit's own Clear models cache is the one clear -->
           <span class="lu-storage__label">Speech models</span>
-          <div class="lu-storage__row">
-            <span>{{ size(usage?.extras?.speechCache) }}</span>
-            <UiButton intent="secondary" size="small" :disabled="!!busy"
-              :label="busy === 'speech' ? t('kit.storagePanel.clearing') : t('kit.storage.clearShort')" @click="clearSpeechCache(usage, run)" />
-          </div>
+          <div class="lu-storage__row"><span>{{ size(usage?.extras?.speechCache) }}</span></div>
           <span class="lu-storage__label">Render cache</span>
           <div class="lu-storage__row">
             <span>{{ size(usage?.extras?.renderCache) }}</span>
@@ -1175,8 +1151,8 @@ onMounted(() => {
         </p>
 
         <!-- (The Default TTS engine dropdown died in the parity batch,
-             2026-08-06 — "Set as default" is a row action on the AI console's
-             Speech engines tab now; one source.) -->
+             2026-08-06 — "Set as default" is an engine's action on the AI console's
+             Speech tab now; one source.) -->
 
         <!-- Max chunk chars slider -->
         <div class="setting-row">
@@ -1499,7 +1475,7 @@ onMounted(() => {
               <div class="setting-row__title">Speech recognition</div>
               <div class="setting-row__desc">
                 Turns your recording into text — the model is the one under
-                <a href="#/ai">AI Settings → Speech engines → Speech recognition</a>;
+                <a href="#/ai?tab=features">AI Settings → Routing by feature → Transcription</a>;
                 dictation loads it on first use.
               </div>
             </div>
@@ -1660,7 +1636,7 @@ onMounted(() => {
     <!-- ─── GPU — live info (task #91). The "CUDA wheel download flow" mock
          card that sat under it left on 2026-10-01: it was never wired, and the
          per-engine PyTorch it described went with the switch to the speech
-         runtime, whose build is chosen on AI Settings → Speech engines. ─── -->
+         runtime, whose build is chosen on AI Settings → Speech. ─── -->
     <div v-show="activeSub === 'gpu'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">GPU</h3></div>
@@ -1670,7 +1646,7 @@ onMounted(() => {
             <div class="setting-row__head">
               <div>
                 <div class="setting-row__title">Backend</div>
-                <div class="setting-row__desc">The best compute runtime this machine reports. The speech runtime's own build (CUDA, Vulkan, CPU) is chosen on AI Settings → Speech engines.</div>
+                <div class="setting-row__desc">The best compute runtime this machine reports. The speech runtime's own build (CUDA, Vulkan, CPU) is chosen on AI Settings → Speech.</div>
               </div>
               <strong>{{ (gpuInfo.active_backend || "cpu").toUpperCase() }}</strong>
             </div>
@@ -1690,7 +1666,7 @@ onMounted(() => {
                 <div class="setting-row__title">VRAM total / used</div>
                 <div class="setting-row__desc">
                   Currently using <strong>{{ gpuVramUsedGB }} GB</strong> of <strong>{{ gpuVramTotalGB }} GB</strong>.
-                  Unload models on AI Settings → Speech engines to free VRAM before loading larger ones.
+                  Unload models on AI Settings → Speech to free VRAM before loading larger ones.
                 </div>
               </div>
               <div class="jv-col-end">
