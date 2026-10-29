@@ -18,23 +18,17 @@ ffmpeg with no console of its own since 2026-10-07 — before that, a server who
 starting terminal had closed hit this on every chapter. If you still see it,
 restart the app and press **Retry** on the chapter's strip.
 
-**A model load hangs or you loaded the wrong one.** Engine loads are
-cancellable — the Speech engines tab's load job has a Cancel, and it answers at
-once, even mid-load; a cancelled load unloads whatever it had brought in and
-frees the memory it had reserved.
-
-**Speech recognition was refused "not enough memory" with itself listed as resident.**
-Before 2026-10-04 a model whose runtime process had stopped (downloading another
-model restarted it) stayed booked, so reloading it was refused against its own
-booking until the app restarted. A stopped model's booking is now freed the
-moment JustVoice notices, and downloading a model no longer restarts anything.
+**A model load hangs or you loaded the wrong one.** A speech model's load can
+be cancelled: while it loads, its row on AI Settings → Speech shows **Cancel**
+(an **Unload** does the same), and a load that is downloading its model first
+has a **Cancel** on its bar. Either stops the load where it is — its download
+included — and frees the memory it had reserved.
 
 **A model that loaded fine yesterday won't load today.** Something else may be
 holding the GPU memory it needs. The load's error message names any other
-program holding a sizeable amount; speech engines left over from an earlier
-session are the usual JustVoice culprit, and the loading screen offers
-**Stop them and retry**. See
-[GPU → Engines left over from an earlier session](gpu.md#engines-left-over-from-an-earlier-session).
+program holding a sizeable amount; **show apps** on the memory strip's *Other
+apps* cell lists them. JustVoice's own speech processes never outlive the app —
+see [GPU → The speech runtime never outlives the app](gpu.md#the-speech-runtime-never-outlives-the-app).
 
 **A chapter says "no dialogue found", or every line went to the Narrator.**
 Nothing in its text was read as speech. Check Overview → **Speech marks**: Auto
@@ -45,17 +39,17 @@ word changed, a split, a merge): it keeps them. Speech after a dash isn't read
 in any setting. See
 [Studio → Speech marks](studio.md#speech-marks).
 
-**A model load says "the speech runtime is not installed yet".** Every voice
-engine and speech recognition run on one program, the speech runtime. Install
-it from the **Speech runtime** row at the top of **AI Settings → Speech
-engines** — once, for every engine. See
+**A line stops with "… failed to load on first use: audio.cpp isn't installed".**
+Every voice engine and speech recognition run on one program, the speech
+runtime. Install it with **Install** under **Engine: audio.cpp** at the top of
+**AI Settings → Speech** — once, for every engine. See
 [Engines → The speech runtime](engines.md#the-speech-runtime).
 
 **A render stops with "… this needs the speech runtime update".** This
 JustVoice can speak the line — a blended voice, a lexicon's pronunciation on
 Kokoro, a Chatterbox Turbo or Nano voice, Japanese, or Chatterbox in Hebrew,
 Russian or Chinese — but the speech runtime you have installed is older. Click
-**Update to** on the runtime row of AI Settings → Speech engines.
+**Update to** under **Engine: audio.cpp** on AI Settings → Speech.
 
 **A render stops with "… this isn't in this version's speech runtime yet".**
 The line needs something this JustVoice's speech runtime doesn't have at all.
@@ -63,26 +57,27 @@ Give the speaker's persona a different voice. See
 [Engines → Not available yet](engines.md#not-available-yet).
 
 **A Japanese line stops with "Japanese needs the Japanese dictionary".**
-Install the dictionary on its row under the runtime row of AI Settings →
-Speech engines (about 260 MB). See
+Install **Japanese dictionary (UniDic)** under **Add-ons** on AI Settings →
+Speech (45 MB to download, 248 MB once installed). See
 [Engines → The speech runtime](engines.md#the-speech-runtime).
 
 **A Pocket TTS clone stops with "… only after you accept Kyutai's terms".**
 Pocket TTS clones only once you have accepted Kyutai's terms for it, on this
-install. Open a persona's page, pick *Cloned* under Type and Pocket TTS, or the Pocket TTS row on AI
-Settings → Speech engines, read the terms and click **Accept**. Its preset
+install. Open a persona's page and pick *Cloned* under Type and Pocket TTS, or
+open the Pocket TTS engine on AI Settings → Speech and click **Read and accept**
+in its foot; read the terms and accept them. Its preset
 voices never need it. See [Engines → Pocket TTS](engines.md#pocket-tts).
 
 **A Pocket TTS line stops with "… speaks English, and this line is German".**
 Pocket TTS is one model per language. Load the model for the line's language on
-Speech engines (Pocket TTS German, Italian, Portuguese or Spanish), or give that
+AI Settings → Speech (Pocket TTS German, Italian, Portuguese or Spanish), or give that
 speaker a voice on another engine.
 
 **Speech renders slowly since a model moved to the CPU.** Auto puts a model on
 the CPU only when it speaks at least 2× real time there, and measures it on
 your machine at its first line. If your CPU is slower than that, the next load
-takes it back to the graphics card. To keep it on the card regardless, set its
-**Runs on** to **GPU** on Speech engines. See
+takes it back to the graphics card. To keep it on the card regardless, pick
+**Graphics card** beside its **Load** on AI Settings → Speech. See
 [Engines → Where each model runs](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu).
 
 **A render stops naming the wrong kind of model.** Qwen3-TTS is three
@@ -95,19 +90,20 @@ voices"*. Load the model the voice was made with, or pick a voice made for the
 loaded one.
 
 **The speech runtime won't start.** The error quotes the end of the runtime's
-own log; the whole log is `logs/audiocpp-server.log` in your data folder. A
-build that doesn't suit the machine (for example the CUDA build after a
-graphics-driver problem) can be swapped for another on the runtime row's
-**Backend** select — see [GPU](gpu.md#which-build-the-runtime-uses). If a file
-of the runtime went missing or an antivirus took one, **Reinstall** on the same
-row downloads it again. A slow machine that needs longer than a minute to start
-it can be given more in `speech_runtime.start_timeout_s`
-([Settings reference](settings-reference.md)).
+own log; the whole log is `audiocpp-server.log`, beside the AI model engine's
+logs in your data folder ([Engines → The speech runtime](engines.md#the-speech-runtime)).
+A build that doesn't suit the machine (for example the CUDA build after a
+graphics-driver problem) can be swapped for another with **Build** under
+**Engine settings** on AI Settings → Speech — see
+[GPU](gpu.md#which-build-the-runtime-uses). If a file of the runtime went missing
+or an antivirus took one, **Reinstall** under **Engine: audio.cpp** downloads it
+again. A slow machine that needs longer than a minute to start it can be given
+more in **Start timeout (seconds)** under the same Engine settings.
 
 **A line stops with "the speech runtime did not answer within 900 s".** One
 request — a line, or a model load — ran longer than the limit. On a slow CPU a
-very long line can; split it, or raise `speech_runtime.request_timeout_s`
-([Settings reference](settings-reference.md)). A transcription always gets at
+very long line can; split it, or raise **Request timeout (seconds)** under
+**Engine settings** on AI Settings → Speech. A transcription always gets at
 least three times its recording's length.
 
 **A line stops with "the speech runtime stopped answering".** The runtime

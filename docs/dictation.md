@@ -4,7 +4,7 @@ JustVoice's dictation turns a recording into text: the local speech recogniser (
 
 **Not built yet: starting a recording from the app, and pasting the result.** The global hotkey is not wired — the desktop shell has a hotkey monitor, but the app never turns it on — and the Captures tab's **Record (soon)** button is off. What works today is the server side: a recording sent to `POST /v1/captures` is transcribed and cleaned as this page describes, and appears on the Captures tab. The hotkey, the floating pill and paste-into-any-field are planned; the sections below that describe them say so.
 
-The recogniser is the **Speech recognition** engine on AI Settings → Speech engines. It runs in the same speech runtime as the voice engines (see [Engines → The speech runtime](engines.md#the-speech-runtime)), so the runtime must be installed and the model downloaded; dictation loads it on first use. It replaced Whisper on 2026-10-01: on human speech it got fewer words wrong in English, German, French and Russian, about level in Spanish, and somewhat worse in Japanese and Chinese. Unlike Whisper it reports no confidence score.
+The recogniser is the **Transcription** feature's model, set on **AI Settings → Routing by feature** — Qwen3-ASR 1.7B as JustVoice ships it (see [Engines → Speech recognition](engines.md#speech-recognition)). It runs in the same speech runtime as the voice engines (see [Engines → The speech runtime](engines.md#the-speech-runtime)), so the runtime must be installed; dictation downloads the model the first time it needs it, then loads it. It replaced Whisper on 2026-10-01: on human speech it got fewer words wrong in English, German, French and Russian, about level in Spanish, and somewhat worse in Japanese and Chinese. Unlike Whisper it reports no confidence score.
 
 ## 6-gate readiness checklist
 
@@ -15,7 +15,7 @@ Before dictation works end-to-end, all six gates must pass. The Captures tab sho
 | 🎙️ Microphone permission | OS-level access to default input |
 | ⌨️ Input Monitoring (macOS) | Required to read raw global keystrokes for hotkey detection |
 | ♿ Accessibility (macOS) | Required for paste injection (synthesizing Cmd-V) |
-| 🤖 STT model | A speech-recognition model is loaded — any of them on AI Settings → Speech engines → Transcription (since 2026-10-15) — or, with none loaded, Qwen3-ASR 1.7B (3.6 GB with its word aligner) is downloaded, and loads on first use |
+| 🤖 STT model | The speech runtime is installed and the Transcription feature's model — Qwen3-ASR 1.7B, 3.6 GB with its word aligner, as JustVoice ships it — is on this computer; it loads on first use. While it downloads, the gate shows how far along it is |
 | 💬 LLM refinement model | The **Dictation cleanup** route resolves to a text-AI model (AI Settings → Routing by feature; skip-able if you want the raw transcript) |
 | ⏯ Push-to-talk chord | A chord for the global hotkey — not wired yet (see [Hotkeys](#hotkeys)) |
 

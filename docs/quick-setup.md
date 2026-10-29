@@ -13,8 +13,9 @@ setup wizard that gets you from a fresh install to working TTS in three steps:
 
 Every voice engine runs on the same speech runtime (see
 [Engines → The speech runtime](engines.md#the-speech-runtime)), so the install
-step is one download, not one per engine: 60–460 MB depending on your graphics
-card (the NVIDIA CUDA build is the large one). Each engine's model then
+step is one download, not one per engine: from about 30 MB to about 1 GB
+depending on your graphics card (the NVIDIA CUDA build, with NVIDIA's
+libraries, is the large one). Each engine's model then
 downloads the first time you load it — the tier decides which engines that will
 be. The confirm step shows that total, added up from each engine's default model
 in the engine catalog, so it follows the models you would really get; the
@@ -62,7 +63,8 @@ model); per-feature choices live under Routing by feature. See
 
 The install step shows one bar, **Speech runtime**, with the download's real
 bytes and percent and the stage it has reached. The runtime is downloaded,
-checked that it starts on this machine, and only then put in place.
+checked that it starts on this machine, and only then put in place — the same
+install as **Install** under **Engine: audio.cpp** on AI Settings → Speech.
 
 You can **Cancel** mid-install. A cancelled install changes nothing — the
 runtime is only put in place once it has downloaded and passed its check. The
@@ -71,16 +73,16 @@ wizard then jumps to the Done step.
 ## Done step
 
 Says whether the speech runtime installed (with the error if it didn't, and a
-pointer to retry from AI Settings → Speech engines), reminds you that each
-engine's model downloads the first time you load it — on the Voices page or on
-AI Settings → Speech engines — and, when no text-AI model is set up yet, points
+pointer to retry from AI Settings → Speech), reminds you that each engine's
+model downloads the first time you load it — on the Voices page, or AI Settings
+→ Speech — and, when no text-AI model is set up yet, points
 to the LLM engine setup under AI Settings.
 
 ## Skipping the wizard
 
 Click **Skip — configure later** in the confirm step. You can:
 
-- Install the speech runtime yourself from the **Speech runtime** row at the top of the Speech engines tab on the AI page, and download models from each engine's rows.
+- Install the speech runtime yourself with **Install** under **Engine: audio.cpp** at the top of the AI page's **Speech** tab, and download models from each engine's rows there.
 
 The wizard re-runs from **Settings → About → Run welcome again**.
 
@@ -93,5 +95,5 @@ doesn't make it re-pop on an install you already set up.
 ## Troubleshooting
 
 - **Detection shows "CPU only" but you have a GPU** — check Settings → GPU. If JustVoice doesn't detect a runtime (CUDA / Metal / Vulkan), your graphics driver may need to be reinstalled. Pick the tier manually for now.
-- **The speech runtime fails to install** — the bar shows the error; most often it is the download. Retry from **Install speech runtime** on the AI page's Speech engines tab. See [GPU](gpu.md#troubleshooting).
+- **The speech runtime fails to install** — the bar shows the error; most often it is the download. Retry with **Install** under **Engine: audio.cpp** on the AI page's **Speech** tab. See [GPU](gpu.md#troubleshooting).
 - **AI features answer 501** — the text-AI model isn't set up; that's the other wizard: AI Settings → Run LLM engine setup.
