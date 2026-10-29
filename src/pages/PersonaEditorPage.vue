@@ -38,7 +38,7 @@ import { computed, onActivated, onBeforeUnmount, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
   AiTaskStrips, AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
-  DownloadBar, UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, pushToast, runAiEndpoint, saveBlob,
+  UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, loadRuntimeModel, pushToast, runAiEndpoint, saveBlob,
 } from "@delebash/ui";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
@@ -49,7 +49,6 @@ import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { setDefaultVariant } from "../services/engineDefaults.js";
 import { handleTermsRefusal, openEngineTerms } from "../services/engineTerms.js";
-import { speechLoadTask } from "../services/speechLoad.js";
 import { facetCounts, facetOptions, facetTotal, narrowed } from "../services/facets.js";
 import { lexiconMatches } from "../services/lexiconPreview.js";
 import { openProjectInStudio } from "../services/openProject.js";
@@ -551,25 +550,27 @@ async function chooseVersion(id) {
 // The chosen version isn't what speaks (a version loaded, or downloaded while
 // the chosen one isn't): that one speaks until this loads.
 const versionNote = computed(() => versionLoadNote(modelVersion.value, chosenVersion.value, versionShort));
-const versionLoadTask = ref(null);
+const versionLoading = ref(false);
 async function loadChosenVersion() {
   const mv = modelVersion.value;
-  if (!mv || !chosenVersion.value) return;
-  // The kit's load (round E): a version not on disk downloads first; its licence, when it gates
-  // the download, is asked for and the load runs again once it is accepted.
-  let refused = false;
-  const task = speechLoadTask(api, chosenVersion.value, {
-    onTerms: () => {
-      refused = true;
-      openEngineTerms(mv.engine_id, { onAccepted: loadChosenVersion });
-    },
-  });
-  versionLoadTask.value = task;
-  await task.start();
-  if (task.state === "done" || refused) versionLoadTask.value = null;
-  if (task.state === "done") {
-    window.dispatchEvent(new Event("jv:health-refresh"));  // the top bar's pill, the stores
-    await loadModelVersion();
+  const id = chosenVersion.value;
+  if (!mv || !id || versionLoading.value) return;
+  // The kit's Load (round E, loadRuntimeModel): a task on the AI tasks strip — the strip under the
+  // button here; a version not on disk downloads first; a refusal is said by the kit; its licence,
+  // when it gates the download, is asked for and this Load runs again once it is accepted.
+  versionLoading.value = true;
+  try {
+    const out = await loadRuntimeModel("audiocpp", id, {
+      label: `${mv.model_name} ${versionShort(id)}`,
+      onTermsRequired: () => openEngineTerms(mv.engine_id, { onAccepted: loadChosenVersion }),
+    });
+    // the server took it (loaded, or downloaded and then stopped or failed): what speaks changed
+    if (out.status === "loaded" || out.started) {
+      window.dispatchEvent(new Event("jv:health-refresh"));  // the top bar's pill, the stores
+      await loadModelVersion();
+    }
+  } finally {
+    versionLoading.value = false;
   }
 }
 
@@ -1108,10 +1109,10 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
               <div v-if="versionNote" class="jv-inline-row">
                 <span class="jv-hint">{{ versionNote }}</span>
                 <UiButton intent="secondary" size="small" :label="`Load ${versionShort(chosenVersion)}`"
-                  :loading="versionLoadTask?.state === 'running'" @click="loadChosenVersion" />
+                  :loading="versionLoading" @click="loadChosenVersion" />
               </div>
-              <DownloadBar v-if="versionLoadTask?.state" :task="versionLoadTask"
-                :title="`${modelVersion?.model_name || ''} ${versionShort(chosenVersion)}`" />
+              <!-- the Load's task (the kit's loadRuntimeModel): its download, then its load, with Cancel -->
+              <AiTaskStrips :features="['runtime.load']" :meta="{ runtimeId: 'audiocpp', modelId: chosenVersion }" />
               <div v-if="kind === 'design' && voice?.source === 'designed' && voice.design_prompt" class="jv-inline-row">
                 <span class="jv-hint">“{{ voice.design_prompt }}”</span>
                 <UiButton intent="ghost" size="small" label="Start from this one"

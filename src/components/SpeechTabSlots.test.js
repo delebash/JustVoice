@@ -4,7 +4,7 @@
 // What JustVoice puts in the kit's Speech tab (round E, docs/plans/2026-10-29-round-e-onto-the-kit.md
 // §4 step 5): an engine's foot — its licence and Delete downloaded models through the kit's own
 // Delete — and a model's facts — its chips, and its load options saved through our route, the model
-// loaded again through the kit's when the server let it go — and the Loaded now rail above the
+// loaded again through the kit's Load service (loadRuntimeModel) when the server let it go — and the Loaded now rail above the
 // models, with Unload through the kit's route.
 import { h, nextTick } from "vue";
 import { createPinia, setActivePinia } from "pinia";
@@ -14,7 +14,7 @@ import { createTestApp } from "@delebash/ui/quasar/install.js";
 import { i18n } from "../i18n/index.js";
 
 const api = vi.hoisted(() => ({ del: vi.fn(), put: vi.fn(), post: vi.fn(), safeRequest: vi.fn(), request: vi.fn(), patch: vi.fn() }));
-const ui = vi.hoisted(() => ({ confirmDialog: vi.fn(), pushToast: vi.fn(), reportError: vi.fn(), openExternal: vi.fn() }));
+const ui = vi.hoisted(() => ({ confirmDialog: vi.fn(), pushToast: vi.fn(), reportError: vi.fn(), openExternal: vi.fn(), loadRuntimeModel: vi.fn() }));
 vi.mock("@delebash/ui", () => ({
   ...api,
   ...ui,
@@ -125,15 +125,23 @@ test("a changed load option is saved through our route, and the model the server
   await mount(SpeechModelFacts, { model: { id: "qwen3-cv-1.7b", loading: "" }, refresh });
   api.put.mockResolvedValue({ reload: true });
   api.safeRequest.mockResolvedValue({ variants: [VARIANT] });
-  api.post.mockResolvedValue({ modelId: "qwen3-cv-1.7b" });
+  ui.loadRuntimeModel.mockResolvedValue({ status: "loaded", held: { modelId: "qwen3-cv-1.7b" }, started: true });
   const select = el.querySelector(".ev-mplace select");
   select.value = "eager";
   select.dispatchEvent(new Event("change"));
   await flush();
   await flush();
   expect(api.put).toHaveBeenCalledWith("/v1/engines/qwen3/models/qwen3-cv-1.7b/runtime-options", { options: { "qwen3_tts.attn": "eager" } });
-  expect(api.post).toHaveBeenCalledWith("/v1/ai/runtimes/audiocpp/models/qwen3-cv-1.7b/load", {});
+  expect(ui.loadRuntimeModel).toHaveBeenCalledWith("audiocpp", "qwen3-cv-1.7b", expect.objectContaining({ label: "Qwen3-TTS CustomVoice 1.7B" }));
+  expect(api.post).not.toHaveBeenCalled();
   expect(refresh).toHaveBeenCalledTimes(2); // as it starts loading, and once it has
+  // a licence its load waits for opens our terms dialog, which loads it again once accepted
+  const terms = [];
+  const heard = (ev) => terms.push(ev.detail.engine);
+  window.addEventListener("jv:engine-terms", heard);
+  ui.loadRuntimeModel.mock.calls[0][2].onTermsRequired({ model: { id: "qwen3-cv-1.7b" }, retry: vi.fn() });
+  window.removeEventListener("jv:engine-terms", heard);
+  expect(terms).toEqual(["qwen3"]);
 });
 
 test("an engine's head: its kind, its licence in plain words, testing, and Set as default saved as the default speech engine", async () => {

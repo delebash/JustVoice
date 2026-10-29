@@ -14,10 +14,11 @@
 -->
 <script setup>
 import { computed } from "vue";
-import { UiButton, UiSelect, languageName, openExternal, pushToast, reportError } from "@delebash/ui";
+import { UiButton, UiSelect, languageName, loadRuntimeModel, openExternal, pushToast } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { setDefaultVariant } from "../services/engineDefaults.js";
+import { openEngineTerms } from "../services/engineTerms.js";
 import { directionCell } from "../services/personaFacts.js";
 import DeliveryKnobs from "./DeliveryKnobs.vue";
 
@@ -94,8 +95,9 @@ const optionValues = computed(() =>
 );
 
 // A model's load options are saved per model; `value` null is back to the default. A loaded model
-// whose options changed was let go by the server (`reload`): it loads again, through the kit, on
-// the tab's own row.
+// whose options changed was let go by the server (`reload`): it loads again through the kit's Load
+// (loadRuntimeModel — a task on the AI tasks strip, a refusal said by the kit, a licence it waits
+// for our terms dialog), the tab's own row showing it load.
 async function setRuntimeOption(key, value) {
   const cur = Object.fromEntries(options.value.filter((o) => o.value != null).map((o) => [o.key, o.value]));
   const next = { ...cur };
@@ -111,13 +113,13 @@ async function setRuntimeOption(key, value) {
   }
   await engines.loadModels(e.value.id);
   if (!r?.reload) return;
-  const loading = api.post(`/v1/ai/runtimes/audiocpp/models/${encodeURIComponent(props.model.id)}/load`, {});
+  const engineId = e.value.id;
+  const loading = loadRuntimeModel("audiocpp", props.model.id, {
+    label: v.value.name,
+    onTermsRequired: ({ retry }) => openEngineTerms(engineId, { onAccepted: retry }),
+  });
   await props.refresh?.(); // the row shows it loading again
-  try {
-    await loading;
-  } catch (err) {
-    reportError(err);
-  }
+  await loading;
   window.dispatchEvent(new Event("jv:health-refresh"));
   await props.refresh?.();
 }
