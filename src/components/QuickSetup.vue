@@ -37,6 +37,9 @@ const detectError = ref("");
 const gpu = ref(null);
 const engines = ref([]);
 const llmProviders = ref([]);
+// The speech runtime's download for this computer — the kit's size for the build it picks here (its
+// status's `downloadBytes`, what the kit's Speech tab shows); 0 when it can't say.
+const runtimeBytes = ref(0);
 
 // ── Tier recipes ────────────────────────────────────────────────────
 // Per-tier recipe: which VOICE engines to set up (the pin half died with
@@ -160,11 +163,13 @@ async function detect() {
   step.value = "detect";
   detectError.value = "";
   try {
-    const [sys, eng, llm] = await Promise.all([
+    const [sys, eng, llm, rt] = await Promise.all([
       api.safeRequest("/v1/system/info", null),
       api.safeRequest("/v1/engines", { engines: [] }),
       api.safeRequest("/v1/llm-providers", { providers: [] }),
+      api.safeRequest("/v1/ai/runtimes/audiocpp/engine/status", null),
     ]);
+    runtimeBytes.value = Number(rt?.downloadBytes) || 0;
     if (sys?.gpus?.length) {
       gpu.value = sys.gpus[0];
     } else {
@@ -319,8 +324,8 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
               </li>
             </ul>
             <p class="jv-muted quick-setup__note quick-setup__note--est">
-              Every engine runs on one speech runtime — it downloads now (60–460 MB, depending on
-              your graphics card). Each engine's model downloads the first time you load it<template
+              Every engine runs on one speech runtime — it downloads now<template v-if="runtimeBytes"> (about
+                <strong>{{ fmtBytes(runtimeBytes) }}</strong> for this computer)</template>. Each engine's model downloads the first time you load it<template
                 v-if="tierDownloadBytes">: about <strong>{{ fmtBytes(tierDownloadBytes) }}</strong> for this
                 tier</template>.
             </p>
