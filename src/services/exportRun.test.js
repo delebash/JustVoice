@@ -46,6 +46,10 @@ describe("an export run — a server job on the kit's registry (round E, plan §
     const out = await exportRun(api, { id: "p1", name: "B" }, "m4b");
     expect(api.post).toHaveBeenCalledWith("/v1/projects/p1/export_m4b/start", {});
     expect(runServerJob).toHaveBeenCalledWith(expect.objectContaining({ feature: "export-m4b", label: "B → M4B audiobook", meta: { projectId: "p1" } }));
+    // the strip's note: what it does and what Cancel does (the user's words, 2026-10-15)
+    expect(runServerJob.mock.calls[0][0].note).toBe(
+      "Chapters joined and mastered, then the book encoded — Cancel stops at once while lines render, or after the chapter being mastered.",
+    );
     expect(seen.phase).toBe("Rendering line 2 of 3");
     expect(api.requestBlob).toHaveBeenCalledWith("/v1/export_jobs/j1/file");
     expect([out.filename, out.note]).toEqual(["B.m4b", null]);
@@ -57,6 +61,7 @@ describe("an export run — a server job on the kit's registry (round E, plan §
     const out = await exportRun(api, { id: "p1", name: "B" }, "chapters");
     expect(api.post).toHaveBeenCalledWith("/v1/projects/p1/export_chapters/start", {});
     expect(runServerJob).toHaveBeenCalledWith(expect.objectContaining({ feature: "export-chapters" }));
+    expect(runServerJob.mock.calls[0][0].note).toBe("Each chapter joined, then mastered — Cancel stops at once while lines render, or after the chapter being mastered.");
     expect([out.filename, out.note]).toEqual(["B chapters.zip", NOTE]);
   });
 

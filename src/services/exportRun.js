@@ -12,13 +12,21 @@
 // Since round E (2026-10-29, plan §4 step 6) the job is the kit's job registry's
 // and this its runServerJob: the start is the book's route (202 with the job),
 // following it and Cancel the kit's /v1/jobs/:id, the strip's words the job's
-// step; the finished file is ours to fetch, once (GET /v1/export_jobs/:id/file).
+// step and its note what the export does and what Cancel does (runServerJob's
+// `note`, the task's stats line); the finished file is ours to fetch, once
+// (GET /v1/export_jobs/:id/file).
 
 import { runServerJob } from "@delebash/ui";
 
+// What Cancel does, on the strip (the user's words, 2026-10-15: "Cancel stops
+// after the chapter it is on" was no longer true while lines render).
+const CANCEL = "Cancel stops at once while lines render, or after the chapter being mastered.";
+
 const KINDS = {
-  m4b: { feature: "export-m4b", path: "export_m4b", what: "M4B audiobook" },
-  chapters: { feature: "export-chapters", path: "export_chapters", what: "chapter WAVs + masters" },
+  m4b: { feature: "export-m4b", path: "export_m4b", what: "M4B audiobook",
+    note: `Chapters joined and mastered, then the book encoded — ${CANCEL}` },
+  chapters: { feature: "export-chapters", path: "export_chapters", what: "chapter WAVs + masters",
+    note: `Each chapter joined, then mastered — ${CANCEL}` },
 };
 
 /** Run an export; resolves to { blob, filename, note } once the file is made — `note`, what
@@ -37,6 +45,7 @@ export async function exportRun(api, project, kind = "m4b") {
     meta: { projectId: project.id },
     // the job's step — "Rendering line 12 of 340", "Chapter 2 of 4 · …", "Encoding the book"
     describe: (job) => job.message || "",
+    note: k.note,
   });
   const blob = await api.requestBlob(`/v1/export_jobs/${jobId}/file`);
   return { blob, filename: done?.filename, note: done?.note || null };
