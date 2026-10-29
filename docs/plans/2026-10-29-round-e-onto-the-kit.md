@@ -50,22 +50,23 @@ kit doesn't use its job registry for them). **Exports move onto the kit's job re
 
 ## 2 · Each piece and the standard it follows (app-structure §19)
 
-| Piece | Standard (§19 row → kit code) |
-|---|---|
-| The runtime, its builds, pin, install, Update | "Another engine" + "An engine whose models load into running servers" → `runner/runtimes.js` `audiocpp`, `runner/runtime_service.js` `RuntimeService`, rows `runtime_binary` |
-| eSpeak NG, the Japanese dictionary | "An engine's side archives … its optional add-ons" → build `extras`, `defaults.addons`, `runner/runtime_extras.js` |
-| The models | `installLlm` `runtimeModels` → `llm/seed.js` `seedRuntimeModels` (rewrites built-in rows every seed — no reset) |
-| Model files | "A runtime's model files" → `runner/models.js` `acquireFileSet`; "Files already on this computer, into the cache" → `RuntimeService.adoptModel` |
-| Where a model runs, its memory | `runner/speech_placement.js` `SpeechPlacement`; "The graphics card's memory" → `runner/arbiter.js` |
-| One line of speech | "Run a transcription feature …; speak with a voice's model" → `llm/speech_dispatch.js` `withSpeechModel` |
-| Transcription | the same row → `transcribeFeature`, `speechFeatureReadiness`; a feature + an stt preset (`installLlm` `featureCatalog`/`enginePresets`/`featurePresets`) |
-| Settings that move into the kit | "Settings that change between versions" → `retireSettings` |
-| The runtime's settings, speed bands | "A runtime's own settings" → `defaults.settings`, `PUT /v1/ai/runtimes/:id/settings` |
-| What was measured | "What was measured on this computer" → `ModelMeasurementStore` (already the table JustVoice writes) |
-| The screen | "A runtime's screens" → `LuRuntimeTab` (slots `before-models`, `model`, `after-models`) |
-| Export jobs | "A long server job" → `platform/jobs.js` `JobRegistry`, `platform/jobs_api.js` `makeJobsRouter`, `ui/services/serverJob.js` `runServerJob` |
-| The DSP process | decided 2026-10-29: stays the app's, started through the kit's `spawnChild`; port → "Start a server process, find a port" → `runner/process.js` `findFreePort` |
-| A refusal | `platform/errors.js` `ApiError` (note: `statusCode`, not `status` — the kit session, 2026-10-29) |
+| Piece | §19 row | Kit code |
+|---|---|---|
+| The runtime, its builds, pin, install, Update | "Another engine"; "An engine whose models load into running servers" (rows `runtime_binary`) | `packages/core/src/runner/runtimes.js`, `RuntimeService`, `AudioCppPool` |
+| eSpeak NG, the Japanese dictionary | "An engine's side archives … its optional add-ons" (a build's `extras`, `defaults.addons`) | `packages/core/src/runner/runtime_extras.js`, `installArchive` |
+| The models | "Another engine" — `installLlm`'s `runtimeModels` (built-in rows rewritten every seed, no reset) | `installLlm`, `seedRuntimeModels` |
+| Model files | "A runtime's model files"; "Files already on this computer, into the cache" (`RuntimeService.adoptModel`) | `acquireFileSet`, `adoptFileSet` |
+| Where a model runs, its memory | "An engine whose models load …"; "The graphics card's memory" | `packages/core/src/runner/speech_placement.js`, `SpeechPlacement`, `getArbiter` |
+| One line of speech | "Run a transcription feature …; speak with a voice's model" | `withSpeechModel` |
+| Transcription | the same row; a feature + an stt preset (`featureCatalog`, `enginePresets`, `featurePresets`) | `transcribeFeature`, `speechFeatureReadiness` |
+| Settings that move into the kit | "Settings that change between versions" | `retireSettings` |
+| The runtime's settings, speed bands | "A runtime's own settings" (`defaults.settings`, `PUT /v1/ai/runtimes/:id/settings`) | `packages/core/src/llm/stores.js`, `settingKey`, `bandKey` |
+| What was measured | "What was measured on this computer" (already the table JustVoice writes) | `ModelMeasurementStore` |
+| The screen | "A runtime's screens" (slots `before-models`, `model`, `after-models`) | `LuRuntimeTab` |
+| Export jobs | "A long server job" | `JobRegistry`, `makeJobsRouter`, `runServerJob` |
+| The DSP process | decided 2026-10-29: stays the app's, started through the kit; "Start a server process, find a port" | `spawnChild`, `findFreePort` |
+| A refusal | "A refusal" (note: `statusCode`, not `status` — the kit session, 2026-10-29) | `ApiError` |
+| Each family's request, its warm-up, the catalog | — (the kit leaves request shaping to the app: `llm/speech_dispatch.js:8`) | app — how each audio.cpp family is asked for speech, its warm-up and the voice catalog are the voice app's own |
 
 No piece is NOT STANDARD as planned. The one candidate — moving the Japanese dictionary's folder into the kit's
 `_addons/` by hand — is not proposed (§5 item 11).
