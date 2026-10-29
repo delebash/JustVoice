@@ -48,8 +48,8 @@ import PersonaDesignMaker from "../components/PersonaDesignMaker.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { setDefaultVariant } from "../services/engineDefaults.js";
-import { handleTermsRefusal } from "../services/engineTerms.js";
-import { makeEngineLoadTask } from "../services/ttsJobChannel.js";
+import { handleTermsRefusal, openEngineTerms } from "../services/engineTerms.js";
+import { speechLoadTask } from "../services/speechLoad.js";
 import { facetCounts, facetOptions, facetTotal, narrowed } from "../services/facets.js";
 import { lexiconMatches } from "../services/lexiconPreview.js";
 import { openProjectInStudio } from "../services/openProject.js";
@@ -322,7 +322,7 @@ const kindOptions = computed(() => {
     const opt = k.disabled ? k : { ...k, label: `${k.label} (${n[k.value] ?? 0})` };
     if (k.value === "blend" && Object.keys(caps.value).length && !canBlend.value) {
       return { ...opt, disabled: true,
-        title: "Blends need a speech runtime that can play them — update it on AI Settings → Speech engines when an update is offered." };
+        title: "Blends need a speech runtime that can play them — update it on AI Settings → Speech when an update is offered." };
     }
     if (k.disabled || !d) return opt;
     const has = voices.value.some((v) => kindOf(v) === k.value && v.directed_by === d);
@@ -405,7 +405,7 @@ const voiceEmptyHint = computed(() => {
     return "No voice of this kind matches these filters.";
   }
   return {
-    builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
+    builtin: "No built-in voices — install a speech model on AI Settings → Speech.",
     clone: "No cloned voices yet — make one on the right.",
     design: "No designed voices yet — make one on the right.",
     blend: "No blended voices yet — make one on the right.",
@@ -513,7 +513,7 @@ async function loadModelVersion() {
   if (seq === versionSeq) modelVersion.value = r;
 }
 watch([() => voice.value?.id, () => effectiveLanguage.value], loadModelVersion, { immediate: true });
-// A load or a default set anywhere else (Speech engines, Voices) shows here too.
+// A load or a default set anywhere else (the Speech tab, Voices) shows here too.
 const onHealth = () => { void loadModelVersion(); };
 window.addEventListener("jv:health-refresh", onHealth);
 onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", onHealth));
@@ -555,11 +555,20 @@ const versionLoadTask = ref(null);
 async function loadChosenVersion() {
   const mv = modelVersion.value;
   if (!mv || !chosenVersion.value) return;
-  const task = makeEngineLoadTask(api, mv.engine_id, { model_variant: chosenVersion.value });
+  // The kit's load (round E): a version not on disk downloads first; its licence, when it gates
+  // the download, is asked for and the load runs again once it is accepted.
+  let refused = false;
+  const task = speechLoadTask(api, chosenVersion.value, {
+    onTerms: () => {
+      refused = true;
+      openEngineTerms(mv.engine_id, { onAccepted: loadChosenVersion });
+    },
+  });
   versionLoadTask.value = task;
   await task.start();
+  if (task.state === "done" || refused) versionLoadTask.value = null;
   if (task.state === "done") {
-    versionLoadTask.value = null;
+    window.dispatchEvent(new Event("jv:health-refresh"));  // the top bar's pill, the stores
     await loadModelVersion();
   }
 }
@@ -1091,7 +1100,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                 Speaks with <strong>{{ modelVersion.model_name }} {{ versionShort(modelVersion.speaks_with || chosenVersion) }}</strong>
                 <template v-if="modelVersion.loaded && modelVersion.loaded === chosenVersion"> · loaded</template>
                 <template v-else-if="!modelVersion.loaded"> · not loaded — the first Listen loads it</template>.
-                Also on <a href="#/ai">AI Settings → Speech engines</a>.
+                Also on <a href="#/ai?tab=runtime-audiocpp">AI Settings → Speech</a>.
               </p>
               <!-- Load shows whenever what speaks isn't the chosen version — loaded or
                    only downloaded (the narrowings review C5, 2026-10-13); the note beside it
@@ -1312,7 +1321,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
               </template>
               <p v-else class="jv-hint">Pick a voice to see what its model can do.</p>
               <UiButton intent="ghost" size="small" label="Compare models →"
-                @click="router.push({ path: '/ai', query: { tab: 'speech-engines' } })" />
+                @click="router.push({ path: '/ai', query: { tab: 'runtime-audiocpp' } })" />
             </div>
           </div>
 

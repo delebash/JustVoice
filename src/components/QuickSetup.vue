@@ -12,7 +12,8 @@
     ✅ GPU detection via /v1/system
     ✅ tier auto-pick from VRAM + manual override dropdown
     ✅ preset blurb + estimated download GB
-    ✅ per-engine install progress (poll job_id via /v1/jobs/{id})
+    ✅ the speech runtime's install progress (the kit's audio.cpp runtime —
+       POST /v1/ai/runtimes/audiocpp/engine/install, its status polled; round E)
     ✅ LLM provider auto-recommend ("register a Claude key for richer
        attribution" or "Ollama covers Compose if you don't want cloud")
     ⚠ manual provider picker — not implemented; user goes to Engines
@@ -23,8 +24,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, fmtBytes, pushToast } from "@delebash/ui";
-import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
+import { DownloadBar, createDownloadTask, fmtBytes, pushToast, runtimeEngineChannel } from "@delebash/ui";
 import { UiButton, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/ui";
 
 const emit = defineEmits(["close"]);
@@ -183,17 +183,17 @@ async function detect() {
 }
 
 // ── Install step ────────────────────────────────────────────────────
-// ONE kit download task (ttsJobChannel over the job API): installing any
-// engine installs the speech runtime they all share, so the first chosen
-// engine's install is the whole step. The shared DownloadBar renders it.
+// ONE kit download task over the kit's audio.cpp runtime (its engine channel —
+// round E): every chosen engine runs on the speech runtime they all share, so
+// its install is the whole step. The shared DownloadBar renders it.
 const runtimeTask = ref(null);
 
 async function runInstalls() {
   step.value = "install";
-  const first = enginesToInstall.value[0];
-  if (first) {
-    runtimeTask.value = makeEngineDownloadTask(api, first.id, {});
+  if (enginesToInstall.value.length) {
+    runtimeTask.value = createDownloadTask(runtimeEngineChannel("audiocpp"));
     await runtimeTask.value.start();
+    if (runtimeTask.value.state === "done") window.dispatchEvent(new Event("jv:health-refresh"));
   }
   step.value = "done";
 }
@@ -398,11 +398,11 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
         <template v-else>
           <p v-if="runtimeInstalled">
             The speech runtime is installed. Each engine's model downloads the first
-            time you load it — on the Voices page, or AI Settings → Speech engines.
+            time you load it — on the Voices page, or AI Settings → Speech.
           </p>
           <p v-else-if="runtimeFailed">
             The speech runtime didn't install: {{ runtimeTask?.error || "unknown error" }}.
-            Retry from AI Settings → Speech engines.
+            Retry from AI Settings → Speech.
           </p>
           <p v-else>Install cancelled — nothing was changed.</p>
           <p v-if="!hasLlmProvider" class="jv-muted quick-setup__note-md">
