@@ -199,6 +199,46 @@ Each rec was attacked; the line under it says what that changed.
 
 Left out, recommended to stay out: **Cancel on the dictionary's download** — 47 MB.
 
+### 3.3 What the kit built — the shapes JustVoice builds on (just-core `e45086d`, green, 2026-10-29)
+
+From the kit session's hand-off, spot-checked in code (`runtimes.js:93` `placementKey`, `runtime_service.js:825-838`
+the download gate, `AiModelsArea.vue:126, 140-141` `runtimeTabs`, `ui/src/composables/useMemoryCells.js:81`,
+`lifecycle.js:2706` `runtime_bookings`, `config.js:392` the macOS Intel row). Its run: core 1619, template unit 135
+and e2e 15, the guard clean; JustVoice's server 1384 and unit 261 on it. B14 dropped; every other §3 item built.
+
+- **Rows:** `peakVramMb` = `min_vram_gb` × 1024 (the one card-need field; `spec.minVramGb` is no longer read);
+  `refSpeed.cpu` = `cpu_realtime`; `spec.unloadStopsProcess`; the aligner companion
+  `{role, family, task, slot, onDemand: true}`.
+- **`installLlm` `runtimeSpeech.audiocpp`:** `warm({server, row, modelId, entries, calibrate})` → calibrated?;
+  `pieceLength(row)`; `loadOptionsKey(row)`; `transcribe(body, row)` → `{body, timeout}`; `sessionOptions(row)` (may
+  be async) — every load given none reads it; `beforeDownload(row)` answers **synchronously** — throw or return a
+  problem to refuse (→ 403 `…/terms-required` `{modelId}`; a promise is a TypeError).
+- **Dev build:** `runtimeExeOverrides.audiocpp = () => ({exe, backend, version})` — backend "cuda" | "vulkan" |
+  "metal" | "cpu", version "dev · <commit>".
+- **A line:** `withSpeechModel(runtimeId, modelId, {placement?, sessionOptions?, line?, needs?}, fn)` — no placement →
+  the model's saved choice; `line(result)` → `{text, audioS}`; `needs: ["aligner"]` registers on-demand companions
+  first. Errors carry `statusCode` (ApiError).
+- **Transcription:** `transcribeFeature(featureKey, body, {timeout})`; the preset's "auto" defers to the model's saved
+  choice, its gpu/cpu win.
+- **The saved choice:** runner setting `placement:audiocpp:<modelId>` (`placementKey`).
+- **Routes under `/v1/ai/runtimes/audiocpp`:** `PUT models/:id/placement {placement}` → the row;
+  `POST models/:id/try-card` → the row; `POST models/:id/load {placement?, sessionOptions?}` → 200
+  `{modelId, placement, kind, reason}` · 202 `{status: "downloading", modelId}` · 403 terms-required · 409
+  `load-cancelled` · 409 `not-enough-memory`; `POST models/:id/unload` during a load cancels it; `GET models` adds
+  `placementChoice`, `placement {where, reason, cardFailed} | null`, `loading "" | "downloading" | "loading"`,
+  `loadError`; the engine status adds `settingsUi`, `kinds`, `bandsByKind`, `settings`,
+  `loaded [{modelId, placement, kind, reason}]`, `running`.
+- **Memory:** `/v1/llm-runner/resident` gains `runtime_bookings [{key, kind, runtime, placement, modelId, mb,
+  source}]`; `useMemoryCells({llmClaim?, onRead?, every})` → `{resident, cells, start, stop}` for Home.
+- **Screens:** `AiModelsArea` takes `runtimeTabs: {audiocpp: {hidden?, props}}` (props by v-bind: `group`, `filter`,
+  `onChanged`, `onTermsRequired`); slots `runtime-audiocpp-<slot>`: `group-head` / `group-foot`
+  `{group, models, shown, refresh}`, `filters` `{filters}`, `model` `{model, loaded, refresh}`, `before-models` /
+  `after-models` `{engine, models, refresh}`; emits `changed {what, id}` and `terms-required {model, retry}`. Groups
+  collapse; no sort; a model not on disk shows Download only.
+- **Ledger:** `<kind>:audiocpp:<model>` (stt: for transcription); the card word is the build's own (cuda12, cuda13,
+  vulkan, metal). macOS Intel is back (platform "macos-x64"). B12: in a shared cache, Clear removes only this
+  app's files.
+
 ## 4 · JustVoice's move (after §3 lands), in order
 
 Each slice: its own test red then green while building; the full suites, the build and the gate once at the end
