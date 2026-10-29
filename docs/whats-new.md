@@ -2,11 +2,31 @@
 
 ## v0.1.0
 
+- **Speech on the family's shared AI engine (2026-10-29)** — AI Settings' **Speech engines** tab is
+  now **Speech**: the tab every app of the family uses for an AI engine that runs models of its own,
+  with JustVoice's pieces inside it. At its top, **Engine: audio.cpp** installs, updates, reinstalls
+  and removes the speech runtime; the Japanese dictionary is its add-on; **Engine settings** holds
+  every runtime setting by name with one **Save** — the build, the graphics card, CPU threads, the CPU
+  bar, the spill limit, the runaway limits, the card headroom and the timeouts. Each engine's models
+  sit under it with its licence, testing and **Set as default**; each model's row has the shared fit
+  chip and speed band, **Auto · Graphics card · CPU** saved for the model, **Load**, **Delete** and
+  **Try the card again**, and says where it would load and why before you load it. A load anywhere
+  in the app downloads a model that isn't on this computer first, asking for its licence when it has
+  one, and **Unload** during a load cancels it, its download included. Speech models download into
+  the AI models cache beside the language models — each file once, checked by its SHA-256 — so
+  **Clear** on the AI models cache clears them too. Which model transcribes — dictation, the take
+  check, captions, agents — is the **Transcription** feature on **Routing by feature** now, not a
+  hidden setting, and its 1.1 GB word aligner loads only when captions need it. The memory strip
+  shows each speech model's memory in its own cell, and every speech model measures its memory again
+  on its first load. A self-hosted server or cloud speech provider you save works at once, without
+  a restart. For other callers, an export's job is `GET /v1/jobs/{id}`
+  ([Engines](engines.md), [AI features → Transcription](ai-features.md#transcription),
+  [Import and export](import-and-export.md))
 - **audio.cpp's update of 2026-10-29: new models, flash attention at any precision** — the speech
   engines list now has what audio.cpp added since: Gradium Phonon, LFM3-Audio (speech and speech
   recognition), Ming 3.0 TTS, Ming 3.0 Audio Tiny (speech and speech recognition), Plapre 3 (Danish),
   Whistle ASR (speech recognition), XTTS v2 and a smaller Fish Audio Drama 3 download, each with JustVoice's reading of its licence
-  ([Speech engines → Commercial use, in plain words](engines.md#commercial-use-in-plain-words)). Qwen3-TTS's **Attention** load option is now **Speed mode**, on
+  ([Engines → Commercial use, in plain words](engines.md#commercial-use-in-plain-words)). Qwen3-TTS's **Attention** load option is now **Speed mode**, on
   every row, not just the 8-bit ones, with a third choice, *All speed-ups (CUDA)* — flash attention
   plus audio.cpp's other speed-ups for an NVIDIA card, not yet measured by JustVoice. They load with
   `npm run dev` now, and in the installed app once the next speech runtime release ships
@@ -1064,7 +1084,7 @@
   fails to load because of them, the loading screen says how much they hold and
   offers **Stop them and retry**, and a failed model load's message now starts by
   naming whatever else is holding GPU memory
-  ([GPU → Engines left over from an earlier session](gpu.md#engines-left-over-from-an-earlier-session))
+  ([GPU → The speech runtime never outlives the app](gpu.md#the-speech-runtime-never-outlives-the-app))
 - **One pause between lines, everywhere.** Studio's Render joined lines with 250 ms
   while the exported audiobook and ACX QC used 600 ms, so the chapter you listened to
   was paced differently from the one you shipped. Both now use **Pause between lines**
