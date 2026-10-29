@@ -97,3 +97,26 @@ test("dictation_is_ready_when_the_transcription_model_is_downloaded", async () =
   ready.mockReturnValue({ ready: false, need: "no-stt-model", model: "", modelState: null });
   expect((await c.get("/v1/capture/readiness")).json().stt).toMatchObject({ ready: false, display_name: "No speech-recognition model" });
 });
+
+test("generate_on_an_external_server_that_wont_load_points_at_its_test_connection", async () => {
+  const { c } = await appClient();
+  const { getState } = await import("../src/app_state.js");
+  const { EngineMeta, PresetVoice } = await import("../src/engines/base.js");
+  getState().engines.register({
+    meta: new EngineMeta({ engineId: "my-server", displayName: "My server", backend: "external", supportedRuntimes: ["cpu"] }),
+    ready: () => false,
+    load: async () => {
+      throw new Error("External TTS server at http://127.0.0.1:9 is not responding");
+    },
+    unload() {},
+    voices: () => [new PresetVoice({ id: "sv_1", name: "SV" })],
+    synthesize: async () => {
+      throw new Error("never reached");
+    },
+  });
+  const r = await c.post("/v1/generate", { json: { voice: "sv_1", text: "Hello." } });
+  expect(r.status).toBe(400);
+  expect(r.json().detail).toBe(
+    "engine 'my-server' failed to load on first use: External TTS server at http://127.0.0.1:9 is not responding. Try Test connection on AI Settings → Speech.",
+  );
+});

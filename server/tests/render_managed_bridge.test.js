@@ -109,3 +109,21 @@ test("cloned_voice_passes_reference_wav", async () => {
   await renderLine(state({ voices }), { voice: "v1", text: "Hello" });
   expect(fakeMgr.synths.at(-1)[1].audio_prompt_path).toBe(realpathSync.native(ref));
 });
+
+test("a_registry_backend_that_wont_load_points_at_its_test_connection", async () => {
+  // An external provider (a self-hosted server, a cloud API) loads on its first line; one that
+  // doesn't answer is a 400 pointing where its connection is tested (AI Settings → Speech).
+  const st = state();
+  const backend = new FakeBackend("my-server", ["sv_1"]);
+  backend.ready = () => false;
+  backend.load = async () => {
+    throw new Error("External TTS server at http://127.0.0.1:9 is not responding");
+  };
+  st.engines.register(backend);
+  const e = await renderLine(st, { voice: "sv_1", text: "Hello" }).catch((x) => x);
+  expect(e).toBeInstanceOf(ApiError);
+  expect(e.statusCode).toBe(400);
+  expect(e.detail).toBe(
+    "engine 'my-server' failed to load on first use: External TTS server at http://127.0.0.1:9 is not responding. Try Test connection on AI Settings → Speech.",
+  );
+});

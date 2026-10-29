@@ -715,7 +715,7 @@ export async function renderLine(
       } catch (e) {
         throw badRequest(
           `engine '${engineId}' failed to load on first use: ${errText(e)}. ` +
-            `Try POST /v1/ai/runtimes/audiocpp/models/${engineId}/load with explicit device + model_variant.`,
+            "Try Test connection on AI Settings → Speech.",
         );
       }
     }
