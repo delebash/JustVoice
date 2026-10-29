@@ -13,6 +13,7 @@ import { cfg as appCfg } from "../src/app_state.js";
 import { seedWorkspace } from "../src/database/seed.js";
 import * as lb from "../src/llm_bootstrap.js";
 import * as session from "../src/database/session.js";
+import { TRANSCRIPTION_FEATURE } from "../src/feature_catalog.js";
 import { DEFAULT_FEATURE_PROMPTS } from "../src/seed_feature_prompts.js";
 import { DEFAULT_ENGINE_PRESETS, DEFAULT_FEATURE_PRESETS } from "../src/seed_presets.js";
 import { appClient, closeApps } from "./app_helpers.js";
@@ -57,8 +58,14 @@ const sharedRows = () => Object.fromEntries(stores.getPromptStore().list().map((
 
 test("presets_and_refs_seed", async () => {
   const c = await client(tmpPath());
-  const body = (await c.get("/v1/ai/engine-presets")).json();
-  const presets = Object.fromEntries(body.presets.map((x) => [x.id, x]));
+  // With no kind the list is the chat presets (the kit's rule, presets_api.js); transcription's
+  // preset is an stt one, listed under ?kind=stt.
+  const listed = async (query) => (await c.get(`/v1/ai/engine-presets${query}`)).json().presets;
+  const chat = await listed("");
+  const stt = await listed("?kind=stt");
+  expect(stt.map((x) => x.id)).toEqual(["p_transcription"]);
+  expect(chat.map((x) => x.id)).not.toContain("p_transcription");
+  const presets = Object.fromEntries([...chat, ...stt].map((x) => [x.id, x]));
   for (const x of DEFAULT_ENGINE_PRESETS) expect(presets).toHaveProperty([x.id]);
   // compose runs at its preset's 0.9 (the hardcoded personas_api temperature moved onto the
   // preset — ruling 9).
@@ -76,12 +83,13 @@ test("presets_and_refs_seed", async () => {
   expect(DEFAULT_FEATURE_PRESETS["speaker_attribution.guided"]).toBe("p_extract_reasoned");
   expect(DEFAULT_FEATURE_PRESETS["speaker_attribution.identify"]).toBe("p_extract");
   // Every seeded row RESOLVES through the cascade: its own ref, or its FEATURE's ref. And every
-  // ref names a seeded row or a seeded feature.
+  // ref names a seeded row or a seeded feature — or a feature with no prompt row, as transcription
+  // runs a speech model (an stt preset, round E).
   const featuresOf = Object.fromEntries(Object.entries(DEFAULT_FEATURE_PROMPTS).map(([k, v]) => [k, v.feature || k]));
   for (const [key, feat] of Object.entries(featuresOf)) {
     expect(Object.hasOwn(DEFAULT_FEATURE_PRESETS, key) || Object.hasOwn(DEFAULT_FEATURE_PRESETS, feat), key).toBe(true);
   }
-  const known = new Set([...Object.keys(DEFAULT_FEATURE_PROMPTS), ...Object.values(featuresOf)]);
+  const known = new Set([...Object.keys(DEFAULT_FEATURE_PROMPTS), ...Object.values(featuresOf), TRANSCRIPTION_FEATURE]);
   for (const refKey of Object.keys(DEFAULT_FEATURE_PRESETS)) expect(known.has(refKey), refKey).toBe(true);
 });
 

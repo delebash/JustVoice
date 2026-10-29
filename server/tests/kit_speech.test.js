@@ -77,9 +77,10 @@ test("the_kits_refusals_are_the_kits_problems_and_audiocpps_answers_ours", () =>
     expect(kitSpeech.engineError(refusal).apiError()).toMatchObject({ statusCode: kit.statusCode, slug: kit.slug, extra: kit.extra });
   }
   expect(kitSpeech.engineError(memory).apiError()).toMatchObject({ statusCode: 409, slug: "not-enough-memory", extra: { where: "card", neededMb: 6000, freeMb: 2000 } });
-  // what the kit leaves as it is stays as it is (a runtime not installed: a line says it failed to load)
+  // a runtime not installed is the kit's refusal too (kit 284c67f, as JustVoice asked): 409 engine-not-installed,
+  // which the screen acts on (Install) — never a server error
   const notInstalled = e({ notInstalled: true }, "audio.cpp isn't installed");
-  expect(kitSpeech.engineError(notInstalled)).toBe(notInstalled);
+  expect(kitSpeech.engineError(notInstalled).apiError()).toMatchObject({ statusCode: 409, slug: "engine-not-installed" });
   // the licence a download waits for: the engine named, as our routes always said it
   const terms = kitSpeech.engineError(e({ termsRequired: { modelId: "index_tts2-indextts2-q8" } }, "Accept its licence"));
   expect(terms).toBeInstanceOf(TermsRequired);
