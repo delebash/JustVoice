@@ -1,59 +1,120 @@
 # SPDX-License-Identifier: MIT
+# The release: each platform's installer and electron-updater's feed (latest*.yml and the
+# .blockmaps), built on GitHub's runners, each started as a user starts it, and attached to the
+# tag's GitHub release only when every check has passed — the family template's workflow
+# (../just-core/template/.github/workflows/release.yml), with JustVoice's own: the sync engine
+# checked out beside the kit (JustWrite's), and the audio.cpp DSP program in the installers.
+#
+# Started only by hand (the user, 2026-10-28: nothing builds by itself): the Actions page's "Run workflow" or
+# `gh workflow run release.yml -f tag=v<version>` — the tag must already be on origin; the release notes are
+# that version's section of docs/whats-new.md. `publish: false` is a dry run: the same builds and checks, kept
+# as the run's artifacts instead of a release — a branch name works as the ref
+# (`gh workflow run release.yml -f tag=main -f publish=false`). `core_ref` / `sync_ref` are the kit's and the
+# sync engine's commits the app was built and tested with: both are shared by the family, so their main moves
+# on while a release is being prepared.
+#
+# The installers aren't signed (family-wide, the user 2026-10-29 — app-structure §Q.2): no certificate is passed.
+# A packaged app carries the audio.cpp DSP program: Quasar's beforeBuild stages it from the pinned audio.cpp
+# release (scripts/audiocpp-dsp-package.js — sha256-checked, macOS lipo'd from both Metal builds).
 name: Release
 
-# Started only by hand (the user, 2026-10-28: nothing builds by itself): the Actions page's "Run workflow" or
-# `gh workflow run release.yml -f tag=v<version>` — the tag must already be on origin.
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to build (e.g. v2.4.0). Must already exist on origin."
+        description: "Tag to build (e.g. v0.2.0). Must already exist on origin. A dry run takes a branch too."
         required: true
         type: string
-
-# No concurrency group — release builds must never cancel each other.
+      publish:
+        description: "Attach the files to the tag's release (off: a dry run — the files stay on this run)."
+        required: false
+        type: boolean
+        default: true
+      core_ref:
+        description: "The kit's commit to build with (the one the app was tested with). Empty: the kit's main."
+        required: false
+        type: string
+        default: ""
+      sync_ref:
+        description: "The sync engine's commit to build with (the one the app was tested with). Empty: its main."
+        required: false
+        type: string
+        default: ""
+      platforms:
+        description: "Which platforms to build."
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - windows
+          - macos
+          - linux
 
 permissions:
-  contents: write # needed to create / update the GitHub release
+  contents: write # creates the release and attaches the files
 
-# The desktop app is Electron + the Node server (the family's move, 2026-10-08); electron-builder
-# makes the installers (package.json `build`). A packaged app also carries the audio.cpp DSP
-# program: Quasar's beforeBuild stages it from the pinned audio.cpp release
-# (scripts/audiocpp-dsp-package.js — sha256-checked, macOS lipo'd from both Metal builds).
+# one release run per tag at a time (a second waits; it never attaches beside the first)
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - id: matrix
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          WIN='{"platform":"windows-latest","target":"win32"}'
+          MAC='{"platform":"macos-latest","target":"darwin"}'
+          LIN='{"platform":"ubuntu-22.04","target":"linux"}'
+          case "$PLATFORMS" in
+            windows) MATRIX="{\"include\":[$WIN]}" ;;
+            macos)   MATRIX="{\"include\":[$MAC]}" ;;
+            linux)   MATRIX="{\"include\":[$LIN]}" ;;
+            *)       MATRIX="{\"include\":[$MAC,$LIN,$WIN]}" ;;
+          esac
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
   build:
     name: Installer (${{ matrix.platform }})
+    needs: setup
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: windows-latest
-            target: win32
-          - platform: macos-latest
-            target: darwin
-          - platform: ubuntu-22.04
-            target: linux
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
     runs-on: ${{ matrix.platform }}
     steps:
       # The app needs the family kit and the sync engine beside it (server/package.json:
       # file:../../just-core/packages/core and file:../../just-sqlite-sync; quasar.config.js:
       # ../just-core/packages/ui), so all three are checked out side by side.
-      - uses: actions/checkout@v7
+      - name: Checkout the app (at the tag)
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag }}
           path: JustVioce
-      - uses: actions/checkout@v7
+
+      - name: Checkout the kit (at the commit the app was tested with)
+        uses: actions/checkout@v7
         with:
           repository: delebash/just-core
+          ref: ${{ inputs.core_ref }}
           path: just-core
-      - uses: actions/checkout@v7
+
+      - name: Checkout the sync engine (at the commit the app was tested with)
+        uses: actions/checkout@v7
         with:
           repository: delebash/just-sqlite-sync
+          ref: ${{ inputs.sync_ref }}
           path: just-sqlite-sync
 
-      - uses: actions/setup-node@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 24 # the Node the app runs on (Electron 44 carries 24.22.1) — it moves with the Electron major
           cache: npm
           cache-dependency-path: |
             JustVioce/package-lock.json
@@ -61,42 +122,43 @@ jobs:
             just-core/packages/core/package-lock.json
             just-sqlite-sync/package-lock.json
 
-      # better-sqlite3 and koffi ship per-platform N-API prebuilds, so nothing native is
-      # compiled here; electron-builder (Quasar's Electron mode, quasar.config.js) packages the
-      # Electron src-electron/package.json pins.
-      - name: Install the kit's server deps
+      # The kit's packages: core's dependencies, and ui's — the fonts every app bundles
+      # (packages/ui/src/common/fonts.css). ui keeps no lockfile (its .gitignore), so `npm install`.
+      - name: Install the kit
+        shell: bash
+        run: |
+          (cd just-core/packages/core && npm ci)
+          (cd just-core/packages/ui && npm install --no-audit --no-fund)
+
+      # The kit's data-folder code on this system's own file system: real links (a move keeps a model cache's
+      # relative links as they are — a Windows account without the symlink right skips that test) and the lock's
+      # file times. Node 24 here is Electron's Node's version (the kit's own `npm test` runs on Electron's).
+      - name: The kit's data-folder tests on this system
         working-directory: just-core/packages/core
-        run: npm ci
+        run: node node_modules/vitest/vitest.mjs run tests/data_root.test.js tests/data_lock.test.js
+
       - name: Install the sync engine's deps
         working-directory: just-sqlite-sync
         run: npm ci --omit=dev
-      - name: Install deps
+
+      - name: Install the app (the renderer and the server/ workspace)
         working-directory: JustVioce
         run: npm ci
+
       - name: Install the desktop app's deps (Electron, which the server's scripts run as Node)
         working-directory: JustVioce/src-electron
         run: npm ci
 
-      # Signing: electron-builder signs when its variables are set and builds unsigned (with a
-      # warning in its log) when they are not. macOS: the p12 (base64) and its password, plus
-      # the Apple ID trio for notarization. Windows: the code-signing PFX (base64) and password.
+      # better-sqlite3 and koffi ship per-platform N-API prebuilds, so nothing native is compiled here;
+      # Quasar's beforeBuild stages the DSP program for this platform (above).
       - name: Build the installers
         working-directory: JustVioce
-        env:
-          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
-          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          WIN_CSC_LINK: ${{ secrets.WINDOWS_CERT_PFX }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
-        # Quasar's CLI run as node (app-structure §Q.6); -P never: publishing is the next step's job
+        # Quasar's CLI run as node (app-structure §Q.6); -P never: the publish job attaches the files
         run: node node_modules/@quasar/app-vite/bin/quasar.js build -m electron -T ${{ matrix.target }} -P never
 
       # The packaged app started as a user starts it, on a fresh data folder: it must load its window
-      # and answer on its port with its own version before anything is attached (the macOS and Linux
-      # builds are never opened by hand). Linux needs a display (Xvfb) for the window. The template's
-      # three checks (scripts/start-packaged.js; decided 2026-10-20).
+      # and answer on its port with its own version before anything is kept or attached (the macOS and
+      # Linux builds are never opened by hand). Linux needs a display (Xvfb) for the window.
       - name: Start the packaged app
         working-directory: JustVioce
         shell: bash
@@ -130,55 +192,48 @@ jobs:
           echo "the window: $a"; echo "on its own: $b"
           test -n "$a" && test "$a" = "$b"
 
-      # the AppImage for the Linux user's check below
-      - name: Keep the AppImage for the Linux user's check
-        if: ${{ matrix.target == 'linux' }}
+      # every platform's files go to the jobs below: the Linux user's check, then the release —
+      # nothing is attached before every check has passed (a dry run keeps them here 7 days)
+      - name: Keep the files for the next jobs
         uses: actions/upload-artifact@v7
         with:
-          name: appimage
-          path: JustVioce/dist/electron/Packaged/*.AppImage
+          name: installers-${{ matrix.target }}
+          path: |
+            JustVioce/dist/electron/Packaged/*.exe
+            JustVioce/dist/electron/Packaged/*.dmg
+            JustVioce/dist/electron/Packaged/*.zip
+            JustVioce/dist/electron/Packaged/*.AppImage
+            JustVioce/dist/electron/Packaged/*.deb
+            JustVioce/dist/electron/Packaged/*.blockmap
+            JustVioce/dist/electron/Packaged/latest*.yml
           if-no-files-found: error
           retention-days: 7
-
-      - name: Publish to the draft release
-        working-directory: JustVioce
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ inputs.tag }}
-        run: |
-          PRE=""
-          case "$TAG" in *-*) PRE="--prerelease" ;; esac
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft $PRE \
-            --title "JustVoice $TAG" \
-            --notes "See the assets below to download and install this version." \
-            || gh release view "$TAG" >/dev/null  # another platform's job created it first
-          shopt -s nullglob
-          # the updater's feed (latest*.yml) and the blockmaps its downloads are checked against go up
-          # with the installers
-          gh release upload "$TAG" dist/electron/Packaged/*.exe dist/electron/Packaged/*.dmg dist/electron/Packaged/*.AppImage dist/electron/Packaged/*.deb dist/electron/Packaged/latest*.yml dist/electron/Packaged/*.blockmap --clobber
 
   # The AppImage opened the way a Linux user opens it — the file itself, no flags — on the current
   # Ubuntu LTS, which installs no FUSE 2 and whose AppArmor keeps unprivileged programs out of user
   # namespaces (Chromium's sandbox needs them): the build's own check runs the unpacked folder with
   # --no-sandbox, this one doesn't. It proves the static AppImage runtime (quasar.config.js
-  # `toolsets.appimage`). The release is a draft until it is published by hand: a failure here is
-  # seen before that (the template's linux-user job; decided 2026-10-20).
+  # `toolsets.appimage`).
   linux-user:
-    needs: build
+    needs: [setup, build]
+    if: ${{ contains(needs.setup.outputs.matrix, 'linux') }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout the app (at the tag) — the check's script and the app's port
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag }}
           path: JustVioce
-      - uses: actions/setup-node@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 24 # the Node the app runs on (Electron 44 carries 24.22.1) — it moves with the Electron major
+
       - name: The Linux build
         uses: actions/download-artifact@v8
         with:
-          name: appimage
+          name: installers-linux
           path: JustVioce/dist/electron/Packaged
 
       - name: Open the AppImage as a user does
@@ -206,3 +261,60 @@ jobs:
           b=$(sed -n 's/^data folder used: //p' headless.log)
           echo "the AppImage: $a"; echo "on its own: $b"
           test -n "$a" && test "$a" = "$b"
+
+  # The release: every platform's files attached at once, only when every check above passed.
+  publish:
+    needs: [build, linux-user]
+    if: ${{ inputs.publish && !cancelled() && needs.build.result == 'success' && (needs.linux-user.result == 'success' || needs.linux-user.result == 'skipped') }}
+    # pinned, with its own Node: ubuntu-latest moves to a new image now and then
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout the app (at the tag) — its name and What's new
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+          path: JustVioce
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24 # the Node the app runs on (Electron 44 carries 24.22.1) — it moves with the Electron major
+
+      - name: Every platform's files
+        uses: actions/download-artifact@v8
+        with:
+          pattern: installers-*
+          merge-multiple: true
+          path: JustVioce/dist/electron/Packaged
+
+      - name: Attach to the release
+        working-directory: JustVioce
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          # ES modules, as all the family's code (the family rules): --input-type=module, never require
+          PRODUCT=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("package.json", "utf8")).productName)')
+          # the notes: this version's section of the in-app What's new
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const text = readFileSync("docs/whats-new.md", "utf8").replace(/\r\n/g, "\n");
+            const part = text.split(/^## /m).find((s) => s.split("\n")[0].trim() === process.argv[1]);
+            process.stdout.write(part ? `${part.slice(part.indexOf("\n") + 1).trim()}\n` : "");
+          ' "$TAG" > release-notes.md
+          # the user docs for the website: docs/*.md and the help's toc.json only — never docs/dev or docs/plans
+          # (the trackers and their history), which the website would publish
+          tar -czf docs.tar.gz docs/*.md docs/toc.json
+          PRE=""
+          case "$TAG" in *-*) PRE="--prerelease" ;; esac
+          # a new release is a draft until every file is attached: published first, it was the "Latest" an
+          # installed copy's update check read before its latest.yml was there (the template's)
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" $PRE --draft --title "$PRODUCT $TAG" --notes-file release-notes.md
+          # attached while the release is a draft: it is never "Latest" without them
+          gh release upload "$TAG" docs.tar.gz --clobber
+          shopt -s nullglob
+          cd dist/electron/Packaged
+          # the installers, and electron-updater's feed: latest*.yml (one per platform) and the .blockmaps
+          gh release upload "$TAG" *.exe *.dmg *.zip *.AppImage *.deb *.blockmap latest*.yml --clobber
+          gh release edit "$TAG" --draft=false
