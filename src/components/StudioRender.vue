@@ -25,7 +25,7 @@ import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { CANT_RENDER, partOf } from "../services/lineStates.js";
 import {
-  QC_WAITS, chapterRenderTask, chapterRunning, followRender, jobFollowed, loadingText, renderChapter, waitingText,
+  QC_WAITS, chapterRenderTask, chapterRunning, followRender, jobFollowed, loadingText, renderChapter, saveChapterWav, waitingText,
 } from "../services/renderRun.js";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import PagePlayer from "./PagePlayer.vue";
@@ -348,8 +348,7 @@ function checkState(s) {
                   <UiButton intent="ghost" size="small" :label="player.isPlaying(playKey(row.scene.id)) ? '⏸ Pause' : '▶ Play'"
                     :title="player.isPlaying(playKey(row.scene.id)) ? 'Pause' : 'Play here in the row'"
                     @click="player.play(playKey(row.scene.id), taskFor(row.scene.id).result.url)" />
-                  <UiButton as="a" :href="taskFor(row.scene.id).result.url" :download="taskFor(row.scene.id).result.filename"
-                    intent="ghost" size="small" title="Download WAV">⬇ Download</UiButton>
+                  <UiButton intent="ghost" size="small" title="Download WAV" @click="saveChapterWav(taskFor(row.scene.id).result)">⬇ Download</UiButton>
                 </template>
                 <PlayTransport v-if="player.key === playKey(row.scene.id)" :player="player" width="long" />
               </div>

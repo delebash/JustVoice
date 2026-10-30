@@ -36,7 +36,7 @@
 // The kit's one rule for a file's name — the same module the server names exports with (it is
 // pure, for both sides; JustWrite's renderer imports it too).
 import { safeTitle } from "@delebash/core/platform/filename";
-import { withAiTask } from "@delebash/ui";
+import { reportError, saveBlob, withAiTask } from "@delebash/ui";
 
 const TERMINAL = new Set(["completed", "failed", "cancelled", "paused"]);
 const JSON_HEADERS = { "Content-Type": "application/json" };
@@ -226,7 +226,7 @@ export function chapterRenderTask(tasks, sceneId, jobId = null) {
  * A chapter's ▶ Render as a kit task: takes for its ready lines, then the
  * chapter joined from every line's ★ take and mastered (POST
  * /v1/render_chapter, scene mode — it refuses, naming why, while any line
- * can't render). Resolves to { url, filename } of the chapter's WAV.
+ * can't render). Resolves to { url, filename, blob } of the chapter's WAV.
  */
 export function renderChapter(api, { sceneId, projectId, title, onRetry }) {
   return withAiTask({
@@ -260,6 +260,7 @@ export function renderChapter(api, { sceneId, projectId, title, onRetry }) {
     task.setProgress((done.total_blocks || 0) + 1, (done.total_blocks || 0) + 1);
     if (!(audio instanceof Blob)) return audio;
     const result = {
+      blob: audio, // what its ⬇ Download saves (saveChapterWav)
       url: URL.createObjectURL(audio),
       // The chapter's label as written, minus only what a Windows file name can't hold — "3 · The
       // Keystone.wav" (2026-10-15, the narrowings review R7; "3_The_Keystone.wav" before).
@@ -268,6 +269,18 @@ export function renderChapter(api, { sceneId, projectId, title, onRetry }) {
     task.update({ result });
     return result;
   });
+}
+
+/** A chapter's ⬇ Download: its WAV through the kit's door for a file to save (app-structure §19) — the
+ * desktop's Save dialog, a browser's download — never an `<a download>` (the family guard's check 11). */
+export async function saveChapterWav(result) {
+  if (!result?.blob) return null;
+  try {
+    return await saveBlob(result.blob, result.filename);
+  } catch (e) {
+    reportError(e);
+    return null;
+  }
 }
 
 /** Where a server media path (a take's `/v1/generations/{id}/audio`) plays from. */

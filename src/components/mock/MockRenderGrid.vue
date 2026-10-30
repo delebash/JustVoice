@@ -19,7 +19,7 @@ import PagePlayer from "../PagePlayer.vue";
 import PlayTransport from "../PlayTransport.vue";
 import { usePagePlayer } from "../../composables/usePagePlayer.js";
 import { CANT_RENDER, partOf } from "../../services/lineStates.js";
-import { QC_WAITS, loadingText, waitingText } from "../../services/renderRun.js";
+import { QC_WAITS, loadingText, saveChapterWav, waitingText } from "../../services/renderRun.js";
 import { PROJECT, counts, render, renderChapter, runQc } from "../../services/mock/renderMock.js";
 
 const emit = defineEmits(["go"]);
@@ -242,8 +242,7 @@ function open(ch) {
                   <UiButton intent="ghost" size="small" :label="player.isPlaying(playKey(row.ch.id)) ? '⏸ Pause' : '▶ Play'"
                     :title="player.isPlaying(playKey(row.ch.id)) ? 'Pause' : 'Play here in the row'"
                     @click="player.play(playKey(row.ch.id), taskFor(row.ch.id).result.url)" />
-                  <UiButton as="a" :href="taskFor(row.ch.id).result.url" :download="taskFor(row.ch.id).result.filename"
-                    intent="ghost" size="small" title="Download WAV">⬇ Download</UiButton>
+                  <UiButton intent="ghost" size="small" title="Download WAV" @click="saveChapterWav(taskFor(row.ch.id).result)">⬇ Download</UiButton>
                 </template>
                 <PlayTransport v-if="player.key === playKey(row.ch.id)" :player="player" width="long" />
               </div>

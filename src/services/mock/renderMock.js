@@ -338,8 +338,10 @@ export function renderChapter(ch, { onRetry } = {}) {
     task.setProgress(steps, steps);
     const pause = ch.lines.slice(0, -1).reduce((ms, l) => ms + pauseAfter(l), 0) / 1000;
     const talk = ch.lines.reduce((s, l) => s + (l.takes.find((x) => x.live)?.seconds || 0), 0);
+    const wav = silentWav(Math.min(Math.round(talk + pause), 30));
     const result = {
-      url: URL.createObjectURL(silentWav(Math.min(Math.round(talk + pause), 30))),
+      blob: wav, // what its ⬇ Download saves, as the app's (renderRun.js saveChapterWav)
+      url: URL.createObjectURL(wav),
       filename: `${safeTitle(`${ch.n} · ${ch.title}`)}.wav`, // as the app names it
     };
     task.update({ result });

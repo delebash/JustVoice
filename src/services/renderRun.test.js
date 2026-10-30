@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useAiTasksStore } from "@delebash/ui";
+import { saveBlob, useAiTasksStore } from "@delebash/ui";
 import {
   QC_WAITS, chapterRenderTask, chapterRunning, clock, followJob, followRender, jobFollowed, loadingText, mediaUrl, renderChapter, runFigures,
-  waitingText,
+  saveChapterWav, waitingText,
 } from "./renderRun.js";
+
+// the kit's door for a file to save, watched (its desktop dialog and browser download are the kit's own tests)
+vi.mock("@delebash/ui", async (original) => ({ ...(await original()), saveBlob: vi.fn(async () => ({ ok: true, downloaded: true })) }));
 
 function fakeApi(statuses) {
   const calls = [];
@@ -259,6 +262,19 @@ describe("a chapter's ⬇ Download (2026-10-15, the narrowings review R7)", () =
     expect(one.filename).toBe("3 · The Keystone.wav"); // "3_The_Keystone.wav" before
     const two = await renderChapter(api, { sceneId: "s2", projectId: "p1", title: `4 · Война: "the" Wizard's Tale?` });
     expect(two.filename).toBe("4 · Война the Wizard's Tale.wav");
+  });
+
+  it("saves the chapter's WAV through the kit's door for a file to save (app-structure §19), never an <a download>", async () => {
+    const wav = new Blob(["RIFF"], { type: "audio/wav" });
+    const api = {
+      request: vi.fn(async (path) => (path === "/v1/render_chapter"
+        ? wav
+        : { id: "j1", status: "completed", completed_blocks: 0, failed_blocks: 0, total_blocks: 0 })),
+      safeRequest: vi.fn(async () => null),
+    };
+    const result = await renderChapter(api, { sceneId: "s1", projectId: "p1", title: "3 · The Keystone" });
+    await saveChapterWav(result);
+    expect(saveBlob).toHaveBeenCalledWith(wav, "3 · The Keystone.wav");
   });
 });
 
