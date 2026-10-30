@@ -370,7 +370,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   align-self: center; /* a logo tile, not a width driver */
   border-radius: 10px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 16px; letter-spacing: -0.5px;
   margin-bottom: 14px;
@@ -392,7 +392,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 }
 .jv-sidebar__nav:hover { background: var(--surface); color: var(--ink); text-decoration: none; }
 .jv-sidebar__nav--active,
-.jv-sidebar__nav--active:hover { background: var(--accent); color: #fff; }
+.jv-sidebar__nav--active:hover { background: var(--accent); color: var(--on-accent); }
 .jv-sidebar__icon { font-size: 17px; line-height: 1; }
 .jv-sidebar__label {
   /* Wraps freely (parity batch slice 10) — the nowrap/54px/ellipsis clip is
@@ -702,7 +702,7 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
 }
 .jv-topbar__engine-pill:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .jv-topbar__engine-pill--empty {
   background: var(--warn-bg);
@@ -1192,7 +1192,7 @@ progress {
   color: var(--ink);
 }
 .jv-pane-list__item:hover { background: var(--surface-2); }
-.jv-pane-list__item--active { background: var(--accent); color: #fff; }
+.jv-pane-list__item--active { background: var(--accent); color: var(--on-accent); }
 .jv-pane-list__meta {
   font-size: 12.5px;
   color: var(--ink-3);
@@ -1354,6 +1354,10 @@ progress {
   line-height: 1.6;
 }
 .jv-banner strong { color: var(--ink); }
+/* A link in a banner's running text, as the kit's UiBanner styles one (quasar/theme.css): underlined, so it
+   is told apart by more than its colour (WCAG 1.4.1 — the e2e's axe check, 2026-10-29); a link with a class of
+   its own (a button) keeps its look */
+.jv-banner a:not([class]) { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .jv-banner code {
   background: rgba(255, 255, 255, 0.55);
   padding: 0 5px;
@@ -1363,6 +1367,8 @@ progress {
 .jv-banner--warn   { border-left-color: var(--warn);     background: var(--warn-bg); }
 .jv-banner--danger { border-left-color: var(--danger);   background: var(--danger-bg); color: var(--danger-ink); }
 .jv-banner--info   { border-left-color: var(--info-blue); background: #eef4fb; }
+/* its light-blue ground stood in dark too, under light text (1.1:1 — the e2e's axe check, 2026-10-29) */
+[data-theme="dark"] .jv-banner--info { background: var(--surface-2); }
 
 /* Studio's run banner over its task strip — stacked under the control that
    started them, the way the kit's AiTaskStrips stacks a page's strips. Each
@@ -1942,7 +1948,7 @@ section.block > h3 {
   line-height: 18px;
   text-align: center;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .jv-sidebar__count--error { background: var(--danger, #c0392b); }
 

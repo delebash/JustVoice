@@ -27,7 +27,10 @@
 
   --ink: #1a1a1a;
   --ink-2: #4a4a4a;
-  --ink-3: #888;
+  /* tertiary text (--muted below): the kit's token contract and the template's value — 4.56:1 on
+     the darkest light ground it sits on (--accent-soft), 5.10:1 on --bg; #888 was 3.05:1 (WCAG 2 AA
+     asks 4.5:1 — the e2e's axe check, 2026-10-29) */
+  --ink-3: #6b6b6b;
 
   --line: #e3e1dc;
   --line-strong: #cfccc4;
@@ -159,7 +162,9 @@
   --surface-3: #2a2e2c;
   --ink: #f0eee8;
   --ink-2: #c5c2bb;
-  --ink-3: #8a8780;
+  /* tertiary text (dark): the template's, 4.77:1 or more on every dark ground, the selected row's
+     tint included (#8a8780 failed AA — the e2e's axe check, 2026-10-29) */
+  --ink-3: #a09d96;
   --line: #353835;
   --line-strong: #4a4d49;
   --border-soft: var(--line);
@@ -184,6 +189,9 @@
   --warn-ink:    oklch(0.86 0.09 80);
   /* Accent (dark) — hue-driven; default hue 166 == JV dark green #5fa882. */
   --accent:      oklch(0.673 0.093 var(--accent-hue));
+  /* accent text (dark), the template's: the light one stood, too dark on every dark ground (the lane
+     headers, the "local" pill — the e2e's axe check, 2026-10-29) */
+  --accent-ink:  oklch(0.780 0.070 var(--accent-hue));
   --accent-soft: oklch(0.300 0.032 var(--accent-hue));
   --accent-line: oklch(0.380 0.045 var(--accent-hue));
   /* Gold (dark) defaults — engine overrides from goldHue at boot. */

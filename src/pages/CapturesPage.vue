@@ -335,8 +335,9 @@ onMounted(() => {
 }
 .cap-pill--recording { background: rgba(196, 60, 60, 0.92); }
 .cap-pill--transcribing { background: #2c2c2e; }
-.cap-pill--refining { background: var(--accent); }
-.cap-pill--rest { background: rgba(0, 0, 0, 0.45); }
+/* text on the accent is the contract's --on-accent (white in light, near-black in dark); Rest takes the
+   pill's own ground, as the real pill (CapturePill.vue) — its lighter one left white text at 3.3:1 */
+.cap-pill--refining { background: var(--accent); color: var(--on-accent); }
 .cap-pill .bars {
   display: inline-flex;
   align-items: flex-end;

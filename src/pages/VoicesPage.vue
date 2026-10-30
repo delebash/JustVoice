@@ -922,7 +922,7 @@ function voiceTypeVariant(kind) {
    transparent background wins and the ACTIVE chip renders white-on-nothing. */
 .voices-view__chips .ui-chip.is-selected {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* ── The library bench: one test line, one explanation. ─────────────── */
