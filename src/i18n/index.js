@@ -21,3 +21,7 @@ const own = catalogsFromFiles(import.meta.glob("./locales/*.json", { eager: true
 // must be a fresh copy.
 export const i18n = createI18n({ legacy: false, locale: "en", fallbackLocale: "en", messages: kitMessages() });
 for (const [code, msgs] of Object.entries(own)) i18n.global.mergeLocaleMessage(code, msgs);
+
+// The languages JustVoice has words for — the Settings → Appearance picker's list (the kit's
+// LanguagePicker names each in itself), as the template's i18n/index.js.
+export const LOCALE_CODES = Object.keys(own);

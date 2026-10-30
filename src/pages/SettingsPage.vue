@@ -6,7 +6,7 @@ import { useI18n } from "vue-i18n";
 import { useApi } from "../stores/api.js";
 import { pushToast, pageFlow } from "@delebash/ui";
 import { confirmDialog } from "@delebash/ui";
-import { AppearancePanel, DataManagement, LogsPanel, SettingsShell, StoragePanel, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, renderHelpMarkdown, serverUrl, useAiTasksStore, SETTINGS_SECTION_ORDER } from "@delebash/ui";
+import { AppearancePanel, DataManagement, LanguagePicker, LogsPanel, SettingsShell, StoragePanel, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, renderHelpMarkdown, serverUrl, useAiTasksStore, SETTINGS_SECTION_ORDER } from "@delebash/ui";
 import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
 import { loadDoc } from "../services/helpDocs.js";
 import {
@@ -25,6 +25,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useUiStore } from "../stores/ui.js";
+import { LOCALE_CODES } from "../i18n/index.js";
 import { useServerStore } from "../stores/server.js";
 import { SETTINGS_SECTION_IDS } from "../services/settingsSections.js";
 import { CAPTURE_LANGUAGES, captureLanguageWord } from "../services/captureLanguage.js";
@@ -33,20 +34,8 @@ import WebhooksView from "../components/WebhooksSection.vue";
 // The family Sync screen — by path, not the kit barrel (it needs `qrcode`; SyncPanel.vue's header).
 import SyncPanel from "@delebash/ui/components/SyncPanel.vue";
 
-// Appearance — the shared rows are the kit AppearancePanel; the Language
-// options are JV app content (docgen has no i18n) so they live here.
-const LOCALES = [
-  { label: "English (en)", value: "en" },
-  { label: "Spanish (es)", value: "es" },
-  { label: "French (fr)", value: "fr" },
-  { label: "German (de)", value: "de" },
-  { label: "Italian (it)", value: "it" },
-  { label: "Portuguese (pt)", value: "pt" },
-  { label: "Russian (ru)", value: "ru" },
-  { label: "Japanese (ja)", value: "ja" },
-  { label: "Korean (ko)", value: "ko" },
-  { label: "Chinese (zh)", value: "zh" },
-];
+// Appearance — the shared rows are the kit's AppearancePanel, the language its LanguagePicker over
+// the languages JustVoice has words for (src/i18n/locales), as the template's Settings.
 
 const api = useApi();
 const ui = useUiStore();
@@ -1520,10 +1509,12 @@ onMounted(() => {
           :appearance="ui.appearance"
           :accent-chroma="0.08"
           accent-note="Default 166° = forest green."
-          :locales="LOCALES"
-          locale-desc="UI language. JustVoice's screens are in English for now; your choice is saved for when they're translated. It doesn't change the language your voices speak."
           @patch="(p) => ui.setAppearance(p)"
         />
+      </div>
+      <div class="jv-card jv-mt16">
+        <div class="jv-card__header"><h3 class="jv-card__title">{{ t("kit.settings.language.label") }}</h3></div>
+        <LanguagePicker :locales="LOCALE_CODES" @change="(code) => ui.setLocale(code)" />
       </div>
     </div>
 

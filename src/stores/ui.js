@@ -9,6 +9,7 @@ import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import { readPref, writePref } from "../services/prefs.js";
 import { applyAppearance, migrateAppearance, DEFAULT_APPEARANCE } from "../services/appearance.js";
+import { i18n, LOCALE_CODES } from "../i18n/index.js";
 
 function loadInitial() {
   const p = readPref("ui", {});
@@ -59,10 +60,16 @@ export const useUiStore = defineStore("ui", () => {
     appearance.value = { ...appearance.value, ...patch };
     applyAppearance(appearance.value);
   }
+  /** The kit's LanguagePicker sets vue-i18n's locale; this keeps the choice, with the appearance. */
+  function setLocale(code) {
+    appearance.value = { ...appearance.value, locale: code || null };
+  }
 
   // Apply appearance on store init (synchronous in App setup → before paint).
   // The engine owns the OS-preference listener while mode === "system".
   applyAppearance(appearance.value);
+  // and the language picked, when JustVoice has words for it (the template's ui store)
+  if (LOCALE_CODES.includes(appearance.value.locale)) i18n.global.locale.value = appearance.value.locale;
 
   watch([appearance, selectedProfileId], () => {
     writePref("ui", { appearance: appearance.value, selectedProfileId: selectedProfileId.value });
@@ -84,5 +91,6 @@ export const useUiStore = defineStore("ui", () => {
     setSelectedEngine,
     setSelectedVoiceId,
     setAppearance,
+    setLocale,
   };
 });
