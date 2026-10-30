@@ -333,8 +333,19 @@ the gate wait for step 10 (the user's rule, 2026-10-28).
   `data/engines-runtime` (2.4 GB: jv.4 cuda12, v0.9.0 vulkan, the old eSpeak and dictionary) and
   `data/engines-runtime-config` deleted after, nothing in the code reading them. Left: `paths.speechCacheRoot` and
   its Disk usage row go with the next follow-up.
-- **Still to do:** step 9 (docs, running), the switch to the kit's four new pieces (sort, the Load service, the job
-  strip's note, evictions and the chat claim on the strip), step 10.
+- **Step 9 BUILT** (52cd4b09 … 1e019cff, 2a404e8a): every user doc on §6.3's list, CLAUDE.md, code-map, RESEARCH.
+- **The kit's four new pieces, used** (9fa91cbf … c747d9bf; kit 333ac9e3 and after): the sort back in the filters
+  slot; every speech Load through `loadRuntimeModel` (our `speechLoad.js` gone); the export strip's note; the memory
+  cells reading the chat claim, evictions and busy kinds themselves. Also: the four tests the kit session found
+  (seven_engines_unchanged names its two decided changes — the "→ Speech" refusal and the revision move — and every
+  request is otherwise the same bytes), `speechCacheRoot` and its Disk row, the dead external-engine code in
+  Settings, the rail at the type floor, QuickSetup's size from the kit, `models.url_overrides` and the
+  `model.download.*` webhook events (never read, never fired) removed. Kit fixes on our reports: the stt preset
+  card's words; help anchors with `--` (asked).
+- **Found and being fixed before step 10:** 185 font sizes under the design law's 12.5px floor across src/ (the
+  user's 2026-08-21 ruling) — one sweep, so step 10's screenshots check it once.
+- **Still to do:** step 10 — the merged audio.cpp built (started), its ctest, lint, the full suites, the family
+  guard, the build, the gate, and the real app under `npm run dev`.
 
 ## 5 · Decisions for your word
 
