@@ -11,7 +11,7 @@ by that sweep after each file was verified against code.
 Read in this order (closed history — including the old DESIGN_FREEZE, CONTRACT and
 FEATURES roots — lives in `../plans/archive/`):
 
-1. **`../../CLAUDE.md`** — the working rules and pointers.
+1. **`../../AGENTS.md`** — the working rules and pointers (`../../CLAUDE.md` imports it).
 2. **`TASKS.md`** — the live tracker (the F-arc convergence sequence, the open
    product questions extracted from the freeze, repo hygiene). **`IDEAS.md`** —
    the backlog incl. the deferred-v1.1+ list. **`RESEARCH.md`** — what is already
