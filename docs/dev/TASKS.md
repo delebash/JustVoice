@@ -134,8 +134,17 @@ STATE:  DECIDED 2026-10-29 — "ok do 1 but 2 and 3 on hold its too much for now
         Book/manuscript), "Scripts and line lists" (Podcast, CSV, JustVoice JSON), "Timed lines" (SRT, Audacity).
         Taken on the family's WCAG 2.2 AA standard (the kit's finish list, item 36): the kit contract's muted
         colours and its link style for the two colour-only links.
-BUILT:  in work 2026-10-29 — two agents, each item checked against the code first.
-OPEN:   the check pass, then the one-click run, then the listening rounds.
+BUILT:  DONE 2026-10-29 — resourceIsolation + crossorigin on every player (5e7f05bc); aiRunHttpError on three
+        more AI routes (99410999); the release on the template's: workflow, release.js / bump.js, installer names,
+        the mac zip (6072dea3, 2dba21da, 25454131); AGENTS.md (2c1fe8d8, e6c985aa); getting-started's "Installing
+        it" (5dee5de2); installErrorReporting and the kit's token (38490662); LanguagePicker (fe9bac69); the
+        grouped import picker (9b8b36b9); saveUrlAs / saveBlob for the downloads (fd401efe, 18c7d15a); every click
+        through trigger (8fc1d655); the e2e on the template's shape with axe (aa55aaa1, 11712750); WCAG 2.2 AA
+        contrast and link fixes (824819e8, c2bc8be1). Already done or not yet applicable: replacingData (the kit's
+        DataManagement), focus after a 422 (no JustVoice form shows field errors yet — the kit's §15–§18 open
+        deviation). Check pass: lint clean, server 1261 (2 skipped), unit 291, the guard clean, the unpacked build,
+        e2e smoke 7/7, a11y light + dark pass.
+OPEN:   the one-click run (waiting on the card), then the listening rounds.
 GO:     given 2026-10-29 for 1.
 
 ### Our audio.cpp fork is released with the family, once every app is done
