@@ -6,6 +6,7 @@
 // "A / B it" and "Order matters" as built.
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
+import { DOMWrapper } from "@vue/test-utils";
 import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 vi.mock("@vueuse/integrations/useSortable", () => ({ useSortable: () => {} }));
@@ -70,7 +71,7 @@ test("the_dialogs_other_parts_are_the_editors", async () => {
 
 test("down_moves_a_step", async () => {
   await mount();
-  [...rows()[0].querySelectorAll("button")].find((b) => b.textContent === "↓").click();
+  await new DOMWrapper([...rows()[0].querySelectorAll("button")].find((b) => b.textContent === "↓")).trigger("click");
   await nextTick();
   expect(rows().map((r) => r.querySelector(".jv-chain__name").textContent)).toEqual(["Chorus", "EQ — Low shelf"]);
 });

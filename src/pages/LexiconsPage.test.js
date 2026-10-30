@@ -6,6 +6,7 @@
 // were.
 import { h, nextTick, reactive } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
+import { DOMWrapper } from "@vue/test-utils";
 import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 const reach = { value: null };
@@ -74,7 +75,7 @@ async function openEditor() {
   app.component("QPage", slot("div"));
   app.mount(el);
   await settle();
-  [...el.querySelectorAll("button")].find((b) => b.textContent === "Edit").click();
+  await new DOMWrapper([...el.querySelectorAll("button")].find((b) => b.textContent === "Edit")).trigger("click");
   await settle();
 }
 

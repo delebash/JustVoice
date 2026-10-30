@@ -7,6 +7,7 @@
 // the effects catalog it gives (services/mock/effectsChainMock.js, its own copy).
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
+import { DOMWrapper } from "@vue/test-utils";
 import { createTestApp } from "@delebash/ui/quasar/install.js";
 import { BUILTIN_PRESETS, CATALOG } from "../services/mock/effectsChainMock.js";
 
@@ -91,7 +92,7 @@ test("the_dialogs_other_parts_stay", async () => {
 
 test("down_moves_a_step", async () => {
   await mount();
-  [...rows()[0].querySelectorAll("button")].find((b) => b.textContent === "↓").click();
+  await new DOMWrapper([...rows()[0].querySelectorAll("button")].find((b) => b.textContent === "↓")).trigger("click");
   await nextTick();
   expect(rows().map((r) => r.querySelector(".jv-chain__name").textContent)).toEqual(["Chorus", "EQ — Low shelf"]);
 });

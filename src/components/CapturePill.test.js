@@ -7,6 +7,7 @@
 // are left alone, so the stop button inside the recording pill keeps its own.
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
+import { DOMWrapper } from "@vue/test-utils";
 // Quasar installed as in the real app — the kit's controls are Quasar components
 import { createTestApp } from "@delebash/ui/quasar/install.js";
 import { i18n } from "../i18n/index.js";
@@ -70,7 +71,7 @@ test("enter_and_space_press_the_error_pill", async () => {
 
 test("a_click_does_the_same", async () => {
   const { pill, dismiss } = await mount({ state: "error", errorMessage: "boom" });
-  pill.click();
+  await new DOMWrapper(pill).trigger("click");
   await settle();
   expect(writeText).toHaveBeenCalledWith("boom");
   expect(dismiss).toHaveBeenCalledOnce();
@@ -93,7 +94,7 @@ test("other_states_leave_the_keys_alone", async () => {
   await settle();
   expect(event.defaultPrevented).toBe(false); // the button's own Enter still works
   expect(dismiss).not.toHaveBeenCalled();
-  stopButton.click();
+  await new DOMWrapper(stopButton).trigger("click");
   expect(stop).toHaveBeenCalledOnce();
   expect(dismiss).not.toHaveBeenCalled();
 });

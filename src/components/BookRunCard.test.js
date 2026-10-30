@@ -6,6 +6,7 @@
 // cost on a cloud route, the progress, the states a run stops in, and what to check afterwards.
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
+import { DOMWrapper } from "@vue/test-utils";
 import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 const slot = (tag, cls) => ({ setup: (_p, { slots }) => () => h(tag, { class: cls }, slots.default?.()) });
@@ -77,7 +78,7 @@ test("before a run: one start, each step's model, nothing to pay on this compute
   expect(cells(11)).toEqual(["Master and export the M4B", "ffmpeg"]);
   expect(el.querySelector(".book-run__cost").textContent).toContain("nothing to pay");
   expect(buttons()).toEqual(["▶ Make audiobook"]);
-  el.querySelector("button").click();
+  await new DOMWrapper(el.querySelector("button")).trigger("click");
   expect(events).toEqual([["onStart"]]);
 });
 
@@ -101,7 +102,7 @@ test("blocked: what is in the way, and no start", async () => {
 
 test("blocked by a licence: its link opens the engine's licence to accept", async () => {
   const events = await mount({ plan: mockPlan({ blocked: true }), run: null });
-  [...el.querySelectorAll("button")].find((b) => b.textContent === "BreezeTTS 2's licence ➜").click();
+  await new DOMWrapper([...el.querySelectorAll("button")].find((b) => b.textContent === "BreezeTTS 2's licence ➜")).trigger("click");
   expect(events).toEqual([["onGo", "terms", "breeze_tts"]]);
 });
 
@@ -115,7 +116,7 @@ test("running: the step and chapter it is on, the time so far, Stop", async () =
   expect(el.querySelectorAll(".jv-row--selected").length).toBe(1);
   expect(cells(8)[2]).toBe("Running · 1 of 2 chapters — CHAPTER VIII. The Queen’s Croquet-Ground");
   expect(buttons()).toEqual(["Stop"]);
-  el.querySelector("button").click();
+  await new DOMWrapper(el.querySelector("button")).trigger("click");
   expect(events).toEqual([["onStop"]]);
 });
 
@@ -141,7 +142,7 @@ test("done: the M4B to save, what to check with a link to each, and the run's nu
   const review = [...el.querySelectorAll(".book-run__review tbody tr")].map((r) => r.textContent);
   expect(review.length).toBe(4);
   expect(review[2]).toContain("line 23 — its take misses words");
-  el.querySelectorAll(".book-run__review button")[0].click();
+  await new DOMWrapper(el.querySelectorAll(".book-run__review button")[0]).trigger("click");
   expect(events.at(-1)).toEqual(["onGo", "script", { sceneId: REVIEW.script[0].scene_id, focus: "check" }]);
   expect(el.querySelector(".book-run__numbers summary").textContent).toBe("Model, tokens and time for each step");
   expect(el.querySelectorAll(".book-run__numbers tbody tr").length).toBe(12);

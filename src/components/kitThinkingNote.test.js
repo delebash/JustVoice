@@ -11,6 +11,7 @@
 import { createPinia } from "pinia";
 import { h, nextTick } from "vue";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { DOMWrapper } from "@vue/test-utils";
 import ConfigColumn from "@delebash/ui/components/ConfigColumn.vue";
 import LuFeatureChip from "@delebash/ui/components/LuFeatureChip.vue";
 // Quasar installed as in the real app — the kit's controls are Quasar components
@@ -115,7 +116,7 @@ async function openChip(route, pinned = route.model) {
   app.use(i18n);
   app.mount(host);
   await flush();
-  document.querySelector(".afc-chip").click();
+  await new DOMWrapper(document.querySelector(".afc-chip")).trigger("click");
   await flush();
 }
 

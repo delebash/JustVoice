@@ -7,6 +7,7 @@
 // the chosen format's section in the Help drawer, as New project's dialog does.
 import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
+import { DOMWrapper } from "@vue/test-utils";
 import { createTestApp } from "@delebash/ui/quasar/install.js";
 
 const openHelp = vi.fn();
@@ -47,6 +48,6 @@ test("what_is_this_format_opens_the_formats_help", async () => {
   const link = [...el.querySelectorAll("a")].find((a) => a.textContent === "What is this format?");
   expect(link).toBeTruthy();
   expect(link.getAttribute("target")).toBeNull();
-  link.click();
+  await new DOMWrapper(link).trigger("click");
   expect(openHelp).toHaveBeenCalledWith("import-and-export", "import-justwrite");
 });
