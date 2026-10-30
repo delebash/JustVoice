@@ -24,6 +24,8 @@ vi.mock("@delebash/ui", () => ({
   requestBlob: vi.fn(),
   postForm: vi.fn(),
   serverUrl: () => "",
+  getServerToken: () => "",
+  setServerToken: vi.fn(),
   languageName: (c) => ({ en: "English", ja: "Japanese" })[c] || "",
   UiButton: {
     props: ["label", "intent"],

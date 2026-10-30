@@ -20,6 +20,8 @@ vi.mock("@delebash/ui", () => ({
   requestBlob: vi.fn(),
   postForm: vi.fn(),
   serverUrl: () => "",
+  getServerToken: () => "",
+  setServerToken: vi.fn(),
   UiButton: {
     props: ["label"],
     emits: ["click"],
