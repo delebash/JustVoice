@@ -215,6 +215,7 @@ server), and **accessibility users** (real-time TTS, screen-reader integration �
 
 | For | Read |
 |---|---|
+| **THE family app structure — every app** | `../just-core/docs/app-structure.md` (§Q the layout, §11 the chrome, §15–§18 the contracts; `../just-core/template/` the reference app) |
 | The JustWrite ↔ JustVoice boundary | `docs/dev/design-decisions.md` §3 (archived original: `docs/plans/archive/CONTRACT.md`) |
 | UI design method, class inventory, sweep checklist | `docs/dev/design-law.md` |
 | Open work across all three repos | `../justwrite-app/docs/TASKS.md` |
