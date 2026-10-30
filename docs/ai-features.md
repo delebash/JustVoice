@@ -694,12 +694,13 @@ timings, `/v1/transcribe` and the MCP tool `justvoice.transcribe`.
 
 On **AI Settings → Routing by feature** it sits in the **Editing** group, beside
 Dictation cleanup: *Turns speech into text — your dictation, the read-back that
-checks each take, and agents' transcriptions.* Its card has no prompt. It shows
-the transcription preset the feature runs — JustVoice ships one, *Transcription —
-qwen3-asr-1.7b-q8* (Qwen3-ASR 1.7B, 8-bit) — and where its model runs: *auto*
-leaves it to the model's own **Auto · Graphics card · CPU** choice on the Speech
-tab, and *gpu* or *cpu* win over that choice; **Save** keeps the change on the
-preset. When the speech runtime isn't installed, or the model isn't on this
+checks each take, and agents' transcriptions.* Its card has no prompt. Its
+**Transcription model** is the transcription preset the feature runs (*Choose a
+transcription model* while none is set) — JustVoice ships one, *Transcription —
+qwen3-asr-1.7b-q8* (Qwen3-ASR 1.7B, 8-bit). Its **Runs on** says where that
+model runs: **Auto** leaves it to the model's own **Auto · Graphics card · CPU**
+choice on the Speech tab, and **Graphics card** or **CPU** win over that choice;
+**Save** keeps the change on the preset. When the speech runtime isn't installed, or the model isn't on this
 computer yet, the card says so — *Transcription needs its model, ‹model›, which
 isn't on this computer yet.* — with **Install the engine (‹size›)** or
 **Download the model (‹size›)**; the first transcription also downloads it.
@@ -730,7 +731,7 @@ on as its progress, and its Cancel stops the run (since 2026-10-16; the run's ow
 card on Overview shows it in full, [Studio → Make the
 audiobook](studio.md#make-the-audiobook)).
 
-Two kinds of work get a strip, and only these two:
+Three kinds of work get a strip, and only these three:
 
 - **Anything that asks a language model** — Compose, Rewrite, Script's Analyze,
   Discover's scan, Smart-assign, New personas, Show notes, the gender guess. This
@@ -738,10 +739,13 @@ Two kinds of work get a strip, and only these two:
   generator use for their own AI features.
 - **Long speech renders** — a chapter render, Render's line renders and ACX
   check, and Lines' *Re-render changed*.
+- **Loading a speech model** — *Load ‹model›*, from the Speech tab's **Load** or
+  a persona's **Load**: its download's bytes first when it isn't on this computer,
+  then *loading…*; its **Cancel** unloads it, which stops the load and its
+  download ([Engines → Cancelling an in-flight load](engines.md#cancelling-an-in-flight-load)).
 
-Installing an engine, downloading a model and loading a model are not tasks:
-each reports on its own row on the Speech tab (see
-[Engines](engines.md#cancelling-an-in-flight-load)).
+Installing the speech runtime and downloading a model on its own are not tasks:
+each reports on its own row on the Speech tab.
 
 ### A strip's life
 

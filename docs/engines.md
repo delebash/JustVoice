@@ -668,9 +668,10 @@ and, for other apps, transcripts and caption timings through `/v1/transcribe`,
 **Which model transcribes is the Transcription feature's**, on **AI Settings →
 Routing by feature** (in the Editing group: *Turns speech into text — your
 dictation, the read-back that checks each take, and agents' transcriptions.*).
-JustVoice ships it on Qwen3-ASR 1.7B (8-bit). Its card there also says where it
-runs: *auto* — the model's own **Auto · Graphics card · CPU** choice on the
-Speech tab — or *gpu* or *cpu*, which win over that choice. Loading another
+JustVoice ships it on Qwen3-ASR 1.7B (8-bit): the card's **Transcription model**
+reads *Transcription — qwen3-asr-1.7b-q8*. Its **Runs on** says where the model
+runs: **Auto** leaves it to the model's own **Auto · Graphics card · CPU** choice
+on the Speech tab, and **Graphics card** or **CPU** win over that choice. Loading another
 recogniser on the Speech tab doesn't change which one transcribes. When the
 feature's model isn't on this computer yet, the card says so with **Download the
 model (‹size›)**, and the first transcription downloads it, then loads it; with
@@ -1020,7 +1021,8 @@ moves to the CPU (below). Then Auto decides, in this order:
    model (its peak at the length it speaks in — see
    [Long lines](#long-lines-and-what-a-model-costs)).
 2. **Otherwise the CPU**, if the model speaks at least **2× real time** there.
-3. **Otherwise the graphics card, with the AI model unloaded first.** The AI
+3. **Otherwise the graphics card, with the AI model unloaded first.** A notice
+   says so (*‹AI model› was unloaded to make room for a speech model.*); the AI
    model loads itself back the next time a feature needs it.
 
 A model that has never run on your card has no measured size yet, so while an
@@ -1294,11 +1296,18 @@ then loads it — asking for its licence first when it has one
 ([Commercial use](#commercial-use-in-plain-words)). The model's row on the
 Speech tab shows that download's bar while it runs.
 
-**Unload during a load cancels it.** While a model loads, its row shows
-**Cancel**; while it downloads to load, its bar's own **Cancel** does the same.
-Either stops the load where it is — its download included — and lets go of the
-memory it had reserved. A persona page's **Load** bar has a Cancel that does the
-same.
+**A load is an AI task.** The Speech tab's **Load** and a persona's **Load**
+run as one task, *Load ‹model›*, on the AI tasks strip of the page you started
+it on and in the ✨ AI tasks panel — the download's bytes first when it
+downloads, then *loading…*, with *It downloads, then loads — Cancel stops both*.
+A load that fails says why, in the runtime's words — after a download, as
+*‹model› didn't load*.
+
+**Unload during a load cancels it.** The task's **Cancel**, the row's
+**Cancel** while it loads and its download bar's **Cancel** while it downloads
+all do the same as **Unload**: they stop the load where it is — its download
+included — and let go of the memory it had reserved. A load cancelled this way
+says nothing more; it ended as you asked.
 
 **F5-TTS unloads by stopping its process.** F5-TTS (the Habibi-TTS models) keeps
 its weights and working memory for as long as its speech process runs, so asking
@@ -1331,7 +1340,7 @@ of AI Settings, which shows measured use, a cell for each speech or
 speech-recognition model holding graphics memory with its memory take, the
 language model, and other apps. For a model JustVoice has measured before on
 this machine: if the pool is short, it frees the least-recently-used *idle*
-model; if everything resident is busy, the load refuses with a message quoting
+model, and a notice says which; if everything resident is busy, the load refuses with a message quoting
 the measured numbers instead of an out-of-memory crash. The check runs before
 the load changes anything, so a refused load has unloaded nothing. A model's first-ever load on the graphics card carries no number yet
 ("not measured yet"): it loads, measures itself (below), and is remembered.
@@ -1440,19 +1449,22 @@ app that needs the model first — into the models cache (below). While a downlo
 or a load is in progress:
 
 - A progress bar appears **on the model's own row** on the Speech tab while it
-  downloads, with the real bytes and percent. A load shows *loading…* in the
-  row's state, because a model load reports no percentage and JustVoice does not
-  invent one.
-- **Cancel** stops it: the bar's own while it downloads, the row's while it
-  loads.
-- A cancelled or failed bar stays on the row with its error and offers
+  downloads, with the real bytes and percent.
+- **A load is a task on the AI tasks strip** — *Load ‹model›* — on the page you
+  started it from (the Speech tab, or a persona's page), and in the ✨ AI tasks
+  panel from anywhere. While its model downloads first, the task counts the
+  download's bytes; then it reads *loading…*, as the row's state does, because a
+  model load reports no percentage and JustVoice does not invent one. Its hint
+  says *It downloads, then loads — Cancel stops both*.
+- **Cancel** stops it: the task's, the download bar's while it downloads, the
+  row's while it loads — each the same as **Unload**, its download included.
+- A cancelled or failed download bar stays on the row with its error and offers
   **Retry** and **Dismiss**. It doesn't clear itself — you decide when you've
-  read it.
+  read it. A load that fails says why, in the runtime's words — after a
+  download, as *‹model› didn't load*.
 
-The row is the place these appear. The full-width strip at the top of the
-screen is the **AI task** queue: it is for work that queries a language model
-and for long renders. Installing, downloading and loading are file and process
-work, so they live on the row that owns them.
+Installing the runtime and downloading a model on its own (**Download**) are
+file work, not AI tasks: they show on the row that owns them.
 
 ## Which engines run on your operating system
 

@@ -13,9 +13,11 @@ setup wizard that gets you from a fresh install to working TTS in three steps:
 
 Every voice engine runs on the same speech runtime (see
 [Engines → The speech runtime](engines.md#the-speech-runtime)), so the install
-step is one download, not one per engine: from about 30 MB to about 1 GB
+step is one download, not one per engine: from about 31 MB to about 1 GB
 depending on your graphics card (the NVIDIA CUDA build, with NVIDIA's
-libraries, is the large one). Each engine's model then
+libraries, is the large one). The confirm step says the size of the build for
+this computer — *it downloads now (about ‹size› for this computer)* — the same
+size **Install** shows on AI Settings → Speech. Each engine's model then
 downloads the first time you load it — the tier decides which engines that will
 be. The confirm step shows that total, added up from each engine's default model
 in the engine catalog, so it follows the models you would really get; the

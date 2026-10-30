@@ -73,7 +73,12 @@ never internal bookkeeping:
   The cell reads **asleep** when the model is still configured and ready but
   its memory has been released after a spell of not being used — see [When
   the AI model goes to sleep](#when-the-ai-model-goes-to-sleep) below.
-  When no language model is loaded the cell shows **—**.
+  When no language model is in memory the cell says what one would take:
+  **~X GB on demand** — hover it: *‹model› loads when an AI feature needs it —
+  an estimate of what it takes*, or *… what it took when it last loaded here*
+  once a load has measured it — or **cloud** when your AI features run on a
+  cloud provider (*Your AI features run on a cloud provider — no memory needed
+  here*). With no AI model set up at all it shows **—**.
 - **Speech · Graphics card** and **Transcription · Graphics card** — one cell
   for each speech or speech-recognition model that holds memory, with the
   model's id under it. A model on the CPU holds no VRAM on a discrete card, so
@@ -92,9 +97,20 @@ never internal bookkeeping:
   exactly which programs — see [Which apps are using the
   GPU](#which-apps-are-using-the-gpu) below.
 
-A model that is speaking — a render, a transcription, an AI run in flight — is
-never unloaded to make room: if something else needs its memory, that load
-waits or fails honestly instead of killing your work.
+A model that is working — a speech model speaking a line, a recogniser
+transcribing, an AI model answering — is never unloaded to make room: if
+something else needs its memory, that load waits or fails honestly instead of
+killing your work. Its cell says so while it works: **busy** under the cell,
+and on hover *In use now — it isn't unloaded to make room until its work ends*.
+
+**When a model is unloaded to make room, the window says so.** Whenever a load
+unloads another model to fit — a speech model pushing the AI model off the card,
+the AI model waking up and unloading a speech model — a notice says what went
+and for what: *gemma-4-26b-a4b-qat was unloaded to make room for a speech
+model.* (or *A speech model was unloaded to make room for an AI model.* when it
+can't name the model). The memory strip on AI Settings and the cells on Home
+hear of it on their next reading, so the notice shows while either is open, once
+in each window.
 
 The label follows your hardware: a discrete card shows **VRAM**; laptops with integrated or unified memory (iGPU, Apple Silicon) show **Memory**, because CPU and GPU share the same physical pool there and every load — even a CPU-placed one — draws from it.
 
@@ -125,8 +141,8 @@ at once.
 
 **Waking up takes the memory back, and says so.** When a feature next needs
 the model, JustVoice makes room for it *before* it loads — which may mean
-unloading the speech model that moved in while it slept; the memory strip shows
-it go. The speech model reloads by itself the next time you render; nothing is
+unloading the speech model that moved in while it slept, and a notice says so
+(above). The speech model reloads by itself the next time you render; nothing is
 lost but the seconds it takes.
 
 This is deliberately a visible swap rather than a silent squeeze. Before
@@ -236,7 +252,8 @@ holding the GPU?" has an answer after the fact too. The server log is under
 When you load a model JustVoice has **measured
 before on this machine**, it checks **measured free memory** first —
 including what other apps are holding. If there isn't room, it frees the
-least-recently-used *idle* model — the AI model included. If nothing can be freed
+least-recently-used *idle* model — the AI model included — and a notice says
+what it unloaded. If nothing can be freed
 (everything resident is busy), the load refuses with a message quoting the
 measured numbers and listing what's resident and busy, instead of
 crash-landing in an out-of-memory error mid-render. A speech model's
@@ -253,7 +270,7 @@ reduced-memory mode and runs full speed after the render ends.
 
 **Where models run.** Every model runs on the speech runtime's build (**Build** under **Engine settings** on the Speech tab), on the graphics card or the CPU as its **Auto · Graphics card · CPU** choice says; its row says where once loaded (*Loaded on the graphics card*, *Loaded on the CPU*). A model on the CPU costs no VRAM on a discrete card. There is no per-engine Device select — every engine runs in one runtime.
 
-**Warm boot.** With the budget in charge, the local AI model now warms up at launch by default on fresh installs (the family default) — the first Analyze is instant, and if a render needs the memory the idle model is simply unloaded. Turn it off in the AI engine console if you prefer a cold start. Databases created before 2026-08-13 keep their old warm-off setting until you change it or reset.
+**Warm boot.** With the budget in charge, the local AI model now warms up at launch by default on fresh installs (the family default) — the first Analyze is instant, and if a render needs the memory the idle model is simply unloaded, with a notice. Turn it off in the AI engine console if you prefer a cold start. Databases created before 2026-08-13 keep their old warm-off setting until you change it or reset.
 
 **Where the numbers come from.** A speech model's memory is **measured on
 your box** — the model's own process, at its first load and after its lines,

@@ -839,13 +839,18 @@ are its RESEARCH §12. All *code* at just-core `75d07f8` / JustVoice `78ca4a0e` 
   (`refSpeed` has `cpu` alone). Reinstall (`force`) downloads the build again but skips an eSpeak NG already in
   its `_extras` (`runtime_service.js` `_run`, `extraInstalled`). Loaded now shows before an install too (the pool
   exists from the service's start, so `loaded` is always an array). The Transcription card on Routing by feature is
-  the kit's `LuRuntimePresetPane` with no words for kind `stt`: its model select and empty state fall back to the
-  image words ("Image model", `:62` — `kit.runtimes.preset.{model,choose,none}.stt` don't exist) and its one
-  field shows as `placement` with values auto / gpu / cpu (`fields.placement` and its values don't exist); it
-  picks among the stt presets — one seeded — and has no control for the preset's model. With no chat model loaded
-  and no app claim the strip's LLM cell is "—" (`useMemoryCells.js`, committed `e45086d`; the kit's working tree
-  adds its own on-demand claim). The setting `models.url_overrides` (`models.js:444`) had no reader, before
-  round E or after — removed 2026-10-29 with its Settings card (the `models` section was its one field). — *code, just-core `538ce18b` + working tree, JustVoice `5c1b20bf`, 2026-10-29*.
+  the kit's `LuRuntimePresetPane` in the stt words: "Transcription model" / "Choose a transcription model", its one
+  setting "Runs on" with the runtime tab's Auto / Graphics card / CPU (`kit.runtimes.placement`); it picks among
+  the stt presets — one seeded — and has no control for the preset's model. (was: the image words, "Image model",
+  and a raw `placement` with auto / gpu / cpu — until just-core `726cdff8`.) With no chat model in memory the
+  strip's LLM cell shows `/resident`'s `llmClaim`: "~‹size› on demand" for a local chat default, "cloud" for a
+  cloud one, "—" with none set (`useMemoryCells.js` `kitClaim`, `lifecycle.js` `_llmClaim`); each eviction is said
+  once per window as a toast, "‹model› was unloaded to make room for ‹a speech model›" (`announceEvictions`, the
+  window's first reading only marks where it starts), and a busy kind's cell adds "busy" (`busyKinds`); a model's
+  Load is one AI task, "Load ‹name›", whose Cancel unloads (`services/runtimeLoad.js` `loadRuntimeModel` in
+  `withAiTask`). (was: the cell "—" with no app claim, no eviction words, and the tab's own Load — until just-core
+  `333ac9e3`.) The setting `models.url_overrides` (`models.js:444`) had no reader, before
+  round E or after — removed 2026-10-29 with its Settings card (the `models` section was its one field). — *code, just-core `538ce18b`, `333ac9e3`, `726cdff8`, JustVoice `5c1b20bf`, 2026-10-29*.
 
 ---
 

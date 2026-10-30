@@ -17,8 +17,10 @@
   **Clear** on the AI models cache clears them too. Which model transcribes — dictation, the take
   check, captions, agents — is the **Transcription** feature on **Routing by feature** now, not a
   hidden setting, and its 1.1 GB word aligner loads only when captions need it. The memory strip
-  shows each speech model's memory in its own cell, and every speech model measures its memory again
-  on its first load. A self-hosted server or cloud speech provider you save works at once, without
+  shows each speech model's memory in its own cell, marks a model that is working *busy*, and says
+  with a notice whenever a model is unloaded to make room for another; every speech model measures
+  its memory again on its first load. A model's **Load** — on the Speech tab or a persona's page —
+  is a task on the AI tasks strip, *Load ‹model›*, whose **Cancel** stops it. A self-hosted server or cloud speech provider you save works at once, without
   a restart. For other callers, an export's job is `GET /v1/jobs/{id}`
   ([Engines](engines.md), [AI features → Transcription](ai-features.md#transcription),
   [Import and export](import-and-export.md))
