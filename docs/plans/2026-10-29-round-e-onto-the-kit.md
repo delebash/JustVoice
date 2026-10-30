@@ -359,8 +359,12 @@ the gate wait for step 10 (the user's rule, 2026-10-28).
   so its next Auto load goes to the card; an Unload 3 s into a VoxCPM2 load answered the load 409 `load-cancelled`
   and nothing stayed loaded; a chapters export on the kit's job registry ran, its 166 MB zip fetched, the job then
   410 `job-ended`.
-  **Found: Kokoro's Japanese (jf_alpha) gives a 2.15 s take that reads back as "うーん。"** — it read back exactly on
-  the published build on 2026-10-05; being debugged in the fork. **Found: the title bar's pills truncate to one
+  Kokoro's Japanese (jf_alpha), sent as a UTF-8 body, reads back character for character on the CPU and on the
+  card. (A first try read back as "うーん。": Git Bash's `curl -d` had sent the line through code page 1252 as 24
+  `?` — the test's fault, not the fork's; proven against the jv.6 release, the merged CPU build and the app's own
+  jv-dev binary.) The two new ctest failures are upstream's on Windows only (`text_chunking_test` built without
+  `/utf-8`; `disk_expert_weight_store_test` under `/EHsc`, which drops a catch around a C call) — fixed in our fork's
+  test build (running). **Found: the title bar's pills truncate to one
   letter at 1280px** after the type floor — being fixed with the visual pass over every flagged row.
 
 ## 5 · Decisions for your word
