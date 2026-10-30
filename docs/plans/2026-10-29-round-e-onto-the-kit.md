@@ -344,8 +344,24 @@ the gate wait for step 10 (the user's rule, 2026-10-28).
   card's words; help anchors with `--` (asked).
 - **Found and being fixed before step 10:** 185 font sizes under the design law's 12.5px floor across src/ (the
   user's 2026-08-21 ruling) — one sweep, so step 10's screenshots check it once.
-- **Still to do:** step 10 — the merged audio.cpp built (started), its ctest, lint, the full suites, the family
-  guard, the build, the gate, and the real app under `npm run dev`.
+- **Step 10, run once (2026-10-29):** lint clean (621 files); server 148 files, 1259 passed, 1 skipped; unit 46
+  files, 283 passed; the family guard no violations; `build:unpacked` succeeded; the merged fork's dev build (CUDA
+  12.4) 1152 steps in 765 s; its tests in a CPU build with tests on (`build/jv-test`): 104 of 110 passed, 1 skipped —
+  the known upstream three (two asset tests that need model folders, Kokoro word timings on code page 1252) and two
+  new ones under debugging (`text_chunking_test` 0xc0000409, `disk_expert_weight_store_test`; both tests and the
+  code they test identical to upstream's). The gate against the running app: every view, zero JS errors.
+  The real app under `npm run dev` on this PC's data, through its own routes: the kit runs `dev · dacb0d7f` (backend
+  cuda — B1's fix); Kokoro on Auto → the card ("it fits in the card's free memory"), a line spoken and read back word
+  for word by the Transcription feature (Qwen3-ASR on Auto, the aligner not loaded); the chat model's boot warm-up
+  evicted both (the arbiter's log), as designed; Qwen3 CustomVoice 1.7B pinned to the card ("your choice"), spoken
+  and read back exactly; Kokoro on the CPU ("your choice — 3.1× real time on the reference machine"), spoken;
+  Qwen3-ASR on the CPU by Auto on its reference 2.6× (§5 item 10, as predicted) — its first line measured 1.8× here,
+  so its next Auto load goes to the card; an Unload 3 s into a VoxCPM2 load answered the load 409 `load-cancelled`
+  and nothing stayed loaded; a chapters export on the kit's job registry ran, its 166 MB zip fetched, the job then
+  410 `job-ended`.
+  **Found: Kokoro's Japanese (jf_alpha) gives a 2.15 s take that reads back as "うーん。"** — it read back exactly on
+  the published build on 2026-10-05; being debugged in the fork. **Found: the title bar's pills truncate to one
+  letter at 1280px** after the type floor — being fixed with the visual pass over every flagged row.
 
 ## 5 · Decisions for your word
 
