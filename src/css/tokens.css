@@ -140,7 +140,7 @@
   /* Inputs/selects/textareas at the mock's density (.box: 7×9px, 12px). */
   --input-pad-y: 7px;
   --input-pad-x: 9px;
-  --input-font-size: 12px;
+  --input-font-size: 12.5px;
   /* Focus = a solid accent ring, the mock's treatment — never the soft halo. */
   --focus-ring: 0 0 0 2px var(--accent);
   /* JV tags are outlined pills (JW's are borderless soft-tint) */
