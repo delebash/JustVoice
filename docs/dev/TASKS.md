@@ -129,8 +129,13 @@ STATE:  DECIDED 2026-10-29 — "ok do 1 but 2 and 3 on hold its too much for now
         works well". 1 = the kit's hand-off list; 2 (the roadmap and ideas listed with recs) and 3 (JustVoice's own
         TASKS) on hold. After 1: one real one-click run on a short book on the merged engine, then the user's
         listening rounds 8 and 9 (rendered before the merge).
+        The import-format picker's groups, the user on my rec: "your rec keep going dont stop just take your recs
+        on anyting else but think on it first lets finish this app up to this point" — "Books" (JustWrite,
+        Book/manuscript), "Scripts and line lists" (Podcast, CSV, JustVoice JSON), "Timed lines" (SRT, Audacity).
+        Taken on the family's WCAG 2.2 AA standard (the kit's finish list, item 36): the kit contract's muted
+        colours and its link style for the two colour-only links.
 BUILT:  in work 2026-10-29 — two agents, each item checked against the code first.
-OPEN:   the one-click run and the listening rounds, after 1.
+OPEN:   the check pass, then the one-click run, then the listening rounds.
 GO:     given 2026-10-29 for 1.
 
 ### Our audio.cpp fork is released with the family, once every app is done
