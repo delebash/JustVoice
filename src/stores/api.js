@@ -8,7 +8,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import {
   lastError, request, safeRequest, get, post, patch, put, del, requestBlob, postForm,
-  serverUrl as kitServerUrl,
+  serverUrl as kitServerUrl, getServerToken, setServerToken,
 } from "@delebash/ui";
 
 export const useApi = defineStore("api", () => {
@@ -16,15 +16,18 @@ export const useApi = defineStore("api", () => {
   // in (installLlmUi's serverOverrideKey), so this no longer reads that key a
   // second time — the app had two answers to "which server?" and they could drift.
   const serverUrl = ref(kitServerUrl(""));
-  const token = ref(localStorage.getItem("jt:token") || "");
+  // ONE token (2026-10-29): the kit's own (serverToken.js), the one its connection page and an
+  // address's `?token=…` keep and its transport sends — this store's `jt:token` was a second one
+  // the boot sent in its place.
+  const token = ref(getServerToken());
 
   function setServer(v) {
     serverUrl.value = v;
     localStorage.setItem("jt:server", v);
   }
   function setToken(v) {
-    token.value = v;
-    localStorage.setItem("jt:token", v);
+    setServerToken(v);
+    token.value = getServerToken();
   }
 
   return {

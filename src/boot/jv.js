@@ -9,11 +9,11 @@ import { defineBoot } from "#q-app";
 import {
   tooltipDirective,
   configureHelp,
-  configureServerApi,
   configureFileSave,
   configureTestData,
   checkServer,
   CHECK_SERVER_MS,
+  installErrorReporting,
   installLlmUi,
   startWarmOnBoot,
 } from "@delebash/ui";
@@ -119,13 +119,12 @@ function wireKit(app, shellBase) {
   // Every fill emits the SAME block the production caller sends
   // (labTestData.js names each source of truth).
   configureTestData({ sources: LAB_TEST_SOURCES, actions: LAB_TEST_ACTIONS });
-  // installLlmUi fed `resolveBase` to the shared transport; the bearer token is
-  // JV's own layer on top (thin-client `jt:server` mode authenticates).
-  // configureServerApi merges — this call leaves the resolver in place.
-  configureServerApi({
-    authToken: () =>
-      (typeof localStorage !== "undefined" && localStorage.getItem("jt:token")) || "",
-  });
+  // The access token is the kit's own (its serverToken.js: the address's `?token=…`, the connection
+  // page's form, Settings → Server's field — stores/api.js): no override here. Until 2026-10-29 this
+  // file read `jt:token` instead, so a token the kit's connection page kept was never sent.
+  // Renderer errors reach the server's log (Settings → Logs, beside the server's) and are said once
+  // (the kit's installErrorReporting, app-structure §15 — the template's boot, JustWrite's).
+  installErrorReporting(app);
 }
 
 async function boot({ app, router, store: pinia }) {

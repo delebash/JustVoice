@@ -78,6 +78,11 @@ requests are exempt unless you require otherwise. Even then, closing the desktop
 app still shuts its server down cleanly: its shutdown request answers from this
 machine without a token (it never does from anywhere else).
 
+A browser on another computer asks for one of those tokens the first time it opens the page
+(or takes it from an address ending `?token=<token>`), keeps it in that browser, and sends it
+with every request. Settings → Server → Connection's **Bearer token** field shows the one this
+window keeps and changes it.
+
 From this computer, the server answers only to this computer's own names — `localhost`,
 an IP address, the computer's name. A web page that renamed itself to reach it is refused
 (*this server answers to this computer's own names, not …*). Behind a reverse proxy on this

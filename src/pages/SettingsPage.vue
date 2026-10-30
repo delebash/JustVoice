@@ -797,7 +797,7 @@ onMounted(() => {
             <UiInput v-model="api.serverUrl" :spellcheck="false" width="url" @blur="reload" />
           </UiField>
           <UiField label="Bearer token (optional)" layout="block">
-            <UiInput v-model="api.token" type="password" placeholder="optional" width="url" />
+            <UiInput :model-value="api.token" type="password" placeholder="optional" width="url" @update:model-value="api.setToken" />
           </UiField>
         </div>
         <div class="jv-row jv-mt14">

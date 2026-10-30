@@ -15,6 +15,10 @@
 import { registerBootSmoke } from "@delebash/ui/test/bootSmoke.js";
 // Quasar installed as in the real app — the kit's controls are Quasar components
 import { createTestApp } from "@delebash/ui/quasar/install.js";
+import { expect, test } from "vitest";
+
+// the booted app, for the checks after the smoke
+let booted = null;
 
 registerBootSmoke({
   boot: async () => {
@@ -24,6 +28,7 @@ registerBootSmoke({
     const { default: i18nBoot } = await import("./boot/i18n.js");
     const { default: jvBoot } = await import("./boot/jv.js");
     const app = createTestApp(App);
+    booted = app;
     const store = await createStore({});
     app.use(store);
     const router = await createRouter({ store });
@@ -42,4 +47,24 @@ registerBootSmoke({
   ready: () => {
     if (window.__bootErr) throw window.__bootErr;
   },
+});
+
+test("renderer errors reach the server's log (the kit's installErrorReporting, app-structure §15)", () => {
+  expect(typeof booted?.config.errorHandler).toBe("function");
+});
+
+test("the access token is the kit's own: the one its token page keeps rides every request", async () => {
+  const { getServerToken, serverFetch, setServerToken } = await import("@delebash/ui");
+  const { useApi } = await import("./stores/api.js");
+  // kept the way the kit's connection page keeps one (ConnectionError → setServerToken)
+  setServerToken("kept-by-the-kit");
+  await serverFetch("http://127.0.0.1:17494/v1/health");
+  const [, init] = globalThis.fetch.mock.calls.at(-1);
+  expect(new Headers(init?.headers).get("authorization")).toBe("Bearer kept-by-the-kit");
+  // Settings → Server's field keeps it in the same place
+  const api = useApi();
+  api.setToken("typed-in-settings");
+  expect(getServerToken()).toBe("typed-in-settings");
+  expect(api.token).toBe("typed-in-settings");
+  setServerToken("");
 });
