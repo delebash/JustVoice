@@ -438,18 +438,17 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 }
 .jv-sidebar__lane-chev { font-size: 9px; line-height: 1; }
 
+/* The kit TitleBar FRAME hosts the topbar (family adoption, QC ruling 2026-08-06) and lays it
+   out: 44 px tall, its parts centred and 6 px apart. JV adds only its side padding (the page's
+   32 px, so the bar lines up with the page under it) and its line. Until 2026-10-29 JV also set
+   `align-items: baseline; gap: 16px` and 22/14 px of vertical padding from the taller bar; the
+   frame's rule is scoped, so the two tied and the stylesheets' load order picked the winner —
+   the frame's under `npm run dev`, JV's in the build, where the bar's parts sat across its bottom
+   line and the 16 px gaps ran it past the window at 1280 px (the help button off-screen). */
 .jv-topbar {
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  padding: 22px 32px 14px;
+  padding: 0 32px;
   border-bottom: 1px solid var(--line);
 }
-/* The kit TitleBar FRAME hosts the topbar now (family adoption, QC ruling
-   2026-08-06). The compound selector outweighs the frame's own one-class
-   layout rule so JV's baseline/gap stand; the frame's nav buttons center
-   themselves against the tall title. */
-.jv-topbar.lu-titlebar { align-items: baseline; gap: 16px; }
 /* The phone's ☰ (the frame's `start` slot) is drawn as the frame's own back/forward buttons —
    JustWrite's `.titlebar-menu` does the same. */
 .jv-topbar .lu-titlebar-btn,
@@ -475,6 +474,13 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* The floor holds a long name; it never pads a short one. A plain `min-width: 12ch` stood "Home"
+   in 190 px, 123 of them blank, while the pills beside it were cut to one letter (2026-10-29):
+   the floor is the smaller of 12ch and the name's own width. `calc-size()` is Chromium's (the
+   desktop app's); a browser without it keeps the plain floor above. */
+@supports (min-width: calc-size(max-content, size)) {
+  .jv-topbar .lu-titlebar-title { min-width: calc-size(max-content, min(size, 12ch)); }
+}
 /* (.jv-topbar__title died with the kit-frame adoption — the title styles live
    on .jv-topbar .lu-titlebar-title above; the crumbs render inside it.) */
 .jv-topbar__crumb-sep {
@@ -497,10 +503,13 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 /* When the bar is short of room, its parts give way in order (decided
    2026-10-05, the user: "why isnt it flex to grow snd shrink as needed"): the
    server URL first, then the project's name in its chip, then the two model
-   pills, the page name last. Flex shares the squeeze by weight, so the weights
-   are far apart: URL 10000 · project chip 1000 · pills 100 · title 1. The group
-   is layout-only (display: contents) so the status and the URL are the bar's
-   own items — the status keeps its width and the auto margin. */
+   pills, the page name last. Flex shares the squeeze by weight × width, so the
+   weights are far apart: URL 1e15 · project chip 1e10 · pills 1e5 · title 1.
+   (They were 10000 · 1000 · 100 · 1 until 2026-10-29 — too close: each part
+   kept losing a few pixels, an "…", while the one before it still had room to
+   give; 100 000 apart, the order holds to under a pixel.) The group is
+   layout-only (display: contents) so the status and the URL are the bar's own
+   items — the status keeps its width and the auto margin. */
 .jv-topbar__statusgroup {
   display: contents;
 }
@@ -515,7 +524,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--r-pill);
-  padding: 4px 10px;
+  /* 6 px before the dot keeps its glow off the pill beside it; none after the words (the pill it
+     once was is gone, and its 10 px each side was nothing the bar could spare at 1280 px). */
+  padding: 4px 0 4px 6px;
   font-family: inherit;
   /* Never wrap to a second line, never shrink — the parts listed above the
      status group give way instead (the topbar stays one line on every view). */
@@ -555,17 +566,13 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   white-space: nowrap;
   cursor: pointer;
   /* Gives way first (the order above); its full address is in its tooltip. */
-  flex-shrink: 10000;
+  flex-shrink: 1e15;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .jv-topbar__url:hover,
 .jv-topbar__url:focus-visible { color: var(--accent); text-decoration: underline; }
-
-/* HelpTrigger in the topbar — small gap from the status pill so the
-   `?` icon sits as a stable far-right control on every view. */
-.jv-topbar .help-trigger { margin-left: 10px; }
 
 /* Active-project chips — the journeys topbar contract (Project / Kind /
    Master). Mirrors the mock's .hdr-chip exactly. */
@@ -603,7 +610,7 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
 .jv-topbar__proj b { font-weight: 600; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 
 /* The project chip gives way second: its name ends in "…", "PROJECT ▾" stays. */
-.jv-topbar__switcher { position: relative; display: flex; flex-shrink: 1000; min-width: 120px; }
+.jv-topbar__switcher { position: relative; display: flex; flex-shrink: 1e10; min-width: 120px; }
 .jv-topbar__switcher .jv-topbar__proj { max-width: 100%; min-width: 0; }
 .jv-topbar__proj-chev { font-size: 9px; color: var(--ink-3); margin-left: 2px; }
 .jv-topbar__menu {
@@ -656,7 +663,7 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   /* Shrinks after the server URL and the project chip, before the page name, when the bar is
      short of room, its name ending in "…" — the full name is in its tooltip (decided
      2026-10-05). */
-  flex-shrink: 100;
+  flex-shrink: 1e5;
   min-width: 68px;
   max-width: 260px;
   overflow: hidden;
@@ -689,6 +696,9 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   color: #fff;
 }
 .jv-topbar__engine-icon { font-size: 12px; }
+/* The 12 px before the first pill sets the two apart from the project's chips; the second sits
+   the bar's own gap from the first, as the chips do (it had the 12 px too until 2026-10-29). */
+.jv-topbar__engine-pill + .jv-topbar__engine-pill { margin-left: 0; }
 
 /* At phone width (Quasar's xs) the bar is one row (decided 2026-10-15, the build's question 11:
    "one row at phone width — the topbar's parts hide, in the 2026-10-05 shrink order, until it
@@ -698,9 +708,9 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
    each carries Quasar's `gt-xs` in MainLayout.vue, so a wider window shows them as before — and
    the page name gives way last, its end in "…" (its 12ch floor
    is the computer's). Forward stays on the computer, as the family's phone title bar has it
-   (the kit's phone plan; JustWrite's bar: ☰ · Back · the title · its controls). */
+   (the kit's phone plan; JustWrite's bar: ☰ · Back · the title · its controls). The gap is the
+   frame's 6 px here too (an 8 px override tied with the frame's scoped rule, like the computer's). */
 @media (max-width: 599.98px) {
-  .jv-topbar.lu-titlebar { gap: 8px; }
   .jv-topbar .lu-titlebar-forward { display: none; }
   .jv-topbar .lu-titlebar-title { min-width: 0; }
 }
