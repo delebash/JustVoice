@@ -369,9 +369,9 @@ the gate wait for step 10 (the user's rule, 2026-10-28).
   fixed (`2d5e8503`); one look at every view after it, the Speech tab included, found nothing else broken; the gate
   passed again. The app and its engines were stopped after, the card handed back.
 
-**Round E is DONE (2026-10-29).** Open: on Studio at 1280px the pills still give way to "N…" / "g…", because the
-page name there carries the book's title and the decided squeeze order (2026-10-05) gives way the page name last —
-the user's to change, not changed. The fork's release goes with the family's (TASKS). **Found: the title bar's pills truncate to one
+**Round E is DONE (2026-10-29).** Studio's title bar, on the user's word: the crumb after the page's name gives way
+before the model pills, down to "›…", the page's name still last (f1521ed2; at 1280px "Studio ›…" with the pills
+beside it, at 1600px the crumbs whole; the gate passed). The fork's release goes with the family's (TASKS). **Found: the title bar's pills truncate to one
   letter at 1280px** after the type floor — being fixed with the visual pass over every flagged row.
 
 ## 5 · Decisions for your word
