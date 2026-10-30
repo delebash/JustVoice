@@ -364,7 +364,14 @@ the gate wait for step 10 (the user's rule, 2026-10-28).
   `?` — the test's fault, not the fork's; proven against the jv.6 release, the merged CPU build and the app's own
   jv-dev binary.) The two new ctest failures are upstream's on Windows only (`text_chunking_test` built without
   `/utf-8`; `disk_expert_weight_store_test` under `/EHsc`, which drops a catch around a C call) — fixed in our fork's
-  test build (running). **Found: the title bar's pills truncate to one
+  test build (`71543544`: 107 of 110, the two asset tests left). The title bar's pills were cut to one letter at
+  1280px in the build — JustVoice's own `.jv-topbar` layout tied with the kit frame's and won in the build only —
+  fixed (`2d5e8503`); one look at every view after it, the Speech tab included, found nothing else broken; the gate
+  passed again. The app and its engines were stopped after, the card handed back.
+
+**Round E is DONE (2026-10-29).** Open: on Studio at 1280px the pills still give way to "N…" / "g…", because the
+page name there carries the book's title and the decided squeeze order (2026-10-05) gives way the page name last —
+the user's to change, not changed. The fork's release goes with the family's (TASKS). **Found: the title bar's pills truncate to one
   letter at 1280px** after the type floor — being fixed with the visual pass over every flagged row.
 
 ## 5 · Decisions for your word

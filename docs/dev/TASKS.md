@@ -157,9 +157,12 @@ NOT:    building before the kit's suites are green and the plan is approved.
         Then, on "so whats next" (the remaining steps listed): "do it all dont stop if you find bugs are thing sto fix
         or add think adversirlay on it think adverserily on these isses and take your recs geti all finished go" —
         every remaining step, the deletions of items 9 and 11 included, and what the work finds fixed on my recs.
-BUILT:  nothing. The kit's half is green at just-core `75d07f8`; the kit took the plan's §3 (bugs B1–B13, gaps
-        G1–G12) the same day and is building it.
-OPEN:   JustVoice's move, the plan's §4 — it starts when the kit sends its final shapes and a green run.
+BUILT:  DONE 2026-10-29 — every step of the plan's §4, the kit's §3 built on our reports, the fork merged with
+        upstream and its Windows tests fixed, the type floor across src/, this PC's models adopted into the kit's
+        cache and the old folders removed; the final pass green (the plan's §4.1 has every commit and result).
+OPEN:   on Studio at 1280px the title bar's pills give way to one letter, because the page name carries the book's
+        title and the 2026-10-05 squeeze order gives the page name way last — your call whether the title's book
+        part gives way before the pills.
 GO:     given 2026-10-29 for the plan, then for its recs.
 
 ### Adopt everything audio.cpp has in engines; what we add, in a standard way — and a review of every narrowing I added unasked (decided 2026-10-13)
