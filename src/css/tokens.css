@@ -17,6 +17,9 @@
  */
 
 :root {
+  /* design-law's 12.5px type floor (the user's "stop using small text", 2026-08-21) — the kit's own small text
+     (chips, hints, small buttons) renders at it too (the kit's tokens contract, --text-floor) */
+  --text-floor: 12.5px;
   --bg: #f6f5f1;
   --surface: #fff;
   --surface-2: #fbfaf7;
