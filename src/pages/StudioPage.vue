@@ -629,8 +629,8 @@ watch(selectedProjectId, (id) => {
 
     <!-- ── Project picker ───────────────────────────────────────────── -->
     <div class="jv-section studio__project-bar">
-      <label class="jv-eyebrow">{{ copy.book.singular }}:</label>
-      <UiSelect v-model="selectedProjectId" width="name" :options="projectOptions" />
+      <label class="jv-eyebrow" for="studio-project">{{ copy.book.singular }}:</label>
+      <UiSelect id="studio-project" v-model="selectedProjectId" width="name" :options="projectOptions" />
       <!-- What is loaded — voice engine, language model — is the main
            header's to show (2026-09-29); the chips that repeated it here died. -->
     </div>

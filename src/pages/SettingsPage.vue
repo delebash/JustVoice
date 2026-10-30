@@ -974,14 +974,14 @@ onMounted(() => {
           <h3 class="jv-card__title">Limits</h3>
         </div>
         <div class="settings-grid">
-          <UiField label="Text max chars" layout="block">
-            <UiInput v-model.number="settings.limits.text_max_chars" type="number" width="token" />
+          <UiField label="Text max chars" layout="block" for="limit-text-max-chars">
+            <UiInput id="limit-text-max-chars" v-model.number="settings.limits.text_max_chars" type="number" width="token" />
           </UiField>
-          <UiField label="Chapter max lines" layout="block">
-            <UiInput v-model.number="settings.limits.chapter_max_lines" type="number" width="token" />
+          <UiField label="Chapter max lines" layout="block" for="limit-chapter-max-lines">
+            <UiInput id="limit-chapter-max-lines" v-model.number="settings.limits.chapter_max_lines" type="number" width="token" />
           </UiField>
-          <UiField label="Reference clip max bytes" layout="block">
-            <UiInput v-model.number="settings.limits.reference_clip_max_bytes" type="number" width="token" />
+          <UiField label="Reference clip max bytes" layout="block" for="limit-reference-clip-max-bytes">
+            <UiInput id="limit-reference-clip-max-bytes" v-model.number="settings.limits.reference_clip_max_bytes" type="number" width="token" />
           </UiField>
         </div>
       </div>
