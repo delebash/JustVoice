@@ -62,7 +62,11 @@ for (const scheme of ["light", "dark"]) {
       await d.navigate(`#/${name}`);
       await page.waitForURL(new RegExp(`#/${name}`));
       await waitFor(async () => (await page.locator(".jv-content").innerText()).trim().length > 0, { what: `${name} drawn` });
-      assert.equal(await page.evaluate(() => document.documentElement.getAttribute("data-theme")), scheme);
+      // the theme follows the system through a media-query listener: waited for, not read at once (the first page
+      // after the switch can draw before it fires)
+      await waitFor(async () => (await page.evaluate(() => document.documentElement.getAttribute("data-theme"))) === scheme, {
+        what: `the ${scheme} theme`,
+      });
       const v = await violations();
       if (v.length) found[name] = v;
     }
