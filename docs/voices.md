@@ -9,7 +9,7 @@ That is not a limitation we chose: a voice is coordinates inside one model's
 learned space, so the numbers mean nothing to a different model. What *is*
 portable is the recording you cloned from — it is stored with the voice, so
 you can clone it again on another model with **⋯ → Copy to another model…**
-([below](#copy-to-another-model)). The result is a new voice, and it will sound
+([below](#the--menu)). The result is a new voice, and it will sound
 a little different, because each model clones with its own character.
 
 ### Every voice knows the model that speaks it
