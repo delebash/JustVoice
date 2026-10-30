@@ -284,7 +284,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
         <!-- ── CONFIRM step ─────────────────────────────────────── -->
         <template v-else-if="step === 'confirm'">
           <section>
-            <div class="quick-setup__row-label">Detected</div>
+            <div class="jv-eyebrow quick-setup__row-label">Detected</div>
             <div class="quick-setup__row-value">
               {{ gpu?.name || "No GPU" }}
               <UiTag intent="ghost" v-if="gpu?.vram_mb">{{ (gpu.vram_mb / 1024).toFixed(1) }} GB VRAM</UiTag>
@@ -295,7 +295,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           </section>
 
           <section>
-            <div class="quick-setup__row-label">Hardware fit</div>
+            <div class="jv-eyebrow quick-setup__row-label">Hardware fit</div>
             <div class="quick-setup__row-value">
               <UiSelect v-model="tierKey" width="name"
                 :options="tierOptions.map((opt) => ({ value: opt.value, label: opt.label + (opt.value === detectedTierKey ? '  · suggested' : '') }))" />
@@ -307,7 +307,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           </section>
 
           <section>
-            <div class="quick-setup__row-label">TTS engines</div>
+            <div class="jv-eyebrow quick-setup__row-label">TTS engines</div>
             <ul class="quick-setup__engines">
               <li v-for="id in tierEngineIds" :key="id" class="quick-setup__engine-row">
                 <UiCheckbox
@@ -332,7 +332,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           </section>
 
           <section>
-            <div class="quick-setup__row-label">Feature routing</div>
+            <div class="jv-eyebrow quick-setup__row-label">Feature routing</div>
             <p class="jv-muted quick-setup__note quick-setup__note--lede">
               AI features route themselves: careful-reading work (Script speaker attribution)
               goes to your strongest model; quick tasks (Compose, Rewrite, Smart-assign,
@@ -345,7 +345,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           </section>
 
           <section>
-            <div class="quick-setup__row-label">Optional helpers</div>
+            <div class="jv-eyebrow quick-setup__row-label">Optional helpers</div>
             <p class="jv-muted quick-setup__note quick-setup__note--lede">
               Skip either — the features that need them wait quietly until you connect one.
             </p>
@@ -374,7 +374,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           </section>
 
           <section>
-            <div class="quick-setup__row-label">What happens next</div>
+            <div class="jv-eyebrow quick-setup__row-label">What happens next</div>
             <ol class="quick-setup__next">
               <li>The speech runtime downloads &amp; verifies (one-time)</li>
               <li>Clone your voice from ~30 s of audio — or skip and use built-in voices</li>
@@ -442,14 +442,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 <style scoped>
 .quick-setup__body { padding: 18px 22px; display: flex; flex-direction: column; gap: 18px; }
 .quick-setup__loading { text-align: center; padding: 24px 0; }
-.quick-setup__row-label {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-  margin-bottom: 4px;
-}
+.quick-setup__row-label { margin-bottom: 4px; }
 .quick-setup__row-value {
   display: flex;
   align-items: center;
@@ -457,14 +450,14 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
   font-size: 13px;
   flex-wrap: wrap;
 }
-.quick-setup__blurb { font-size: 12px; line-height: 1.5; margin: 6px 0 0; }
+.quick-setup__blurb { font-size: 12.5px; line-height: 1.5; margin: 6px 0 0; }
 /* Inline-style purge (parity batch slice 10) — the repeated note literals
    became these; values stay the exact ones the template used. */
-.quick-setup__note { font-size: 11.5px; }
+.quick-setup__note { font-size: 12.5px; }
 .quick-setup__note--est { margin: 4px 0 0; }
 .quick-setup__note--lede { margin: 0 0 6px; }
 .quick-setup__note--banner { margin-top: 8px; }
-.quick-setup__note-md { font-size: 12px; }
+.quick-setup__note-md { font-size: 12.5px; }
 .quick-setup__note-md--lede { margin: 0 0 10px; }
 .quick-setup__engines, .quick-setup__pins {
   list-style: none;
@@ -481,11 +474,11 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
   padding: 5px 10px;
   background: var(--surface-2);
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 12.5px;
 }
 .quick-setup__pins code {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12.5px;
 }
 .quick-setup__progress-row strong { grid-column: 1; font-size: 12.5px; }
 .quick-setup__progress-row > span:nth-child(2) { grid-column: 2; }
@@ -500,6 +493,6 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 .quick-setup__engine-row input { accent-color: var(--accent); width: 15px; height: 15px; flex: none; }
 .quick-setup__engine-name { font-weight: 600; white-space: nowrap; flex: none; }
 .quick-setup__engine-where { color: var(--ink-2); white-space: nowrap; }
-.quick-setup__engine-blurb { font-size: 11px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quick-setup__engine-blurb { font-size: 12.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .quick-setup__next { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.8; }
 </style>

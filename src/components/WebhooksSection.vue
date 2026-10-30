@@ -124,7 +124,7 @@ onMounted(refresh);
         <strong>MCP server</strong>
         <UiTag intent="success">enabled</UiTag>
         <span class="jv-spacer" />
-        <a href="#settings" class="jv-muted" style="font-size:12px">configure → Settings · MCP</a>
+        <a href="#settings" class="jv-muted" style="font-size:12.5px">configure → Settings · MCP</a>
       </div>
       <p class="jv-muted" style="font-size:12.5px; margin: 6px 0 10px">
         Any MCP-capable agent (Claude Code, IDEs) can drive JustVoice — dictate commit
@@ -223,7 +223,7 @@ justvoice.transcribe      {audio} → text</pre>
   color: #d7e6dc;
   border-radius: 8px;
   padding: 12px 14px;
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 1.7;
   margin: 0;
   overflow-x: auto;

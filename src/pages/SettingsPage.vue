@@ -1583,11 +1583,8 @@ onMounted(() => {
 /* ── Inline-style purge (parity batch 2026-08-06): the repeated inline literals
    became these utilities; values stay the exact ones the view used. ── */
 .jv-hint { font-size: 12.5px; }
-.jv-note { font-size: 12px; }
-.jv-note-xs { font-size: 11.5px; }
-.jv-note-2xs { font-size: 11px; }
+.jv-note { font-size: 12.5px; }
 .jv-subhead { margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2); }
-.jv-danger-note { color: var(--danger); font-size: 12px; }
 .jv-inline-row { display: flex; align-items: center; gap: 10px; }
 .jv-row--mid { align-items: center; gap: 10px; }
 .jv-tight-top { margin: 8px 0 0; }
@@ -1607,7 +1604,6 @@ onMounted(() => {
 .jv-w90 { width: 90px; }
 .jv-w130 { width: 130px; }
 .jv-center-pad { text-align: center; padding: 16px; }
-.jv-eyebrow-h { margin-bottom: 12px; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
 .jv-italic { font-style: italic; }
 .jv-wrap { flex-wrap: wrap; }
 .jv-col-end { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }

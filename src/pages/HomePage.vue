@@ -362,7 +362,7 @@ onMounted(() => {
     <!-- Zero projects — the welcome hero IS row 1 (no modal ambush;
          the auto-picker only fires on true first run). -->
     <div v-if="health && !projects.length" class="jv-card home__hero">
-      <div class="home__eyebrow">Welcome to JustVoice</div>
+      <div class="jv-eyebrow">Welcome to JustVoice</div>
       <h2 class="home__hero-title">What are you making?</h2>
       <p class="jv-muted home__hero-sub">Pick a kind — the whole app reshapes around it. Same voices, personas, and lexicons either way.</p>
       <div class="home__hero-pills">
@@ -381,7 +381,7 @@ onMounted(() => {
       <div v-if="continueProject" class="jv-card home__continue">
         <div class="home__portrait" :title="continueMeta.label">{{ (continueProject.name || "?").slice(0, 1).toUpperCase() }}</div>
         <div class="home__continue-main">
-          <div class="home__eyebrow">Continue</div>
+          <div class="jv-eyebrow">Continue</div>
           <div class="home__display">{{ continueProject.name }}</div>
           <div class="jv-muted home__substat">{{ continueStatus }}</div>
           <div v-if="miniSteps.length" class="home__mini">
@@ -395,7 +395,7 @@ onMounted(() => {
         <UiButton intent="primary" label="Resume ➜" title="Open this project's home base" @click="resumeProject" />
       </div>
       <div class="jv-card home__start">
-        <div class="home__eyebrow" style="margin-bottom:8px">Start something</div>
+        <div class="jv-eyebrow" style="margin-bottom:8px">Start something</div>
         <div class="home__pills">
           <UiChip v-for="k in KIND_PILLS" :key="k.kind" class="home__pill"
             :title="`New ${k.kind === 'game_voicelines' ? 'game dialogue' : k.kind} project`"
@@ -408,7 +408,7 @@ onMounted(() => {
     <!-- Row 2 — six stat cards -->
     <div class="home__stats">
       <a v-for="c in statCards" :key="c.label" class="jv-card home__stat" :href="c.href" :title="`Open ${c.label}`">
-        <div class="home__eyebrow">{{ c.label }}</div>
+        <div class="jv-eyebrow">{{ c.label }}</div>
         <div class="home__display home__display--num">{{ c.value }}</div>
         <div class="jv-muted home__substat">{{ c.sub }}</div>
       </a>
@@ -418,7 +418,7 @@ onMounted(() => {
     <div class="home__row">
       <div class="jv-card home__tasks">
         <div class="home__cardhead">
-          <span class="home__eyebrow">Active tasks</span>
+          <span class="jv-eyebrow">Active tasks</span>
           <UiTag intent="accent2" v-if="liveTasks.length">{{ liveTasks.length }} in flight</UiTag>
           <span class="jv-spacer" />
           <UiButton intent="ghost" size="small" label="open panel ➜" data-panel-toggle @click="tasks.togglePanel()" />
@@ -451,7 +451,7 @@ onMounted(() => {
     <!-- Row 4 — Recent generations -->
     <div class="jv-card home__recent">
       <div class="home__cardhead">
-        <span class="home__eyebrow">Recent generations</span>
+        <span class="jv-eyebrow">Recent generations</span>
       </div>
       <p v-if="!recentGenerations.length" class="jv-muted home__empty">Render something — your latest takes land here for one-click replay.</p>
       <template v-for="g in recentGenerations" :key="g.id">
@@ -490,13 +490,9 @@ onMounted(() => {
   font-size: 18px; font-weight: 700; flex: none;
 }
 .home__continue-main { min-width: 0; flex: 1; }
-.home__eyebrow {
-  font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--ink-3);
-}
 .home__display { font-size: 19px; font-weight: 700; color: var(--ink); }
 .home__display--num { font-size: 21px; margin: 2px 0; }
-.home__substat { font-size: 11.5px; }
+.home__substat { font-size: 12.5px; }
 .home__pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .home__pill { cursor: pointer; }
 .home__pill:hover { border-color: var(--accent); color: var(--accent-ink); }
@@ -506,37 +502,37 @@ onMounted(() => {
 .home__tasks { flex: 1.4; padding: 12px 16px; }
 .home__engine { flex: 1; padding: 12px 16px; }
 .home__cardhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.home__empty { font-size: 12px; margin: 4px 0; }
-.home__task { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; }
-.home__task-kind { text-transform: uppercase; font-size: 9.5px; }
+.home__empty { font-size: 12.5px; margin: 4px 0; }
+.home__task { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 4px 0; }
+.home__task-kind { text-transform: uppercase; font-size: 12.5px; }
 .home__task-kind--render { background: var(--accent); color: #fff; border-color: var(--accent); }
 .home__task-kind--extract { background: #eaf0f8; color: #3a5a8c; border-color: #c8d4e8; }
 .home__task-label { flex: none; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.home__task-stats { font-size: 11px; flex: none; }
+.home__task-stats { font-size: 12.5px; flex: none; }
 .home__prog { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
 .home__prog-fill { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s; }
 .home__task-x { color: var(--danger); }
 .home__recent { padding: 12px 16px; margin: 0; }
-.home__gen { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.home__gen { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
 .home__gen:last-child { border-bottom: 0; }
 .home__gen-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.home__gen-who { flex: none; font-size: 11px; }
-.home__gen-meta { flex: none; font-size: 10.5px; }
+.home__gen-who { flex: none; font-size: 12.5px; }
+.home__gen-meta { flex: none; font-size: 12.5px; }
 .home__next { display: flex; gap: 10px; align-items: center; text-decoration: none; }
 .home__next-cta { color: var(--accent-ink); font-weight: 600; }
-.home__hotkeys { font-size: 11.5px; }
-.home__hotkeys .jv-mono { font-size: 10.5px; background: var(--surface-3); padding: 1px 6px; border-radius: 4px; }
+.home__hotkeys { font-size: 12.5px; }
+.home__hotkeys .jv-mono { font-size: 12.5px; background: var(--surface-3); padding: 1px 6px; border-radius: 4px; }
 
 .home__hero { padding: 26px 30px; margin: 0; text-align: left; }
 .home__hero-title { font-size: 24px; margin: 6px 0 4px; }
 .home__hero-sub { font-size: 13px; max-width: 560px; }
 .home__hero-pills { display: flex; gap: 10px; margin: 16px 0 12px; flex-wrap: wrap; }
 .home__pill--hero { font-size: 14px; padding: 10px 20px; }
-.home__hero-foot { font-size: 12px; }
+.home__hero-foot { font-size: 12.5px; }
 .home__mini { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
 .home__to-check { cursor: pointer; }
 .home__mini-step {
-  font-size: 10.5px; font-weight: 700; color: var(--ink-3);
+  font-size: 12.5px; font-weight: 700; color: var(--ink-3);
   border: 1px solid var(--line); border-radius: 999px;
   padding: 2px 9px; background: var(--surface);
 }

@@ -301,7 +301,7 @@ async function onSave() {
 }
 .pf-presets { display: flex; gap: 8px; margin: 6px 0 4px; flex-wrap: wrap; }
 .pf-preset {
-  font: inherit; font-size: 12px;
+  font: inherit; font-size: 12.5px;
   border: 1px solid var(--line); border-radius: 999px;
   padding: 5px 13px; cursor: pointer;
   background: var(--surface); color: var(--ink-2);
@@ -313,7 +313,7 @@ async function onSave() {
 }
 .pf-row { display: flex; gap: 14px; margin-top: 10px; align-items: flex-end; flex-wrap: wrap; }
 .pf-f label {
-  font-size: 11px; color: var(--ink-3);
+  font-size: 12.5px; color: var(--ink-3);
   text-transform: uppercase; letter-spacing: .05em;
   display: block; margin-bottom: 3px;
 }
@@ -331,7 +331,7 @@ async function onSave() {
   position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
   color: var(--ink-3); font-size: 11px; pointer-events: none;
 }
-.pf-fhint { font-size: 11px; color: var(--accent-ink, #2c6049); margin-top: 3px; }
+.pf-fhint { font-size: 12.5px; color: var(--accent-ink, #2c6049); margin-top: 3px; }
 .pf-fhint.dim { color: var(--ink-3); }
 .pf-fetchbtn { margin-bottom: 22px; }
 .pf-hintband {
@@ -339,13 +339,13 @@ async function onSave() {
   margin-top: 10px; padding: 8px 10px;
   border: 1px solid var(--line); border-radius: 7px;
   background: var(--surface);
-  font-size: 11.5px; line-height: 1.5;
+  font-size: 12.5px; line-height: 1.5;
 }
 .pf-hintband strong { color: var(--ink-2); flex: none; }
 .pf-hintband a { color: var(--accent-ink, #2c6049); text-decoration: underline; flex: none; }
 .pf-voicechips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
 .pf-vchip {
-  font: inherit; font-size: 11px;
+  font: inherit; font-size: 12.5px;
   border: 1px solid var(--line); border-radius: 999px;
   padding: 2px 9px; cursor: pointer;
   color: var(--ink-2); background: var(--surface);
@@ -357,10 +357,10 @@ async function onSave() {
   color: var(--accent-ink, #2c6049);
   font-weight: 600;
 }
-.pf-error { font-size: 11px; color: var(--danger, #b04a3e); margin-top: 6px; }
+.pf-error { font-size: 12.5px; color: var(--danger, #b04a3e); margin-top: 6px; }
 .pf-foot { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
 .pf-spacer { flex: 1; }
-.pf-status { font-size: 11.5px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; }
+.pf-status { font-size: 12.5px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; }
 .pf-dot { width: 8px; height: 8px; border-radius: 50%; background: #4d9b6d; flex: none; }
 .pf-dot.off { background: var(--line-strong, #cfccc4); }
 .pf-dot.err { background: #c45a4d; }

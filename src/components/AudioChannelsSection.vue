@@ -170,6 +170,6 @@ onMounted(() => {
 <style scoped>
 .channels-view { padding: 32px; max-width: var(--shell-form); }
 .editor-card { margin-top: 8px; }
-.devices-details { margin-top: 8px; font-size: 12px; color: var(--ink-2); }
+.devices-details { margin-top: 8px; font-size: 12.5px; color: var(--ink-2); }
 .devices-details ul { margin: 4px 0 0; padding-left: 20px; }
 </style>

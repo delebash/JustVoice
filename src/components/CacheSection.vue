@@ -211,21 +211,21 @@ onMounted(async () => {
       <div v-if="stats" class="stats-grid">
         <div class="jv-chip-card">
           <div>
-            <div class="stat-label">Entries</div>
+            <div class="jv-eyebrow stat-label">Entries</div>
             <strong class="stat-value">{{ stats.total_entries_on_disk }}</strong>
             <div class="jv-muted stat-sub">held across all scopes</div>
           </div>
         </div>
         <div class="jv-chip-card">
           <div>
-            <div class="stat-label">Disk used</div>
+            <div class="jv-eyebrow stat-label">Disk used</div>
             <strong class="stat-value">{{ fmtMB(stats.total_bytes_on_disk) }} <span class="stat-unit">MB</span></strong>
             <div class="jv-muted stat-sub">across scopes</div>
           </div>
         </div>
         <div class="jv-chip-card">
           <div>
-            <div class="stat-label">Memory</div>
+            <div class="jv-eyebrow stat-label">Memory</div>
             <strong class="stat-value">{{ stats.memory_entries }}</strong>
             <div class="jv-muted stat-sub">{{ fmtMB(stats.memory_bytes) }} MB in-process</div>
           </div>
@@ -295,10 +295,10 @@ onMounted(async () => {
 <style scoped>
 .cache-view { padding: 32px; max-width: var(--shell-form); display: flex; flex-direction: column; gap: 24px; }
 .stats-grid { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 12px; }
-.stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); margin-bottom: 4px; }
+.stat-label { margin-bottom: 4px; }
 .stat-value { font-size: 22px; font-weight: 600; color: var(--ink); }
 .stat-unit { font-size: 13px; font-weight: 400; color: var(--ink-2); }
-.stat-sub { font-size: 11px; margin-top: 2px; }
+.stat-sub { font-size: 12.5px; margin-top: 2px; }
 .stat-action { display: flex; align-items: flex-end; padding-bottom: 4px; }
 
 .cache-view__actions {
@@ -307,5 +307,5 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 8px;
 }
-.cache-view__actions-hint { font-size: 11.5px; margin: 10px 0 0; }
+.cache-view__actions-hint { font-size: 12.5px; margin: 10px 0 0; }
 </style>

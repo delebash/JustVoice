@@ -120,7 +120,7 @@ onMounted(() => {
     <!-- ── Top band: hotkeys + animated pill preview (preview parity) ── -->
     <div class="captures__top">
       <section class="jv-card captures__hotkeys">
-        <h3 class="captures__band-h">Hotkeys <UiTag intent="ghost">coming soon</UiTag></h3>
+        <h3 class="jv-eyebrow captures__band-h">Hotkeys <UiTag intent="ghost">coming soon</UiTag></h3>
         <div class="captures__hotkey-row">
           <span class="jv-chip-card">
             🎚️ Push-to-talk:
@@ -150,7 +150,7 @@ onMounted(() => {
       </section>
 
       <section class="jv-card captures__pill-preview">
-        <h3 class="captures__band-h">Capture pill states</h3>
+        <h3 class="jv-eyebrow captures__band-h">Capture pill states</h3>
         <div class="captures__pill-states">
           <span class="cap-pill cap-pill--recording">
             <span class="bars"><span></span><span></span><span></span><span></span><span></span></span>
@@ -248,23 +248,23 @@ onMounted(() => {
         <table class="jv-table captures__meta-table">
           <tbody>
             <tr>
-              <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Source</span></td>
+              <td><span class="jv-eyebrow">Source</span></td>
               <td>{{ selectedCapture.source }}</td>
-              <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Language</span></td>
+              <td><span class="jv-eyebrow">Language</span></td>
               <td>{{ captureLanguageWord(selectedCapture.language) }}</td>
             </tr>
             <tr>
-              <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Duration</span></td>
+              <td><span class="jv-eyebrow">Duration</span></td>
               <td>{{ fmtDuration(selectedCapture.duration_ms) }}</td>
-              <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Created</span></td>
+              <td><span class="jv-eyebrow">Created</span></td>
               <td>{{ new Date(selectedCapture.created_at).toLocaleString() }}</td>
             </tr>
           </tbody>
         </table>
 
-        <h4 class="captures__sub-h">Refined transcript</h4>
+        <h4 class="jv-eyebrow captures__sub-h">Refined transcript</h4>
         <p class="captures__body">{{ selectedCapture.transcript || "(empty)" }}</p>
-        <h4 class="captures__sub-h">Raw (pre-refinement)</h4>
+        <h4 class="jv-eyebrow captures__sub-h">Raw (pre-refinement)</h4>
         <p class="captures__body captures__body--raw jv-mono">{{ selectedCapture.raw_transcript || "—" }}</p>
       </template>
     </div>
@@ -298,14 +298,7 @@ onMounted(() => {
 }
 .captures__hotkeys, .captures__pill-preview { padding: 14px 18px; }
 .captures__band-h,
-.captures__sub-h {
-  margin: 0 0 10px;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  font-weight: 600;
-}
+.captures__sub-h { margin: 0 0 10px; }
 .captures__sub-h:not(:first-of-type) { margin-top: 16px; }
 .captures__hotkey-row {
   display: flex;
@@ -325,7 +318,7 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 14px;
 }
-.captures__pill-hint { font-size: 11.5px; margin: 10px 0 0; }
+.captures__pill-hint { font-size: 12.5px; margin: 10px 0 0; }
 
 /* Capture-pill visual styles — match the standalone dictation window's pill (pages/DictatePage.vue) */
 .cap-pill {
@@ -367,18 +360,8 @@ onMounted(() => {
   50%      { transform: scaleY(1); }
 }
 
-.kbd {
-  display: inline-block;
-  padding: 1px 6px;
-  margin: 0 1px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-bottom-width: 2px;
-  border-radius: 3px;
-}
+/* The keycaps are the canonical .kbd (app.scss); only their spacing is this view’s. */
+.kbd { margin: 0 1px; }
 .caret { color: var(--ink-3); font-size: 10px; }
 
 /* List pane */
@@ -404,7 +387,7 @@ onMounted(() => {
 .captures__pin:hover { opacity: 0.8; }
 .captures__pin--on { opacity: 1; filter: none; }
 
-.captures__source { font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; }
+.captures__source { font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 12.5px; }
 .captures__item-row { display: flex; align-items: center; gap: 8px; }
 .captures__transcript { font-size: 13px; margin-top: 3px; }
 

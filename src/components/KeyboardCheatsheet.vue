@@ -82,7 +82,7 @@ onBeforeUnmount(() => {
   >
     <div class="cheatsheet__body">
       <section v-for="g in GROUPS" :key="g.title" class="cheatsheet__group">
-        <h4 class="cheatsheet__group-title">{{ g.title }}</h4>
+        <h4 class="jv-eyebrow cheatsheet__group-title">{{ g.title }}</h4>
         <dl class="jv-deflist">
           <template v-for="(item, i) in g.items" :key="i">
             <dt class="cheatsheet__keys">
@@ -94,21 +94,14 @@ onBeforeUnmount(() => {
       </section>
     </div>
     <template #footer>
-      <span class="jv-muted" style="font-size: 12px">Press <kbd>?</kbd> to toggle, <kbd>Esc</kbd> to close.</span>
+      <span class="jv-hint">Press <kbd>?</kbd> to toggle, <kbd>Esc</kbd> to close.</span>
     </template>
   </AppModal>
 </template>
 
 <style scoped>
 .cheatsheet__body { display: flex; flex-direction: column; gap: 18px; }
-.cheatsheet__group-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-  margin: 0 0 6px;
-}
+.cheatsheet__group-title { margin: 0 0 6px; }
 /* The list grid is canonical (.jv-deflist in styles.css) — Studio's
    attribution legend paints the same shape from the same rules. */
 .cheatsheet__keys { display: flex; gap: 4px; }
@@ -116,7 +109,7 @@ onBeforeUnmount(() => {
 kbd {
   display: inline-block;
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12.5px;
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-bottom-width: 2px;
