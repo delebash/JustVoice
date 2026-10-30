@@ -310,7 +310,7 @@ onMounted(() => {
 
         <!-- Active chain — ordered list with per-effect param forms -->
         <div class="effects-modal__row">
-          <span class="effects-modal__add-label">The chain</span>
+          <span class="jv-eyebrow">The chain</span>
           <span v-if="chain.length > 1" class="jv-hint">drag to reorder</span>
         </div>
         <p v-if="!chain.length" class="jv-muted effects-modal__empty">
@@ -345,7 +345,7 @@ onMounted(() => {
 
         <!-- Add a new effect -->
         <div class="effects-modal__row effects-modal__add">
-          <span class="effects-modal__add-label">Add effect:</span>
+          <span class="jv-eyebrow">Add effect:</span>
           <UiSelect v-model="addEffectType" width="name" placeholder="— pick a type —"
             :options="effectiveCatalog" option-label="label" option-value="type" />
           <UiButton
@@ -453,13 +453,6 @@ onMounted(() => {
 .effects-modal__add {
   align-items: center;
   margin-top: 14px;
-}
-.effects-modal__add-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
 }
 
 .effects-modal__saveas {

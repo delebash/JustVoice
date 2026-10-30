@@ -96,8 +96,8 @@ const ownFloor = computed(
 
 <style scoped>
 .attx { display: flex; flex-direction: column; gap: 10px; }
-.attx__note { font-size: 12px; line-height: 1.6; }
+.attx__note { font-size: 12.5px; line-height: 1.6; }
 .attx__row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.attx__knob { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
-.attx__floor { width: var(--w-token); font-family: var(--font-mono); font-size: 12px; }
+.attx__knob { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.attx__floor { width: var(--w-token); font-family: var(--font-mono); font-size: 12.5px; }
 </style>

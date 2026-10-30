@@ -776,7 +776,7 @@ onActivated(() => {
 
           <div class="jv-divider" />
 
-          <h4 class="lex__sub-h">{{ editingEntryIndex != null ? "Edit entry" : "Add entry" }}</h4>
+          <h4 class="jv-eyebrow lex__sub-h">{{ editingEntryIndex != null ? "Edit entry" : "Add entry" }}</h4>
           <p class="jv-hint lex__entry-lede">
             An entry is a word and a way to say it: IPA, a phonetic spelling, or both. + Add entry puts it
             in the list; Save keeps the list — and takes along an entry still typed here.
@@ -834,10 +834,10 @@ onActivated(() => {
   border-radius: 4px;
   padding: 1px 6px;
   margin-right: 4px;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
-.lex__count { font-size: 12px; }
+.lex__count { font-size: 12.5px; }
 .lex__spacer { flex: 1; }
 .lex__entry-actions { white-space: nowrap; }
 .lex__entry-actions > * + * { margin-left: 4px; }
@@ -869,7 +869,7 @@ onActivated(() => {
 .lex__table :deep(.ui-table thead th) {
   text-align: left;
   font-weight: 600;
-  font-size: 11px;
+  font-size: 12.5px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--ink-3);
@@ -885,7 +885,7 @@ onActivated(() => {
 
 /* Clear of the entries table and its note above. */
 .lex__try { margin-top: 16px; }
-.lex__sub-h { margin: 8px 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); }
+.lex__sub-h { margin: 8px 0 12px; }
 .lex__entry-lede { margin: -6px 0 12px; }
 
 .lex__entry-grid {

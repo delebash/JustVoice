@@ -78,7 +78,7 @@ const assignments = computed(() => {
 
 <style scoped>
 .sar__table { border-collapse: collapse; font-size: 12.5px; width: 100%; }
-.sar__table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2, #777); padding: 4px 10px 4px 0; }
+.sar__table th { text-align: left; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2, #777); padding: 4px 10px 4px 0; }
 .sar__table td { padding: 4px 10px 4px 0; border-top: 1px solid var(--line, #e3e0d8); }
 .sar__empty { margin: 0; font-size: 12.5px; color: var(--ink-2, #777); }
 </style>

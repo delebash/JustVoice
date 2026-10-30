@@ -82,7 +82,7 @@ function removeAt(i) {
   border: 1px solid var(--line, #cfccc4); border-radius: 999px;
   padding: 3px 6px 3px 12px; font-size: 12.5px; background: var(--surface, transparent);
 }
-.cast-ed__aliases { color: var(--ink-2, #777); font-size: 12px; }
+.cast-ed__aliases { color: var(--ink-2, #777); font-size: 12.5px; }
 .cast-ed__x { border: 0; background: none; cursor: pointer; color: var(--ink-2, #777); font-size: 12px; padding: 2px 4px; }
 .cast-ed__x:hover { color: var(--ink, #222); }
 .cast-ed__empty { margin: 0; font-size: 12.5px; color: var(--ink-2, #777); }

@@ -897,7 +897,7 @@ function voiceTypeVariant(kind) {
 .voices-view__expand > td { background: var(--surface-2); padding: 14px 18px; }
 .voices-view__expand .voices-view__inspector { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
 .voices-view__fact { font-size: 13px; font-weight: 600; }
-.voices-view__readonly-note { font-size: 12px; margin: 0 0 10px; }
+.voices-view__readonly-note { font-size: 12.5px; margin: 0 0 10px; }
 
 .voices-view__chips {
   display: inline-flex;
@@ -935,7 +935,7 @@ function voiceTypeVariant(kind) {
 }
 .voices-view__bench-field { flex: 0 1 62ch; min-width: 340px; }
 .voices-view__bench-field :deep(.ui-textarea) { width: 100%; }
-.voices-view__bench-hint { flex: 1 1 40ch; max-width: 64ch; font-size: 12px; line-height: 1.5; margin: 0 0 2px; }
+.voices-view__bench-hint { flex: 1 1 40ch; max-width: 64ch; font-size: 12.5px; line-height: 1.5; margin: 0 0 2px; }
 
 /* The play control belongs WITH the name, and the transport appears in
    the same cell while that voice plays — one object, not a button in one
@@ -976,7 +976,7 @@ function voiceTypeVariant(kind) {
   height: 22px;
   border-radius: var(--r-pill);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   padding: 0;

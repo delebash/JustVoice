@@ -85,7 +85,7 @@ onMounted(load);
 
 <style scoped>
 .rst { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 0 0 14px; }
-.rst__intro { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--muted); }
+.rst__intro { flex-basis: 100%; margin: 0; font-size: 12.5px; color: var(--muted); }
 .rst__row { display: inline-flex; align-items: center; gap: 7px; }
 .rst__label { font-size: 12.5px; }
 </style>

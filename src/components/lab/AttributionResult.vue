@@ -229,7 +229,7 @@ async function reassign(row, newSpeaker) {
 
 <style scoped>
 .attr { display: flex; flex-direction: column; gap: 8px; }
-.attr__meta { font-size: 11px; }
+.attr__meta { font-size: 12.5px; }
 .attr__meta-note { font-style: italic; }
 .attr__table { border: 1px solid var(--line); border-radius: 8px; max-height: 420px; overflow-y: auto; }
 .attr__row {
@@ -237,12 +237,12 @@ async function reassign(row, newSpeaker) {
   padding: 8px 12px; border-bottom: 1px dashed var(--line); font-size: 12.5px;
 }
 .attr__row:last-child { border-bottom: 0; }
-.attr__n { flex: none; width: 18px; font-size: 10.5px; padding-top: 2px; }
+.attr__n { flex: none; width: 3ch; font-size: 12.5px; padding-top: 2px; }
 .attr__who { flex: none; width: 170px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .attr__text { flex: 1; color: var(--ink-2); line-height: 1.5; }
 .attr__reassign { flex: none; }
-.attr__empty { font-size: 12px; margin: 0; }
-.attr__legend { font-size: 11.5px; }
+.attr__empty { font-size: 12.5px; margin: 0; }
+.attr__legend { font-size: 12.5px; }
 /* The source chips are canonical (.jv-source-chip in styles.css) — Studio's
    Script table paints the identical vocabulary from the same rules. */
 .attr__disagree { color: var(--danger, #a8442e); text-decoration: underline wavy; text-underline-offset: 3px; }

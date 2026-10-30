@@ -238,7 +238,7 @@ onMounted(refresh);
   border: 1px solid var(--border-soft);
   border-radius: 6px;
   padding: 3px 9px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-family: var(--font-mono);
   color: var(--ink-2);
 }

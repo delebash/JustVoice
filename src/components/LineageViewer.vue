@@ -126,9 +126,9 @@ function fmtDate(iso) {
   display: flex; align-items: center; gap: 8px;
   font-size: 13px;
 }
-.lineage-node__time { font-size: 11px; }
+.lineage-node__time { font-size: 12.5px; }
 .lineage-node__text {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--ink-2);
   margin: 4px 0 0;
 }
