@@ -282,11 +282,12 @@ language, so its **Version** lists only the versions that speak the persona's
 (since 2026-10-15; before, all ten). sanoTTS has one download per language too,
 and its **Version** lists the same way — *sanoTTS Nano (German)* for a German
 persona (since 2026-10-15). Whenever what speaks isn't the
-chosen version, the page offers **Load 0.6B**, with its progress bar, which
-fetches the version if it isn't downloaded (since 2026-10-13; before, only while
-another version was loaded) — asking for its licence first when it has one, and
-loading once you accept it. **Cancel** on the bar stops the load, its download
-included. (Since 2026-10-05 — before, no persona screen said
+chosen version, the page offers **Load 0.6B**, its progress on the strip under it — the
+download, then the load — which fetches the version if it isn't downloaded (since 2026-10-13;
+before, only while another version was loaded) — asking for its licence first when it has one,
+and loading once you accept it. **Cancel** on the strip stops the load, its download included —
+the same Load as the Speech tab's, so it shows in [AI tasks](ai-features.md#ai-tasks--where-they-show-and-the-panel) too (since round E,
+2026-10-29; before, a bar of the page's own). (Since 2026-10-05 — before, no persona screen said
 which version spoke.)
 
 **Speaks** is the language this persona speaks. Picking a voice sets it to that

@@ -78,9 +78,6 @@ or re-render*:
   and refuses while a language model is loaded (unload first) or a speech
   model is downloading, loading or speaking. In a cache other apps of the
   family share, it removes only JustVoice's own models.
-- **Speech models** — the size of the speech-models folder older versions of
-  JustVoice downloaded into (`speech-cache/` in the data folder), shown with no
-  Clear; the speech models download into the AI models cache now.
 - **Render cache** — cached renders; an identical render computes again
   instead of returning instantly. Settings → Cache offers scoped clears (by age)
   when you don't want to drop everything.

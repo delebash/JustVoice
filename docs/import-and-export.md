@@ -395,8 +395,9 @@ follows it — first *Rendering line 12 of 340* while the lines with no take in 
 Inside* as each chapter is joined and mastered, then *Encoding the book* — its bar the share of
 the whole export done (every line to render, every chapter and the encode, one step each) — with
 **Cancel**, which stops it at once while lines render, or after the chapter being mastered (the
-line rendering when you cancel still finishes). (Until round E, 2026-10-29, the strip's bar
-started again at each stage and said what Cancel does under it.) Deleting the book stops its export too. When the file is made, a **Save** dialog asks where to put it and what to
+line rendering when you cancel still finishes). Under the bar the strip says so: *Chapters joined and
+mastered, then the book encoded — Cancel stops at once while lines render, or after the chapter being
+mastered.* (Until round E, 2026-10-29, the strip's bar started again at each stage.) Deleting the book stops its export too. When the file is made, a **Save** dialog asks where to put it and what to
 call it — filled in with the book's title as written, leaving out only the characters a Windows
 file name can't hold (`< > : " / \ | ? *`): *The Ninth Facet.m4b*. The message after says where
 it went, with **Open folder**. Cancel the dialog and it says nothing was saved. (Until then the
