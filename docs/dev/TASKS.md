@@ -7547,6 +7547,8 @@ encoded, the global player) · `generate.md` (dead `profiles.md` /
 **Deferred by your word (2026-08-06):** the real-webview test harness and the
 deep exhaustive audit — *"for now we are not doing jv harness or deep audit i
 want to finish all features and complete the jv llm runner conversion."*
+The harness half is built (2026-10-29, the kit's hand-offs under "ok do 1"): `e2e/`, the kit
+template's shape — AGENTS.md says how it runs.
 
 ## Docs and repo debt
 
@@ -7589,11 +7591,6 @@ GO: needed.
 
 ## Known deviations, recorded so they aren't re-litigated
 
-- **No real-webview end-to-end harness** — deferred by your word above. When it
-  is picked up, docgen's harness is the donor, and
-  `scripts/verify_all.js` and `scripts/e2e.js` retire or get replaced with it:
-  they are browser-driven, which was banned as an acceptance surface on
-  2026-08-02.
 - **`capture.llm_model` is a dormant settings field** — decided KEEP. Its UI
   picker is gone but the field stays (`models.py:366`; its default still names
   `qwen3-llm-0.6b`, an engine that no longer exists).

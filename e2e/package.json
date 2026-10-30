@@ -1,0 +1,16 @@
+{
+  "name": "justvoice-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The e2e smoke and the accessibility check over the REAL desktop app (Electron) through Playwright's Electron driver (app-structure §10), hermetic (§18) — the kit template's e2e shape.",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 --test-reporter=spec tests/*.test.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.64.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0"
+  }
+}

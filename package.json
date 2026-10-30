@@ -24,7 +24,7 @@
     "lint": "biome check .",
     "smoke": "node scripts/smoke.js",
     "screenshots": "node scripts/smoke_gui.js",
-    "test": "node scripts/e2e.js",
+    "test": "npm test --prefix e2e",
     "eval:discover": "node scripts/node24.js server/scripts/eval_discover.js",
     "eval:attribution": "node scripts/node24.js server/scripts/eval_attribution.js",
     "eval:direction": "node scripts/node24.js server/scripts/eval_direction.js",

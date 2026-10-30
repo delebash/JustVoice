@@ -146,14 +146,17 @@ proof of the fix.** It loads each view and counts JS errors. It does not click
 tabs, load models or play audio — so a change to any of those is covered only by
 whatever unit test you write for it.
 
-**There is NO `e2e/` here** — no real-webview harness, deferred by your word on
-2026-08-06 (*"for now we are not doing jv harness or deep audit…"*, tracked in
-`docs/dev/TASKS.md`). This file used to claim `e2e/` was "the packaged-app check",
-which was the same documented-but-not-runnable failure the browser-lookup note
-below describes. JustWrite and i18n-docgen have that harness (against the built
-app); when JustVoice picks it up, docgen's is the donor and
-`scripts/e2e.js` and `verify_all.js` retire with it — they are
-browser-driven, banned as an acceptance surface on 2026-08-02.
+**The desktop e2e is `e2e/`** (since 2026-10-29, the kit template's shape — `e2e/lib/driver.js`,
+`e2e/tests/`): Playwright's Electron driver over the built app before packaging. Once: `npm install`
+in `e2e/`; then `npm run build:unpacked` and `npm test`. It is hermetic: each run makes a temp data
+folder with `JUST_AI_HOME` pointed there, starts the server from source on it, and runs the app with
+`JUSTVOICE_DEV_NO_SERVER=1` — it never opens `<repo>/data`, it refuses to start while anything
+listens on 17494 (close the app first), and nothing in it loads a model. `tests/smoke.test.js` holds
+what `scripts/e2e.js` checked (it and `verify_all.js` retired with the move — browser-driven, banned
+as an acceptance surface on 2026-08-02): the first run's kind picker, a CSV through New project and
+its review, a labelled .md read as a podcast script, every page with no error, a preview's 409, a
+backup's zip. `tests/a11y.test.js` is the template's axe check (WCAG 2.2 AA, light and dark) over
+every sidebar page.
 
 **Browser lookup has one door — `scripts/lib/smoke-common.js`.** Import `findChrome()` or
 `chromeLaunchOptions()` from it; never re-fork the lookup and never hardcode a browser path. The
