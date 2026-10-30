@@ -921,7 +921,7 @@ const GAME_COLUMNS = [
   padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;
   min-height: 0; height: 100%; overflow: hidden;
 }
-.studio-cast__audition { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.studio-cast__audition { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }
 .studio-cast__narrator-empty {
   display: flex; align-items: center; gap: 11px; padding: 12px 14px; width: 100%;
   border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--surface);
@@ -930,15 +930,15 @@ const GAME_COLUMNS = [
 .studio-cast__narrator-empty:hover { border-color: var(--accent); background: var(--accent-soft); }
 .studio-cast__narrator-empty-text { display: flex; flex-direction: column; gap: 2px; }
 .studio-cast__narrator-empty-text strong { font-size: 13.5px; font-weight: 600; }
-.studio-cast__narrator-empty-text .jv-muted { font-size: 12px; }
+.studio-cast__narrator-empty-text .jv-muted { font-size: 12.5px; }
 .studio-cast__heads { display: flex; flex-direction: column; gap: 8px; }
 .studio-cast__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .studio-cast__head--ai { justify-content: flex-end; }
 .studio-cast__models { display: inline-flex; align-items: center; gap: 6px; }
 .studio-cast__models > .jv-hint { white-space: nowrap; }
-.studio-cast__head strong { font-size: 12px; }
-.studio-cast__head .jv-muted { font-size: 12px; }
-.studio-cast__notice { font-size: 12px; }
+.studio-cast__head strong { font-size: 12.5px; }
+.studio-cast__head .jv-muted { font-size: 12.5px; }
+.studio-cast__notice { font-size: 12.5px; }
 .studio-cast__scroll { overflow-y: auto; min-height: 0; flex: 1 1 0; scrollbar-width: none; }
 .studio-cast__scroll::-webkit-scrollbar { width: 0; height: 0; }
 .studio-cast__empty { border: 1px dashed var(--line-strong); border-radius: 10px; padding: 22px 24px; background: var(--surface); }
@@ -970,17 +970,17 @@ const GAME_COLUMNS = [
 .studio-cast__portrait--sm { width: 26px; height: 26px; font-size: 11px; }
 .studio-cast__main { min-width: 0; flex: 1; }
 .studio-cast__name { font-weight: 600; font-size: 13.5px; }
-.studio-cast__aka { font-size: 11.5px; font-style: italic; }
-.studio-cast__origin { font-size: 11.5px; }
-.studio-cast__role { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.studio-cast__table-role { font-size: 12px; }
+.studio-cast__aka { font-size: 12.5px; font-style: italic; }
+.studio-cast__origin { font-size: 12.5px; }
+.studio-cast__role { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-cast__table-role { font-size: 12.5px; }
 .studio-cast__tick { display: inline-flex; margin-top: 6px; }
-.studio-cast__as { font-size: 11.5px; font-weight: 600; margin-top: 6px; }
+.studio-cast__as { font-size: 12.5px; font-weight: 600; margin-top: 6px; }
 .studio-cast__as--ok { color: var(--accent-ink); }
 .studio-cast__as--none { color: var(--warn-ink); }
 .studio-cast__detail { margin-top: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 .studio-cast__detail-head { display: flex; align-items: baseline; gap: 8px; }
-.studio-cast__detail-head .jv-muted { font-size: 12px; }
+.studio-cast__detail-head .jv-muted { font-size: 12.5px; }
 .studio-cast__field { display: flex; flex-direction: column; gap: 4px; }
 .studio-cast__prose { max-width: 60ch; }
 .studio-cast__detail-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -990,15 +990,15 @@ const GAME_COLUMNS = [
   height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: hidden;
 }
 .studio-cast__library-head { display: flex; align-items: baseline; gap: 6px; }
-.studio-cast__library-head strong { font-size: 12px; }
+.studio-cast__library-head strong { font-size: 12.5px; }
 .studio-cast__picking {
   background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink);
-  border-radius: 7px; padding: 8px 11px; font-size: 12px;
+  border-radius: 7px; padding: 8px 11px; font-size: 12.5px;
 }
 .studio-cast__filter { display: flex; gap: 6px; flex-wrap: wrap; }
 .studio-cast__rows { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: none; }
 .studio-cast__rows::-webkit-scrollbar { width: 0; height: 0; }
-.studio-cast__rows-empty { font-size: 12px; padding: 8px 0; text-align: center; }
+.studio-cast__rows-empty { font-size: 12.5px; padding: 8px 0; text-align: center; }
 /* Persona row: avatar · name + voice · engine + who it plays · direction ·
    ▶ ✎. The row that plays the selected speaker tints green. */
 .studio-cast__prow {
@@ -1017,7 +1017,7 @@ const GAME_COLUMNS = [
 }
 .studio-cast__prow-text { min-width: 0; display: flex; flex-direction: column; }
 .studio-cast__prow-name { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.studio-cast__prow-meta { font-size: 11px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.studio-cast__prow-plays { font-size: 11.5px; font-weight: 600; color: var(--accent-ink); }
+.studio-cast__prow-meta { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-cast__prow-plays { font-size: 12.5px; font-weight: 600; color: var(--accent-ink); }
 .studio-cast__foot { margin: 0; }
 </style>

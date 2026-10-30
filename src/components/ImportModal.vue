@@ -152,7 +152,7 @@ async function doPreview() {
   <AppModal eyebrow="Import" :title="props.projectId ? 'Re-import — update in place' : 'Import a project'" :max-width="'560px'" dismissable @close="emit('close')">
         <div class="import-grid">
       <label class="field">
-        <span class="lbl">Source format</span>
+        <span class="jv-eyebrow">Source format</span>
         <UiSelect
           v-model="selectedSource"
           :options="adapterOptions"
@@ -214,9 +214,8 @@ async function doPreview() {
 
 .import-grid { display: flex; flex-direction: column; gap: 18px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
-.lbl { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
-.muted { color: var(--muted); font-size: 12px; }
-.warn { color: var(--warn, #c89a3a); font-size: 12px; margin-top: 2px; }
+.muted { color: var(--muted); font-size: 12.5px; }
+.warn { color: var(--warn, #c89a3a); font-size: 12.5px; margin-top: 2px; }
 .desc { margin: 0; }
 .help { margin-left: 8px; }
 

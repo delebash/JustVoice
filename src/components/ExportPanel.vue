@@ -176,7 +176,7 @@ async function copyShowNotes() {
         <span class="exportp__portrait">{{ (project.name || "?").slice(0, 1).toUpperCase() }}</span>
         <div>
           <div class="exportp__name">{{ project.name }}</div>
-          <div class="jv-muted" style="font-size:12px">
+          <div class="jv-hint">
             {{ scenes.length }} {{ copy.chapter.plural.toLowerCase() }}<template v-if="qcDurationLabel"> · {{ qcDurationLabel }}</template>
           </div>
         </div>
@@ -213,7 +213,7 @@ async function copyShowNotes() {
           {{ staleLines === 1 ? "it" : "them" }} again in Studio · Render, or export as they are.</span>
       </div>
       <p v-if="exportQcBusy" class="jv-muted">Rendering + measuring {{ copy.chapter.plural.toLowerCase() }} — cached audio makes this fast…</p>
-      <div v-else-if="qcError" class="jv-banner jv-banner--warn" style="font-size:12px">{{ qcError }}</div>
+      <div v-else-if="qcError" class="jv-banner jv-banner--warn">{{ qcError }}</div>
       <template v-else-if="exportQc">
         <ul class="exportp__ckl">
           <li><span :class="exportQc.chapters.every(c => c.rms_ok) ? 'ok' : 'bad'">{{ exportQc.chapters.every(c => c.rms_ok) ? "✓" : "✗" }}</span>
@@ -224,7 +224,7 @@ async function copyShowNotes() {
           <li><span class="dim">○</span> Room tone head/tail <span class="jv-muted">— not measured yet</span></li>
           <li><span class="dim">○</span> Opening & closing credits <span class="jv-muted">— add as {{ copy.chapter.plural.toLowerCase() }}</span></li>
         </ul>
-        <div class="jv-banner" :class="exportQc.all_ok ? 'jv-banner--info' : 'jv-banner--warn'" style="margin-top:10px;font-size:12px">
+        <div class="jv-banner" :class="exportQc.all_ok ? 'jv-banner--info' : 'jv-banner--warn'" style="margin-top:10px">
           {{ exportQc.all_ok
             ? "Measured checks pass. Mastering chain: the project's target — change it on Overview."
             : "Some chapters are out of spec — fix levels in Studio · Render, then re-check." }}
@@ -257,5 +257,5 @@ async function copyShowNotes() {
 .exportp__ckl .bad { color: var(--danger, #b04a3e); font-weight: 700; }
 .exportp__ckl .dim { color: var(--ink-3); }
 .exportp__notes { margin-top: 14px; }
-.exportp__notes-pre { background: var(--surface-2); border-radius: 8px; padding: 12px; font-size: 12px; white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
+.exportp__notes-pre { background: var(--surface-2); border-radius: 8px; padding: 12px; font-size: 12.5px; white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
 </style>

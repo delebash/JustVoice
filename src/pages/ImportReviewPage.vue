@@ -212,7 +212,7 @@ function cancel() {
         <div class="imrev__sum"><span>Words</span><b>{{ totalWords.toLocaleString() }}</b></div>
         <div class="imrev__sum"><span>Estimated audio</span><b>{{ totalEst }}</b></div>
         <div class="imrev__sum"><span>Speakers</span><b>{{ characterCount || "found later, in Script" }}</b></div>
-        <div class="jv-banner jv-banner--info" style="font-size:12px; margin-top:12px">
+        <div class="jv-banner jv-banner--info" style="margin-top:12px">
           Nothing is assigned automatically. The <strong>Discover</strong> step finds the speakers
           each chapter names and offers to add them to this book.
         </div>
@@ -235,14 +235,14 @@ function cancel() {
 .imrev { display: flex; flex-direction: column; gap: 12px; }
 .imrev__filebar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; margin: 0; }
 .imrev__ext {
-  font-size: 10px; font-weight: 800; letter-spacing: .05em;
+  font-size: 12.5px; font-weight: 800; letter-spacing: .05em;
   background: var(--ink-2); color: #fff; border-radius: 4px; padding: 2px 7px;
 }
 .imrev__cols { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
 @media (max-width: 980px) { .imrev__cols { grid-template-columns: 1fr; } }
 .imrev__card { padding: 14px 16px; margin: 0; }
 .imrev__cardhead { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.imrev__split { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.imrev__split { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
 .imrev__table { margin: 0; }
 /* Row state paints the whole <tr>, and the rule has to reach INTO the kit
    component — a scoped `td` selector gets the scope id stamped on the `td`
@@ -250,7 +250,7 @@ function cancel() {
    ride a `.r` class now lives on the columns. */
 .imrev__table :deep(.ui-table-row.imrev__off) { opacity: 0.45; }
 .imrev__table :deep(.ui-table-row.imrev__off) .imrev__title { text-decoration: line-through; }
-.imrev__warnings { margin: 0 0 10px; padding-left: 18px; font-size: 12px; color: var(--warn-ink); }
+.imrev__warnings { margin: 0 0 10px; padding-left: 18px; font-size: 12.5px; color: var(--warn-ink); }
 .imrev__sum { display: flex; justify-content: space-between; font-size: 12.5px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
 .imrev__sum span { color: var(--ink-3); }
 .imrev__actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }

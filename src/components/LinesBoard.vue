@@ -298,7 +298,7 @@ watch(selectedProjectId, (id) => {
 .lines__project { max-width: 260px; }
 .lines__search { max-width: 260px; }
 .lines__chips { display: inline-flex; gap: 4px; }
-.lines__chips .ui-chip { cursor: pointer; border: 0; font: inherit; font-size: 11.5px; }
+.lines__chips .ui-chip { cursor: pointer; border: 0; font: inherit; font-size: 12.5px; }
 .lines__stale { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 /* The scene-header row is a `:full-width-row`; the class comes back as that
    predicate's return value, and the rule has to reach INTO the component. */
@@ -309,7 +309,7 @@ watch(selectedProjectId, (id) => {
   font-size: 12.5px;
   padding: 6px 12px;
 }
-.lines__id { font-size: 11.5px; white-space: nowrap; }
+.lines__id { font-size: 12.5px; white-space: nowrap; }
 .lines__who { white-space: nowrap; font-weight: 600; }
 .lines__text { display: block; max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

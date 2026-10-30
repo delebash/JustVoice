@@ -683,6 +683,6 @@ async function ignore(c) {
 .studio-discover__quote { display: block; max-width: 46ch; color: var(--ink-2); font-style: italic; }
 .studio-discover__chips { gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .studio-discover__new { margin-left: 6px; }
-.studio-discover__incast { font-size: 12px; margin-right: 6px; }
+.studio-discover__incast { font-size: 12.5px; margin-right: 6px; }
 .studio-discover__bulk { gap: 8px; align-items: center; margin-top: 10px; }
 </style>

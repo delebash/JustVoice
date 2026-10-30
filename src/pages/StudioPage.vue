@@ -629,7 +629,7 @@ watch(selectedProjectId, (id) => {
 
     <!-- ── Project picker ───────────────────────────────────────────── -->
     <div class="jv-section studio__project-bar">
-      <label class="studio__project-label">{{ copy.book.singular }}:</label>
+      <label class="jv-eyebrow">{{ copy.book.singular }}:</label>
       <UiSelect v-model="selectedProjectId" width="name" :options="projectOptions" />
       <!-- What is loaded — voice engine, language model — is the main
            header's to show (2026-09-29); the chips that repeated it here died. -->
@@ -761,13 +761,6 @@ watch(selectedProjectId, (id) => {
   background: var(--surface-2);
   border-radius: 6px;
   border: 1px solid var(--border-soft);
-}
-.studio__project-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
 }
 
 .studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

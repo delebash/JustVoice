@@ -140,7 +140,7 @@ watch(activeIdx, async () => {
 }
 .slash-menu__hint {
   padding: 4px 12px 6px;
-  font-size: 10.5px;
+  font-size: 12.5px;
   letter-spacing: 0.05em;
   color: var(--ink-3);
   text-transform: uppercase;
@@ -166,7 +166,7 @@ watch(activeIdx, async () => {
 }
 .slash-menu__cat {
   min-width: 92px;
-  font-size: 10.5px;
+  font-size: 12.5px;
   color: var(--ink-3);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -174,7 +174,7 @@ watch(activeIdx, async () => {
 .slash-menu__rendered {
   flex: 1;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--ink);
 }
 .slash-menu__place {

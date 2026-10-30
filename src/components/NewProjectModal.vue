@@ -320,9 +320,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 }
 .np-icon { font-size: 24px; line-height: 1; }
 .np-name { font-size: 15.5px; font-weight: 600; }
-.np-bullets { margin: 0; padding-left: 16px; font-size: 11.5px; color: var(--ink-2, #4a4a4a); line-height: 1.6; }
+.np-bullets { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--ink-2, #4a4a4a); line-height: 1.6; }
 .np-foot {
-  font-size: 10.5px; color: var(--muted, #888);
+  font-size: 12.5px; color: var(--muted, #888);
   border-top: 1px solid var(--line, #e3e1dc); padding-top: 7px; margin-top: auto;
 }
 .np-name-input { flex: 0 1 320px; }
@@ -337,7 +337,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
   margin-top: 16px; padding-top: 14px;
   border-top: 1px solid var(--line, #e3e1dc);
 }
-.np-alts__lead { font-size: 12px; color: var(--muted, #888); }
+.np-alts__lead { font-size: 12.5px; color: var(--muted, #888); }
 .np-words { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
 .np-words__title { margin: 0; font-size: 13.5px; font-weight: 600; }
 .np-sources { font-size: 12.5px; }
@@ -353,6 +353,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 @media (max-width: 599.98px) {
   .np-name-input { margin-right: auto; }
 }
-.np-focus-only { margin: 10px 0 0; font-size: 11.5px; color: var(--muted, #888); }
+.np-focus-only { margin: 10px 0 0; font-size: 12.5px; color: var(--muted, #888); }
 .np-focus-only a { color: var(--accent, #3a7d63); text-decoration: underline; }
 </style>
