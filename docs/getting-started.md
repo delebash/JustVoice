@@ -5,7 +5,7 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 ## Installing it
 
 Download the installer for your computer from JustVoice's [releases page](https://github.com/delebash/JustVoice/releases):
-**Windows** the `JustVoice-Setup-….exe`, **macOS** (Intel and Apple silicon) the `.dmg`, **Linux** the `.AppImage`
+**Windows** the `justvoice-…-win-x64.exe`, **macOS** (Intel and Apple silicon) the `.dmg`, **Linux** the `.AppImage`
 (or the `.deb`, for Debian and Ubuntu). The installers aren't signed with a publisher's certificate, so the first time:
 
 - **Windows** says "Windows protected your PC": press **More info**, then **Run anyway**.

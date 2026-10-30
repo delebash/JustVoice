@@ -150,6 +150,10 @@ export default defineConfig(() => {
         // latest*.yml beside the installers, written even under -P never; the release workflow
         // uploads them
         publish: [ { provider: 'github', owner: 'delebash', repo: 'JustVoice' } ],
+        // file names without spaces (the package name, the version, the platform; the template's): the
+        // feed names each file as written, and GitHub turns an uploaded name's spaces into dots
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: electron-builder's own ${…} macros
+        artifactName: '${name}-${version}-${os}-${arch}.${ext}',
         files: [
           '**/*',
           '!**/node_modules/better-sqlite3/{deps,src,build/Release/obj,build/Release/obj.target,build/deps}/**',
@@ -171,10 +175,6 @@ export default defineConfig(() => {
           extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '..', filter: [ '*.cmd' ] } ]
         },
         nsis: {
-          // no spaces: GitHub renames a spaced asset on upload (spaces → dots), and latest.yml names
-          // electron-builder's dashed form — the updater would download a file that isn't there
-          // biome-ignore lint/suspicious/noTemplateCurlyInString: electron-builder's own ${…} macros
-          artifactName: '${productName}-Setup-${version}.${ext}',
           oneClick: false,
           perMachine: false,
           allowToChangeInstallationDirectory: true,
@@ -189,10 +189,12 @@ export default defineConfig(() => {
           onlyLoadAppFromAsar: true,
           grantFileProtocolExtraPrivileges: false
         },
-        // macOS: one universal .dmg (Intel and Apple silicon), as the release has shipped
+        // macOS: one universal .dmg (Intel and Apple silicon), as the release has shipped, and its .zip —
+        // electron-updater reads a Mac's update from the zip (electron-builder's default mac targets, dmg +
+        // zip, as the template keeps them)
         mac: {
           category: 'public.app-category.music',
-          target: [ { target: 'dmg', arch: [ 'universal' ] } ],
+          target: [ { target: 'dmg', arch: [ 'universal' ] }, { target: 'zip', arch: [ 'universal' ] } ],
           extendInfo: { NSMicrophoneUsageDescription: 'JustVoice records your voice when you clone it.' },
           extraFiles: [ { from: dspStage, to: 'MacOS' } ],
           // already universal (lipo'd when staged), so the same file in both builds is expected
