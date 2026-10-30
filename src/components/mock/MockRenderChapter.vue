@@ -734,7 +734,7 @@ const blockedBanner = computed(() => {
 .mock-render-ch__said { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .mock-render-ch__dir { cursor: pointer; }
 .mock-render-ch__audio { display: inline-flex; align-items: center; gap: 4px; }
-.mock-render-ch__len { font-variant-numeric: tabular-nums; font-size: 12px; }
+.mock-render-ch__len { font-variant-numeric: tabular-nums; font-size: 12.5px; }
 .mock-render-ch__compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; margin-bottom: 10px; }
 .mock-render-ch__compare > .jv-linepanel__field { min-width: 0; }
 .mock-render-ch__compare-take { min-height: 30px; display: flex; align-items: center; }

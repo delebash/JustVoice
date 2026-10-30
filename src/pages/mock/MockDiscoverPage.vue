@@ -502,7 +502,7 @@ function goStep(k) {
 <template>
   <q-page :style-fn="pageFlow" class="studio jv-fill mock-discover">
     <div class="jv-section studio__project-bar">
-      <label class="studio__project-label">Book:</label>
+      <label class="jv-eyebrow">Book:</label>
       <UiSelect :model-value="PROJECT.id" width="name" :options="[{ value: PROJECT.id, label: PROJECT.name }]" />
     </div>
 
@@ -773,7 +773,6 @@ function goStep(k) {
 .studio { padding: 0; display: flex; flex-direction: column; gap: 16px; }
 .studio__project-bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--surface-2);
   border-radius: 6px; border: 1px solid var(--border-soft); }
-.studio__project-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); font-weight: 600; }
 .studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 /* Discover's own (components/StudioDiscover.vue). */
 .studio-discover { display: flex; flex-direction: column; gap: 14px; }
@@ -784,6 +783,6 @@ function goStep(k) {
 .studio-discover__quote { display: block; max-width: 46ch; color: var(--ink-2); font-style: italic; }
 .studio-discover__chips { gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .studio-discover__new { margin-left: 6px; }
-.studio-discover__incast { font-size: 12px; margin-right: 6px; }
+.studio-discover__incast { font-size: 12.5px; margin-right: 6px; }
 .studio-discover__bulk { gap: 8px; align-items: center; margin-top: 10px; }
 </style>

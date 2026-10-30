@@ -481,7 +481,7 @@ function voiceTypeVariant(kind) {
 }
 .voices-view__bench-field { flex: 0 1 62ch; min-width: 340px; }
 .voices-view__bench-field :deep(.ui-textarea) { width: 100%; }
-.voices-view__bench-hint { flex: 1 1 40ch; max-width: 64ch; font-size: 12px; line-height: 1.5; margin: 0 0 2px; }
+.voices-view__bench-hint { flex: 1 1 40ch; max-width: 64ch; font-size: 12.5px; line-height: 1.5; margin: 0 0 2px; }
 .voices-view__name-cell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .voices-view__name-cell > strong { white-space: normal; min-width: 0; }
 .voices-view__unused { white-space: nowrap; }
@@ -496,7 +496,7 @@ function voiceTypeVariant(kind) {
   height: 22px;
   border-radius: var(--r-pill);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   padding: 0;

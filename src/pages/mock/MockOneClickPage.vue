@@ -109,7 +109,7 @@ const opens = (what) => pushToast({ kind: "info", message: `Opens ${what}.` });
 <template>
   <q-page :style-fn="pageFlow" class="studio jv-fill mock-one-click">
     <div class="jv-section studio__project-bar">
-      <label class="studio__project-label">Book:</label>
+      <label class="jv-eyebrow">Book:</label>
       <UiSelect :model-value="PROJECT.id" width="name" :options="[{ value: PROJECT.id, label: PROJECT.name }]" />
     </div>
 
@@ -215,7 +215,6 @@ const opens = (what) => pushToast({ kind: "info", message: `Opens ${what}.` });
 .studio { padding: 0; display: flex; flex-direction: column; gap: 16px; }
 .studio__project-bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--surface-2);
   border-radius: 6px; border: 1px solid var(--border-soft); }
-.studio__project-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); font-weight: 600; }
 .studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .studio-overview { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .studio-overview__main,

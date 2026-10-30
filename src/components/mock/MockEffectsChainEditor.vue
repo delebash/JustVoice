@@ -175,7 +175,7 @@ function onSave() {
       <div class="jv-divider" />
 
       <div class="mock-fx__row">
-        <span class="mock-fx__add-label">The chain</span>
+        <span class="jv-eyebrow">The chain</span>
         <span v-if="chain.length > 1" class="jv-hint">drag to reorder</span>
       </div>
       <p v-if="!chain.length" class="jv-muted mock-fx__empty">
@@ -209,7 +209,7 @@ function onSave() {
       <div class="jv-divider" />
 
       <div class="mock-fx__row mock-fx__add">
-        <span class="mock-fx__add-label">Add effect:</span>
+        <span class="jv-eyebrow">Add effect:</span>
         <UiSelect v-model="addEffectType" width="name" placeholder="— pick a type —"
           :options="CATALOG" option-label="label" option-value="type" />
         <UiButton intent="secondary" size="small" label="Add" :disabled="!addEffectType" @click="addEffect" />
@@ -281,13 +281,6 @@ function onSave() {
 .mock-fx__chain--empty { display: none; }
 .mock-fx__row + .jv-chain { margin-top: 8px; }
 .mock-fx__add { align-items: center; margin-top: 14px; }
-.mock-fx__add-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
 .mock-fx__saveas { margin-top: 14px; }
 .mock-fx__saveas > .ui-input { flex: 1; }
 .mock-fx__card { margin-top: 14px; }
