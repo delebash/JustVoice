@@ -44,7 +44,9 @@ file looks like. **What is this format?** beside the file opens the source's sec
 pick the chapters and import; nothing is made until you do, and the project gets the name, kind and
 language you chose in the dialog. **⬇ Import** on Projects opens the same dialog. To bring a newer
 version of a file into a project you already have, use **↻ Re-import** on its Overview (**⬇
-Re-import CSV** on Lines, for a game) — it merges by line instead of making a new project.
+Re-import CSV** on Lines, for a game) — it merges by line instead of making a new project. Its
+**Source format** list groups the formats by what the file is: **Books**, **Scripts and line lists**
+and **Timed lines**.
 
 ## Where the settings went
 

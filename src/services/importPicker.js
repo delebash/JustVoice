@@ -60,4 +60,26 @@ export function pickAdapter({ ext, head = "", adapters = [] }) {
   return candidates.find((a) => a.id !== "podcast_markdown") || candidates[0];
 }
 
+// The format picker's groups, by what the file is — the user's words (2026-10-29, "your rec" on three
+// groups), each format under its own label from the server. Shown with the kit's UiSelect groups
+// (`{label, options}` — the kit's 2026-10-29 item 25).
+const FORMAT_GROUPS = [
+  { label: "Books", ids: ["justwrite", "book_prose"] },
+  { label: "Scripts and line lists", ids: ["podcast_markdown", "csv_lines", "justvoice_standard"] },
+  { label: "Timed lines", ids: ["srt", "audacity_labels"] },
+];
+
+/**
+ * The /v1/projects/import/adapters list as UiSelect's options, in FORMAT_GROUPS: a group with none of
+ * its formats is left out, and a format no group names yet still shows, after the groups.
+ */
+export function groupedFormatOptions(adapters = []) {
+  const option = (a) => ({ label: a.label, value: a.id });
+  const byId = new Map(adapters.map((a) => [a.id, a]));
+  const groups = FORMAT_GROUPS.map((g) => ({ label: g.label, options: g.ids.filter((id) => byId.has(id)).map((id) => option(byId.get(id))) }))
+    .filter((g) => g.options.length);
+  const grouped = new Set(FORMAT_GROUPS.flatMap((g) => g.ids));
+  return [...groups, ...adapters.filter((a) => !grouped.has(a.id)).map(option)];
+}
+
 export const _internals = { SPEAKER_LABEL_RE, AUDACITY_ROW_RE };

@@ -27,7 +27,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { UiButton, UiSelect, AppModal, openHelp } from "@delebash/ui";
 import { projectsService } from "../services/projects.js";
-import { pickAdapter } from "../services/importPicker.js";
+import { groupedFormatOptions, pickAdapter } from "../services/importPicker.js";
 import { setImportDraft } from "../stores/importDraft.js";
 import { pushToast } from "@delebash/ui";
 
@@ -50,9 +50,8 @@ const previewing = ref(false);
 const selectedAdapter = computed(() =>
   adapters.value.find((a) => a.id === selectedSource.value) || null
 );
-const adapterOptions = computed(() =>
-  adapters.value.map((a) => ({ label: a.label, value: a.id }))
-);
+// grouped by what the file is (importPicker.js) — Books, Scripts and line lists, Timed lines
+const adapterOptions = computed(() => groupedFormatOptions(adapters.value));
 const canPreview = computed(
   () => !!file.value && !!selectedSource.value && selectedAdapter.value?.implemented
 );

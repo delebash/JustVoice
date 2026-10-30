@@ -325,7 +325,8 @@ script as CSV or a speaker-labeled markdown file and use those adapters.
 
 That's it — no further wiring needed. The adapter is automatically
 listed in `GET /v1/projects/import/adapters`, in New project's table of sources, and in the
-re-import picker.
+re-import picker — after its groups until `src/services/importPicker.js` `FORMAT_GROUPS` names
+it under one of them.
 
 ---
 

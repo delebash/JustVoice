@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { pickAdapter } from "./importPicker.js";
+import { groupedFormatOptions, pickAdapter } from "./importPicker.js";
 
 // The live registry shape, trimmed to what the picker reads.
 const ADAPTERS = [
@@ -71,5 +71,41 @@ describe("pickAdapter", () => {
       { id: "stub", implemented: false, file_extensions: [".xyz"] },
     ];
     expect(pickAdapter({ ext: ".xyz", head: "", adapters: withStub })).toBe(null);
+  });
+});
+
+describe("the format picker's groups (the user's words, 2026-10-29)", () => {
+  // the registry's seven, in its order, with the labels the server sends (server/src/imports/index.js)
+  const LIVE = [
+    { id: "justwrite", label: "JustWrite book" },
+    { id: "book_prose", label: "Book / manuscript" },
+    { id: "podcast_markdown", label: "Podcast script (markdown)" },
+    { id: "csv_lines", label: "CSV lines" },
+    { id: "srt", label: "SubRip subtitles (.srt)" },
+    { id: "audacity_labels", label: "Audacity label track" },
+    { id: "justvoice_standard", label: "JustVoice standard JSON" },
+  ];
+
+  it("puts the formats under Books, Scripts and line lists, and Timed lines, each with its own label", () => {
+    expect(groupedFormatOptions(LIVE)).toEqual([
+      { label: "Books", options: [{ label: "JustWrite book", value: "justwrite" }, { label: "Book / manuscript", value: "book_prose" }] },
+      {
+        label: "Scripts and line lists",
+        options: [
+          { label: "Podcast script (markdown)", value: "podcast_markdown" },
+          { label: "CSV lines", value: "csv_lines" },
+          { label: "JustVoice standard JSON", value: "justvoice_standard" },
+        ],
+      },
+      { label: "Timed lines", options: [{ label: "SubRip subtitles (.srt)", value: "srt" }, { label: "Audacity label track", value: "audacity_labels" }] },
+    ]);
+  });
+
+  it("still lists a format no group names yet, after the groups, and leaves out an empty group", () => {
+    const some = [{ id: "csv_lines", label: "CSV lines" }, { id: "new_one", label: "Something new" }];
+    expect(groupedFormatOptions(some)).toEqual([
+      { label: "Scripts and line lists", options: [{ label: "CSV lines", value: "csv_lines" }] },
+      { label: "Something new", value: "new_one" },
+    ]);
   });
 });
