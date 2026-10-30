@@ -124,6 +124,15 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### The kit's hand-offs for JustVoice (just-core TASKS, "FOR JUSTVOICE'S SESSION")
+STATE:  DECIDED 2026-10-29 — "ok do 1 but 2 and 3 on hold its too much for now after 1 we can check that all
+        works well". 1 = the kit's hand-off list; 2 (the roadmap and ideas listed with recs) and 3 (JustVoice's own
+        TASKS) on hold. After 1: one real one-click run on a short book on the merged engine, then the user's
+        listening rounds 8 and 9 (rendered before the merge).
+BUILT:  in work 2026-10-29 — two agents, each item checked against the code first.
+OPEN:   the one-click run and the listening rounds, after 1.
+GO:     given 2026-10-29 for 1.
+
 ### Our audio.cpp fork is released with the family, once every app is done
 STATE:  DECIDED 2026-10-29 — "do a release once all apps bugs are finished i already stated that, once all apps
         bugs fixes features are done all apps get a release including anything we forked". (The family rule:
