@@ -10,7 +10,7 @@
 // The narrator is a speaker holding the "narrator" role, one per book; no book gets one on its
 // own (+ Add Narrator, or a book's own "Narrator" character).
 
-import { isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { nullable, opt, T } from "@delebash/core/platform/models";
 import { pySorted, splitWs, strip } from "@delebash/core/platform/py";
@@ -287,6 +287,8 @@ export function router() {
     } catch (e) {
       if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
+      const ai = aiRunHttpError(e); // 503 a local model not ready, 502 a provider not reached (the kit's)
+      if (ai) throw ai;
       throw new HttpError(502, `LLM call failed: ${errText(e)}`);
     }
     return c.json(

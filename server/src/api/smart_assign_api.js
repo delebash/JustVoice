@@ -14,7 +14,7 @@
 // run's voices step runs for the speakers left without a voice of their own (book_voices). Until
 // then the renderer cast each match with PATCH /v1/speakers/{id}.
 
-import { isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { getLogger } from "@delebash/core/platform/log";
 import { nullable, opt, T } from "@delebash/core/platform/models";
@@ -180,6 +180,8 @@ export function router() {
     } catch (e) {
       if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
+      const ai = aiRunHttpError(e); // 503 a local model not ready, 502 a provider not reached (the kit's)
+      if (ai) throw ai;
       log.warning(`smart_assign LLM call failed: ${errText(e)}`);
       throw new HttpError(502, `smart-assign failed: ${errText(e)}`);
     }

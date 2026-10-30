@@ -7,7 +7,7 @@
 
 import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
-import { isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
+import { aiRunHttpError, isAbortError, LLMNotConfiguredError } from "@delebash/core/llm";
 import { Hono, input } from "@delebash/core/platform";
 import { HttpError } from "@delebash/core/platform/errors";
 import { nullable, opt, T } from "@delebash/core/platform/models";
@@ -438,7 +438,7 @@ export function router() {
     } catch (e) {
       if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
-      throw e;
+      throw aiRunHttpError(e) ?? e; // 503 a local model not ready, 502 a provider not reached (the kit's)
     }
     const raw = _firstJsonObject(resp.text);
     const wanted = new Set(voices.map((v) => v.name));
