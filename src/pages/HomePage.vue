@@ -28,7 +28,7 @@ import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { pushToast } from "@delebash/ui";
+import { pushToast, reportError, saveUrlAs } from "@delebash/ui";
 import { UiButton, UiTag, UiChip, useMemoryCells } from "@delebash/ui";
 import { chapterRendered, needSpeaker, partOf } from "../services/lineStates.js";
 import { PROJECT_KINDS, kindLabel, projectKind } from "../services/projectKinds.js";
@@ -304,8 +304,15 @@ function playGen(g) {
   if (!g?.audio_url) return;
   genPlaying.value = { id: g.id, url: `${api.serverUrl}${g.audio_url}` };
 }
-function genDownloadUrl(g) {
-  return g?.audio_url ? `${api.serverUrl}${g.audio_url}` : "#";
+// ⬇ saves the take's WAV through the kit's door for a file to save (app-structure §19): the desktop's
+// Save dialog, a browser's download — named as the server names it.
+async function saveGen(g) {
+  if (!g?.audio_url) return;
+  try {
+    await saveUrlAs(g.audio_url, `${g.id}.wav`);
+  } catch (e) {
+    reportError(e);
+  }
 }
 function fmtAgo(iso) {
   if (!iso) return "—";
@@ -460,7 +467,7 @@ onMounted(() => {
         <span class="home__gen-text">{{ g.text || "—" }}</span>
         <span v-if="g.voice" class="jv-muted home__gen-who">{{ g.voice }}</span>
         <span class="jv-mono jv-muted home__gen-meta">{{ g.take ? g.take + " · " : "" }}{{ fmtAgo(g.when) }}</span>
-        <UiButton as="a" intent="ghost" size="small" :href="genDownloadUrl(g)" download title="Download WAV">⬇</UiButton>
+        <UiButton intent="ghost" size="small" title="Download WAV" @click="saveGen(g)">⬇</UiButton>
       </div>
       <!-- Compact inline player (2026-08-15: no global bottom bar). -->
       <audio v-if="genPlaying?.id === g.id" crossorigin="anonymous" :src="genPlaying.url" controls autoplay class="jv-audio-inline" />
