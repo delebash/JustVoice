@@ -38,20 +38,20 @@ jobs:
       # The app needs the family kit and the sync engine beside it (server/package.json:
       # file:../../just-core/packages/core and file:../../just-sqlite-sync; quasar.config.js:
       # ../just-core/packages/ui), so all three are checked out side by side.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag }}
           path: JustVioce
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: delebash/just-core
           path: just-core
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: delebash/just-sqlite-sync
           path: just-sqlite-sync
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -133,7 +133,7 @@ jobs:
       # the AppImage for the Linux user's check below
       - name: Keep the AppImage for the Linux user's check
         if: ${{ matrix.target == 'linux' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: appimage
           path: JustVioce/dist/electron/Packaged/*.AppImage
@@ -168,15 +168,15 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag }}
           path: JustVioce
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: The Linux build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: appimage
           path: JustVioce/dist/electron/Packaged

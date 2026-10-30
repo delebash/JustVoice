@@ -19,18 +19,18 @@ jobs:
     name: Renderer — Biome, unit tests, Quasar build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: JustVioce
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: delebash/just-core
           path: just-core
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: delebash/just-sqlite-sync
           path: just-sqlite-sync
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -63,18 +63,18 @@ jobs:
     name: Server — vitest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: JustVioce
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: delebash/just-core
           path: just-core
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: delebash/just-sqlite-sync
           path: just-sqlite-sync
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm

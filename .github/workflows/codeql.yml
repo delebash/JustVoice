@@ -22,10 +22,10 @@ jobs:
     # Everything is JavaScript since the Electron move (2026-10-08): the renderer, the Node
     # server and the desktop shell. No dependency install is needed for the scan.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript
           # Exclude vendored / generated paths
@@ -37,6 +37,6 @@ jobs:
               - "**/*.min.js"
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:javascript"
