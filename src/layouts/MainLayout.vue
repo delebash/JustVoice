@@ -555,6 +555,13 @@ onMounted(async () => {
         </template>
         <template #title>
           {{ currentView ? navLabel(currentView) : '' }}
+        </template>
+
+        <!-- The crumbs after the page's name (Studio's book and step, a persona's name) are the
+             bar's own item, not part of the title: they give way before the model pills, down
+             to "…", while the page's name gives way last (the user, 2026-10-29; app.scss, the
+             squeeze order). -->
+        <span v-if="uiContext.breadcrumb.length" class="jv-topbar__crumbs">
           <template v-for="(seg, i) in uiContext.breadcrumb" :key="i">
             <span class="jv-topbar__crumb-sep">›</span>
             <a
@@ -564,7 +571,7 @@ onMounted(async () => {
             >{{ seg.label }}</a>
             <span v-else class="jv-topbar__crumb jv-topbar__crumb--current">{{ seg.label }}</span>
           </template>
-        </template>
+        </span>
 
         <!-- Active-project chips (journeys topbar contract) — Project /
              Kind / Master. Click the project chip to jump to Projects. At phone

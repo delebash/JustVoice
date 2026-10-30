@@ -473,6 +473,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  align-self: baseline;
 }
 /* The floor holds a long name; it never pads a short one. A plain `min-width: 12ch` stood "Home"
    in 190 px, 123 of them blank, while the pills beside it were cut to one letter (2026-10-29):
@@ -482,7 +483,22 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   .jv-topbar .lu-titlebar-title { min-width: calc-size(max-content, min(size, 12ch)); }
 }
 /* (.jv-topbar__title died with the kit-frame adoption — the title styles live
-   on .jv-topbar .lu-titlebar-title above; the crumbs render inside it.) */
+   on .jv-topbar .lu-titlebar-title above.) The crumbs after the page's name are the bar's own
+   item (MainLayout.vue): next in the squeeze order after the project chip, down to "…", on the
+   title's baseline. The frame's spacer would sit between the two; the status group's auto margin
+   does its job here, so it goes. */
+.jv-topbar .lu-titlebar-spacer { display: none; }
+.jv-topbar__crumbs {
+  align-self: baseline;
+  /* Squeezed to its floor it reads "› …" — more is there — never a sliver of the ›. */
+  min-width: 1.6em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 18px;
+  flex-shrink: 1e7;
+}
+.jv-topbar__crumbs > .jv-topbar__crumb-sep:first-child { margin-left: 2px; }
 .jv-topbar__crumb-sep {
   margin: 0 8px;
   color: var(--ink-3);
@@ -502,9 +518,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
    panel). */
 /* When the bar is short of room, its parts give way in order (decided
    2026-10-05, the user: "why isnt it flex to grow snd shrink as needed"): the
-   server URL first, then the project's name in its chip, then the two model
-   pills, the page name last. Flex shares the squeeze by weight × width, so the
-   weights are far apart: URL 1e15 · project chip 1e10 · pills 1e5 · title 1.
+   server URL first, then the project's name in its chip, then a crumb after the
+   page's name (Studio's book, a persona's name — the user, 2026-10-29), then the
+   two model pills, the page name last (its floor: the name whole, at most 12ch).
+   Flex shares the squeeze by weight × width, so the weights are far apart: URL
+   1e15 · project chip 1e10 · crumbs 1e7 · pills 1e5 · title 1.
    (They were 10000 · 1000 · 100 · 1 until 2026-10-29 — too close: each part
    kept losing a few pixels, an "…", while the one before it still had room to
    give; 100 000 apart, the order holds to under a pixel.) The group is
