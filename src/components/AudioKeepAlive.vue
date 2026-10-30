@@ -69,6 +69,7 @@ onMounted(() => {
   if (typeof URL.createObjectURL !== "function" || typeof Audio !== "function") return;
   url = URL.createObjectURL(silentWavBlob());
   audio = new Audio();
+  audio.crossOrigin = "anonymous";
   audio.loop = true;
   audio.volume = 1;
   audio.preload = "auto";

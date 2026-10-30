@@ -294,7 +294,7 @@ function colorFor(name) {
 
     <div v-if="audition" class="jv-inline-row personas__audition">
       <span class="jv-muted">▶ <strong>{{ audition.name }}</strong><template v-if="audition.model"> · {{ audition.model }}</template></span>
-      <audio :src="audition.url" controls autoplay class="jv-audio-inline" />
+      <audio crossorigin="anonymous" :src="audition.url" controls autoplay class="jv-audio-inline" />
     </div>
 
     <EmptyState

@@ -89,7 +89,9 @@ function endCycle() {
 
 /** Play the generation's audio; the pill appears once sound actually starts. */
 function play(generationId) {
-  const audio = new Audio(`${api.serverUrl}/v1/generations/${encodeURIComponent(generationId)}/audio`);
+  const audio = new Audio();
+  audio.crossOrigin = "anonymous"; // the server's resourceIsolation passes it by the window's Origin (app-structure §19)
+  audio.src = `${api.serverUrl}/v1/generations/${encodeURIComponent(generationId)}/audio`;
   player = audio;
   const mine = () => player === audio;
   audio.onplaying = () => {

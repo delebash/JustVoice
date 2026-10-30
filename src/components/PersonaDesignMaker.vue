@@ -212,7 +212,7 @@ async function keepTake() {
         <div class="jv-inline-row">
           <UiChip v-for="t in takes" :key="t.n" :selected="chosen === t.n" :label="`Take ${t.n}`" @click="chosen = t.n" />
         </div>
-        <audio v-if="chosenTake" :src="chosenTake.url" controls autoplay class="jv-audio-inline" />
+        <audio v-if="chosenTake" crossorigin="anonymous" :src="chosenTake.url" controls autoplay class="jv-audio-inline" />
       </div>
 
       <div class="jv-col">

@@ -414,7 +414,7 @@ onActivated(() => { if (mounted) loadAll(); mounted = true; });
          (the ruling 2026-08-15: playback is compact and in place). -->
     <div v-if="audition" class="jv-inline-row personas__audition">
       <span class="jv-muted">▶ <strong>{{ audition.name }}</strong><template v-if="audition.model"> · {{ audition.model }}</template></span>
-      <audio :src="audition.url" controls autoplay class="jv-audio-inline" />
+      <audio crossorigin="anonymous" :src="audition.url" controls autoplay class="jv-audio-inline" />
     </div>
 
     <div v-if="loading" class="jv-muted personas__empty">Loading…</div>

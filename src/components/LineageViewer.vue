@@ -91,7 +91,7 @@ function fmtDate(iso) {
             </div>
             <p v-if="n.text_preview" class="lineage-node__text">{{ n.text_preview }}</p>
             <!-- Compact inline player (2026-08-15: no global bottom bar). -->
-            <audio v-if="nodePlaying?.id === n.take_id" :src="nodePlaying.url" controls autoplay class="jv-audio-inline" />
+            <audio v-if="nodePlaying?.id === n.take_id" crossorigin="anonymous" :src="nodePlaying.url" controls autoplay class="jv-audio-inline" />
           </div>
         </div>
       </div>

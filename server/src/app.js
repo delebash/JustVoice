@@ -8,8 +8,8 @@
 // Vite-built Vue SPA) is served from `/` (with `/ui` redirecting there).
 //
 // The family shape (JustWrite's app.js, docgen's): the kit's Hono server with problem+json
-// errors (`createServer`), the kit's CSRF / CORS / bearer-auth middleware in Python's middleware
-// order, a catch-all error envelope, and the kit's `serveUi` for the UI (`serveStatic` for the
+// errors (`createServer`), the kit's CSRF / resource-isolation / CORS / bearer-auth middleware in
+// the template's order, a catch-all error envelope, and the kit's `serveUi` for the UI (`serveStatic` for the
 // legacy reference UI). Hono runs middleware in the order it is added and covers
 // only the routes added after it: the middleware first, then the routers, then the UI.
 
@@ -28,6 +28,7 @@ import {
   makeLogsRouter,
   makeShutdownRouter,
   onClose,
+  resourceIsolation,
   SHUTDOWN_PATH,
   serveStatic,
   serveUi,
@@ -263,6 +264,19 @@ export async function createApp(dataDir = null) {
       originRegex: corsRegex,
       typeBase: TYPE_BASE,
       prefixes: GUARDED_PREFIXES,
+    }),
+  );
+  // And a read the browser marks cross-site (Fetch Metadata — another site's <img> of /v1/data/backup made backups;
+  // the kit's resourceIsolation, the template's), from the same allowlist: the window's own fetches and its
+  // <audio crossorigin="anonymous"> pass by their Origin, a navigation to the UI's pages passes.
+  app.use(
+    "*",
+    resourceIsolation({
+      appOrigins: APP_ORIGINS,
+      extraOrigins: [...corsOrigins, ...proxyOrigins],
+      originRegex: corsRegex,
+      typeBase: TYPE_BASE,
+      apiPrefixes: GUARDED_PREFIXES,
     }),
   );
 

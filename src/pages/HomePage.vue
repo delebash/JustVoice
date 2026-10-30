@@ -463,7 +463,7 @@ onMounted(() => {
         <UiButton as="a" intent="ghost" size="small" :href="genDownloadUrl(g)" download title="Download WAV">⬇</UiButton>
       </div>
       <!-- Compact inline player (2026-08-15: no global bottom bar). -->
-      <audio v-if="genPlaying?.id === g.id" :src="genPlaying.url" controls autoplay class="jv-audio-inline" />
+      <audio v-if="genPlaying?.id === g.id" crossorigin="anonymous" :src="genPlaying.url" controls autoplay class="jv-audio-inline" />
       </template>
     </div>
 

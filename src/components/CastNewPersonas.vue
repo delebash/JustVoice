@@ -118,7 +118,7 @@ onBeforeUnmount(() => { if (playing.value?.url) URL.revokeObjectURL(playing.valu
           :title="`Play ${row.voice.name} on its own`" @click="play(row)" />
       </template>
     </UiTable>
-    <audio v-if="playing" :src="playing.url" controls autoplay class="jv-audio-inline" />
+    <audio v-if="playing" crossorigin="anonymous" :src="playing.url" controls autoplay class="jv-audio-inline" />
     <template #footer>
       <UiButton intent="secondary" label="Cancel" :disabled="busy" @click="emit('close')" />
       <UiButton intent="primary" :label="createLabel" :loading="busy" :disabled="!picked.length && !byName.length"

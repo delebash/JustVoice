@@ -219,7 +219,7 @@ function keep() {
       <p v-if="blocker" class="jv-muted">{{ blocker }}</p>
       <div v-if="preview" class="jv-col">
         <span class="jv-hint">{{ preview.label }}</span>
-        <audio :src="preview.url" controls autoplay class="jv-audio-inline" />
+        <audio crossorigin="anonymous" :src="preview.url" controls autoplay class="jv-audio-inline" />
       </div>
     </div>
   </div>

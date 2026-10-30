@@ -87,3 +87,38 @@ test("default_cors_has_no_tauri_origins", async () => {
   r = await c.get("/v1/projects", { headers: { origin: "http://localhost:9999" } });
   expect(r.headers["access-control-allow-origin"]).toBe("http://localhost:9999");
 });
+
+// The kit's resourceIsolation (Fetch Metadata), mounted beside csrfOrigin (the template's, the kit's finish list A17):
+// a GET has no CSRF check, so another site's <img src=".../v1/..."> made this server work for it. A read the browser
+// marks cross-site (or same-site — every page on another loopback port is) is refused unless it carries an Origin
+// from the one allowlist above; the window's own media plays with crossorigin="anonymous", which sends its Origin.
+const META = (site, mode, dest, more = {}) => ({ "sec-fetch-site": site, "sec-fetch-mode": mode, "sec-fetch-dest": dest, ...more });
+
+test("a_read_the_browser_marks_cross_site_is_refused", async () => {
+  const { c } = await appClient();
+  let r = await c.get("/v1/projects", { headers: META("cross-site", "no-cors", "image") });
+  expect(r.status).toBe(403);
+  expect(r.json().type.endsWith("/cross-site")).toBe(true);
+  // a plain <audio src> from another loopback port: same-site, no Origin
+  expect((await c.get("/v1/projects", { headers: META("same-site", "no-cors", "audio") })).status).toBe(403);
+  // a foreign page's fetch
+  r = await c.get("/v1/projects", { headers: META("cross-site", "cors", "empty", { origin: "http://evil.example" }) });
+  expect(r.status).toBe(403);
+  // a link elsewhere straight to the API
+  expect((await c.get("/v1/projects", { headers: META("cross-site", "navigate", "document") })).status).toBe(403);
+});
+
+test("the_app_s_own_windows_and_pages_read", async () => {
+  const { c } = await appClient();
+  // the desktop window's fetch, and its <audio crossorigin="anonymous"> (both carry its Origin)
+  expect((await c.get("/v1/projects", { headers: META("cross-site", "cors", "empty", { origin: "app://justvoice" }) })).status).toBe(200);
+  expect((await c.get("/v1/projects", { headers: META("cross-site", "cors", "audio", { origin: "app://justvoice" }) })).status).toBe(200);
+  // the dev server's page, and a local page on any loopback port (the one allowlist's origin_regex)
+  expect((await c.get("/v1/projects", { headers: META("same-site", "cors", "audio", { origin: "http://localhost:1430" }) })).status).toBe(200);
+  expect((await c.get("/v1/projects", { headers: META("same-site", "cors", "empty", { origin: "http://localhost:9999" }) })).status).toBe(200);
+  // the server-hosted UI, the user's own typing, a client with no Fetch Metadata
+  for (const site of ["same-origin", "none"]) expect((await c.get("/v1/projects", { headers: META(site, "no-cors", "audio") })).status, site).toBe(200);
+  expect((await c.get("/v1/projects")).status).toBe(200);
+  // a link from another site to the UI's page passes the guard (the page itself may not be built here)
+  expect((await c.get("/", { headers: META("cross-site", "navigate", "document") })).status).not.toBe(403);
+});

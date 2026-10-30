@@ -1255,7 +1255,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
               <AiTaskStrips v-if="saved" :features="['compose', 'persona-rewrite']" :meta="{ personaId: saved.id }" />
               <div v-if="audio" class="jv-col">
                 <span class="jv-hint">{{ audio.label }}</span>
-                <audio :src="audio.url" controls autoplay class="jv-audio-inline" />
+                <audio crossorigin="anonymous" :src="audio.url" controls autoplay class="jv-audio-inline" />
               </div>
             </div>
           </div>
@@ -1384,7 +1384,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
         <UiButton intent="primary" label="▶ Hear all three" :loading="compareBusy" @click="runCompare" />
         <div v-for="r in compareResults" :key="r.value" class="jv-inline-row">
           <span class="jv-hint">{{ compareOptions.find((o) => o.value === compareKey)?.label }} {{ r.value }}</span>
-          <audio :src="r.url" controls class="jv-audio-inline" />
+          <audio crossorigin="anonymous" :src="r.url" controls class="jv-audio-inline" />
           <UiButton intent="ghost" size="small" label="Use this" @click="useCompared(r.value)" />
         </div>
       </div>

@@ -687,7 +687,7 @@ const GAME_COLUMNS = [
              every ▶ (the ruling 2026-08-15: playback is compact and in place). -->
         <div v-if="audition" class="studio-cast__audition">
           <span class="jv-muted">Audition · persona <strong>{{ audition.name }}</strong><template v-if="audition.engine"> · {{ audition.engine }}</template></span>
-          <audio :src="audition.url" controls autoplay class="jv-audio-inline" />
+          <audio crossorigin="anonymous" :src="audition.url" controls autoplay class="jv-audio-inline" />
         </div>
 
         <!-- The narrator: its own full-width card above the rest, as the mock. -->

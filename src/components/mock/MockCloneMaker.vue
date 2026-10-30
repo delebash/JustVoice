@@ -45,7 +45,9 @@ function clearClip() {
 function readFile(file) {
   if (!file) return;
   const objectUrl = URL.createObjectURL(file);
-  const probe = new Audio(objectUrl);
+  const probe = new Audio();
+  probe.crossOrigin = "anonymous";
+  probe.src = objectUrl;
   probe.addEventListener("loadedmetadata", () => {
     setClip({ name: file.name, bytes: file.size, seconds: probe.duration || 0, snr: 31 });
     URL.revokeObjectURL(objectUrl);
@@ -243,7 +245,7 @@ function keep() {
       <p v-else class="jv-hint">Listen first, or keep the clip as it is — either way it's saved to Voices.</p>
       <div v-if="preview" class="jv-col">
         <span class="jv-hint">{{ preview.label }}</span>
-        <audio :src="preview.url" controls autoplay class="jv-audio-inline" />
+        <audio crossorigin="anonymous" :src="preview.url" controls autoplay class="jv-audio-inline" />
       </div>
     </div>
   </div>
