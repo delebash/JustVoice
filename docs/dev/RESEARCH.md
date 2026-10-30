@@ -530,8 +530,20 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   graph)`, which the untold pass now uses, its prompt built with the told pass's text projection; and
   our VoxCPM2 transcript-as-prompt-audio steps aside for a request (or model defaults) that sets
   upstream's own `ultimate_clone` (#982), which refuses prompt audio beside it
-  (`app/server/server_protocol.cpp:235-240`). **Not built and not run through ctest yet** — that is
-  the final pass. Its specs (43 files, 7 new families): gone, `fish_drama3` `max_new_tokens` (the
+  (`app/server/server_protocol.cpp:235-240`). Built 2026-10-29 into `build/jv-dev` (CUDA 12.4, 1152
+  steps, 765 s) and, with tests on, into `build/jv-test` (CPU); ctest there after the fork's `71543544`
+  (every engine unit test compiled `/utf-8` on MSVC; `disk_expert_weight_store_test` `/EHc-`, i.e. `/EHs`):
+  107 of 110 pass, `qwen3_tts_customvoice_clone_test` skipped, the two asset tests fail
+  (`lfm2_audio_assets_test` needs a model folder, `lfm3_audio_assets_test` can't write its temp GGUF).
+  (was: `text_chunking_test` 0xc0000409 and `kokoro_word_timings_test` — their literals on code page 1252
+  without `/utf-8` — and `disk_expert_weight_store_test`, whose catch around a C call `/EHsc` drops: upstream's,
+  Windows only; upstream runs ctest only on Linux and macOS — until `71543544`.) The `npm run dev` build
+  compiles only `audiocpp_server` and `audiocpp_dsp`, tests off, so its folder's ctest runs test programs
+  of an older configuration. **Japanese in a Windows command line reaches the server as `?`:** Git Bash's
+  `curl -d '…'` sent the 24-character line as 24 `?`, which Kokoro read as a 2 s hum that Qwen3-ASR hears
+  as `うーん。`; sent as a UTF-8 body (`--data-binary @file`, or Node's `fetch`), `jf_alpha` reads back
+  character for character on the merged build, on the CPU and on the card. — *build + ctest + measured,
+  2026-10-29*. Its specs (43 files, 7 new families): gone, `fish_drama3` `max_new_tokens` (the
   code reads it as `max_tokens`'s second name, `fish_drama3/session.cpp:140`; nothing saved under it
   here) and `liveavatar` `fused_cfg` (now `batched_cfg`); default now none (language-dependent),
   Kokoro, FireRedTTS3, Magpie and MOSS-TTS Nano `text_chunk_size` (§1.2), MioTTS's session one, and
