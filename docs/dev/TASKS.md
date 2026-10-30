@@ -144,7 +144,14 @@ BUILT:  DONE 2026-10-29 — resourceIsolation + crossorigin on every player (5e7
         DataManagement), focus after a 422 (no JustVoice form shows field errors yet — the kit's §15–§18 open
         deviation). Check pass: lint clean, server 1261 (2 skipped), unit 291, the guard clean, the unpacked build,
         e2e smoke 7/7, a11y light + dark pass.
-OPEN:   the one-click run (waiting on the card), then the listening rounds.
+        The one-click run, 2026-10-29, under `npm run dev` on the merged fork: a new project "Alice II (round E
+        check)" (the test book's chapter II, imported through the app) — all 12 steps completed in 17 min 21 s, 100
+        lines rendered and read back by the Transcription feature (5 flagged for review: 2 missed words, 3 extra),
+        the Mouse's voice designed, none uncast or refused, the export done. It first stopped at discover: the app
+        was still on llama.cpp b11239, where gemma-4-26b's MTP draft failed alone ("invalid vector subscript") with
+        today's kit launch code; the app's own Update to the kit's pinned b11960 (already in the shared cache)
+        fixed it.
+OPEN:   the user's listening rounds 8 and 9 (rendered before the merge).
 GO:     given 2026-10-29 for 1.
 
 ### Our audio.cpp fork is released with the family, once every app is done
