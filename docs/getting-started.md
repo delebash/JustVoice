@@ -2,6 +2,23 @@
 
 JustVoice is a cross-platform voice-production studio. Five audiences share one engine pool: audiobook producers, game developers (Unreal / game dialogue), podcasters, dictation users, and accessibility users.
 
+## Installing it
+
+Download the installer for your computer from JustVoice's [releases page](https://github.com/delebash/JustVoice/releases):
+**Windows** the `JustVoice-Setup-….exe`, **macOS** (Intel and Apple silicon) the `.dmg`, **Linux** the `.AppImage`
+(or the `.deb`, for Debian and Ubuntu). The installers aren't signed with a publisher's certificate, so the first time:
+
+- **Windows** says "Windows protected your PC": press **More info**, then **Run anyway**.
+- **macOS** says the app can't be opened. On macOS 15 and later: open **System Settings → Privacy & Security**,
+  go to **Security** and press **Open Anyway** (it's there for about an hour after you try to open the app), then
+  enter your password. On macOS 14 and earlier: Control-click the app in Finder and choose **Open**. If it says the
+  app "is damaged", run `xattr -cr "/Applications/JustVoice.app"` in Terminal once, then open it.
+- **Linux**: make the `.AppImage` executable (`chmod +x`) and run it — nothing else to install. The `.deb` installs
+  as any package does (`sudo apt install ./` and the file's name).
+- **Windows with Smart App Control on** (some new Windows 11 computers) blocks the app with no **Run anyway**: the
+  app's files aren't signed. It runs once Smart App Control is off (Windows Security → App & browser control →
+  Smart App Control).
+
 ## First launch
 
 1. **Pick a use case.** The Welcome modal asks what you're doing with JustVoice. Your choice retunes the UI: audiobook producers get Projects + Studio with chapters terminology; game devs get the Lines tab (every line of the game, stable ids); podcasters get Projects + Studio with episodes (the multi-track Stories timeline tab is a placeholder — not built yet). The chosen use case is also highlighted on the Home dashboard as a quick-action card so you can jump straight back into your workflow. You can re-pick later in Settings → About.
