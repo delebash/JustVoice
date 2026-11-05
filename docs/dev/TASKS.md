@@ -720,6 +720,12 @@ OPEN:   1: round 8's lines picked (86 candidates, 30 kept over seven feelings); 
         saved, all before version 4 — A/B picked on 20 of the 66 pairs, pairs 1–27 touched, 28–66
         and Part 2 untouched. The user: "i will just start over with the new form". The old answers
         stay saved (not cleared, not filled in from the notes); a pick left unchanged counts.
+        2026-11-05, the user: "i re anwser round 8" — every pair and part 2 answered, scored (RESEARCH
+        §10.35, §10.36): the note 27 · the cue words 20 · no difference 13, p = 0.19, repeats 5 of 6 —
+        by the rule the cue words stay, nothing built. Part 2: Drama 3 better on 5, Breeze on 3 (the
+        long opening among them), no difference 3; a whole book either way: Yes. The page's own tally
+        miscounted every pick as the cue words' (RESEARCH §10.35) — the page not changed. What follows:
+        "More feelings than nine" item 4.
 GO:     given 2026-10-21 ("try again keep going your rec").
 
 ### Round 7's answers acted on, and Stop ends the language model's call (decided 2026-10-21)

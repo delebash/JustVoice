@@ -5347,6 +5347,30 @@ TASKS "Round 7's answers acted on", 3. Through `npm run dev`.
   some differ (“in a low, weak voice” → “low, weak, trembling”), two say only “neutral”. 120
   BreezeTTS 2 takes, every one told the words its list holds (checked): median 7.1 s (cue words),
   6.9 s (note). — *measured*.
+- **The user's ears (2026-11-05, every pair answered; 294 saved answers, a pick left from an earlier
+  version counted):** of the 60 first pairs the note picked on 27, the cue words on 20, no difference
+  on 13; one-sided sign test, the note ahead, p = 0.19; the 6 repeats answered the same 5 times.
+  **By the rule set before listening the note doesn't win clearly: the cue words stay and nothing is
+  built.** Outside the rule (not a verdict): "Clearly" on 15 of the note's 27 picks and 4 of the cue
+  words' 20; by the app's feeling, note–cue (no difference) — sad 7–1, fearful 6–4, happy 4–3 (3),
+  shouted 5–5, angry 2–4 (4), neutral 2–3 (5), whispered 1–0 (1). Each take's own buttons: told the
+  note, the book's feeling 32 · milder 17 · plain 9 of 58; told the cue words 26 · 19 · 13 · a
+  different feeling 1 of 59; "Volume wrong" 1 and 2, nothing else marked off. Both arms by the asked
+  feeling, the full feeling: shouted 15 of 18, whispered 4 of 4, sad 11 of 16, angry 12 of 20,
+  fearful 10 of 20, happy 5 of 20 (11 milder, 4 plain); neutral plain 17 of 19. — *the page's
+  answers* (scratchpad `r8_score.js`, session 7174f3f8).
+- **The page's own tally was wrong:** it compared the letter picked ("A"/"B") with the arm held in A
+  (`p.A`, "note"/"cue") — never equal — so every pick counted for the cue words ("the note picked on
+  0 · the cue words on 47"). The counts above take the letter's arm through `p.A`. Round 9's page
+  tallies by take, not this way. — *code*.
+- **The user's notes:** 9-108 ("You know what to beautify is, I suppose?") — "exclaimed" belongs to
+  the quote before it ("What! Never heard of uglifying!" it exclaimed.), not this one. It got there by
+  the direction step's forward carry across the giver's tag (`carried_from` D107;
+  `server/src/extraction/direction.js` `carriesAcross`, `carry`), as 10 of the 30 lines' cue words
+  did (9-3, 9-12, 9-45, 9-74, 9-81, 9-97, 9-101, 9-108, 10-12, 10-66; `data/round8/direction.json`).
+  9-81 asks whether "said the Mock Turtle angrily:" covers "really you are very dull!" too (carried
+  from D80). 9-5: "The app asked for: neutral" beside buttons in the book's words ("Hesitant,
+  careful") left the user unsure what to listen for. — *the page's answers; code*.
 
 ### 10.36 The narrator again: BreezeTTS 2 against Drama 3, with a long stretch (2026-10-21)
 
@@ -5370,6 +5394,11 @@ TASKS "Round 7's answers acted on", 1 (and 2: Drama 3 heard before VoxCPM2 is fi
   115.7 s of audio in 132 s, Drama 3 119.7 s in 256 s. Drama 3's disk experts map ~17 GB of RAM
   while loaded: with JustVoice's chat model also up, free memory went under 4 GB twice and Claude
   Code stopped the session's background jobs. Load one model at a time. — *measured*.
+- **The user's ears (2026-11-05, round 8's part 2, all 11 answered):** the better reading — Drama 3
+  on 5 (passages 4–8), BreezeTTS 2 on 3 (passages 9 and 10, and the 311-word opening), no difference
+  on 3 (passages 1–3); "Would you listen to a whole
+  book read this way?" — Yes for both. No rule was set before listening for this part. — *the page's
+  answers*.
 
 ### 10.37 Round 9 — dots.tts told a feeling through its Edit model (set 2026-10-24, before rendering)
 
