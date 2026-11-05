@@ -170,7 +170,9 @@ OPEN:   whether upstream is merged into `jv` before the release — your call. T
         and test it in our app, this should be in i guess the core or jv, this should be true for any forks for
         futre apps that we may use" — in the kit's `docs/family-rules.md` (every web app imports it) and
         JustStage's `AGENTS.md`.
-GO:     given for the release's timing; the merge needs its own.
+        The merge, 2026-11-05 (asked: upstream 69 commits ahead with v0.9.3 and v0.9.4, merge before the release?):
+        "2 yes always keep fork up to date this is already a rule".
+GO:     given for the release's timing; the merge given 2026-11-05.
 
 ### Round E — JustVoice's audio.cpp engine, its Speech engines tab and its jobs onto the kit's (J1)
 STATE:  DECIDED 2026-10-29 — the kit's half landed (just-core adb9805 … ed72ce6, 3dc2db9; its tests
