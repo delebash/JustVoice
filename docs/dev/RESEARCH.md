@@ -5434,6 +5434,12 @@ TASKS "dots.tts through the scorer on round 4's lines". Through `npm run dev`.
   scratchpad `r9_page.js`, template from round 6's version 2 plus round 8's "Anything off" row):
   round 5's 13 lines, seed 7, four takes — dots.tts told, its own take before the edit, BreezeTTS 2
   and VoxCPM2 from round 4, told the same word.
+- **The user's ears (2026-11-05, all 13 lines, 67 answers):** the line's full feeling — BreezeTTS 2
+  11 of 13 (weaker 1, plain 1), picked best on 11; VoxCPM2 6 (weaker 3, plain 4), best on 2 (a sad
+  and a contemptuous line), "Volume wrong" on both whispered lines; **dots.tts told 0 (weaker 9,
+  plain 4), best on none**; dots.tts not told plain on all 13. No rule was set before listening for
+  the page; by ear dots.tts's edit moves a take only part of the way, below VoxCPM2. — *the page's
+  answers* (scratchpad `r9_score.js`, session 7174f3f8).
 
 ## Records not yet distilled
 

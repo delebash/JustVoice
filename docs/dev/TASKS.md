@@ -658,7 +658,9 @@ NOT:    CosyVoice3 and the Chatterboxes again (scored in round 4: +0.06, +0.01, 
         v1.5 (more than the card); ElevenLabs as a bar (the user's account, its own question).
 OPEN:   rendered and scored 2026-10-24 (RESEARCH §10.37): it passes the rule (+0.09 [0.02, 0.24],
         WER 0.017, likeness 0.82), all of it anger. Its page is published,
-        https://claude.ai/artifact/CazRBhwcSGgHRHZjqx3PQE — waiting on the user's ears.
+        https://claude.ai/artifact/CazRBhwcSGgHRHZjqx3PQE. 2026-11-05, the user: "round 9 done" (RESEARCH
+        §10.37): the full feeling — Breeze 11 of 13 (best on 11), VoxCPM2 6 (best on 2), dots.tts told 0
+        (weaker 9, plain 4; best on none) — by ear it doesn't beat VoxCPM2; nothing built.
 BUILT:  `round4_render.js --arms dots-edit` (bf6e95d1); the Edit model at
         `data/round9/models/DotTTS-Edit-GGUF/` (sha256 checked against audio.cpp's catalog).
 GO:     given 2026-10-24 ("your rec all go").
