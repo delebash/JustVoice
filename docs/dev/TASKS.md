@@ -78,10 +78,17 @@ BUILT:  2026-11-05 — the feelings list (four feelings built, measured and reve
         factory reset stops running jobs first; round 8's page tally; the tracker sweep (closed items
         deleted, standing rules moved to their homes); the port's copied bugs, webhooks, Discover's
         Find same people, the New project race the e2e found, docs truth fixes (git log 2026-11-05).
-OPEN:   the in-app looks (Discover's Find same people, Render's Advanced fold, Settings → Storage's
-        Change folder without the data-dir variable) and the end pass once — lint, server, unit,
-        family guard, build:spa, smoke, build:unpacked and e2e — when the shared card is free (the app
-        warms its language model onto it). Then the items that wait on the user's word.
+        2026-11-05/06 — error toasts and in-place reasons through the kit's reportError / errorText
+        (never "HTTP 409 — …"; kit 17ee7d39, JustVoice 19c287db); chapter captions aligned in the
+        book's language (993ee5d2); the browser's ResizeObserver loop notice no longer toasts
+        "Something went wrong" (kit bbbbdd70, seen on Projects and Studio in the app).
+CHECKED 2026-11-06, once at the end, on the user's data under `npm run dev`: Discover's Find same
+        people ran on Alice II ("Checked just now by gemma-4-26b-a4b-qat · Local"; nothing to link —
+        right for its names); Render's line panel folds VoxCPM2's two settings under "Advanced (2)";
+        smoke all views, zero JS errors; e2e 10/10; server 1294 (+1 skipped), unit 304, lint, the
+        guard; kit UI 89. NOT looked at: Settings → Storage's Change folder in a run without
+        JUSTVOICE_DATA_DIR (the desktop window itself; the e2e covers the run with it).
+OPEN:   the items that wait on the user's word (the finish run's reply of 2026-11-06).
 GO:     given 2026-11-05.
 
 ### Our audio.cpp fork is released with the family, once every app is done
