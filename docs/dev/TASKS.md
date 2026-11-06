@@ -1058,14 +1058,35 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         `backend` resets a saved backend to "auto" and stops both processes; a capture whose
         transcription fails leaves its WAV behind; download progress was never written, so
         active tasks never list downloads; `webhooks.dispatch_event` has no callers (FIXED 2026-11-05:
-        the four events fire, and the signing secret is kept on the row). And from
+        the four events fire, and the signing secret is kept on the row). The rest of agent 1's,
+        checked in the code 2026-11-05: the capture's WAV was FIXED by the 2026-10-08 clean-room
+        rewrite (ruling 16, `captures_rulings.test.js` a_failed_transcription_keeps_no_recording);
+        the source-override clearing, `PUT /v1/speech-runtime` and download progress are moot — the
+        kit's audio.cpp runtime owns the runtime, its settings and its downloads since round E, and
+        no such route, source override or progress writer is left in `server/src` (`/v1/active_tasks`
+        still answers an always-empty `downloads` list, which no screen reads). And from
         the API wave's agent 2: a clone on an engine that can't clone stores a voice with the
         engine id as its model; an invalid base64 clip stores an empty clip; a blended
         stream-ticket with no ids or weights is a 500; a voice name past latin-1 makes
         `bundle.zip` a 500 (use the kit's `attachment()`); an invalid row-preview delivery is
         a 500, not a 422; a ticket's stream caches its WAV under a key nothing reads;
-        `RecentTakeRow.take` / `.effects` are always null. (Fixed in JS after the final
-        whole-server comparison — the 2026-10-08 rec below.) And from agent 3: a project
+        `RecentTakeRow.take` / `.effects` are always null. (A line here said these were fixed in
+        JS after the final comparison; checked 2026-11-05, none had been.) FIXED 2026-11-05, each with
+        its test: a clone or design on an engine with no model that can make one is a 400 naming
+        the engine (`voices_clone_refusals.test.js`
+        an_engine_with_no_model_that_can_clone_is_refused_by_name); a clip that isn't strict
+        base64 or holds nothing is a 400 on a clone and a clone preview (same file,
+        a_clip_that_is_not_base64_or_holds_nothing_is_refused_and_nothing_is_stored); a blend
+        stream-ticket gets `POST /v1/voices/preview`'s checks (`voice_preview_ticket.test.js`
+        a_blend_ticket_missing_its_voices_or_weights_is_refused_in_words); a row-preview delivery
+        is checked by the route's schema, a bad value a 422 naming it (`voice_preview_text.test.js`
+        a_knob_value_the_delivery_refuses_is_a_422_naming_it); a ticket's stream fills no cache
+        slot (a_tickets_stream_leaves_nothing_in_the_audition_cache); `RecentTakeRow.effects`
+        removed — nothing writes a generation's effects and nothing read it (`takes.test.js`
+        a_row_carries_no_effects_field). The bundle.zip header is with agent 3's, below. OPEN:
+        `RecentTakeRow.take` is still always null — Home shows it when set (`HomePage.vue:469`) and
+        the takes table could fill it (Render's "take N" / "★ In use"), so filling or removing it
+        waits on the user's word. And from agent 3: a project
         export with a played persona that has a saved delivery is a 500; `DELETE
         /v1/generations?scope=<anything>&confirm=true` deletes every generation; `PATCH
         /v1/projects/{id}` always answers `scene_count: 0`; an unknown `speaker_id` on a line is a

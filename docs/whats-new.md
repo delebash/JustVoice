@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **Five fixes for other callers of the API (2026-11-05)** — a clone or a design on an engine with no
+  model that can make one (Kokoro clones nothing) is a 400 naming the engine, where a voice that could
+  never speak was stored; a clip that isn't base64, or holds nothing, is a 400 on `POST
+  /v1/voices/clone` and a clone preview, where an empty or garbled clip was stored; `POST
+  /v1/voices/preview/stream-ticket` without its voices, weights or segments is the 400 `POST
+  /v1/voices/preview` answers, not a 500; a voice's preview with a delivery value it can't take
+  (`"speed": "fast"`) is a 422 naming it, not a 500; and `GET /v1/takes/recent` rows lose `effects`,
+  which was always null. The app's own screens never sent any of these
 - **Webhooks fire, and stay signed after a restart (2026-11-05)** — the four events Settings →
   Webhooks offers (`render.completed`, `render.failed`, `generation.created`, `voice.created`) were
   never sent; now each fires from where it happens, with what it is about

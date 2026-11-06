@@ -30,13 +30,13 @@ import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
 import * as blending from "../engines/blending.js";
 import * as modelCatalog from "../engines/model_catalog.js";
 import { badRequest, conflict, notFound } from "../errors.js";
-import { BlendSegment, BlendStrategy, construct, Delivery, GenerateRequest, modelDump, modelFields, utcNow } from "../models.js";
+import { BlendSegment, BlendStrategy, construct, Delivery, GenerateRequest, modelDump, utcNow } from "../models.js";
 import * as synthScheduler from "../synth_scheduler.js";
 import * as vmod from "../voice_model.js";
 import * as generateApi from "./generate_api.js";
 import { sentBody } from "./settings_api.js";
 import * as self from "./voice_preview_api.js";
-import { blendLanguageFor } from "./voices_api.js";
+import { blendLanguageFor, clipBytes } from "./voices_api.js";
 
 export const log = getLogger("justvoice.api.voice_preview_api");
 
@@ -240,6 +240,7 @@ export async function _resolveBlend(body, state) {
 export function validateCandidate(body) {
   if (body.source === "cloned" || body.source === "imported") {
     if (!body.ref_wav_b64) throw badRequest("ref_wav_b64 required for cloned/imported preview");
+    clipBytes(body.ref_wav_b64); // strict base64, as a clone is kept (2026-11-05)
     // The transcript is optional, as on a direct clone: without one the engine clones from the
     // clip alone, and Qwen3 Base asks for it or for x-vector only by name (decided 2026-10-03).
   } else if (body.source === "designed") {
@@ -575,10 +576,13 @@ export const PREVIEW_LINE_DEFAULT = "Hello — here's how this voice sounds.";
 export const AUDITION_TEXT_FLOOR = 300;
 
 /** The row preview's optional body. Both fields optional, and an ABSENT body is the canned
- * audition — the ▶ button in the voice library posts nothing. */
+ * audition — the ▶ button in the voice library posts nothing. The delivery is checked here: a
+ * value it can't take is a 422 naming it, a key it doesn't know is left out. (It was checked in
+ * the handler, so a bad value was a 500 — a Python bug copied into the port, fixed 2026-11-05 as
+ * decided 2026-10-08.) */
 export const AuditionRequest = T.Object({
   text: opt(nullable(T.String()), null),
-  delivery: opt(nullable(T.Record(T.String(), T.Any())), null),
+  delivery: opt(nullable(Delivery), null),
 });
 
 /** sha1 over the three things that change the audio. Delivery is canonicalized (sorted keys, no
@@ -724,8 +728,6 @@ function renderPiece(kind, engineId, req, voiceFields, signal) {
   return generateApi._generateViaInprocess(engineId, req);
 }
 
-const DELIVERY_FIELDS = new Set(modelFields(Delivery));
-
 export function router() {
   const app = new Hono();
   /**
@@ -766,6 +768,9 @@ export function router() {
     if (body.source !== "blended") {
       throw badRequest("stream tickets are for blend candidates; clone and design auditions use POST /v1/voices/preview");
     }
+    // The checks POST /v1/voices/preview makes — no voices or weights was a 500 (a Python bug copied
+    // into the port, fixed 2026-11-05 as decided 2026-10-08).
+    self.validateCandidate(body);
     const [vector, lang] = await self._resolveBlend(body, getState());
     const ticket = `tkt_${randomUUID().replaceAll("-", "")}`;
     cfg._STREAM_TICKETS.set(ticket, {
@@ -845,9 +850,11 @@ export function router() {
           }
         }
         // The full render exists now — cache it with a REAL header so the next play of this line
-        // is instant and scrubbable. (A ticket's stream caches under a null key, as Python's
-        // did — no lookup ever reads it.)
-        if (sr && emitted.length) cfg._AUDITION_CACHE.set(key, [writeWavContainer(Buffer.concat(emitted), sr, channels), "audio/wav"]);
+        // is instant and scrubbable. A ticket's has no key: it filled a cache slot under a null key
+        // no lookup reads (a Python bug copied into the port, fixed 2026-11-05 as decided 2026-10-08).
+        if (key !== null && sr && emitted.length) {
+          cfg._AUDITION_CACHE.set(key, [writeWavContainer(Buffer.concat(emitted), sr, channels), "audio/wav"]);
+        }
       }
 
       return c.body(Readable.toWeb(Readable.from(wavStream(), { objectMode: false })), 200, { "content-type": "audio/wav" });
@@ -870,10 +877,8 @@ export function router() {
       const body = c.req.valid("json") ?? null;
       const text = auditionText(st, body ? body.text : null);
 
-      // Only fields the Delivery shape actually carries; an unknown key would 422 the whole
-      // audition over a typo in a knob name.
-      const deliveryRaw = (body ? body.delivery : null) || {};
-      const delivery = Object.fromEntries(Object.entries(deliveryRaw).filter(([k, v]) => DELIVERY_FIELDS.has(k) && v !== null));
+      // The knobs set (the schema has left out any it doesn't know).
+      const delivery = Object.fromEntries(Object.entries(body?.delivery || {}).filter(([, v]) => v !== null));
 
       const key = auditionCacheKey(voiceId, text, delivery);
       const hit = cfg._AUDITION_CACHE.get(key);
@@ -885,8 +890,6 @@ export function router() {
       const genReq = construct(GenerateRequest, {
         voice: voiceId,
         text,
-        // A value Delivery refuses is pydantic's ValidationError inside the handler — a 500 in
-        // Python (not a 422; kept on purpose).
         delivery: Object.keys(delivery).length ? construct(Delivery, delivery, "Delivery") : null,
       });
 

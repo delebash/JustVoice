@@ -253,6 +253,20 @@ export function _recipeHash(sources, weights, strategy = "blend", segments = nul
 
 const errText = (e) => e?.message ?? String(e);
 
+/** A clip sent as base64 → its bytes; a 400 when it isn't strict base64 or holds nothing. ("%%%"
+ * decoded leniently to nothing and was stored as an empty clip — a Python bug copied into the
+ * port, fixed 2026-11-05 as decided 2026-10-08.) The clone route and a clone preview use it. */
+export function clipBytes(b64) {
+  let raw;
+  try {
+    raw = b64decode(b64, true);
+  } catch (e) {
+    throw badRequest(`invalid base64: ${errText(e)}`);
+  }
+  if (!raw.length) throw badRequest("ref_wav_b64 holds no audio");
+  return raw;
+}
+
 export function router() {
   const app = new Hono();
   app.get("/v1/voices", async (c) => c.json(await listVoices()));
@@ -324,12 +338,7 @@ export function router() {
     const st = getState();
     const body = c.req.valid("json");
     if (!body.engine || !body.name) throw badRequest("engine + name required");
-    let wavBytes;
-    try {
-      wavBytes = b64decode(body.ref_wav_b64);
-    } catch (e) {
-      throw badRequest(`invalid base64: ${errText(e)}`);
-    }
+    const wavBytes = clipBytes(body.ref_wav_b64);
     const model = _modelFor(body.engine, body.model, "clone");
     const now = utcNow();
     const created = st.voices.create({
