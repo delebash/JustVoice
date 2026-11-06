@@ -13,6 +13,7 @@
 //     it (`POST /v1/voices/clip-check`).
 // The facts behind the notes are plan 2026-10-03 §2.3.
 
+import { toWav } from "@delebash/ui";
 import { DIRECTION_OPTIONS } from "./personaFacts.js";
 import { rowOptions } from "./capabilities.js";
 
@@ -86,35 +87,6 @@ export function b64ToWavBlob(b64) {
   return new Blob([bytes], { type: "audio/wav" });
 }
 
-/** Decode any clip the drop box takes (WAV, MP3, M4A, FLAC, OGG, a WebM
- *  recording) into 16-bit mono WAV — what the clip check measures. The clip
- *  that is KEPT is the file as dropped; this copy is only measured. */
-export async function clipToWav(blob) {
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  const ctx = new Ctx();
-  try {
-    const audio = await ctx.decodeAudioData(await blob.arrayBuffer());
-    const n = audio.length;
-    const mono = new Float32Array(n);
-    for (let c = 0; c < audio.numberOfChannels; c++) {
-      const ch = audio.getChannelData(c);
-      for (let i = 0; i < n; i++) mono[i] += ch[i] / audio.numberOfChannels;
-    }
-    const rate = audio.sampleRate;
-    const buf = new ArrayBuffer(44 + n * 2);
-    const dv = new DataView(buf);
-    const str = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
-    str(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); str(8, "WAVE");
-    str(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-    dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
-    str(36, "data"); dv.setUint32(40, n * 2, true);
-    for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, Math.max(-1, Math.min(1, mono[i])) * 32767, true);
-    return new Blob([buf], { type: "audio/wav" });
-  } finally {
-    ctx.close?.();
-  }
-}
-
 /** The two clip checks (decided 2026-10-04): length, and how far the speech
  *  stands above the noise. Each is `{intent, label}` for a UiTag, or null. */
 const MIN_S = 10;
@@ -136,9 +108,11 @@ export function clipChecks(seconds, marginDb) {
   return { duration, noise };
 }
 
-/** Measure a clip on the server. `{seconds, noise_margin_db}`. */
+/** Measure a clip on the server. `{seconds, noise_margin_db}`. The page decodes the clip (WAV, MP3, M4A,
+ *  FLAC, OGG, a WebM recording) into WAV with the kit's `toWav`; the clip that is KEPT is the file as
+ *  dropped — this copy is only measured. */
 export async function checkClip(api, blob) {
-  const wav = await clipToWav(blob);
+  const wav = await toWav(blob);
   return api.request("/v1/voices/clip-check", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

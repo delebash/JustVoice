@@ -18,7 +18,8 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
-  UiButton, UiCheckbox, UiField, UiInput, UiSelect, UiTag, UiTextarea, fmtBytes, languageName, pushToast, reportError,
+  UiButton, UiCheckbox, UiField, UiInput, UiSelect, UiTag, UiTextarea, fmtBytes, languageName, pushToast, recordMicrophone,
+  reportError,
 } from "@delebash/ui";
 import { acceptEngineTerms, handleTermsRefusal } from "../services/engineTerms.js";
 import {
@@ -97,33 +98,32 @@ watch(sourceUrl, (v) => {
   }, 600);
 });
 
-// Record a clip here.
+// Record a clip here (the kit's recordMicrophone).
 const recording = ref(false);
-let mediaRecorder = null;
-let chunks = [];
+let recorder = null;
 async function toggleRecord() {
-  if (recording.value) { mediaRecorder?.stop(); return; }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    chunks = [];
-    mediaRecorder = new MediaRecorder(stream);
-    mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-    mediaRecorder.onstop = () => {
-      for (const t of stream.getTracks()) t.stop();
-      recording.value = false;
-      const blob = new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
+  if (recording.value) {
+    const rec = recorder;
+    recorder = null;
+    recording.value = false;
+    try {
+      const blob = await rec.stop();
       setClip(new File([blob], "recording.webm", { type: blob.type }));
-    };
-    mediaRecorder.start();
+    } catch (e) {
+      reportError(e, { title: "The recording failed" });
+    }
+    return;
+  }
+  try {
+    recorder = await recordMicrophone();
     recording.value = true;
   } catch (e) {
     reportError(e, { title: "Microphone unavailable" });
-    recording.value = false;
   }
 }
 onBeforeUnmount(() => {
   clearTimeout(urlTimer);
-  if (recording.value) mediaRecorder?.stop();
+  recorder?.stop().catch(() => {}); // leaving the page lets the microphone go; the recording is dropped
 });
 
 // One of your captures (Captures — dictation and system audio): its audio,

@@ -34,7 +34,7 @@ Download the installer for your computer from JustVoice's [releases page](https:
 - **Producing an audiobook.** On Projects press **＋ New project**, pick Audiobook and drop your manuscript (a JustWrite book, EPUB, DOCX, Markdown or text) under **Bring the words in**; Create shows what it found, and after you import it opens in Studio on its Overview. Work the steps in order — Discover finds your speakers, Script works out who says each line, Cast gives each speaker a persona (a finished voice from your library), Render makes the audio.
 - **Voicing game dialogue.** Voices tab → **Clone** with a reference WAV (Chatterbox Multilingual or Qwen3-TTS Base). Then Projects → **＋ New project** → Game, with a CSV of dialogue rows under **Bring the words in** (fixed headers: scene, character, text, delivery, pause_after_ms — only text is required; each `character` becomes a speaker), give each speaker a persona in Studio · Cast, and work the Lines tab.
 - **Recording a podcast script.** Projects → "+ New blank Project" → Project type "Podcast" → arrange voiced segments per chapter in Studio (a multi-track timeline is planned, not built).
-- **Dictating.** The global hotkey and in-app recording aren't built yet — see [Dictation](dictation.md). Settings → Capture holds the capture language and the cleanup switches.
+- **Dictating.** On Captures press **● Record**, speak, and press **■ Stop** — the recording is transcribed and cleaned up, and listed there ([Dictation](dictation.md)). Settings → Capture holds the capture language and the cleanup switches. There is no global hotkey in this release.
 
 ## Headless mode
 

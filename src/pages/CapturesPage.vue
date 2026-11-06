@@ -1,16 +1,21 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  CapturesView — dictation + voice-sample capture list. The animated
-  CapturePill component surfaces live state; the table lists past
-  captures with their transcripts.
+  Captures — dictation recorded here, and every capture with its transcripts.
+  ● Record (decided 2026-11-06, the finish run's item 2) records the default
+  microphone with the kit's recordMicrophone, makes it a WAV (toWav) and sends
+  it to POST /v1/captures as the microphone's: the server transcribes it,
+  cleans it when Settings → Capture says so, and keeps both texts. Global
+  hotkeys and pasting into another app are not in this release; the cards
+  that showed their keys, an auto-paste switch and the pill's window went with
+  that decision.
 -->
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { captureReadinessService } from "../services/projects.js";
 import { captureLanguageWord } from "../services/captureLanguage.js";
-import { pushToast, reportError, pageFlow } from "@delebash/ui";
-import { UiButton, UiInput, UiCheckbox, UiTag, UiChip } from "@delebash/ui";
+import { AiTaskStrips, pageFlow, pushToast, recordMicrophone, reportError, toWav, withAiTask } from "@delebash/ui";
+import { UiButton, UiInput, UiTag, UiChip } from "@delebash/ui";
 
 const api = useApi();
 
@@ -89,9 +94,58 @@ async function refreshReadiness() {
   }
 }
 
-// In-app record is not built yet (the Record button is disabled). Real
-// capture happens via the global dictation hotkey / the transparent
-// dictate window; this list reflects captures as they land.
+// ● Record: the microphone until ■ Stop, then the recording, as WAV, to the
+// server — its transcription a task on the page's strip (Cancel, Retry).
+const recording = ref(false);
+const recordStart = ref(0);
+const now = ref(0);
+let recorder = null;
+let ticker = null;
+async function toggleRecord() {
+  if (recording.value) return finishRecording();
+  try {
+    recorder = await recordMicrophone();
+  } catch (e) {
+    reportError(e, { title: "Microphone unavailable" });
+    return;
+  }
+  recordStart.value = now.value = Date.now();
+  ticker = setInterval(() => { now.value = Date.now(); }, 250);
+  recording.value = true;
+}
+async function finishRecording() {
+  const rec = recorder;
+  recorder = null;
+  recording.value = false;
+  clearInterval(ticker);
+  let wav;
+  try {
+    wav = await toWav(await rec.stop());
+  } catch (e) {
+    reportError(e, { title: "The recording failed" });
+    return;
+  }
+  await sendCapture(wav);
+}
+async function sendCapture(wav) {
+  try {
+    const capture = await withAiTask({ feature: "transcription", label: "Transcribing a recording", onRetry: () => sendCapture(wav) },
+      (task) => {
+        const form = new FormData();
+        form.append("file", new File([wav], "recording.wav", { type: "audio/wav" }));
+        form.append("source", "mic");
+        return api.postForm("/v1/captures", form, { signal: task.signal });
+      });
+    await refresh();
+    selectedId.value = capture.id;
+  } catch (e) {
+    reportError(e, { title: "Couldn't transcribe the recording" });
+  }
+}
+onBeforeUnmount(() => {
+  clearInterval(ticker);
+  recorder?.stop().catch(() => {}); // leaving the page lets the microphone go; the recording is dropped
+});
 
 function fmtDuration(ms) {
   if (!ms) return "0:00";
@@ -117,51 +171,19 @@ onMounted(() => {
 
 <template>
   <q-page :style-fn="pageFlow" class="captures jv-fill">
-    <!-- ── Top band: hotkeys + animated pill preview (preview parity) ── -->
+    <!-- ── Top band: where a recording comes from and the language it's heard in ── -->
     <div class="captures__top">
-      <section class="jv-card captures__hotkeys">
-        <h3 class="jv-eyebrow captures__band-h">Hotkeys <UiTag intent="ghost">coming soon</UiTag></h3>
-        <div class="captures__hotkey-row">
-          <span class="jv-chip-card">
-            🎚️ Push-to-talk:
-            <strong>
-              <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
-            </strong>
-            <UiButton intent="ghost" size="small" :disabled="true" title="Rebinding the hotkey is coming soon" label="Change" />
-          </span>
-          <span class="jv-chip-card">
-            🎙️ Toggle:
-            <strong>
-              <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
-            </strong>
-            <UiButton intent="ghost" size="small" :disabled="true" title="Rebinding the hotkey is coming soon" label="Change" />
-          </span>
-          <span class="jv-chip-card">
-            🔉 Source: <strong>Default mic</strong>
-          </span>
+      <section class="jv-card captures__setup">
+        <h3 class="jv-eyebrow captures__band-h">Recording</h3>
+        <div class="captures__setup-row">
+          <span class="jv-chip-card">🔉 Source: <strong>Default mic</strong></span>
           <span class="jv-chip-card">
             🌐 Capture language: <strong>{{ captureLanguageWord(captureLanguage) }}</strong>
           </span>
-          <UiCheckbox :model-value="true" disabled title="Configurable soon" class="jv-chip-card captures__autopaste">🤖 Auto-paste</UiCheckbox>
         </div>
-        <p class="jv-muted captures__pill-hint" style="margin-top:8px">
-          Global hotkeys and auto-paste are coming soon; these are the keys they will use.
-        </p>
-      </section>
-
-      <section class="jv-card captures__pill-preview">
-        <h3 class="jv-eyebrow captures__band-h">Capture pill states</h3>
-        <div class="captures__pill-states">
-          <span class="cap-pill cap-pill--recording">
-            <span class="bars"><span></span><span></span><span></span><span></span><span></span></span>
-            Recording 0:04
-          </span>
-          <span class="cap-pill cap-pill--transcribing">⋯ Transcribing</span>
-          <span class="cap-pill cap-pill--refining">✓ Refining</span>
-          <span class="cap-pill cap-pill--rest">○ Rest</span>
-        </div>
-        <p class="jv-muted captures__pill-hint">
-          How the dictation pill looks while it works, in its own small window.
+        <p class="jv-muted captures__hint">
+          ● Record dictates here: what you say is transcribed, cleaned up and listed below.
+          Settings → Capture sets the language and the cleanup.
         </p>
       </section>
     </div>
@@ -171,13 +193,14 @@ onMounted(() => {
       <div class="captures__list-header">
         <span class="jv-section__title" style="margin:0;">Captures</span>
         <UiButton
-          intent="primary"
+          :intent="recording ? 'danger-outline' : 'primary'"
           size="small"
-          label="Record (soon)"
-          :disabled="true"
-          title="Recording from inside the app is coming soon. Captures made through the API (POST /v1/captures) show here."
+          :label="recording ? `■ Stop · ${fmtDuration(now - recordStart)}` : '● Record'"
+          :title="recording ? 'Stop, and transcribe what you said' : 'Dictate with your microphone'"
+          @click="toggleRecord"
         />
       </div>
+      <AiTaskStrips :features="['transcription']" />
       <div class="captures__search">
         <UiInput v-model="search" placeholder="Search transcripts…" size="small" width="name" />
         <div class="captures__filters">
@@ -206,7 +229,7 @@ onMounted(() => {
       </div>
 
       <p v-if="filtered.length === 0" class="captures__empty jv-muted">
-        No captures yet. Press your global dictation hotkey, or open the dictate window from the topbar.
+        No captures yet. Press ● Record to dictate.
       </p>
 
       <div
@@ -240,7 +263,7 @@ onMounted(() => {
     <!-- ── Detail pane ──────────────────────────────────────────────── -->
     <div class="captures__detail jv-card">
       <div v-if="!selectedCapture" class="captures__detail-empty jv-muted">
-        <p>Select a capture to inspect, or press the dictation hotkey to record.</p>
+        <p>Select a capture to read its transcript, or press ● Record to dictate.</p>
       </div>
       <template v-else>
         <h2>Capture <span class="jv-mono">{{ selectedCapture.id.slice(0, 8) }}</span></h2>
@@ -279,91 +302,27 @@ onMounted(() => {
   gap: 16px;
 }
 
-.captures__top {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-@media (max-width: 900px) {
-  .captures__top { grid-template-columns: 1fr; }
-}
+/* the one card as wide as what it holds (the layout rule: nothing stretches to the page's width) */
+.captures__top { grid-column: 1 / -1; display: flex; min-width: 0; }
+.captures__top > .jv-card { max-width: 100%; }
 /* At phone width (Quasar's xs) the list sits over the capture it opens, each as tall as what it
    holds, and the page scrolls: the list's 380 px column ran 106 px past a 390 px window and the
    page scrolled sideways (2026-10-15). Stacked inside the pane's fixed height, the list's row
    was left no height at all. */
 @media (max-width: 599.98px) {
   .captures { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; flex: none; }
-  .captures__top { grid-template-columns: minmax(0, 1fr); }
 }
-.captures__hotkeys, .captures__pill-preview { padding: 14px 18px; }
+.captures__setup { padding: 14px 18px; }
 .captures__band-h,
 .captures__sub-h { margin: 0 0 10px; }
 .captures__sub-h:not(:first-of-type) { margin-top: 16px; }
-.captures__hotkey-row {
+.captures__setup-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
 }
-.captures__autopaste {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.captures__pill-states {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 14px;
-}
-.captures__pill-hint { font-size: 12.5px; margin: 10px 0 0; }
-
-/* Capture-pill visual styles — match the standalone dictation window's pill (pages/DictatePage.vue) */
-.cap-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 500;
-}
-.cap-pill--recording { background: rgba(196, 60, 60, 0.92); }
-.cap-pill--transcribing { background: #2c2c2e; }
-/* text on the accent is the contract's --on-accent (white in light, near-black in dark); Rest takes the
-   pill's own ground, as the real pill (CapturePill.vue) — its lighter one left white text at 3.3:1 */
-.cap-pill--refining { background: var(--accent); color: var(--on-accent); }
-.cap-pill .bars {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 14px;
-}
-.cap-pill .bars > span {
-  display: inline-block;
-  width: 3px;
-  background: #fff;
-  border-radius: 1px;
-  animation: capPillBar 0.9s ease-in-out infinite;
-}
-.cap-pill .bars > span:nth-child(1) { height: 30%; animation-delay: 0ms; }
-.cap-pill .bars > span:nth-child(2) { height: 70%; animation-delay: 100ms; }
-.cap-pill .bars > span:nth-child(3) { height: 50%; animation-delay: 200ms; }
-.cap-pill .bars > span:nth-child(4) { height: 90%; animation-delay: 300ms; }
-.cap-pill .bars > span:nth-child(5) { height: 40%; animation-delay: 400ms; }
-@keyframes capPillBar {
-  0%, 100% { transform: scaleY(0.5); }
-  50%      { transform: scaleY(1); }
-}
-
-/* The keycaps are the canonical .kbd (app.scss); only their spacing is this view’s. */
-.kbd { margin: 0 1px; }
-.caret { color: var(--ink-3); font-size: 10px; }
+.captures__hint { font-size: 12.5px; margin: 10px 0 0; }
 
 /* List pane */
 .captures__list { display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding: 0; }
@@ -400,7 +359,6 @@ onMounted(() => {
 
 /* Detail pane */
 .captures__detail { padding: 28px; overflow-y: auto; }
-.captures__pill-row { display: flex; justify-content: center; padding: 16px 0 20px; }
 .captures__detail-empty { text-align: center; padding: 40px; }
 .captures__meta-table { margin: 14px 0 20px; }
 .captures__meta-table td { font-size: 13px; padding: 6px 12px 6px 0; border: none; }

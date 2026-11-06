@@ -2,6 +2,17 @@
 
 ## v0.1.0
 
+- **Dictate on Captures (2026-11-06)** — **● Record** records your microphone until **■ Stop**; the
+  recording is transcribed and cleaned up, and the new capture opens in the list
+  ([Dictation](dictation.md)). Captures no longer shows a Hotkeys card or the pill's states, and Home
+  no longer says global hotkeys are coming: they and pasting into another app are not in this release
+- **Smart-assign keeps the personas you picked (2026-11-06)** — on Cast it only fills the speakers with
+  no persona, and its message counts the speakers it cast. To re-cast everyone, ✕ Clear personas
+  first ([Studio → Cast](studio.md))
+- **Every fold shows its arrow (2026-11-06)** — "Advanced (2)" on a line's panel, a model's load
+  options and the AI page's folds have their ▸ again; they read as plain text before
+- **Discover's evidence quotes (2026-11-06)** — a quote no longer starts or ends on a stray quote mark
+  whose partner the AI cut off
 - **Error messages read as sentences (2026-11-05)** — a failure's message says what failed and the
   server's reason in its own words — *Save failed* over "speaker 7 not found in this book" — where
   it read "Save failed: HTTP 409 — speaker 7 not found in this book". A server fault adds its log

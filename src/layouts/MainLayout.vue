@@ -56,7 +56,7 @@ const VIEWS = [
   // Always visible (queue item 11): dictation is a cross-cutting utility
   // for all five audiences — the focus gate made it vanish the moment an
   // audiobook project set workspace focus (user: "where is that?").
-  { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection." },
+  { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictate with ● Record — what you say is transcribed and cleaned up. A capture can be the clip a persona is cloned from." },
 
   // ─── Library lane ──────────────────────────────────────────────────
   // Says what the page is FOR. The old lede was a feature list with counts

@@ -2,28 +2,26 @@
 
 JustVoice's dictation turns a recording into text: the local speech recogniser (Qwen3-ASR) transcribes it, and an optional cleanup pass by a language model tidies it.
 
-**Not built yet: starting a recording from the app, and pasting the result.** There is no global hotkey — the old Tauri shell's hotkey monitor, which the app never turned on, went with Tauri on 2026-10-08, and the Electron shell has none — and the Captures tab's **Record (soon)** button is off. What works today is the server side: a recording sent to `POST /v1/captures` is transcribed and cleaned as this page describes, and appears on the Captures tab. The hotkey, the floating pill and paste-into-any-field are planned; the sections below that describe them say so.
+**Dictate on the Captures tab: press ● Record, speak, press ■ Stop.** The button counts the time while it records. The first time, the app asks to use your microphone (the window's own permission prompt; it records the system's default input). When you stop, the recording goes to the server as a WAV, which transcribes it and cleans it up as this page describes. The transcription runs as a task on the tab's strip, with Cancel and, if it fails, Retry. The new capture then opens in the list. Leaving the tab while it records drops the recording. A recording sent to `POST /v1/captures` from another program is handled the same way and shows on the tab too.
+
+**Not in this release: a global hotkey, and pasting the result into another app** (decided 2026-11-06). Both need research first. The old Tauri shell's hotkey monitor, which the app never turned on, went with Tauri on 2026-10-08, and the Electron shell has none.
 
 The recogniser is the **Transcription** feature's model, set on **AI Settings → Routing by feature**: its card's **Transcription model** — *Transcription — qwen3-asr-1.7b-q8*, Qwen3-ASR 1.7B, as JustVoice ships it — and its **Runs on** (**Auto**, **Graphics card** or **CPU**; see [AI features → Transcription](ai-features.md#transcription)). It runs in the same speech runtime as the voice engines (see [Engines → The speech runtime](engines.md#the-speech-runtime)), so the runtime must be installed; dictation downloads the model the first time it needs it, then loads it. It replaced Whisper on 2026-10-01: on human speech it got fewer words wrong in English, German, French and Russian, about level in Spanish, and somewhat worse in Japanese and Chinese. Unlike Whisper it reports no confidence score.
 
-## 6-gate readiness checklist
+## Before the first dictation
 
-Before dictation works end-to-end, all six gates must pass. The Captures tab shows a live status:
+When a check fails, the Captures tab shows a **Dictation readiness** banner with two checks:
 
-| Gate | What's checked |
+| Check | What it needs |
 |---|---|
-| 🎙️ Microphone permission | OS-level access to default input |
-| ⌨️ Input Monitoring (macOS) | Will be needed to read global keystrokes for the hotkey — not built yet |
-| ♿ Accessibility (macOS) | Will be needed to paste into another app (sending Cmd-V) — not built yet |
-| 🤖 STT model | The speech runtime is installed and the Transcription feature's model — Qwen3-ASR 1.7B, 3.6 GB with its word aligner, as JustVoice ships it — is on this computer; it loads on first use. While it downloads, the gate shows how far along it is |
-| 💬 LLM refinement model | The **Dictation cleanup** route resolves to a text-AI model (AI Settings → Routing by feature; skip-able if you want the raw transcript) |
-| ⏯ Push-to-talk chord | A chord for the global hotkey — not wired yet (see [Hotkeys](#hotkeys)) |
+| The speech recogniser | The speech runtime is installed and the Transcription feature's model is on this computer. As JustVoice ships it, that is Qwen3-ASR 1.7B, 3.6 GB with its word aligner. It loads on first use |
+| The cleanup model | The **Dictation cleanup** route resolves to a text-AI model (AI Settings → Routing by feature). Without one, the raw transcript is kept |
 
-Click any failing gate to open the matching System Settings pane (macOS) or fix instructions (Windows / Linux).
+The microphone itself is asked for when you first press ● Record. A refused or missing microphone says *Microphone unavailable* and records nothing.
 
 ## Hotkeys
 
-**Not wired yet.** The plan is two global chords — **push-to-talk** (hold to record, release to stop and transcribe) and **toggle** (press to start, press again to stop). Nothing listens for them — the desktop shell has no hotkey monitor since the move to Electron (2026-10-08) — and there is nowhere to set a chord: the Hotkeys card that showed fixed chords in Settings → Capture, with Edit and Clear buttons that did nothing, was removed on 2026-10-05. The idea is in the backlog.
+**Not in this release.** Nothing listens for a global key, and there is nowhere to set one. Captures' Hotkeys card, which showed fixed chords and an auto-paste switch that did nothing, was removed on 2026-11-06 (Settings → Capture's own went on 2026-10-05).
 
 ## Cleanup
 
@@ -44,14 +42,11 @@ tab shows the refined transcript with the raw one beneath it.
 
 ## Pasting the result
 
-**Not built yet.** The plan is to paste the cleaned text into the focused window (Cmd-V on macOS, Ctrl-V on Windows and Linux) and put the clipboard back afterwards. Settings → Capture's *Allow auto-paste* switch, which saved nothing, was removed on 2026-10-05; the setting returns when pasting is built.
+**Not in this release.** Copy a capture's text from its page. Settings → Capture's *Allow auto-paste* switch, which saved nothing, was removed on 2026-10-05.
 
 ## Capture sources
 
-- **Default mic** — your system input.
-- **System audio** — the loopback / what's currently playing (good for transcribing a podcast you're listening to, or capturing TTS-engine output from another app).
-
-System-audio capture uses cpal / WASAPI loopback / ScreenCaptureKit depending on OS. macOS 10.15+ required for system audio.
+● Record records the system's default microphone; the capture is marked **mic**. A program sending a recording to `POST /v1/captures` names its source: `mic`, `system_audio` or `upload` (the default). JustVoice itself doesn't record system audio.
 
 ## Captures and your own voice
 

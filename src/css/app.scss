@@ -1273,7 +1273,7 @@ progress {
 @media (max-width: 700px) {
   .jv-knob-grid { grid-template-columns: minmax(0, 1fr); }
 }
-/* A fold: a <details> whose summary reads as a quiet line — "Advanced (N)" under a knob grid, the
+/* A fold: a <details> whose summary reads as a quiet line with the browser's ▸ (the kit's theme.css, 2026-11-06) — "Advanced (N)" under a knob grid, the
    settings audio.cpp's own screen doesn't show (decided 2026-10-15), as the kit's ConfigColumn
    folds its samplers. Under a grid it takes the grid's whole row. */
 .jv-fold > summary { cursor: pointer; width: max-content; font-size: 12.5px; color: var(--ink-2); }

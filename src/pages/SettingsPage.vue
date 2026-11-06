@@ -417,7 +417,7 @@ const updater = desktopUpdater();
 // self_correction / preserve_technical — AI Settings' Dictation cleanup card shows the
 // same ones). Until then this tab was a localStorage mock nothing read — a
 // refinement-mode dropdown, auto-paste, a playback voice and a hotkeys card
-// with fixed chords. Global hotkeys are an idea (docs/dev/IDEAS.md).
+// with fixed chords. Global hotkeys are not in this release (decided 2026-11-06).
 const captureLanguage = ref("auto");
 const CAPTURE_LANGUAGE_OPTIONS = ["auto", ...CAPTURE_LANGUAGES].map((c) => ({ value: c, label: captureLanguageWord(c) }));
 async function loadCaptureLanguage() {

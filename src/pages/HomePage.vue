@@ -10,7 +10,8 @@
     row 2 — six stat cards (Projects/Voices/Personas/Lexicons/Cache/Captures)
     row 3 — Active tasks panel · Loaded engine card
     row 4 — Recent generations list
-    footer — global hotkey banner
+  (The footer's global-hotkey banner went 2026-11-06: hotkeys are not in this
+  release, and Captures' ● Record dictates.)
 
   The bootstrap arc (no engine yet / no project yet) keeps a single
   compact next-step banner above row 1; the mock assumes a warmed-up
@@ -466,12 +467,6 @@ onMounted(() => {
       </template>
     </div>
 
-    <!-- Hotkeys: nothing listens for them yet, so the banner says only that (2026-11-05: it said
-         "Press … anywhere to speak" when the setting was on, and "flip them on in Captures", where
-         no switch is). -->
-    <div class="jv-banner home__hotkeys">
-      Global hotkeys to speak and dictate from anywhere are coming soon — see <a href="#captures">Captures</a>.
-    </div>
   </q-page>
 </template>
 
@@ -518,8 +513,6 @@ onMounted(() => {
 .home__gen-meta { flex: none; font-size: 12.5px; }
 .home__next { display: flex; gap: 10px; align-items: center; text-decoration: none; }
 .home__next-cta { color: var(--accent-ink); font-weight: 600; }
-.home__hotkeys { font-size: 12.5px; }
-.home__hotkeys .jv-mono { font-size: 12.5px; background: var(--surface-3); padding: 1px 6px; border-radius: 4px; }
 
 .home__hero { padding: 26px 30px; margin: 0; text-align: left; }
 .home__hero-title { font-size: 24px; margin: 6px 0 4px; }
