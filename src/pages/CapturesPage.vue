@@ -145,7 +145,7 @@ onMounted(() => {
           <UiCheckbox :model-value="true" disabled title="Configurable soon" class="jv-chip-card captures__autopaste">🤖 Auto-paste</UiCheckbox>
         </div>
         <p class="jv-muted captures__pill-hint" style="margin-top:8px">
-          These defaults are shown for reference — configuring them in-app is coming soon.
+          Global hotkeys and auto-paste are coming soon; these are the keys they will use.
         </p>
       </section>
 
@@ -161,7 +161,7 @@ onMounted(() => {
           <span class="cap-pill cap-pill--rest">○ Rest</span>
         </div>
         <p class="jv-muted captures__pill-hint">
-          The pill renders in a separate transparent window (<code>?view=dictate</code>) — see the "Show dictate" button in the topbar.
+          How the dictation pill looks while it works, in its own small window.
         </p>
       </section>
     </div>
@@ -175,7 +175,7 @@ onMounted(() => {
           size="small"
           label="Record (soon)"
           :disabled="true"
-          title="In-app record is coming soon — press your global dictation hotkey, or open the dictate window from the topbar, to capture now."
+          title="Recording from inside the app is coming soon. Captures made through the API (POST /v1/captures) show here."
         />
       </div>
       <div class="captures__search">

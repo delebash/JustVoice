@@ -2,7 +2,7 @@
 
 JustVoice's dictation turns a recording into text: the local speech recogniser (Qwen3-ASR) transcribes it, and an optional cleanup pass by a language model tidies it.
 
-**Not built yet: starting a recording from the app, and pasting the result.** The global hotkey is not wired — the desktop shell has a hotkey monitor, but the app never turns it on — and the Captures tab's **Record (soon)** button is off. What works today is the server side: a recording sent to `POST /v1/captures` is transcribed and cleaned as this page describes, and appears on the Captures tab. The hotkey, the floating pill and paste-into-any-field are planned; the sections below that describe them say so.
+**Not built yet: starting a recording from the app, and pasting the result.** There is no global hotkey — the old Tauri shell's hotkey monitor, which the app never turned on, went with Tauri on 2026-10-08, and the Electron shell has none — and the Captures tab's **Record (soon)** button is off. What works today is the server side: a recording sent to `POST /v1/captures` is transcribed and cleaned as this page describes, and appears on the Captures tab. The hotkey, the floating pill and paste-into-any-field are planned; the sections below that describe them say so.
 
 The recogniser is the **Transcription** feature's model, set on **AI Settings → Routing by feature**: its card's **Transcription model** — *Transcription — qwen3-asr-1.7b-q8*, Qwen3-ASR 1.7B, as JustVoice ships it — and its **Runs on** (**Auto**, **Graphics card** or **CPU**; see [AI features → Transcription](ai-features.md#transcription)). It runs in the same speech runtime as the voice engines (see [Engines → The speech runtime](engines.md#the-speech-runtime)), so the runtime must be installed; dictation downloads the model the first time it needs it, then loads it. It replaced Whisper on 2026-10-01: on human speech it got fewer words wrong in English, German, French and Russian, about level in Spanish, and somewhat worse in Japanese and Chinese. Unlike Whisper it reports no confidence score.
 
@@ -13,8 +13,8 @@ Before dictation works end-to-end, all six gates must pass. The Captures tab sho
 | Gate | What's checked |
 |---|---|
 | 🎙️ Microphone permission | OS-level access to default input |
-| ⌨️ Input Monitoring (macOS) | Required to read raw global keystrokes for hotkey detection |
-| ♿ Accessibility (macOS) | Required for paste injection (synthesizing Cmd-V) |
+| ⌨️ Input Monitoring (macOS) | Will be needed to read global keystrokes for the hotkey — not built yet |
+| ♿ Accessibility (macOS) | Will be needed to paste into another app (sending Cmd-V) — not built yet |
 | 🤖 STT model | The speech runtime is installed and the Transcription feature's model — Qwen3-ASR 1.7B, 3.6 GB with its word aligner, as JustVoice ships it — is on this computer; it loads on first use. While it downloads, the gate shows how far along it is |
 | 💬 LLM refinement model | The **Dictation cleanup** route resolves to a text-AI model (AI Settings → Routing by feature; skip-able if you want the raw transcript) |
 | ⏯ Push-to-talk chord | A chord for the global hotkey — not wired yet (see [Hotkeys](#hotkeys)) |
@@ -23,7 +23,7 @@ Click any failing gate to open the matching System Settings pane (macOS) or fix 
 
 ## Hotkeys
 
-**Not wired yet.** The plan is two global chords — **push-to-talk** (hold to record, release to stop and transcribe) and **toggle** (press to start, press again to stop). The desktop shell has the monitor for them, but nothing turns it on, and there is nowhere to set a chord: the Hotkeys card that showed fixed chords in Settings → Capture, with Edit and Clear buttons that did nothing, was removed on 2026-10-05. The idea is in the backlog.
+**Not wired yet.** The plan is two global chords — **push-to-talk** (hold to record, release to stop and transcribe) and **toggle** (press to start, press again to stop). Nothing listens for them — the desktop shell has no hotkey monitor since the move to Electron (2026-10-08) — and there is nowhere to set a chord: the Hotkeys card that showed fixed chords in Settings → Capture, with Edit and Clear buttons that did nothing, was removed on 2026-10-05. The idea is in the backlog.
 
 ## Cleanup
 

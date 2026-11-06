@@ -303,22 +303,24 @@ script as CSV or a speaker-labeled markdown file and use those adapters.
 
 ### Writing your own adapter
 
-1. Create `server/justvoice/imports/adapters/<your_source>.py`. Export
-   `SOURCE_ID` (snake_case string) and `parse(raw: bytes, *, filename:
-   str | None = None) -> StandardImport`. Raise `bad_request(...)` on
-   any parse error so the server surfaces RFC 7807 problem-details.
+1. Create `server/src/imports/adapters/<your_source>.js`. Export
+   `SOURCE_ID` (a snake_case string) and `parse(raw, { filename = null } = {})`,
+   which takes the file's bytes and returns the standard import
+   (`server/src/imports/standard_schema.js` `StandardImport`). Throw
+   `badRequest(...)` (`server/src/errors.js`) on any parse error so the
+   server answers with RFC 7807 problem details — `adapters/srt.js` is a
+   short example.
 
-2. Register it in `server/justvoice/imports/__init__.py` by appending a
-   `(AdapterInfo(...), parse)` tuple to `_ADAPTER_REGISTRY`. Set
-   `docs_anchor` to a stable id you'll use as a section anchor in
-   this document — the GUI passes it through `data-help-key` for the
-   future help-bus integration.
+2. Register it in `server/src/imports/index.js` by adding an
+   `[info({...}), parse]` pair to `_ADAPTER_REGISTRY`: its label and
+   description in the user's words, its file extensions, `implemented`,
+   `says_who_speaks`, and a `docs_anchor` — a stable id for its section
+   in this document.
 
-3. Add a test class to `server/tests/test_projects.py` mirroring the
-   shipped ones — exercise a representative payload through the
-   `/v1/projects/import` endpoint, assert the resulting `standard`
-   shape, and commit at least one round-trip through
-   `committed=true` so the project store records it.
+3. Add a test beside the shipped ones (`server/tests/import_*.test.js`,
+   e.g. `import_srt_and_labels.test.js`): send a representative file
+   through `POST /v1/projects/import`, check the `standard` it gives, and
+   import it once for real so the project holds it.
 
 4. Add a `### <a id="import-<source>"></a>` section to this document
    with the input shape, an example, and any nuances.
@@ -479,7 +481,7 @@ There are **no per-line JSON sidecar files** — the aggregate `manifest.json` i
 the only metadata artifact today. (A richer per-line sidecar for engine
 importers is a tracked idea, not a shipped feature.)
 
-Unreal / Unity integration plans: an `.uplugin` (Unreal) and `.unitypackage` (Unity) will consume this manifest format directly. Until those ship, write a small script in your engine to read manifest.json + load the WAVs as `USoundWave` / `AudioClip` assets.
+No Unreal or Unity plugin ships with JustVoice. A small script in your engine reads manifest.json and loads the WAVs as `USoundWave` / `AudioClip` assets.
 
 #### Whole project → voiceline ZIP
 

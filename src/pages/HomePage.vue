@@ -323,14 +323,6 @@ function fmtAgo(iso) {
   return `${Math.floor(ago / 86_400_000)} d`;
 }
 
-// ── Hotkey banner ─────────────────────────────────────────────────────
-const hotkeyEnabled = computed(() => !!settings.value?.captures?.hotkey_enabled);
-function chordLabel(keys) {
-  return (keys || []).map((k) => k.replace(/Right|Left/, "")).join("+") || "—";
-}
-const speakChord = computed(() => chordLabel(settings.value?.captures?.chord_toggle_to_talk_keys));
-const dictateChord = computed(() => chordLabel(settings.value?.captures?.chord_push_to_talk_keys));
-
 // ── Bootstrap banner (cold install — mock assumes a warmed-up state) ──
 // "Load your first voice model" only on a true first run: nothing loaded AND
 // nothing ever rendered (2026-10-06 — it showed whenever no model was loaded,
@@ -474,12 +466,11 @@ onMounted(() => {
       </template>
     </div>
 
-    <!-- Hotkey banner -->
-    <div class="jv-banner jv-banner--info home__hotkeys" v-if="hotkeyEnabled">
-      Press <span class="jv-mono">{{ speakChord }}</span> anywhere to speak · hold <span class="jv-mono">{{ dictateChord }}</span> to dictate — no project needed.
-    </div>
-    <div class="jv-banner home__hotkeys" v-else>
-      Global speak/dictate hotkeys are off — flip them on in <a href="#captures">Captures</a> to talk from anywhere in the OS.
+    <!-- Hotkeys: nothing listens for them yet, so the banner says only that (2026-11-05: it said
+         "Press … anywhere to speak" when the setting was on, and "flip them on in Captures", where
+         no switch is). -->
+    <div class="jv-banner home__hotkeys">
+      Global hotkeys to speak and dictate from anywhere are coming soon — see <a href="#captures">Captures</a>.
     </div>
   </q-page>
 </template>
