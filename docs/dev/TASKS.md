@@ -63,6 +63,32 @@
 
 ## The next build
 
+### The finish run's nine decisions: 2–9 at my rec; 1 waits for its tool by name (decided 2026-11-06)
+STATE:  DECIDED 2026-11-06 — shown (the finish run's reply, "Your decisions (my recommendation first)"):
+        "1. The installer ships no licence or notice files. … Rec: add rollup-plugin-license to the kit's
+        template … This is a new tool for the family, so it needs your word by name. 2. Dictation. Nothing
+        in the app records today. Rec: build a Record button on Captures before the release; it's small,
+        because recording already works on the persona clone page. Take the global hotkey and
+        paste-into-any-app off the lists for this release: both need research first. 3. Smart-assign on
+        Cast replaces personas you picked by hand. Rec: it only fills speakers with no persona, and its
+        message counts real changes. … Re-casting everyone still works: Clear personas, then Smart-assign.
+        4. Discover's evidence quotes can start with a stray quote mark. Rec: trim unmatched quote marks.
+        5. IDEAS (38 entries). Rec: remove 28 [the review: session 7174f3f8's scratchpad ideas_review.md].
+        Five merged "later" ideas remain: character voice controls, the timeline, the game pipeline, the
+        research sweep's audiobook ideas, and the Pocket/Qwen3 repeat note. … I recommend removing them
+        now (git keeps the text) and re-adding them after the release. 6. ROADMAP. Rec: remove everything
+        except dictation (item 2). … 7. Folds have no arrow. … Rec: bring the arrow back on every fold,
+        app and kit. 8. More feelings (item 4). Rec: close it with the nine we have. 9. The 1.18 GB
+        Phonon-2 file I downloaded … Rec: delete it." The user: "your rec go".
+WHY:    the release rule allows only do or remove (just-core TASKS "Each app's roadmap and ideas"); each
+        rec was attacked in the reply (2: no "dictate into any app" in v1; 3: against "applies straight
+        away, as it always has", 2026-10-16; 7: the quiet look of 2026-10-15).
+NOT:    1 under this go — a NOT STANDARD piece waits for its own word by name ("The installer carries no
+        licence or notice files" below).
+OPEN:   build 2–9; after the release, re-add the five "later" ideas from git (IDEAS.md before this item's
+        commit).
+GO:     given 2026-11-06 for 2–9.
+
 ### Finish JustVoice: everything I can fix, each decision attacked before the code (decided 2026-11-05)
 STATE:  DECIDED 2026-11-05 — after the feelings list was shown, the user: "just keep going fix all the
         things you think yo can to make it better and complete, this is rule think each decision you
@@ -320,41 +346,6 @@ OPEN:   Change folder, Remove the old copy and Move back show only in the deskto
         rightly shows "set by JUSTVOICE_DATA_DIR" in place of Change folder); the buttons themselves
         wait for a desktop run without that variable (the installed app, or `npm run dev`).
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
-
-### More feelings than nine, after round 8; the dictation pill's ring on any ground (decided 2026-10-24)
-STATE:  DECIDED 2026-10-24 — shown: "4. Should the app get more feelings than its nine, at least
-        relieved, curious and surprised, so it stops telling a voice "fearful" for a curious line? -
-        Lean: yes, after round 8's results, matched to what each engine can be told." "5.
-        CapturePill's focus ring shows only once, but it's 2 px white, so it disappears on a light
-        background. Should it get a second, dark ring outside the white one, as WCAG technique C40
-        recommends? - Lean: yes, a one-line style change." The user: "your rec go while i listen to
-        the pages".
-WHY:    4: on round 8's lines the app's direction step called relief happy and wondering, curiosity
-        and surprise fearful (`models.js` EMOTION_VALUES has nine), and every engine is told that
-        word; the user, listening: "happy is not the feeling of relief". (Corrected 2026-11-05,
-        RESEARCH §10.38: the app's live prompt calls relief happy but gives wondering, curiosity and
-        surprise no feeling; "fearful" was round 7's note prompt's.) 5: the look the 2026-10-20
-        rec waited for (TASKS "The kit's changes of 2026-10-19/20", 8): the ring shows once (the
-        pill's own shadow beats the kit's zero-specificity ring), but white on a light window is
-        invisible.
-NOT:    4 built before round 8 is scored.
-BUILT:  5 — `CapturePill.vue`: outline 2px white, box-shadow 0 0 0 4px #18181b (C40's form,
-        https://www.w3.org/WAI/WCAG22/Techniques/css/C40), the pill's shadow kept; seen focused by
-        Tab on a light ground, headless against the running dev app. Docs: whats-new.
-        2026-11-05, after rounds 8 and 9 were scored, shown as next: the fork's build and test, then
-        item 4 ("what each engine can be told and bring you the list of feelings for your words"). The
-        user: "your rec go lets get the app done in best shape".
-        Item 4, 2026-11-05 under the finish run's go: the list was decided by me (surprised, curious,
-        relieved, eager; manners get no feeling), built (f997b787), measured against the rule set before —
-        fewer wrong labels and none worse, else reverted — and REVERTED: the manner sentence made the
-        model mark nearly every line of chapter IX; without it, relief and eagerness and surprise were
-        labelled right more often (16 wrong → 13) but polite and hurried lines got worse and 10 shouted
-        lines turned surprised (RESEARCH §10.38). The live database's direction rows put back.
-OPEN:   4 — the user's word on what next. Options measured or open: the same four with the polite and
-        hurried lines watched over more runs (one run each so far); only "relieved" (the user's own
-        example, 1 of 2 right); or no new labels, and the label left out of what a words engine is told
-        when the line has its own words (untested by ear).
-GO:     given 2026-10-24 ("your rec go while i listen to the pages").
 
 ### Round 7 — Drama 3 directed in the app, a delivery note, the narrator's own voice (decided 2026-10-19)
 STATE:  DECIDED 2026-10-19 — after the user's ears on round 6 and the whispers page (RESEARCH
