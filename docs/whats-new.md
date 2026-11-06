@@ -8,8 +8,8 @@
   /v1/voices/clone` and a clone preview, where an empty or garbled clip was stored; `POST
   /v1/voices/preview/stream-ticket` without its voices, weights or segments is the 400 `POST
   /v1/voices/preview` answers, not a 500; a voice's preview with a delivery value it can't take
-  (`"speed": "fast"`) is a 422 naming it, not a 500; and `GET /v1/takes/recent` rows lose `effects`,
-  which was always null. The app's own screens never sent any of these
+  (`"speed": "fast"`) is a 422 naming it, not a 500; and `GET /v1/takes/recent` rows lose `effects`
+  and `take`, which were always null. A clip's base64 may still be wrapped across lines. The app's own screens never sent any of these
 - **Webhooks fire, and stay signed after a restart (2026-11-05)** — the four events Settings →
   Webhooks offers (`render.completed`, `render.failed`, `generation.created`, `voice.created`) were
   never sent; now each fires from where it happens, with what it is about

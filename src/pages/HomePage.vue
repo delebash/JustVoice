@@ -466,7 +466,7 @@ onMounted(() => {
         <UiButton intent="ghost" size="small" label="▶" title="Play" @click="playGen(g)" />
         <span class="home__gen-text">{{ g.text || "—" }}</span>
         <span v-if="g.voice" class="jv-muted home__gen-who">{{ g.voice }}</span>
-        <span class="jv-mono jv-muted home__gen-meta">{{ g.take ? g.take + " · " : "" }}{{ fmtAgo(g.when) }}</span>
+        <span class="jv-mono jv-muted home__gen-meta">{{ fmtAgo(g.when) }}</span>
         <UiButton intent="ghost" size="small" title="Download WAV" @click="saveGen(g)">⬇</UiButton>
       </div>
       <!-- Compact inline player (2026-08-15: no global bottom bar). -->

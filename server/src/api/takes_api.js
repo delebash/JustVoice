@@ -74,16 +74,15 @@ export const TakeList = T.Object({
 
 export const UpdateTakeRequest = T.Object({ label: opt(nullable(T.String()), null) });
 
-/** A flat row for Home's Recent generations (when / voice / text preview / take / actions) — the
- * global history, unlike the block-scoped `TakeResponse`. (`effects`, always null — nothing writes a
- * generation's effects and nothing read it — was removed 2026-11-05: a Python leftover copied into
- * the port, as decided 2026-10-08.) */
+/** A flat row for Home's Recent generations (when / voice / text preview / actions) — the global
+ * history, unlike the block-scoped `TakeResponse`. (`effects` and `take`, always null — nothing
+ * filled them; `take` was the History table's, which went with Generate on 2026-10-05 — were
+ * removed 2026-11-05: Python leftovers copied into the port, as decided 2026-10-08.) */
 export const RecentTakeRow = T.Object({
   id: T.String(),
   when: DateTime(),
   voice: opt(nullable(T.String()), null),
   text: T.String(),
-  take: opt(nullable(T.String()), null),
   status: T.String(),
   audio_url: opt(nullable(T.String()), null),
 });
@@ -199,7 +198,6 @@ export function router() {
         // render sets, so every row said "?").
         voice: persona ? persona.name : null,
         text: cpSlice(r.text || "", 0, 120),
-        take: null,
         status: r.status,
         audio_url: r.audio_path ? `/v1/generations/${r.id}/audio` : null,
       };

@@ -1083,10 +1083,12 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         a_knob_value_the_delivery_refuses_is_a_422_naming_it); a ticket's stream fills no cache
         slot (a_tickets_stream_leaves_nothing_in_the_audition_cache); `RecentTakeRow.effects`
         removed — nothing writes a generation's effects and nothing read it (`takes.test.js`
-        a_row_carries_no_effects_field). The bundle.zip header is with agent 3's, below. OPEN:
-        `RecentTakeRow.take` is still always null — Home shows it when set (`HomePage.vue:469`) and
-        the takes table could fill it (Render's "take N" / "★ In use"), so filling or removing it
-        waits on the user's word. And from agent 3: a project
+        a_row_carries_no_effects_or_take_field). The bundle.zip header is with agent 3's, below.
+        `RecentTakeRow.take`, always null too, removed under the finish run's go (attacked: filling it —
+        Home showing "take N" — would be a new feature with its own words and a second copy of Render's
+        take name; nothing on screen changes) — its Home template and test with it. A clip in wrapped
+        (MIME) base64 is read: the strict check takes whitespace out first
+        (voices_clone_refusals.test.js a_clip_in_wrapped_base64_is_read). And from agent 3: a project
         export with a played persona that has a saved delivery is a 500; `DELETE
         /v1/generations?scope=<anything>&confirm=true` deletes every generation; `PATCH
         /v1/projects/{id}` always answers `scene_count: 0`; an unknown `speaker_id` on a line is a

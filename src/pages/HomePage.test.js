@@ -10,7 +10,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { DOMWrapper } from "@vue/test-utils";
 import { createTestApp } from "@delebash/ui/quasar/install.js";
 
-const GEN = { id: "gen-7", text: "The rain kept on.", voice: "June", take: 2, when: "2026-10-29T00:00:00Z", audio_url: "/v1/generations/gen-7/audio" };
+const GEN = { id: "gen-7", text: "The rain kept on.", voice: "June", when: "2026-10-29T00:00:00Z", audio_url: "/v1/generations/gen-7/audio" };
 const saveUrlAs = vi.fn(async () => ({ ok: true, downloaded: true }));
 
 vi.mock("../stores/api.js", () => ({

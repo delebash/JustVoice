@@ -259,7 +259,8 @@ const errText = (e) => e?.message ?? String(e);
 export function clipBytes(b64) {
   let raw;
   try {
-    raw = b64decode(b64, true);
+    // Strict, but MIME base64 (RFC 2045) wraps its lines: whitespace is taken out first.
+    raw = b64decode(typeof b64 === "string" ? b64.replace(/\s+/g, "") : b64, true);
   } catch (e) {
     throw badRequest(`invalid base64: ${errText(e)}`);
   }

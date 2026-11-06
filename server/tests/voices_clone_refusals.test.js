@@ -49,3 +49,14 @@ test("a_clip_that_is_not_base64_or_holds_nothing_is_refused_and_nothing_is_store
   const ok = await c.post("/v1/voices/clone", { json: { ...body, ref_wav_b64: clip() } });
   expect(ok.status, ok.text).toBe(201);
 });
+
+test("a_clip_in_wrapped_base64_is_read", async () => {
+  // MIME base64 (RFC 2045) wraps its lines — Python's base64.encodebytes, `base64` on the command
+  // line. The strict check refuses junk ("%%%"), not the line breaks: whitespace is taken out first.
+  const { clipBytes } = await import("../src/api/voices_api.js");
+  const raw = Buffer.from("RIFF0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghij");
+  const wrapped = raw.toString("base64").replace(/(.{20})/g, "$1\n");
+  expect(wrapped).toContain("\n");
+  expect(clipBytes(wrapped).equals(raw)).toBe(true);
+  expect(() => clipBytes("%%%")).toThrow();
+});

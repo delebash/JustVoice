@@ -346,7 +346,7 @@ describe("TestGenerationAudio", () => {
 });
 
 describe("TestRecentTakes", () => {
-  test("a_row_carries_no_effects_field", async () => {
+  test("a_row_carries_no_effects_or_take_field", async () => {
     // `effects` was always null — copied from Python on purpose (TASKS "The family moves to
     // Electron…", agent 2's list): nothing writes a generation's effects and nothing reads the
     // field. Removed 2026-11-05 as decided 2026-10-08.
@@ -356,7 +356,7 @@ describe("TestRecentTakes", () => {
       const resp = await c.get("/v1/takes/recent");
       expect(resp.status).toBe(200);
       const row = resp.json().takes.find((t) => t.id === g.id);
-      expect(Object.keys(row).sort()).toEqual(["audio_url", "id", "status", "take", "text", "voice", "when"]);
+      expect(Object.keys(row).sort()).toEqual(["audio_url", "id", "status", "text", "voice", "when"]);
     });
   });
 });

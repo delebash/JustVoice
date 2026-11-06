@@ -1814,7 +1814,9 @@ effect_presets, lexicons, pronunciation):
   kit's `ModelValidationError` text gives one line and counts a nullable union's null branch
   ("2 validation errors" where pydantic says 1; kit TODO); whole-number floats in JSON answers
   print `2` where Python printed `2.0` (JSON-equal).
-- Python bugs copied on purpose (FINDING in TASKS, fixed in JS after the final comparison): a
+- Python bugs copied on purpose (FINDING in TASKS; most were NOT fixed after the final comparison as
+  this line once said — fixed on 2026-11-05, each with its test, TASKS "The family moves to
+  Electron…"): a
   clone on an engine that can't clone (Kokoro) stores a voice with the engine id as its model
   (201); `ref_wav_b64: "%%%"` stores an empty clip (non-strict base64, 201); a blended
   stream-ticket with no ids or weights is a 500; a voice name past latin-1 makes `bundle.zip`
