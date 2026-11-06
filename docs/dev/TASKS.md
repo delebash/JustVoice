@@ -114,9 +114,17 @@ BUILT:  B1 da7d1b05 · B2 c8a7d653 · B7 860a18b8 · B3 abae21a1 (re-run words "
         (Engine binaries a list-item, ▸; the class and launch libraries open expanded, their ▸ rows shown);
         Storage's **Change folder…** in the installed app on its default folder. B5: ● Record through Chrome's
         fake microphone — "■ Stop · 0:09", a `mic` capture of 9 s, 19 of 19 words read back.
-OPEN:   B9's majors and pins with the family (Electron 45, jsdom 31, Biome, electron-builder), B10's rest (the
-        kit's pin — with the tag; the kit's 2026-10-20 changes 1, 3, 11 and the start checks are tested by the
-        release run), B11's e2e and smoke; then D1–D3 (the
+        D1's audiobooks, made 2026-11-06 on the merged fork's dev build (book_voices.narrator_model set to its
+        default, breeze_tts — the dev database still held the old voxcpm2, as clone_model did on 2026-10-19):
+        `data/one-click/Alice VII (release listen).m4b` — 15:22, 273 lines, 2 flagged; its four speakers matched
+        the library's personas of 2026-10-16 (VoxCPM2) and the narrator the persona "Narrator" (Kokoro am_echo);
+        `data/one-click/Alice VIII (release listen).m4b` — 18:22, 9 speakers, 7 voices designed (Qwen3-TTS
+        VoiceDesign → BreezeTTS 2), 181 lines, 2 flagged — the defaults' voices.
+CHECKED 2026-11-06, once at the end: lint; server 1298 (+1 skipped); unit 306; the guard; smoke every view,
+        zero JS errors (17494, the dev build, the user's data); e2e 10/10 (WCAG 2.2 AA light and dark included).
+OPEN:   B9's majors and pins with the family (Electron 45, jsdom 31, Biome, electron-builder — the "family
+        release" session sends them); B10's rest (the kit's pin — with the tag; the kit's 2026-10-20 changes 1, 3,
+        11 and the start checks are tested by the release run); then D1–D3 (the
         user's). After the release: re-add the five "later" ideas and the global hotkey and paste
         (`git show 69e00a8d:docs/dev/IDEAS.md`; the hotkey's ruling, a C++ addon: docs/plans/2026-10-05-electron-node-study.md §9).
 GO:     given 2026-11-06 ("your recs think adversierliy on it again … go").
