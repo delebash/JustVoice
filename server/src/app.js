@@ -46,7 +46,6 @@ import { router as bulkDeleteRouter } from "./api/bulk_delete_api.js";
 import { router as cacheRouter } from "./api/cache_api.js";
 import { router as captureReadinessRouter } from "./api/capture_readiness_api.js";
 import { router as capturesRouter } from "./api/captures_api.js";
-import { router as channelsRouter } from "./api/channels_api.js";
 import { router as effectPresetsRouter } from "./api/effect_presets_api.js";
 import { router as enginesRouter } from "./api/engines_api.js";
 import { jobs as exportJobs, router as exportJobsRouter } from "./api/export_jobs_api.js";
@@ -389,7 +388,6 @@ export async function createApp(dataDir = null) {
   // the book's exports run on its JobRegistry (api/export_jobs_api.js)
   app.route("/", makeJobsRouter(exportJobs));
   app.route("/", renderLinesRouter());
-  app.route("/", channelsRouter());
   app.route("/", mcpBindingsRouter());
   app.route("/", activeTasksRouter());
   app.route("/", captureReadinessRouter());

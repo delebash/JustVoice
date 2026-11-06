@@ -7,7 +7,7 @@
 //   afterEach(closeApps);
 //   const { c, app, dir } = await appClient();            // a fresh temp data dir
 //   const { c } = await appClient(dir, { seed: true });   // + seedWorkspace(), on a dir
-//   const r = await c.post("/v1/channels", { json: { name: "A" } });
+//   const r = await c.post("/v1/lexicons", { json: { name: "A" } });
 //   expect(r.status).toBe(201); expect(r.json().name).toBe("A");
 //   await c.post("/v1/captures", { files: { file: ["a.wav", buf, "audio/wav"] }, data: { source: "upload" } });
 //   client(app, { remoteAddress: "192.168.1.20" })        // TestClient(app, client=(host, port))

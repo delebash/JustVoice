@@ -14,7 +14,8 @@ FEATURES roots — lives in `../plans/archive/`):
 1. **`../../AGENTS.md`** — the working rules and pointers (`../../CLAUDE.md` imports it).
 2. **`TASKS.md`** — the live tracker (the F-arc convergence sequence, the open
    product questions extracted from the freeze, repo hygiene). **`IDEAS.md`** —
-   the backlog incl. the deferred-v1.1+ list. **`RESEARCH.md`** — what is already
+   the backlog (empty for the release since 2026-11-06; git keeps what it held, and
+   `ideas-release-review.md` why each entry went). **`RESEARCH.md`** — what is already
    known, by subject, with the proof (the speech runtime and its memory so far);
    read its section before researching anything (the family rule, 2026-10-04).
 3. **`design-decisions.md`** — THE distilled design record: product shape (five
@@ -28,7 +29,7 @@ FEATURES roots — lives in `../plans/archive/`):
    WAV shipped; the JSON sidecar — Phase 1's deliverable — and the `.uplugin` are
    not) · `external-import-formats.md` (the six-tool importer survey, unbuilt) ·
    `2026-06-24-audiobook-nlp-competitor-research.md` (21 upgrade ideas, most
-   unbuilt — indexed in `IDEAS.md`) · `journey-podcast.md` (the Timeline/episode-
+   unbuilt — once indexed in `IDEAS.md`) · `journey-podcast.md` (the Timeline/episode-
    export spec, kept whole as the design target for the biggest parity gap).
    The per-kind flow shapes also live in `CONCEPTS.md` §6 and the user docs
    (`projects.md`, `studio.md`, `lines.md`). The executed decision records

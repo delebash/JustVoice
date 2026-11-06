@@ -44,7 +44,7 @@ const KINDS = [
     icon: projectKind("game_voicelines").icon,
     label: projectKind("game_voicelines").name,
     // "string-table import" was here until 2026-08-08 and no adapter ever read
-    // one — the idea is in docs/dev/IDEAS.md. The card names only what imports.
+    // one — the idea left IDEAS 2026-11-06. The card names only what imports.
     bullets: ["Lines with stable IDs, grouped", "CSV / JSON import", "Re-render only changed lines"],
     foot: "Exports: per-line WAVs by ID + manifest.json",
   },
@@ -53,7 +53,7 @@ const KINDS = [
     icon: projectKind("podcast").icon,
     label: projectKind("podcast").name,
     // "Timeline assembly, music & SFX" went 2026-10-06: no timeline is built (the Stories
-    // placeholder was removed the same day; the design waits in IDEAS).
+    // placeholder was removed the same day; the design comes back after the release).
     bullets: ["Episodes & segments, multi-host", "Script import or write in-app"],
     foot: "Exports: episode WAV/MP3 · −16 LUFS stereo",
   },

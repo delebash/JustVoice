@@ -7,7 +7,6 @@
 export {
   Block,
   Capture,
-  Channel,
   EffectPreset,
   Generation,
   GenerationVersion,
@@ -15,7 +14,6 @@ export {
   LexiconEntry,
   MCPBinding,
   Persona,
-  PersonaChannel,
   Pref,
   Project,
   RenderJob,

@@ -41,7 +41,6 @@ registerDefaultFn("justvoice.database.models._uuid", uuid);
 registerDefaultFn("justvoice.database.models._utcnow", utcnow);
 
 export const Persona = "personas";
-export const PersonaChannel = "persona_channels";
 export const Lexicon = "lexicons";
 export const LexiconEntry = "lexicon_entries";
 export const Project = "projects";
@@ -56,7 +55,6 @@ export const RenderJobBlock = "render_job_blocks";
 export const BookRun = "book_runs";
 export const Story = "stories";
 export const StoryItem = "story_items";
-export const Channel = "channels";
 export const MCPBinding = "mcp_bindings";
 export const Capture = "captures";
 export const EffectPreset = "effect_presets";

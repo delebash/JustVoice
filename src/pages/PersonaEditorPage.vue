@@ -24,9 +24,8 @@
     · Hear it — the line through the same resolver a chapter renders with;
       Rewrite and Compose. Right above Save, below everything that shapes the
       sound (decided 2026-10-05).
-    · Save — Save, Revert, Save as new. (Train a LoRA left 2026-10-05: Trained is a
-      Type, beside Cloned — where its maker opens once training is rebuilt.) Blend is a kind
-      of voice now, not a button here.
+    · Save — Save, Revert, Save as new. (Train a LoRA left 2026-10-05, and the Trained
+      Type 2026-11-06.) Blend is a kind of voice now, not a button here.
   The right column: a summary, This model, Used by.
 
   A control the current model can't honour is shown, disabled, with its
@@ -318,12 +317,12 @@ const kindOptions = computed(() => {
     (v, k) => kindOf(v) === k);
   const d = directionFilter.value;
   return KINDS.map((k) => {
-    const opt = k.disabled ? k : { ...k, label: `${k.label} (${n[k.value] ?? 0})` };
+    const opt = { ...k, label: `${k.label} (${n[k.value] ?? 0})` };
     if (k.value === "blend" && Object.keys(caps.value).length && !canBlend.value) {
       return { ...opt, disabled: true,
         title: "Blends need a speech runtime that can play them — update it on AI Settings → Speech when an update is offered." };
     }
-    if (k.disabled || !d) return opt;
+    if (!d) return opt;
     const has = voices.value.some((v) => kindOf(v) === k.value && v.directed_by === d);
     if (has || (CAN_MAKE[k.value] || []).includes(d)) return opt;
     return { ...opt, disabled: true, title: OFF_REASON[k.value]?.[d] || "Nothing of this kind can be directed this way." };

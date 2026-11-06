@@ -73,7 +73,7 @@ STATE:  DECIDED 2026-11-06 — shown (the finish run's reply, "Your decisions (m
         Cast replaces personas you picked by hand. Rec: it only fills speakers with no persona, and its
         message counts real changes. … Re-casting everyone still works: Clear personas, then Smart-assign.
         4. Discover's evidence quotes can start with a stray quote mark. Rec: trim unmatched quote marks.
-        5. IDEAS (38 entries). Rec: remove 28 [the review: session 7174f3f8's scratchpad ideas_review.md].
+        5. IDEAS (38 entries). Rec: remove 28 [the review: docs/dev/ideas-release-review.md].
         Five merged "later" ideas remain: character voice controls, the timeline, the game pipeline, the
         research sweep's audiobook ideas, and the Pocket/Qwen3 repeat note. … I recommend removing them
         now (git keeps the text) and re-adding them after the release. 6. ROADMAP. Rec: remove everything
@@ -85,8 +85,18 @@ WHY:    the release rule allows only do or remove (just-core TASKS "Each app's r
         away, as it always has", 2026-10-16; 7: the quiet look of 2026-10-15).
 NOT:    1 under this go — a NOT STANDARD piece waits for its own word by name ("The installer carries no
         licence or notice files" below).
-OPEN:   build 2–9; after the release, re-add the five "later" ideas from git (IDEAS.md before this item's
-        commit).
+BUILT:  2026-11-06 — 2: Captures' ● Record (the kit's new recordMicrophone / toWav, kit 96e60248; JV
+        dff16f77), the hotkey card, pill card and Home banner gone. 3: f9229bc6. 4: 69e00a8d. 5: IDEAS
+        emptied (the review's 28 removed with what they left: the channels tables, route and hidden
+        section, the disabled Trained type, dead CSS, doc promises; blank Script rows removed — none of
+        the dev database's 767 lines is blank; the Stories tables KEPT, the 2026-08-15 ruling "keep the
+        tables"). 6: ROADMAP is its dictation section. 7: kit fbcc3f0b (theme.css gives summary its
+        list-item display back). 8: the item deleted. 9: the file and its blob deleted.
+        NOT built: the review's "better aligner error" for Arabic — RESEARCH §1.3: the aligner's
+        language only picks the word split, so Arabic doesn't fail; refusing languages outside its 11
+        is unmeasured.
+OPEN:   1 (its tool by name). After the release: re-add the five "later" ideas and the global hotkey
+        and paste (`git show 69e00a8d:docs/dev/IDEAS.md`).
 GO:     given 2026-11-06 for 2–9.
 
 ### Finish JustVoice: everything I can fix, each decision attacked before the code (decided 2026-11-05)
@@ -114,7 +124,7 @@ CHECKED 2026-11-06, once at the end, on the user's data under `npm run dev`: Dis
         smoke all views, zero JS errors; e2e 10/10; server 1294 (+1 skipped), unit 304, lint, the
         guard; kit UI 89. NOT looked at: Settings → Storage's Change folder in a run without
         JUSTVOICE_DATA_DIR (the desktop window itself; the e2e covers the run with it).
-OPEN:   the items that wait on the user's word (the finish run's reply of 2026-11-06).
+OPEN:   the finish run's nine decisions (the item above); item 1 waits on its tool by name.
 GO:     given 2026-11-05.
 
 ### Our audio.cpp fork is released with the family, once every app is done

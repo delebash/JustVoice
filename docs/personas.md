@@ -189,8 +189,7 @@ offers below.*
 
 **How it was made comes second.** *Type* lists the voices of one type, with
 how many — **Built-in · Cloned · Designed · Blended**, the words every screen
-uses for a voice's type ([Voices](voices.md)), and *Trained*, off until voice
-training is rebuilt. Under it: *What type of voice. Built-in voices come with
+uses for a voice's type ([Voices](voices.md)). Under it: *What type of voice. Built-in voices come with
 their model. Cloned, Designed and Blended list
 the voices you've made, and open their maker on the right so you can make a new
 one.*
@@ -201,7 +200,6 @@ one.*
 | Cloned | Voices cloned from a recording, imported ones too | This page — [New clone](#new-clone) |
 | Designed | Voices designed from a description, with or without a kept clip | This page — [New design](#new-design) |
 | Blended | Kokoro blends of two or more voices | This page — [New blend](#new-blend) |
-| Trained | Off: *LoRA training — not rebuilt yet.* When it is, its maker opens here like the others | — |
 
 A *Type* that can't be directed the way you picked is off, and says
 why when you click it. Under **Tags**: *Blended voices are Kokoro's: sliders

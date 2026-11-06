@@ -147,7 +147,7 @@ const typeFilter = ref("all");
 const TYPE_FILTERS = [
   { id: "all",      label: "All" },
   // The one set of type words (personaFacts.VOICE_KINDS, 2026-10-05) — Imported is Cloned.
-  ...VOICE_KINDS.filter((k) => !k.disabled).map((k) => ({ id: k.value, label: k.label })),
+  ...VOICE_KINDS.map((k) => ({ id: k.value, label: k.label })),
 ];
 
 // Voice hiding DIED 2026-08-21 ("remove hidden on voices grid that

@@ -39,7 +39,7 @@ That merge is gone:
 | **Cast** | **Not a table.** Each speaker's persona — `speakers.persona_id` (`ondelete=SET NULL`, `database/models.py:218`). One persona can play many speakers. | the Studio step `components/StudioCast.vue` |
 
 A line points at a speaker (`blocks.speaker_id`, `database/models.py:259`), and
-the speaker at its persona. **Generations, lexicons, channels and MCP bindings
+the speaker at its persona. **Generations, lexicons and MCP bindings
 stay on the persona** — they belong to the voice.
 
 **What lives on a Persona** (`database/models.py:83-129`) — the full list, because
@@ -260,8 +260,7 @@ podcast: show/episode/segment.
 | `takes` | `block_id` · `generation_id` · `source_take_id` · `is_default` · `label` | take versioning with lineage |
 | `generation_versions` | `generation_id` · `source_version_id` · `audio_path` · `effects_chain` · `is_default` | effect re-renders of one generation |
 | `render_jobs` / `render_job_blocks` | `scope` · `scope_ids_json` · counts · per-block `attempts` / `last_error` | resumable batch render |
-| `stories` / `story_items` | `track` · `start_time_ms` · `trim_start_ms/end_ms` · `volume` | the podcast timeline |
-| `channels` / `persona_channels` | `device_ids_json`; M2M to persona | per-persona output routing |
+| `stories` / `story_items` | `track` · `start_time_ms` · `trim_start_ms/end_ms` · `volume` | the podcast timeline (dormant: no route or page; the 2026-08-15 ruling keeps the tables) |
 | `captures` | `audio_path` · `transcript` · `raw_transcript` · `refinement_flags_json` · `pinned` | dictation |
 | `effect_presets` | `chain_json` · `is_builtin` · `sort_order` | named effect chains |
 | `webhooks` | `events_json` · `secret_hash` · `log_tail_json` | |
@@ -933,7 +932,7 @@ it, `/dictate` (the dictation window) and `/offline` (the connection-error page)
 unknown → `/home`; the design mocks, `router/mockRoutes.js`, in development only).
 
 **Redirect-only paths** that set `sessionStorage` then land on a parent:
-`/cache`, `/channels`, `/webhooks` → `/settings`; `/speakerlab` → `/ai?tab=features&action=speaker_attribution.guided`
+`/cache`, `/webhooks` → `/settings`; `/speakerlab` → `/ai?tab=features&action=speaker_attribution.guided`
 (the Speaker Lab died in the 2026-08-06 parity batch).
 
 | View | Lines | What it is |
@@ -952,7 +951,6 @@ unknown → `/home`; the design mocks, `router/mockRoutes.js`, in development on
 | `ImportReviewView` | 236 | Post-import check — **Chapter · Lines · Words · Est. audio** |
 | `WebhooksView` | 232 | Subscriptions |
 | `EffectsView` | 222 | Effect-chain presets |
-| `AudioChannelsView` | 172 | Output channels |
 | `AiView` | 97 | The AI console (kit) — tabs incl. `features`, `speech-engines` |
 
 ### StudioView's steps

@@ -150,37 +150,6 @@ export const TABLES = [
     }
   },
   {
-    "name": "channels",
-    "ddl": "CREATE TABLE channels (\n\tid VARCHAR NOT NULL, \n\tname VARCHAR NOT NULL, \n\tis_default BOOLEAN NOT NULL, \n\tdevice_ids_json TEXT NOT NULL, \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id), \n\tUNIQUE (name)\n)",
-    "indexes": [],
-    "columns": {
-      "id": {
-        "kind": "text",
-        "pk": true,
-        "notNull": true,
-        "defaultFn": "justvoice.database.models._uuid"
-      },
-      "name": {
-        "kind": "text",
-        "notNull": true
-      },
-      "is_default": {
-        "kind": "bool",
-        "notNull": true,
-        "default": false
-      },
-      "device_ids_json": {
-        "kind": "text",
-        "notNull": true,
-        "default": "[]"
-      },
-      "created_at": {
-        "kind": "datetime",
-        "defaultFn": "justvoice.database.models._utcnow"
-      }
-    }
-  },
-  {
     "name": "captures",
     "ddl": "CREATE TABLE captures (\n\tid VARCHAR NOT NULL, \n\taudio_path VARCHAR NOT NULL, \n\tsource VARCHAR NOT NULL, \n\tlanguage VARCHAR, \n\tduration_ms INTEGER, \n\ttranscript TEXT, \n\traw_transcript TEXT, \n\trefinement_flags_json TEXT, \n\tpinned BOOLEAN NOT NULL, \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id)\n)",
     "indexes": [],
@@ -344,23 +313,6 @@ export const TABLES = [
         "kind": "text",
         "notNull": true,
         "default": "{}"
-      }
-    }
-  },
-  {
-    "name": "persona_channels",
-    "ddl": "CREATE TABLE persona_channels (\n\tpersona_id VARCHAR NOT NULL, \n\tchannel_id VARCHAR NOT NULL, \n\tPRIMARY KEY (persona_id, channel_id), \n\tFOREIGN KEY(persona_id) REFERENCES personas (id) ON DELETE CASCADE, \n\tFOREIGN KEY(channel_id) REFERENCES channels (id) ON DELETE CASCADE\n)",
-    "indexes": [],
-    "columns": {
-      "persona_id": {
-        "kind": "text",
-        "pk": true,
-        "notNull": true
-      },
-      "channel_id": {
-        "kind": "text",
-        "pk": true,
-        "notNull": true
       }
     }
   },

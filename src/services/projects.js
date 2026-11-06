@@ -116,31 +116,6 @@ export const takesService = {
   },
 };
 
-export const channelsService = {
-  list() {
-    return withApi().get(`/v1/channels`);
-  },
-  create(body) {
-    return withApi().post(`/v1/channels`, body);
-  },
-  update(id, body) {
-    return withApi().patch(`/v1/channels/${id}`, body);
-  },
-  remove(id) {
-    return withApi().del(`/v1/channels/${id}`);
-  },
-  // Persona↔channel routing. These hit /v1/personas/… — the old
-  // /v1/profiles/… spelling 404s post-persona-rename (wiring-audit W6).
-  getPersonaChannels(personaId) {
-    return withApi().get(`/v1/personas/${personaId}/channels`);
-  },
-  setPersonaChannels(personaId, channelIds) {
-    return withApi().put(`/v1/personas/${personaId}/channels`, {
-      channel_ids: channelIds,
-    });
-  },
-};
-
 export const mcpBindingsService = {
   list() {
     return withApi().get(`/v1/mcp/bindings`);

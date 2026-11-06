@@ -730,7 +730,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── Cache / Channels / Webhooks (moved from the sidebar's Advanced lane) ─── -->
+    <!-- ─── Cache / Webhooks (moved from the sidebar's Advanced lane) ─── -->
     <div v-show="activeSub === 'cache'" class="jv-section"><CacheView /></div>
     <div v-show="activeSub === 'webhooks'" class="jv-section"><WebhooksView /></div>
 

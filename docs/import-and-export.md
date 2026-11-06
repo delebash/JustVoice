@@ -478,8 +478,8 @@ For game dialogue, the voicelines export packages:
   ```
 
 There are **no per-line JSON sidecar files** — the aggregate `manifest.json` is
-the only metadata artifact today. (A richer per-line sidecar for engine
-importers is a tracked idea, not a shipped feature.)
+the only metadata artifact. (A richer per-line sidecar for engine importers is
+not planned for this release.)
 
 No Unreal or Unity plugin ships with JustVoice. A small script in your engine reads manifest.json and loads the WAVs as `USoundWave` / `AudioClip` assets.
 

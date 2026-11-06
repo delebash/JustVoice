@@ -157,14 +157,6 @@ export function desktopUpdater() {
   };
 }
 
-// ─── Audio devices ───────────────────────────────────────────────────
-
-/** OS audio outputs for the Channels view. `[]` — as it was under Tauri, whose command was a
- *  placeholder returning an empty list; the picker stays empty until the feature is built. */
-export function listAudioOutputDevices() {
-  return Promise.resolve([]);
-}
-
 // ─── The dictation window (never created — study §7.1) ──────────────
 
 /** The dictation window's messages to and from the main window. The Tauri shell carried

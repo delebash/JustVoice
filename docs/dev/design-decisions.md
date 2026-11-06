@@ -6,7 +6,7 @@ Distilled 2026-08-04 by the docs campaign from `DESIGN_FREEZE.md` (2026-06-08),
 `CONTRACT.md` (2026-06-09), the 2026-06-24 full-convergence plan, and the Morning
 Recap — all now in `../plans/archive/`. Where code reversed a frozen decision, THIS
 doc states today's truth and §5 records the reversal. Open product questions from
-the freeze live in `TASKS.md`; the deferred list in `IDEAS.md`. The F1/F2
+the freeze live in `TASKS.md`; the deferred list was in `IDEAS.md` until 2026-11-06 (git keeps it). The F1/F2
 integration decisions record (2026-07-15) is executed history at
 `../plans/archive/2026-07-15-jv-shared-llm-integration-decisions.md` — F1 shipped
 ~90% of it as decided; its still-live residue was extracted to `TASKS.md`
@@ -117,10 +117,6 @@ integration decisions record (2026-07-15) is executed history at
   `persona_render.planLine` (`server/src/persona_render.js:320`): `/v1/generate`
   (`api/generate_api.js:249,362`), chapter render (`line_takes.planBlock`,
   `api/render_chapter_api.js:135`), persona previews (`api/personas_api.js:428,503`).
-- **Channel bindings are PERSONA-level** — `/v1/personas/:persona_id/channels`
-  (`server/src/api/channels_api.js:97,103`); the freeze's profile-level design shipped
-  differently. Its Settings section is hidden until routing a persona to an output is built
-  (decided 2026-10-15; `src/services/settingsSections.js`).
 - GPU: the kit's runtime installs the pinned fork build that suits the machine (Auto · CUDA ·
   Vulkan · CPU · Metal — just-core `runner/runtimes.js:97`), switchable on AI Settings →
   Speech (the kit's runtime tab); no PyTorch ships or installs. Each model runs on the
@@ -307,10 +303,10 @@ integration decisions record (2026-07-15) is executed history at
 |---|---|
 | Apache-2.0 (→ GPL when pedalboard) | MIT everywhere; first-party DSP, in our audio.cpp fork's `dsp/` since 2026-10-07 |
 | 9 engines v1 | Generated from audio.cpp's catalog: 81 on 2026-11-05, 51 speech + 30 recognition (`engines/audiocpp/generated.js:961`), plus external providers |
-| 13 tabs, flat | 13 pages in the layout + `/dictate` and `/offline` outside it (`src/router/routes.js`); Labs went 2026-10-08 (`41021123`; Train had gone to Voices, then was removed 2026-10-02); engines → AI Settings → Speech; Cache/Webhooks → **Settings** sections, Channels' section hidden |
+| 13 tabs, flat | 13 pages in the layout + `/dictate` and `/offline` outside it (`src/router/routes.js`); Labs went 2026-10-08 (`41021123`; Train had gone to Voices, then was removed 2026-10-02); engines → AI Settings → Speech; Cache/Webhooks → **Settings** sections; audio output channels removed 2026-11-06 (never built past their tables and API) |
 | `settings.json` atomic store | SQLite `settings` row; `/v1/prefs` for renderer prefs |
 | 3-way theme toggle in localStorage | the shared kit appearance engine, prefs in SQL |
-| channels bind to profiles | channels bind to **personas** |
+| channels bind to profiles | no audio output channels (removed 2026-11-06) |
 | `/v1/render_jobs*`, `/v1/generate_async`, per-gen stream/cancel | `/v1/render_chapter`, `/v1/render/cache-stats`, `/v1/generate/:generation_id/status` (SSE); `/v1/render_jobs` create · cancel · resume came back 2026-08-09 (`3a5a23d7`; `api/render_jobs_api.js:79-113`); no `generate_async` |
 | `/v1/backup` · `/v1/restore` (versioned manifest, replace or merge) | the kit's `/v1/data/backup` · `restore` · `reset` (2026-08-06, `f47776fa`): no version stamp, replace only (§2 "Backup format and size") |
 | `/v1/effects/available`·`/presets`, `/v1/cache` GET+DELETE, `/v1/training_jobs*`, `/v1/unreal/voicelines/*`, `/v1/health/filesystem` | `/v1/effects/catalog`·`/v1/effect-presets`, `/v1/cache/stats·clear·recent`, no training (`/v1/train*` removed 2026-10-02), `/v1/projects/:project_id/export_voicelines`, `/v1/system/info` |

@@ -52,7 +52,7 @@ const VIEWS = [
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, speakers, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
   { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "A project's home. Overview holds its settings and shows where each step stands; then Discover finds the speakers your text names, Script works out who says each line, Cast gives each speaker a persona, Render makes the audio and Export packages it. A game project starts from its Lines instead — the sheet already says who speaks.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   // The Stories tab was removed 2026-10-06 (the 2026-08-15 ruling: retract it, keep the
-  // tables, design the real timeline first — IDEAS "THE TIMELINE, designed properly").
+  // tables, design the real timeline first — an idea that comes back after the release).
   // Always visible (queue item 11): dictation is a cross-cutting utility
   // for all five audiences — the focus gate made it vanish the moment an
   // audiobook project set workspace focus (user: "where is that?").

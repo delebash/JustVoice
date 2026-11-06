@@ -19,7 +19,7 @@ exit point**. `project.kind` (already in storage,
 | | Project | Scene | Block | Persona | Way in | Way out |
 |---|---|---|---|---|---|---|
 | Audiobook | book | chapter | paragraph / dialogue line | character | EPUB / DOCX / .jw.json | chapter WAVs → M4B, ACX −20 LUFS |
-| Game | title / VO batch | quest / conversation | line w/ **stable line ID** | NPC | CSV / JSON / Unreal string table | per-line WAVs named by line ID + manifest.json |
+| Game | title / VO batch | quest / conversation | line w/ **stable line ID** | NPC | CSV / JSON (an Unreal string table's `Key,SourceString` CSV is refused: the CSV needs a `text` column) | per-line WAVs named by line ID + manifest.json |
 | Podcast | show | episode | script segment | host / guest | speaker-labeled markdown, or written in-app | episode WAV/MP3 at −16 LUFS |
 
 Audience differences that drive UI, not data:
@@ -77,7 +77,7 @@ Whether import creates personas depends on what the source file knows:
 | Source | Speaker data in file | Personas created |
 |---|---|---|
 | `.jw.json` (JustWrite) | full character sheet (names, roles, one-liners) | **at import** — all of it flows into `personality`; `voice_instruct` stays empty |
-| Game CSV / string table | explicit speaker column | **at import** — one per unique value; performance notes ride along |
+| Game CSV | explicit speaker column | **at import** — one per unique value; performance notes ride along |
 | Podcast markdown | `SARAH:` / `**SARAH:**` labels | **at import** — unknown labels become new personas, known ones match existing |
 | Bare EPUB / DOCX | none — just prose | **later** — Script's LLM pass discovers speakers; the "N speakers found that aren't in your cast" banner promotes them ("＋ Create personas & add to cast", or "Merge into existing…") |
 
@@ -322,8 +322,8 @@ Grounded in code (pre-relocation names): `engines/llm/tiers.py`,
   > (no two-pass), the ground-truth corpus directory is empty, the "~+2 pp at
   > 2.3×" verdict never happened, the "Reasoned" tier is dead (two routes
   > only), and "Pin to production" is gone — feature pins were dropped with
-  > F1 Phase 2. The two-pass review idea itself is tracked in `IDEAS.md`
-  > (competitor-research entry).*
+  > F1 Phase 2. The two-pass review idea was in `IDEAS.md` (competitor-research
+  > entry) until 2026-11-06 — git keeps it.*
 
 ## 13. Final idea pass — JustWrite carry-overs (2026-06-11)
 
