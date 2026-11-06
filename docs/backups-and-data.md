@@ -134,6 +134,10 @@ address is kept so the app stays reachable). Downloaded engine models stay on
 disk — remove those from the AI page if you want the space back. Take a backup
 first.
 
+Anything still working stops first, as before a restore: a book being made into
+an audiobook, a chapter rendering, an export — each is waited for up to 30
+seconds — and the speech and language models are unloaded. Then the files go.
+
 A folder you linked into the data folder (a junction or a symbolic link to
 somewhere else) is removed as a link by the reset and by **Clear** on Settings →
 Storage: what it points to keeps its files.

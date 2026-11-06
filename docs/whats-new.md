@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **A reset stops the work in progress first (2026-11-05)** — Settings → Backups → **Reset…** now
+  stops a book being made into an audiobook, a chapter rendering and an export, and waits for each,
+  before it deletes the folders they write into, the way a restore already did
+  ([Backups and data](backups-and-data.md#reset)).
 - **Speech on the family's shared AI engine (2026-10-29)** — AI Settings' **Speech engines** tab is
   now **Speech**: the tab every app of the family uses for an AI engine that runs models of its own,
   with JustVoice's pieces inside it. At its top, **Engine: audio.cpp** installs, updates, reinstalls

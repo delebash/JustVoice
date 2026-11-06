@@ -587,9 +587,10 @@ BUILT:  2026-10-20 — server: `JUSTVOICE_ALLOWED_HOSTS` to bearerAuth and the C
         scripts' comments. Tests: csrf (a renamed host; `*`), mcp_rulings (`audio_path` through a
         proxy), restore_gate (a playing take doesn't refuse a restore), the connection page's three.
 OPEN:   1, 3, 11 and the start checks are untested until a release runs (a tag: the user's word).
-        8: looked 2026-10-24 (TASKS "More feelings than nine …", 5). FINDING: the factory reset runs under the gate but stops only the
-        engines, not the book runs, render and export jobs — `runFactoryReset` deletes the folders
-        they write into (pre-existing; not in the rec).
+        8: looked 2026-10-24 (TASKS "More feelings than nine …", 5). The factory reset stopped only the
+        engines, not the book runs, render and export jobs, before deleting the folders they write
+        into — FIXED 2026-11-05 under the finish run: `runFactoryReset` starts with the restore's own
+        `_stopWorkOnTheFiles` (`data_admin.js`; `factory_reset.test.js`; docs backups-and-data, whats-new).
 GO:     given 2026-10-20 (as above).
 
 ### The kit's fifteenth-review changes taken in (built 2026-10-20, under the go above)

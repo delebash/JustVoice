@@ -15,6 +15,7 @@ import * as dataAdmin from "../src/data_admin.js";
 import * as session from "../src/database/session.js";
 import { EngineRegistry } from "../src/engines/registry.js";
 import { construct, Settings } from "../src/models.js";
+import * as renderJobs from "../src/render_jobs.js";
 import { PersonaStore } from "../src/storage/personas.js";
 import { tmpDb, tmpPath } from "./helpers.js";
 import { pyClone } from "@delebash/core/platform/pyjson";
@@ -96,6 +97,34 @@ test("factory_reset_clears_file_stores", async () => {
   expect(state.personas.list()).toEqual([]);
   const pdir = path.join(dataDir, "personas");
   expect(existsSync(pdir) ? readdirSync(pdir).filter((n) => n.endsWith(".json")) : []).toEqual([]);
+});
+
+test("factory_reset_stops_the_jobs_writing_into_its_folders_first", async () => {
+  // TASKS "The kit's changes of 2026-10-19/20" 8 (FINDING 2026-10-24): the reset stopped only the
+  // engines, then deleted the folders a running render job writes into. Now it stops the work on the
+  // files first, as a restore does (`_stopWorkOnTheFiles`).
+  useTmpDb();
+  const dataDir = path.join(tmpPath(), "data");
+  const personas = new PersonaStore(dataDir);
+  personas.create("Mara", { voice_id: null });
+  const pdir = path.join(dataDir, "personas");
+  appState.cfg.state = { settings: new FakeSettingsStore(), dataDir, personas };
+  let cancelledWhileFilesExisted = null;
+  const evt = {
+    set() {
+      cancelledWhileFilesExisted = existsSync(pdir);
+    },
+    isSet: () => cancelledWhileFilesExisted !== null,
+  };
+  renderJobs._running.add("job-live");
+  renderJobs._cancelEvents.set("job-live", evt);
+  try {
+    await dataAdmin.runFactoryReset();
+  } finally {
+    renderJobs._running.delete("job-live");
+    renderJobs._cancelEvents.delete("job-live");
+  }
+  expect(cancelledWhileFilesExisted).toBe(true);
 });
 
 test("factory_reset_unloads_engines", async () => {

@@ -136,9 +136,11 @@ export function _assetDirs() {
 export async function runFactoryReset() {
   const state = appState.getState();
 
-  // 0. Unload everything AI-resident FIRST, while the config it was spawned from still
-  // exists (JW's donor lesson).
-  await _stopAiEnginesBestEffort();
+  // 0. Stop the work on the files FIRST — the book runs, the render and export jobs, the files open
+  // to a player — then everything AI-resident, while the config it was spawned from still exists
+  // (JW's donor lesson). The restore's own teardown, so nothing writes into a folder being deleted
+  // (TASKS "The kit's changes of 2026-10-19/20" 8, found 2026-10-24).
+  await _stopWorkOnTheFiles();
 
   // 1. The database resets the way a fresh install creates it: delete the SQLite file and
   // re-run initDb (create + seeds). Guarantees the post-reset schema is
