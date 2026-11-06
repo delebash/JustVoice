@@ -124,6 +124,22 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Finish JustVoice: everything I can fix, each decision attacked before the code (decided 2026-11-05)
+STATE:  DECIDED 2026-11-05 — after the feelings list was shown, the user: "just keep going fix all the
+        things you think yo can to make it better and complete, this is rule think each decision you
+        make adverserily before you code, understood, now keep going dont stop and ask me unless you
+        absolutley need to. Understood? go".
+WHY:    the family releases together once every app is complete (just-core TASKS "The family releases
+        together"); this run takes JustVoice as far as it can go without the user's ears or word.
+NOT:    deleting IDEAS entries (each needs the user's do-or-remove word: just-core TASKS "Each app's
+        roadmap and ideas"); a tag or release (the family's, all apps together).
+OPEN:   the feelings list (items 1–2 with my suggested words, "More feelings than nine"); the fork's
+        build and test once the card is free; the factory reset's running jobs (TASKS "The kit's
+        changes of 2026-10-19/20", 8); round 8's page tally; the tracker sweep (closed items deleted,
+        standing rules moved to their homes); then the open items in the order this entry's BUILT
+        line records.
+GO:     given 2026-11-05.
+
 ### The kit's hand-offs for JustVoice (just-core TASKS, "FOR JUSTVOICE'S SESSION")
 STATE:  DECIDED 2026-10-29 — "ok do 1 but 2 and 3 on hold its too much for now after 1 we can check that all
         works well". 1 = the kit's hand-off list; 2 (the roadmap and ideas listed with recs) and 3 (JustVoice's own
