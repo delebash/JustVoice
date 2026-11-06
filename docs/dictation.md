@@ -53,9 +53,9 @@ tab shows the refined transcript with the raw one beneath it.
 
 System-audio capture uses cpal / WASAPI loopback / ScreenCaptureKit depending on OS. macOS 10.15+ required for system audio.
 
-## Promoting captures to voice samples
+## Captures and your own voice
 
-Every capture lives in the Captures tab, with its length (read from the recording itself since 2026-10-08 — captures made earlier, and a recording that is not a WAV, show none). A recording the recogniser could not transcribe is not kept. Click "→ Sample" on any row to promote the audio into a Voice profile's reference samples. Useful for cloning your own voice — read aloud for a while, then promote the longest / cleanest captures into a Chatterbox voice.
+Every capture lives in the Captures tab, with its length (read from the recording itself since 2026-10-08 — captures made earlier, and a recording that is not a WAV, show none). A recording the recogniser could not transcribe is not kept. The tab can't yet turn a capture into a voice's clip, and has no download: a capture's recording is `GET /v1/captures/{id}/audio`, which you can then use as the clip in a persona's **Clone** (until 2026-11-05 this page described a "→ Sample" button that was never built).
 
 ## Capture language
 

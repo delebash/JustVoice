@@ -20,14 +20,14 @@ re-transcribe (Qwen3-ASR since 2026-10-01); delivery instruct; MCP
 (`justvoice.speak/transcribe/list_voices`); outbound HMAC-signed webhooks
 (`server/src/api/webhooks_api.js`); per-model unload; per-generation engine switch; and
 projects/chapters/casting, lexicons, ACX mastering, word-level captions, voice bundles. (LoRA training was
-removed 2026-10-02. Kokoro blending, IPA-to-audio and inline paralinguistic tags
-are on hold since the 2026-10-01 switch to the audio.cpp runtime — switch
-plan §5.)
+removed 2026-10-02. Kokoro blending and a lexicon's IPA, on hold after the 2026-10-01 switch to the
+audio.cpp runtime, came back in our audio.cpp copy — v0.9.0-jv.4 — corrected 2026-11-05.)
 
 **Gaps (ours, honest):**
 - **Global dictation hotkey + paste injection — not built** (the Tauri shell's stubs went
   with it, 2026-10-08): push-to-talk, chord bindings, target-aware paste. Biggest true gap.
-- **Promote capture → voice sample**: no one-click path (manual download→Clone works).
+- **Promote capture → voice sample**: no path in the app — the Captures tab has no download either;
+  the recording is `GET /v1/captures/{id}/audio`, then a persona's Clone.
 - **Stories multi-track timeline**: not built — the placeholder tab was removed
   2026-10-06; a drag-drop timeline with inline trimming ≈ the timeline design parked in
   IDEAS (2026-08-15).
@@ -57,7 +57,6 @@ plan §5.)
 
 ## 3. Not on any list on purpose
 
-Pocket TTS (rejected 2026-08-22 — HF-auth-gated cloning weights), Supertonic 3
-(no cloning in the OSS release; would also cost Kokoro's blending + IPA if swapped
-into the preset slot; weights OpenRAIL-M). TADA and MOSS-TTSD were removed with
-the 2026-10-01 switch.
+TADA (removed with the 2026-10-01 switch). Pocket TTS, Supertonic 3 and MOSS-TTSD, once set aside
+here, are offered again since 2026-10-11 — every speech model audio.cpp has is offered, each with
+JustVoice's reading of its licence (Supertonic's terms gate its download) — corrected 2026-11-05.
