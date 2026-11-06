@@ -60,6 +60,7 @@ import * as moss_tts_v15 from "./moss_tts_v15.js";
 import * as moss_ttsd from "./moss_ttsd.js";
 import * as moss_voicegen from "./moss_voicegen.js";
 import * as nemotron_asr from "./nemotron_asr.js";
+import * as nemotron_transcribe from "./nemotron_transcribe.js";
 import * as neutts from "./neutts.js";
 import * as niagara_asr from "./niagara_asr.js";
 import * as omnivoice from "./omnivoice.js";
@@ -67,6 +68,7 @@ import * as outetts from "./outetts.js";
 import * as owsm from "./owsm.js";
 import * as owsm_ctc from "./owsm_ctc.js";
 import * as parakeet_tdt from "./parakeet_tdt.js";
+import * as phonon2_asr from "./phonon2_asr.js";
 import * as piper_tts from "./piper_tts.js";
 import * as plapre from "./plapre.js";
 import * as pocket_tts from "./pocket_tts.js";
@@ -142,6 +144,7 @@ export const CURATED = {
   moss_ttsd,
   moss_voicegen,
   nemotron_asr,
+  nemotron_transcribe,
   neutts,
   niagara_asr,
   omnivoice,
@@ -149,6 +152,7 @@ export const CURATED = {
   owsm,
   owsm_ctc,
   parakeet_tdt,
+  phonon2_asr,
   piper_tts,
   plapre,
   pocket_tts,

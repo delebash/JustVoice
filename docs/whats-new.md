@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **audio.cpp's update of 2026-11-05: two more speech recognisers** — the speech engines list now
+  has NVIDIA's Nemotron 3.5 Transcribe (40 languages; 34 billion parameters, more than an 8 GB card
+  holds — audio.cpp keeps part of it on the CPU) and FermionResearch's Phonon-2 (English, built on
+  Parakeet), each with JustVoice's reading of its licence
+  ([Engines → Commercial use, in plain words](engines.md#commercial-use-in-plain-words)). Its new
+  voices — PocketTTS Small, Underdog Bark 3 and others — aren't offered yet: their files are newer
+  than the model downloads JustVoice is pinned to. The two load with `npm run dev` now, and in
+  the installed app once that release ships
 - **Four more feelings: surprised, curious, relieved, eager (2026-11-05)** — the direction step and a
   persona's or a line's **Emotion** have thirteen now. A relieved or eager line was told *happy*
   before, and a surprised or curious one nothing; a manner such as *very politely* or *thinking to

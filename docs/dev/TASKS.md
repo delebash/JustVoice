@@ -188,6 +188,16 @@ OPEN:   whether upstream is merged into `jv` before the release — your call. T
         JustStage's `AGENTS.md`.
         The merge, 2026-11-05 (asked: upstream 69 commits ahead with v0.9.3 and v0.9.4, merge before the release?):
         "2 yes always keep fork up to date this is already a rule".
+        MERGED 2026-11-05: upstream main (28783225, v0.9.3 and v0.9.4) into `jv` as 281de44a — local until its
+        build and test pass; four conflicts (the Qwen3 aligner's rate, upstream's #1148 = ours, its two files
+        upstream's again; Qwen3-TTS's CustomVoice base assets beside upstream's talker backend; our clone test
+        under upstream's ENGINE_BUILD_MODEL_TESTS). The catalog rebuilt at 281de44a (8 new families; our port of
+        audio.cpp's web UI rule took upstream's three changes; JustVoice's licence reading for the two it offers,
+        Nemotron 3.5 Transcribe and Phonon-2). Decided under the finish run's go, attacked: the model files'
+        revision stays 661a224e (decided 2026-10-29: the next one gives 28 files on this PC other bytes), so
+        PocketTTS Small, Underdog Bark 3, Haas ASR and the rest aren't offered until that pin moves — with the
+        release. OPEN: the dev build, the fork's tests, the app under `npm run dev` on what the update adds
+        (TASKS "An audio.cpp update tests only…"), then push `jv` — waiting for the card (the shared-card queue).
 GO:     given for the release's timing; the merge given 2026-11-05.
 
 ### Round E — JustVoice's audio.cpp engine, its Speech engines tab and its jobs onto the kit's (J1)

@@ -141,6 +141,14 @@ async function pinnedSource(pkg, defaults, trees) {
 // `family`, as catalog.ts builds them from model_specs/*.json.
 
 const EXPOSE_ALL_GGUF_PACKAGE_FAMILIES = new Set([
+  "haas_asr",
+  "lfm_d1_omni",
+  "nemotron_transcribe",
+  "phonon2_asr",
+  "pocket_tts_small",
+  "realtime_reuse",
+  "underdog_bark3",
+  "lfm3_audio",
   "ming3_tts",
   "ming3_audio",
   "latentsync",
@@ -235,7 +243,7 @@ export function relatedPackages(entry, packages) {
 function relatedExposeAllGgufPackages(entry, packages) {
   const family = packages.filter((p) => p.family === entry.family && p.format === "gguf");
   if (!family.length) return [];
-  if (entry.family === "sanotts" || entry.family === "xtts_v2") return family;
+  if (entry.family === "sanotts" || entry.family === "xtts_v2" || entry.family === "pocket_tts_small") return family;
   if (!entry.download_id) return family;
   const exact = family.find((p) => p.id === entry.download_id);
   if (!exact) return relatedPackages(entry, packages);
@@ -255,6 +263,9 @@ function exposedPackageRank(p, selectedId) {
 
 /** The words audio.cpp's model manager labels a package with. */
 export function packageLabel(p) {
+  if (p.family === "pocket_tts_small") {
+    return (p.display_name || p.id).replace("PocketTTS Small English ", "").replace(" GGUF", "");
+  }
   if (p.family === "sanotts") {
     if (p.id.includes("_heart_nano_")) return "Heart Nano";
     if (p.id.includes("_heart_")) return "Heart";
