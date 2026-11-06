@@ -1460,6 +1460,24 @@ template's shape — AGENTS.md says how it runs.
 
 ## Docs and repo debt
 
+### The installer carries no licence or notice files
+STATE:  FINDING — code-verified 2026-11-05 (the finish run's licence-file refresh). `quasar.config.js`'s
+        electron-builder config ships no `LICENSE`, `NOTICE.md` or `LICENSES/`, and the renderer bundle
+        (Vite) carries none of its packages' licences — MIT, Apache-2.0 §4(a) and BSD-3-Clause cl. 2 ask
+        for the text and notices to travel with a copy. The server's packages keep their `LICENSE` files
+        inside the app. No family app ships them (the kit's template and JustWrite's config checked); no
+        kit item tracks it.
+WHY:    every app releases together; a release without its notices breaks the licences it depends on.
+NOT:    a JustVoice-only fix — one way per job: it goes into the kit's template so every app gets it.
+OPEN:   the user's word on the tool (NOT STANDARD in the family): my lean — `rollup-plugin-license`
+        (MIT; "Create a file containing all third-parties used in the bundle", README) in the renderer's
+        Vite build, its `thirdParty.output` writing THIRD_PARTY_NOTICES and `allow` with
+        `failOnUnlicensed` / `failOnViolation` (the copyleft gate `LICENSES.md` asks for), and
+        electron-builder's `extraResources` shipping it with `LICENSE`, `NOTICE.md` and `LICENSES/`.
+        Its README doesn't name Vite (Vite's build runs Rollup plugins); the other option,
+        `rollup-license-plugin` (codepunkt), has a Vite helper. Then into the kit's template and each app.
+GO:     needed.
+
 ### The JW→JV book-format contract has no lock on the JustWrite side
 
 STATE: OPEN — your call, and the concrete successor to the "book-zip import

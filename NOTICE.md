@@ -13,7 +13,8 @@ Licensed under the **MIT License** (see `LICENSE`).
 >
 > **2026-07-29 — flipped to MIT.** `pedalboard` was removed and its twelve effects
 > reimplemented in `server/justvoice/audio/dsp/` on numpy + scipy, with pitch shifting
-> delegated to Signalsmith Stretch (MIT). With the forcing dependency gone the relicense was
+> delegated to Signalsmith Stretch (MIT) — and since 2026-10-07 in C++ in JustVoice's copy of
+> audio.cpp (`dsp/`, shipped as `audiocpp_dsp`). With the forcing dependency gone the relicense was
 > paperwork: root `LICENSE` (GPL-3.0 → MIT), `server/pyproject.toml` and `src-tauri/Cargo.toml`
 > license fields, this NOTICE, `LICENSES.md`, the in-app About text, and every first-party
 > SPDX header across 259 files (`GPL-3.0-or-later` → `MIT`, and
@@ -23,20 +24,22 @@ Licensed under the **MIT License** (see `LICENSE`).
 > **The policy for new files is unchanged:** every file carries an SPDX header. Only the
 > identifier changed.
 
-This product incorporates, links against, or depends on the following third-party software. Each component retains its original license. See `LICENSES.md` for the authoritative inventory and `LICENSES/<SPDX-id>.txt` for full license texts.
+This product incorporates, links against, or depends on the following third-party software (refreshed
+2026-11-05 for the Electron app and its Node server; the Python and Tauri sections went with them). Each component retains its original license. See `LICENSES.md` for the authoritative inventory and `LICENSES/<SPDX-id>.txt` for full license texts.
 
 ---
 
 ## Model weights — attribution requirements
 
-JustVoice itself is free software, and every speech model it offers permits commercial use of what
-you produce with it. Kokoro-82M, KittenTTS Mini 0.8, Qwen3-TTS, Qwen3-ASR, Qwen3-ForcedAligner and VoxCPM2
-are Apache-2.0 and Chatterbox is MIT — no attribution requirement (see `LICENSES.md` → *Downloaded on
-demand*). One carries a credit, shown with a ⚠ on its model rows in the app:
+JustVoice itself is free software. The speech models it offers are each under their own licence, and
+not all of them permit selling what you make: each model's row, and the opened engine, show
+JustVoice's reading of its licence (*Commercial use, in plain words* — `docs/engines.md`), and a model
+whose commercial use isn't a plain *Yes* asks you to accept its licence before its first download.
+JustVoice never redistributes a model — your app downloads it from its publisher. Where a licence asks
+for credit, the reading says so; for example:
 
-- **Pocket TTS — CC BY 4.0, Kyutai** (added 2026-10-02; https://huggingface.co/kyutai/pocket-tts).
-  CC BY asks that the licensor be credited when the licensed material is shared. JustVoice does not
-  share it — your app downloads it from audio.cpp's copy — but the credit is easy to give where you
+- **Pocket TTS — CC BY 4.0, Kyutai** (https://huggingface.co/kyutai/pocket-tts). CC BY asks that the
+  licensor be credited when the licensed material is shared. The credit is easy to give where you
   credit your tools: *"Pocket TTS by Kyutai, CC BY 4.0."* Its preset voices come from recordings
   under their own licences: Alba — Alba MacKenna, CC BY 4.0; Anna, Azelma, Charles, Eponine, Eve,
   Fantine, George, Jane, Mary, Michael, Paul, Vera — the VCTK corpus (University of Edinburgh, CSTR),
@@ -44,16 +47,9 @@ demand*). One carries a credit, shown with a ⚠ on its model rows in the app:
   Estelle, Javert, Marius — Kyutai's own and donated recordings, CC0. Cloning with Pocket TTS also
   asks you to accept Kyutai's prohibited-use terms, which the app shows before the first clone.
 
-(HumeAI TADA, whose Llama 3.2 Community License required "Built with Llama" in the UI and in your
-published credits, was removed with the 2026-10-01 switch to the speech runtime.)
-
 ---
 
 ## Code lifted into this repository
-
-### JustWrite audio modules (license: same project, internal)
-
-JustWrite ships `services/m4b.js`, `services/speakerAttribution.js`, `services/render.js`, and `services/audioStore.js`. These remain in JustWrite (which owns audiobook orchestration UI per `CONTRACT.md`). JustVoice does not duplicate them.
 
 ### Whisper's basic text normaliser (MIT)
 
@@ -83,48 +79,80 @@ recogniser's transcript with it (added 2026-10-16).
   Authors (github.com/rsms/inter). SIL Open Font License 1.1.
 - **JetBrains Mono** (`@fontsource/jetbrains-mono` 5.3.0, `src/css/fonts.css`) — Copyright 2020 The
   JetBrains Mono Project Authors (github.com/JetBrains/JetBrainsMono). SIL Open Font License 1.1.
-
-The licence's full text is in each package's `LICENSE`.
+- The kit's sixteen (`@delebash/ui` `common/fonts.css` — Inter, Spline Sans, Geist, Hanken Grotesk,
+  Albert Sans, Manrope, DM Sans, Atkinson Hyperlegible, Fraunces, Source Serif 4, Newsreader, Libre
+  Caslon Text, Playfair Display, EB Garamond, Spectral, Spline Sans Mono), each SIL Open Font License
+  1.1; each Fontsource package's `LICENSE` holds its copyright and the licence.
 
 ---
 
-## Runtime dependencies (installed from PyPI; not re-vendored)
+## Distributed — in the installer
 
-Each retains its upstream license. Full text in `LICENSES/<SPDX-id>.txt`. Apache-2.0 NOTICE content per §4(d) is reproduced below where applicable, and BSD-3-Clause copyright notices per cl. 1–2 are reproduced immediately below.
+Each retains its upstream license (`LICENSES.md` lists them with versions). Full texts in
+`LICENSES/<SPDX-id>.txt` and each package's own `LICENSE`.
 
 ### BSD-3-Clause copyright notices (cl. 1–2)
 
-`LICENSES/BSD-3-Clause.txt` carries the licence text with a `<year> <owner>` placeholder, because several components share one text. Clauses 1 and 2 additionally require each component's *own* copyright notice to be retained in source and binary redistributions — so they are reproduced here verbatim, fetched from each upstream `LICENSE` on 2026-07-29.
-
-**Distributed** — frozen into the `justvoice-server` sidecar, so these notices are obligations:
-
-```
-Copyright © 2017-present, Encode OSS Ltd.                         (uvicorn, https://www.encode.io/)
-Copyright © 2019, Encode OSS Ltd.                                 (httpx, https://www.encode.io/)
-Copyright (c) 2005-2025, NumPy Developers.                        (numpy)
-Copyright (c) 2009, Jay Loden, Dave Daeschler, Giampaolo Rodola'  (psutil)
-Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.   (scipy)
-```
-
-**Distributed** in the server's packages (npm, installed with the app — added 2026-10-16):
+`LICENSES/BSD-3-Clause.txt` carries the licence text with a `<year> <owner>` placeholder, because
+several components share one text. Clauses 1 and 2 additionally require each component's *own*
+copyright notice to be retained in source and binary redistributions — so they are reproduced here:
 
 ```
-Copyright (c) 2009-2015, Kevin Decker <kpdecker@gmail.com>        (diff — jsdiff, https://github.com/kpdecker/jsdiff)
+Copyright (c) 2009-2015, Kevin Decker <kpdecker@gmail.com>        (diff — jsdiff, in the server's packages)
+Copyright (c) 2005-2026, NumPy Developers.                        (ported into audiocpp_dsp)
+Copyright (c) 2001-2002 Enthought, Inc. and 2003-2026 SciPy Developers.  (ported into audiocpp_dsp)
 ```
+
+SciPy's filter design carries the Cephes Math Library's notice (Copyright 1984-2000 Stephen L.
+Moshier) — the full list of what `audiocpp_dsp` ports and vendors is the fork's
+`dsp/THIRD_PARTY_NOTICES.md` (https://github.com/delebash/audio.cpp).
+
+### audiocpp_dsp (Apache-2.0) — the server's audio math
+
+- From JustVoice's copy of audio.cpp (https://github.com/delebash/audio.cpp, `dsp/`), Copyright 2026
+  ShugoAI LLC and JustVoice's contributors, Apache-2.0; every file the copy changes says so in a
+  first-line comment (Apache-2.0 §4(b)). The installer carries the pinned release's CPU program beside
+  the app's executable — on Windows with Microsoft's Visual C++ runtime DLLs, redistributable under
+  Microsoft's terms.
+- Vendors **Signalsmith Stretch** 1.4.0 (pitch and pace) — MIT, Copyright (c) 2022 Geraint Luff /
+  Signalsmith Audio Ltd. — and **Signalsmith Linear** 0.6.4 — MIT, Copyright (c) Geraint Luff /
+  Signalsmith Audio Ltd.
+
+### lru-cache (BlueOak-1.0.0)
+
+In the server's packages. The Blue Oak Model License 1.0.0 asks that everyone who gets a copy also
+gets its text or a link to it: https://blueoakcouncil.org/license/1.0.0 — the text is the package's
+`LICENSE.md`.
+
+### Apache-2.0 packages
+
+`openai`, `@google/genai` (the kit's AI providers), `@internationalized/number` (the kit's number
+inputs) and DOMPurify (taken under its Apache-2.0 option) ship no upstream `NOTICE` file (checked
+2026-11-05), so there is no §4(d) content to propagate. Re-check on bump.
+
+### Electron
+
+The desktop shell, MIT (Copyright (c) Electron contributors, Copyright (c) 2013-2020 GitHub Inc.);
+Chromium's and Node's own notices ship beside it, as `LICENSES.chromium.html`, in every Electron build.
+
+---
+
+## Downloaded on demand — never redistributed by JustVoice
 
 ### audio.cpp (Apache-2.0) — the speech runtime
 
 - Upstream: https://github.com/0xShug0/audio.cpp. JustVoice runs its own build, from JustVoice's
   copy https://github.com/delebash/audio.cpp (a public fork, branch `jv`) — prebuilt release
-  archives made by the fork's release workflow, pinned `v0.9.0-jv.4` (upstream v0.9.0 plus
-  JustVoice's changes). Every file the copy changes says so in a first-line comment, with the date
-  and what changed (Apache-2.0 §4(b)).
+  archives made by the fork's release workflow, at the kit's pinned build (`v0.9.2-jv.6` on
+  2026-11-05: upstream v0.9.2 plus JustVoice's changes). Every file the copy changes says so in a
+  first-line comment, with the date and what changed (Apache-2.0 §4(b)).
 - License: Apache-2.0, Copyright 2026 ShugoAI LLC
 - Downloaded onto the user's machine when they install the speech runtime; never bundled with or
   redistributed by JustVoice. Its release archive carries a `LICENSE` and no `NOTICE` file
-  (checked 2026-10-04 on v0.9.0-jv.4's macOS and Linux bundles), so there is no §4(d) content to
-  propagate. Re-check on every pin bump. Since jv.4 the archive also carries MeCab's library and
-  cppjieba's dictionaries, each with its own licence file (below).
+  (checked 2026-11-05 on the installed `v0.9.2-jv.6` CUDA archive), so there is no §4(d) content to
+  propagate. Re-check on every pin bump. The archive also carries MeCab's library and cppjieba's
+  dictionaries, each with its own licence file (below), and — the CUDA and Windows archives — NVIDIA's
+  CUDA runtime libraries and Microsoft's Visual C++ runtime, under their redistributable terms.
 
 ### MeCab (BSD-3-Clause) — Japanese readings, inside the speech runtime
 
@@ -133,114 +161,53 @@ Copyright (c) 2009-2015, Kevin Decker <kpdecker@gmail.com>        (diff — jsdi
   executable with its licence as `libmecab.LICENSE.txt`.
 - Copyright (c) 2001-2008, Taku Kudo; Copyright (c) 2004-2008, Nippon Telegraph and Telephone
   Corporation. BSD-3-Clause.
-- Part of the speech runtime archive the user's machine downloads; not redistributed by JustVoice.
 
 ### cppjieba's dictionaries (MIT) — Chinese word breaks, inside the speech runtime
 
-- Upstream: https://github.com/yanyiwu/cppjieba at commit `8f171de` — `jieba.dict.utf8` and
-  `hmm_model.utf8`, with its `LICENSE`, in the runtime's `jieba/` folder.
-- Part of the speech runtime archive; not redistributed by JustVoice.
+- Upstream: https://github.com/yanyiwu/cppjieba — `jieba.dict.utf8` and `hmm_model.utf8`, with its
+  `LICENSE`, in the runtime's `jieba/` folder.
 
 ### The Japanese dictionary — unidic-lite (MIT) and UniDic (BSD-3-Clause)
 
 - Upstream: https://github.com/polm/unidic-lite 1.0.8 (Copyright 2020 Paul McCann, MIT), carrying
   UniDic 2.1.2 (Copyright 2011-2017 The UniDic Consortium; offered under BSD, GPL or LGPL — taken
-  under BSD-3-Clause). Both licence files are unpacked with the dictionary.
-- Downloaded onto the user's machine from PyPI when they install the Japanese dictionary; never
-  bundled with or redistributed by JustVoice.
+  under BSD-3-Clause). Both licence files are unpacked with the dictionary, the speech runtime's
+  add-on.
 
 ### eSpeak NG (GPL-3.0) — Kokoro's and KittenTTS's pronunciation library
 
-- Upstream: https://github.com/espeak-ng/espeak-ng, fetched as the `espeakng-loader` 0.2.4 wheel
-  (the loader is MIT — https://github.com/thewh1teagle/espeakng-loader)
+- Upstream: https://github.com/espeak-ng/espeak-ng, fetched as the `espeakng-loader` wheel (the
+  loader is MIT — https://github.com/thewh1teagle/espeakng-loader)
 - Downloaded onto the user's machine with the speech runtime and loaded by the audio.cpp process —
   never by JustVoice code, never redistributed by JustVoice. Why the GPL does not reach JustVoice:
   `LICENSES.md` → *Downloaded on demand*.
 
 ### Speech models (GGUF)
 
-- Upstream: https://huggingface.co/audio-cpp/audio.cpp-gguf at a pinned commit; each directory keeps
-  its original model's licence (Kokoro-82M Apache-2.0 — hexgrad; KittenTTS Mini 0.8 Apache-2.0 —
-  KittenML; Pocket TTS CC BY 4.0 — Kyutai, see *Model weights* above; Qwen3-TTS, Qwen3-ASR,
-  Qwen3-ForcedAligner Apache-2.0 — Qwen; Chatterbox MIT — Resemble AI; VoxCPM2 Apache-2.0 —
-  OpenBMB).
+- Each from its publisher's repository (audio.cpp's `audio-cpp/audio.cpp-gguf` at a pinned revision,
+  or the model's own), each under its original model's licence — JustVoice's reading of every one is
+  in `server/src/engines/audiocpp/curated/<family>.js`, dated, and shown in the app.
 - Qwen3-TTS CustomVoice 0.6B comes from JustVoice's own conversion of Qwen's checkpoint (Apache-2.0,
   changes stated on its page): https://huggingface.co/delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF
 - Chatterbox Turbo and Nano come from JustVoice's own conversions of Resemble AI's checkpoints
   (MIT): https://huggingface.co/delebash/chatterbox-turbo-GGUF and
   https://huggingface.co/delebash/chatterbox-nano-GGUF
-- Downloaded by the user's app on demand; not redistributed by JustVoice.
-
-### numpy (BSD-3-Clause)
-
-- Upstream: https://github.com/numpy/numpy
-- License: BSD-3-Clause
-
-### fastapi (MIT) / uvicorn (BSD-3-Clause) / pydantic (MIT) / httpx (BSD-3-Clause) / typer (MIT) / rich (MIT) / requests (Apache-2.0) / psutil (BSD-3-Clause) / platformdirs (MIT)
-
-- Standard PyPI deps; see `LICENSES.md` for the full inventory.
-- Apache-2.0 §4(d) — `requests` is the one dep in this group that ships an upstream `NOTICE`
-  (checked 2026-07-29). Reproduced verbatim:
-
-```
-Requests
-Copyright 2019 Kenneth Reitz
-```
-
-### sqlalchemy (MIT) / python-multipart (Apache-2.0) / tenacity (Apache-2.0) / cachetools (MIT) / fastmcp (Apache-2.0)
-
-- Standard PyPI deps, all frozen into the shipped sidecar; see `LICENSES.md` for the inventory.
-- Apache-2.0 §4(d) — checked 2026-07-29: `python-multipart`, `tenacity` and `fastmcp` ship no
-  upstream `NOTICE` file, so there is no NOTICE content to propagate. Re-check on bump.
-
-### llm-runner (MIT)
-
-- Upstream: https://github.com/delebash/just-core
-- License: MIT
-- Own repo, consumed as a pinned git dependency and frozen into the sidecar by PyInstaller.
-
-### scipy
-
-- Upstream: https://github.com/scipy/scipy
-- License: BSD-3-Clause
-- `sosfilt` / `lfilter` behind the effects DSP. numpy alone cannot run recursive filters at
-  usable speed.
-
-### python-stretch (Signalsmith Stretch)
-
-- Upstream: https://github.com/gregogiudici/python-stretch
-- License: MIT
-- Pitch shifting for the effects chain.
 
 > **Removed 2026-07-29: pedalboard (Spotify, GPL-3.0).** It was the only copyleft dependency the
 > project ever *distributed*, and the sole reason for the 2026-06-08 Apache-2.0 → GPL-3.0-or-later
-> flip. Its twelve effects now live in `server/justvoice/audio/dsp/`.
+> flip.
 >
 > One copyleft component is *reachable* — eSpeak NG (`GPL-3.0`), downloaded with the speech
 > runtime. It relicenses nothing, because JustVoice never redistributes it and never links it
-> in-process. Redistribution plus in-process linkage is what propagated with pedalboard; see `LICENSES.md` →
-> *Downloaded on demand*.
-
----
-
-## Frontend dependencies (npm; not re-vendored)
-
-- `vue` (MIT) — https://github.com/vuejs/core
-- `pinia` (MIT) — https://github.com/vuejs/pinia
-- `quasar` (MIT) — the app framework; the kit's controls are built on its components — https://github.com/quasarframework/quasar
-- `@tauri-apps/api` + `@tauri-apps/plugin-*` (Apache-2.0 OR MIT) — https://github.com/tauri-apps/tauri
-- `vite` (MIT) — https://github.com/vitejs/vite
-
-See `LICENSES.md` for the full tabular inventory.
-
----
-
-## Tauri shell (Rust crates)
-
-`src-tauri/` links against the Tauri crate ecosystem (Apache-2.0 OR MIT). Each retains its upstream license; no Rust crate source is re-vendored in this repo.
+> in-process. Redistribution plus in-process linkage is what propagated with pedalboard; see
+> `LICENSES.md` → *Downloaded on demand*.
 
 ---
 
 ## How to update this file
 
-- Adding a new pip/npm dep: add a row to `LICENSES.md`, add a section here if the license is Apache-2.0 (NOTICE propagation), confirm `LICENSES/<SPDX>.txt` exists.
+- Adding a dependency that ships: add its row to `LICENSES.md`; here, its BSD copyright line, its
+  Apache-2.0 `NOTICE` content if it has any, and a line for any other licence that asks for its text
+  to travel (BlueOak, OFL); confirm `LICENSES/<SPDX>.txt` exists for a licence several share.
+- Code copied from another project: a section under *Code lifted*, the notice kept in the file (the
+  family rule).
