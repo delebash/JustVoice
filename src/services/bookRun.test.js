@@ -44,6 +44,11 @@ describe("a step's Status cell", () => {
     });
     // A chapter an earlier pass did is kept, and said so.
     expect(stepStatusText({ ...step(run, "analyze"), kept: 2 }, UNIT, run)).toBe("Done · 2 chapters · 2 already done");
+    // A re-run with nothing new for a book-wide step says so, not "0 people" or "0 voices made".
+    const none = (key, extra = {}) => stepStatusText({ key, status: "done", done: 0, total: 0, ...extra }, UNIT, run);
+    expect(["merge", "add", "describe", "design", "match", "render", "check"].map((k) => none(k, { added: 0, made: 0 })))
+      .toEqual(Array(7).fill("Done · none needed"));
+    expect(none("render", { failed: 2 })).toBe("Done · 0 lines · 2 failed");
     expect(stepStatusText({ key: "check", status: "skipped", note: "speech recognition is not installed" }, UNIT, run))
       .toBe("Skipped — speech recognition is not installed");
   });

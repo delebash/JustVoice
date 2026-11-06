@@ -86,6 +86,9 @@ export const TAKE_REASONS = {
   rerender_failed: "its new take couldn't be made",
 };
 
+/** The steps that work on the whole book, not chapter by chapter. */
+const BOOK_WIDE = new Set(["merge", "add", "describe", "design", "match", "render", "check"]);
+
 /** A step's Status cell: where it stands, in a run. */
 export function stepStatusText(step, unit, run) {
   if (!step) return "";
@@ -101,6 +104,9 @@ export function stepStatusText(step, unit, run) {
   if (status === "pending") return run && ENDED.has(run.status) && run.status !== "completed" ? "Not reached" : "Waiting";
   // done
   const kept = step.kept ? ` · ${Number(step.kept).toLocaleString()} already done` : "";
+  // A book-wide step with nothing to do (a re-run after everything was made) — not "0 people".
+  const did = { add: step.added, design: step.made, match: step.unmatched || total }[key] ?? total;
+  if (BOOK_WIDE.has(key) && !Number(did) && !step.kept && !step.failed && !step.flagged) return "Done · none needed";
   if (key === "add") return `Done · ${count("add", step.added ?? 0, unit)} added`;
   if (key === "design") return `Done · ${count("design", step.made ?? 0, unit)} made`;
   if (key === "match") return step.unmatched ? `Done · ${count("match", step.unmatched, unit)} left without a match` : `Done · ${count("match", total, unit)}`;

@@ -28,7 +28,7 @@ export const VIII = "CHAPTER VIII. The Queen’s Croquet-Ground";
 const CHAPTER_IDS = { [VII]: "sc_vii", [VIII]: "sc_viii" };
 
 /** The states the page draws (?state=); any of them on the cloud model with ?route=frontier. */
-export const STATES = ["new", "price", "blocked", "running", "paused", "stopped", "failed", "done"];
+export const STATES = ["new", "price", "blocked", "running", "paused", "stopped", "failed", "done", "rerun"];
 
 const STEPS = Object.keys(STEP_LABELS);
 
@@ -217,6 +217,21 @@ export function mockRun(state, { frontier = false } = {}) {
     });
   }
   if (state === "done") return runAt("completed", null, { frontier });
+  if (state === "rerun") {
+    // ↻ Run again on a finished book: each chapter step keeps both chapters, the book-wide steps had
+    // nothing to do, and the M4B was saved (or the app restarted) since.
+    const run = runAt("completed", null, { frontier });
+    const chapterSteps = new Set(["discover", "analyze", "group_lines", "direction"]);
+    const quiet = { tokens_in: 0, tokens_out: 0, calls: 0, seconds: 0 };
+    run.steps = run.steps.map((s) => {
+      if (chapterSteps.has(s.key)) return { ...s, ...quiet, done: 0, total: 2, kept: 2 };
+      if (s.key === "export") return { ...s, seconds: 41 };
+      return { ...s, ...quiet, done: 0, total: 0, kept: 0, added: 0, made: 0, unmatched: 0, failed: 0, flagged: 0 };
+    });
+    run.totals = { tokens_in: 0, tokens_out: 0, seconds: 41, price: 0 };
+    run.m4b = null;
+    return run;
+  }
   return null;
 }
 
@@ -234,7 +249,7 @@ export function mockOverviewState(state) {
       noSpeaker: 0, flagged: 0, castTotal: 0, castReady: 0, blocked: 176, cantRender: 176, rendered: 0, renderable: 0, ready: 0, stale: 0,
     };
   }
-  const rendered = { running: 0, paused: 0, stopped: 212, failed: 454, done: 454 }[state];
+  const rendered = { running: 0, paused: 0, stopped: 212, failed: 454, done: 454, rerun: 454 }[state];
   return {
     chapters: 2, scanned: 2, proposed: 0, analyzed: 2, fromImport: 0, running: 0, lines: 454, noNarrator: false,
     noSpeaker: 0, flagged: 10, castTotal: 13, castReady: 13, blocked: 0, cantRender: 0, rendered, renderable: 454, ready: 454 - rendered, stale: 0,
