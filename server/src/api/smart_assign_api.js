@@ -146,20 +146,20 @@ export async function smartAssign(characters, voices, { signal = null } = {}) {
 }
 
 /**
- * Cast each speaker with the persona Smart-assign matched it to → the matches cast,
- * {speaker_id: persona_id}. A speaker or persona that no longer exists is passed over; a
- * narrator's persona is never replaced (decided 2026-10-13, the narrowings review C1); with
- * `onlyUncast` no speaker that already has a persona is touched (the one-click run: a speaker
- * already cast is left alone). One transaction.
+ * Cast each speaker with no persona with the one Smart-assign matched it to → the speakers cast,
+ * {speaker_id: persona_id}. A speaker who already has a persona is never touched — Cast's
+ * Smart-assign only fills the speakers with none, and re-casting everyone is ✕ Clear personas
+ * first (decided 2026-11-06; until then Cast's re-cast all but a narrator, and counted a speaker
+ * left on the same persona as applied); the one-click run leaves a speaker already cast alone too.
+ * A speaker or persona that no longer exists is passed over. One transaction.
  */
-export function applyAssignments(h, assignments, { onlyUncast = false } = {}) {
+export function applyAssignments(h, assignments) {
   const applied = {};
   h.tx(() => {
     for (const [speakerId, personaId] of Object.entries(assignments)) {
       const speaker = h.get(Speaker, speakerId);
-      if (speaker === null || h.get(Persona, personaId) === null) continue;
-      if (speaker.persona_id && (onlyUncast || speaker.role_label === "narrator")) continue;
-      if (speaker.persona_id !== personaId) h.update(Speaker, { persona_id: personaId }, { id: speakerId });
+      if (speaker === null || speaker.persona_id || h.get(Persona, personaId) === null) continue;
+      h.update(Speaker, { persona_id: personaId }, { id: speakerId });
       applied[speakerId] = personaId;
     }
   });

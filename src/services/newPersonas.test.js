@@ -56,12 +56,12 @@ describe("What Smart-assign and ＋ New persona choose from (2026-10-13)", () =>
     expect(castModelChoices(voices)[0].label).toBe("openai-1 (2)");
   });
 
-  it("Smart-assign reads a narrator with no persona, and never one who has a persona", () => {
+  it("Smart-assign reads only the speakers with no persona, a narrator with none included (2026-11-06)", () => {
     const june = { id: "s1", name: "June", persona_id: "p1" };
     const nettle = { id: "s2", name: "Nettle", persona_id: null };
     const bare = { id: "n1", name: "Narrator", role_label: "narrator", persona_id: null };
     const cast = { ...bare, persona_id: "p9" };
-    expect(smartAssignSpeakers([bare, june, nettle]).map((s) => s.id)).toEqual(["n1", "s1", "s2"]);
-    expect(smartAssignSpeakers([cast, june, nettle]).map((s) => s.id)).toEqual(["s1", "s2"]);
+    expect(smartAssignSpeakers([bare, june, nettle]).map((s) => s.id)).toEqual(["n1", "s2"]);
+    expect(smartAssignSpeakers([cast, june, nettle]).map((s) => s.id)).toEqual(["s2"]);
   });
 });

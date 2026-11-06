@@ -448,7 +448,7 @@ export async function matchRest(h, projectId, { signal = null } = {}) {
         role: s.role_label === "narrator" ? "narrator" : null,
       }));
       const r = await smartAssignApi.smartAssign(characters, pool, { signal });
-      applied = smartAssignApi.applyAssignments(h, r.assignments, { onlyUncast: true });
+      applied = smartAssignApi.applyAssignments(h, r.assignments);
       out.note = r.note;
       out.usage = r.usage;
     }

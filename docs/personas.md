@@ -716,10 +716,10 @@ sounds without you asking.
 
 ## Smart-assign
 
-**✨ Smart-assign** on Studio · Cast sends the book's speakers (name, *Also
-called*, *Pronouns*, *Who they are*) — the narrator too while it has no persona;
-a narrator's persona is never replaced (since 2026-10-13; before, the narrator
-was left out) — and your personas (name, the voice's gender as every
+**✨ Smart-assign** on Studio · Cast sends the book's speakers who have no persona yet (name,
+*Also called*, *Pronouns*, *Who they are*) — the narrator too while it has none; a persona you
+picked is never replaced (since 2026-11-06; before, it re-cast everyone but a cast narrator, and
+to re-cast everyone now you ✕ Clear personas first) — and your personas (name, the voice's gender as every
 page shows it, the language the persona speaks, note) to your language model, which proposes a persona for each speaker. The matches
 apply straight away — the server casts them (since 2026-10-16), the same cast the one-click
 audiobook's voices step uses. It is a starting point, so listen to each assignment before

@@ -446,12 +446,12 @@ test("smart_assign_casts_its_matches_on_the_server_when_asked", async () => {
   expect(r.json().applied).toEqual({});
   expect(h.get(Speaker, ids.alice).persona_id).toBeNull();
 
-  // Cast's ✨ Smart-assign: cast as it always was (the Hatter re-cast), but never over a
-  // narrator's persona.
+  // Cast's ✨ Smart-assign casts only the speakers with no persona (decided 2026-11-06): the
+  // Hatter's and the narrator's hand-picked persona stay, and `applied` holds only real changes.
   r = await c.post("/v1/llm/smart-assign", { json: { characters, voices, apply: true } });
-  expect(r.json().applied).toEqual({ [ids.alice]: a, [ids.hatter]: a });
+  expect(r.json().applied).toEqual({ [ids.alice]: a });
   expect(h.get(Speaker, ids.alice).persona_id).toBe(a);
-  expect(h.get(Speaker, ids.hatter).persona_id).toBe(a);
+  expect(h.get(Speaker, ids.hatter).persona_id).toBe(b);
   expect(h.get(Speaker, ids.narrator).persona_id).toBe(b);
   expect(pid).toBeTruthy();
 });

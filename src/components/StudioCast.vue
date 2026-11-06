@@ -21,7 +21,8 @@
 
   Removing a speaker deletes it from the book and its lines go back to No
   speaker, so it asks first, naming the lines (decided 2026-09-29).
-  Smart-assign applies its matches straight away, as it always has.
+  Smart-assign applies its matches straight away, as it always has, but only
+  to the speakers with no persona (decided 2026-11-06).
   All · No persona chips (decided 2026-10-06, "go for cast filter") show only
   the speakers who still need a persona, the narrator's card included; they
   change what is shown, never who Smart-assign or ＋ New persona read.
@@ -454,11 +455,11 @@ function genderForAi(v) {
   return v && voiceGender(v) !== "?" ? voiceGenderWord(v).toLowerCase() : null;
 }
 
-// Smart-assign: the language model matches each speaker (name and who they
-// are) to a persona (name, its voice's gender and language, its note on how
-// it sounds), and the matches apply straight away. It reads a narrator with
-// no persona like anyone, and never replaces a narrator's persona (decided
-// 2026-10-13, the narrowings review C1; it used to leave the narrator out).
+// Smart-assign: the language model matches each speaker with no persona (name
+// and who they are) to a persona (name, its voice's gender and language, its
+// note on how it sounds), and the matches apply straight away. A persona you
+// picked is never replaced, and the count is of speakers it cast (decided
+// 2026-11-06; to re-cast everyone, ✕ Clear personas first).
 const smartBusy = ref(false);
 async function smartAssign() {
   // No book language: Cast asks for it first (decided 2026-10-15, K3).
@@ -468,7 +469,9 @@ async function smartAssign() {
   }
   const people = smartAssignSpeakers(props.speakers);
   if (!people.length) {
-    pushToast({ kind: "info", message: "No speakers in this project to assign." });
+    pushToast({ kind: "info", message: props.speakers.length
+      ? "Every speaker has a persona. To re-cast them all, ✕ Clear personas first."
+      : "No speakers in this project to assign." });
     return;
   }
   // Only personas whose voice is on a ticked model (Models to choose from).

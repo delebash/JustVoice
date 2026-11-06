@@ -16,7 +16,7 @@ is the **AI Settings** page in the sidebar.
 | **Direction** | Writes how each spoken line should be said — an emotion and a few words — only where the book gives a reason, onto the line's Style Instructions and Emotion | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook); the API runs it on one chapter too — [Direction](#direction--two-recipes-and-the-carry) |
 | **Find same people** | Says which names Discover found are one person — *the Queen* and *Queen of Hearts*; on Discover its answer is a list you review and link, and the one-click run links them itself | Studio Discover → Find same people ([Same people](studio.md#same-people-the-ai-suggests-you-link)) · a step of [Studio → Make the audiobook](studio.md#make-the-audiobook), between Discover and adding the speakers — [below](#the-one-click-audiobooks-speaker-steps) |
 | **Speaker attribution · lines with no single speaker** | Gives a spoken line Analyze left with no speaker — often one several people say at once — to one of them, or to the narrator, and marks it to check | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook), after Analyze — [below](#the-one-click-audiobooks-speaker-steps) |
-| **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
+| **Smart-assign** | Matches each speaker in a book with no persona yet to one | Studio Cast tab → Smart-assign |
 | **Voices from the book** | Describes the voice each main speaker should have from how the book shows them, and the narrator's from the book's genre and tone — the one-click audiobook's voices step | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook); three routes too, one per step — [Voices from the book](#voices-from-the-book) |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
 | **Dictation cleanup** | Raw speech → clean text before paste | Captures — runs after a dictation when auto-refine is on |
@@ -211,9 +211,11 @@ and each AI feature reads the half it needs:
   the Personas page to use Compose / Rewrite."). The Compose and Rewrite prompts
   keep their `{{personality}}` variable; its value is the persona's note on its
   page and the speaker's Who they are on Render.
-- **Smart-assign** matches the book's speakers (name, Also called, Pronouns, Who they are)
-  to your personas (name, their voice's gender, language, and the note as
-  `tone`), and applies its matches straight away — change any of them on Cast.
+- **Smart-assign** matches the book's speakers with no persona yet (name, Also called,
+  Pronouns, Who they are) to your personas (name, their voice's gender, language, and the
+  note as `tone`), and applies its matches straight away — change any of them on Cast. A
+  persona you picked is never replaced (since 2026-11-06); to re-cast everyone, ✕ Clear
+  personas first.
   The server casts them (since 2026-10-16: `POST /v1/llm/smart-assign` with
   `apply: true`), the same cast the one-click audiobook's voices step uses.
 - **Voices from the book** reads a speaker's lines and the narration around

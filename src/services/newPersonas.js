@@ -52,11 +52,12 @@ export function castModelChoices(voices, engineNames = {}) {
   return [...counts].sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ value: id, label: `${names[id]} (${n})` }));
 }
 
-/** Who Smart-assign reads: every speaker but a narrator who already has a
- *  persona — a narrator with none is matched like anyone, and a narrator's
- *  persona is never replaced (decided 2026-10-13, the narrowings review C1). */
+/** Who Smart-assign reads: the speakers with no persona, a narrator with none
+ *  included — a persona you picked is never replaced; to re-cast everyone,
+ *  ✕ Clear personas first (decided 2026-11-06; until then it read everyone but
+ *  a cast narrator and replaced hand-picked personas). */
 export function smartAssignSpeakers(speakers) {
-  return speakers.filter((s) => s.role_label !== "narrator" || !s.persona_id);
+  return speakers.filter((s) => !s.persona_id);
 }
 
 /** "A", "A and B", "A, B and C" — names in a sentence (Cast's footer, the batch). */

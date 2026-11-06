@@ -1108,15 +1108,18 @@ has none); **All** shows everyone again. When everyone is cast it says
   choice is saved for the book. A book with no **Language** has no list: its
   place says *Set the book's language on its Overview first — Cast then offers
   the voices that speak it.*
-- **✨ Smart-assign** sends the speakers (name, *Also called*, *Pronouns*, *Who
-  they are*, whole) and your personas whose voice is on a ticked model (name, voice gender, language, note) to your language model,
-  which proposes a persona for each speaker. The narrator goes too while it has
-  no persona; a narrator's persona is never replaced (since 2026-10-13 — before,
-  the narrator was left out). The matches apply at once — the server casts
-  them (since 2026-10-16). Change
-  any you disagree with by clicking another persona. It needs a language model;
-  without one it says so: *Smart-assign needs a language model — set one in AI
-  Settings.*
+- **✨ Smart-assign** sends the speakers who have no persona yet (name, *Also
+  called*, *Pronouns*, *Who they are*, whole), the narrator included while it has
+  none, and your personas whose voice is on a ticked model (name, voice gender,
+  language, note) to your language model, which proposes a persona for each. A
+  persona you picked is never replaced (since 2026-11-06 — before, Smart-assign
+  re-cast everyone but a cast narrator). The matches apply at once — the server
+  casts them (since 2026-10-16) — and the message counts the speakers it cast:
+  *Smart-assign applied 3 assignments.* Change any you disagree with by clicking
+  another persona. When everyone has a persona it says *Every speaker has a
+  persona. To re-cast them all, ✕ Clear personas first.* — clearing, then
+  Smart-assign, re-casts the whole book. It needs a language model; without one
+  it says so: *Smart-assign needs a language model — set one in AI Settings.*
 - **＋ New persona for the N with none** (shown while anyone, the narrator
   included, has no persona) makes them personas of their own. A speaker whose
   name is already a persona in your library is simply cast with it. For the
