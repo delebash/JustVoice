@@ -149,6 +149,8 @@ export function router() {
     const projectId = c.req.param("project_id");
     const body = c.req.valid("json");
     _project(h, projectId);
+    // A speaker needs a name, as a persona does (personas_api `personaName`) — blanks are none.
+    if (!splitWs(body.name).length) throw badRequest("A speaker needs a name.");
     if (body.persona_id) _personaOr404(h, body.persona_id);
     const speaker = h.tx(() => {
       const [s] = ensureSpeaker(h, projectId, {
@@ -177,6 +179,9 @@ export function router() {
     const cur = { ...s };
     if (body.name !== null) {
       const name = splitWs(body.name).join(" ");
+      // Renamed to blanks was stored as an empty name (a Python bug copied into the port, fixed
+      // 2026-11-05 as decided 2026-10-08).
+      if (!name) throw badRequest("A speaker needs a name.");
       if (sameName(name) !== sameName(cur.name)) refuseSameName(h, cur.project_id, name, { besides: cur.id });
       cur.name = name;
     }

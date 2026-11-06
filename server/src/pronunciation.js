@@ -21,7 +21,9 @@ const TOKEN_RE = /[A-Za-zÀ-ÖØ-öø-ÿ](?:[\p{L}\p{N}_]|['’-])*/gu;
 // text/paragraph — those positions capitalize any word. `[.!?…]\s*["'“”‘’)\]]*\s*$`
 const BREAK_RE = new RegExp(`[.!?…]${S}*["'“”‘’)\\]]*${S}*$`, "u");
 
-const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\/-]/g, "\\$&");
+// The characters a /u pattern treats as syntax outside a class (MDN's escapeRegExp) — never "-" or
+// "/", whose escape a /u pattern refuses ("Jean-Luc Picard" threw "Invalid escape" until 2026-11-05).
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const isLower = (ch) => /\p{Lowercase}/u.test(ch);
 
 /**

@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **Seven fixes (2026-11-05)** — a book's export no longer fails when a persona that plays someone has
+  its own pace, pitch or settings saved, and carries them; a voice named in Japanese (or any script
+  past Western European) exports as a bundle; Generate's take plays itself when it finishes, and the
+  dictation window's agent speech starts, instead of waiting ten minutes; a lexicon entry with a
+  hyphen ("Jean-Luc Picard") no longer stops Lexicons' name scan; a speaker can't be added or renamed
+  to blanks; and for other callers, `DELETE /v1/generations?scope=…&confirm=true` no longer deletes
+  every take — `scope` was never a filter — a line given a speaker from another book is a 404 naming
+  it, and `PATCH /v1/projects/{id}` answers the chapter count
 - **audio.cpp's update of 2026-11-05: two more speech recognisers** — the speech engines list now
   has NVIDIA's Nemotron 3.5 Transcribe (40 languages; 34 billion parameters, more than an 8 GB card
   holds — audio.cpp keeps part of it on the CPU) and FermionResearch's Phonon-2 (English, built on

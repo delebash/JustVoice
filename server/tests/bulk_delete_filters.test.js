@@ -58,3 +58,17 @@ test("no_filters_still_400s", async () => {
   const r = await c.delete("/v1/generations");
   expect(r.status).toBe(400);
 });
+
+test("scope_is_no_filter_so_alone_it_400s_and_deletes_nothing", async () => {
+  // A Python bug copied into the port on purpose (TASKS "The family moves to Electron…", agent 3's
+  // list; fixed 2026-11-05 as decided 2026-10-08): `scope` counted as a filter but filtered
+  // nothing, so `?scope=x&confirm=true` deleted every generation.
+  const { c } = await appClient();
+  const ids = seed();
+  const r = await c.delete("/v1/generations?scope=tts&confirm=true");
+  expect(r.status).toBe(400);
+  expect(await remainingIds(c)).toEqual(new Set(ids));
+  // Beside a real filter it is ignored, as before.
+  const ok = (await c.delete("/v1/generations?engine=tada&scope=tts&confirm=true")).json();
+  expect(ok.deleted_count).toBe(1);
+});

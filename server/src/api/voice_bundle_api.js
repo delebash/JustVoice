@@ -7,6 +7,7 @@
 
 import { readFileSync } from "node:fs";
 import { Hono } from "@delebash/core/platform";
+import { attachment } from "@delebash/core/platform/server";
 import { ValueError } from "@delebash/core/platform/py";
 import { getState } from "../app_state.js";
 import * as modelCatalog from "../engines/model_catalog.js";
@@ -14,38 +15,6 @@ import { badRequest, notFound } from "../errors.js";
 import { construct, Voice } from "../models.js";
 import { buildBundle, importBundle, LookupError } from "../voice_bundle.js";
 import * as captures from "./captures_api.js";
-
-/**
- * A header value as Starlette writes it: latin-1, and a character past it is Python's
- * UnicodeEncodeError — a 500 through the app's catch-all, with Python's own words. (Python bug
- * kept on purpose until the whole-server comparison: a voice named in Japanese can't be
- * exported. The kit's `attachment()` is the fix, as JustWrite's export took it.)
- */
-export function latin1Header(value) {
-  const chars = [...value];
-  let pos = 0;
-  for (let i = 0; i < chars.length; i++) {
-    if (chars[i].codePointAt(0) <= 0xff) {
-      pos += 1;
-      continue;
-    }
-    let j = i;
-    while (j + 1 < chars.length && chars[j + 1].codePointAt(0) > 0xff) j += 1;
-    const err = new Error(
-      j === i
-        ? `'latin-1' codec can't encode character '${escapeChar(chars[i])}' in position ${pos}: ordinal not in range(256)`
-        : `'latin-1' codec can't encode characters in position ${pos}-${pos + (j - i)}: ordinal not in range(256)`,
-    );
-    err.name = "UnicodeEncodeError";
-    throw err;
-  }
-  return value;
-}
-
-function escapeChar(ch) {
-  const c = ch.codePointAt(0);
-  return c > 0xffff ? `\\U${c.toString(16).padStart(8, "0")}` : `\\u${c.toString(16).padStart(4, "0")}`;
-}
 
 export function router() {
   const app = new Hono();
@@ -64,7 +33,9 @@ export function router() {
     }
     return c.body(payload, 200, {
       "content-type": "application/zip",
-      "content-disposition": latin1Header(`attachment; filename="${filename}"`),
+      // RFC 6266/5987, as every download here: a name outside Latin-1 survives (it was a 500 — a
+      // Python bug copied into the port, fixed 2026-11-05 as decided 2026-10-08).
+      "content-disposition": attachment(filename),
     });
   });
 

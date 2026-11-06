@@ -113,6 +113,13 @@ test("scan_respects_lexicon_coverage", () => {
   expect(out.map((w) => w.word)).toEqual(["Brindlewood"]);
 });
 
+test("scan_covers_a_hyphenated_phrase", () => {
+  // A lexicon phrase with a hyphen ("Jean-Luc Picard") made the scan throw "Invalid escape": the
+  // escape put a backslash before "-", which a /u pattern refuses (found 2026-11-05).
+  const out = scanNames(each(["They hailed Jean-Luc Picard at Farpoint."], ["Jean-Luc Picard"]));
+  expect(out.map((w) => w.word)).toEqual(["Farpoint"]);
+});
+
 test("scan_coverage_is_per_line", () => {
   // A persona's lexicon reaches only that persona's lines (2026-09-30), so a name it holds
   // still counts where someone else says it.

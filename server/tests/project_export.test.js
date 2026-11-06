@@ -54,3 +54,22 @@ test("the_archive_is_named_by_the_projects_name_as_written", async () => {
   r = await c.get(`/v1/projects/${pid}/export?include_audio=false`);
   expect(r.headers["content-disposition"]).toMatch(/^attachment; filename="project-\d{8}T\d{6}Z\.justvoice\.zip"$/);
 });
+
+test("a_persona_with_a_saved_delivery_exports_it", async () => {
+  // A Python bug copied into the port on purpose (TASKS "The family moves to Electron…", agent 3's
+  // list; fixed 2026-11-05 as decided 2026-10-08): a played persona with any delivery saved failed
+  // the whole export with a 500 ("'str' object has no attribute 'model_dump'").
+  const { c } = await appClient(undefined, { seed: true });
+  let r = await c.post("/v1/projects/import?source=justwrite", {
+    json: bookJson({ chapters: [["ch1", "One", [scene("scn1", "“We leave at dawn,” said Mara Vance.")]]] }),
+  });
+  expect(r.status, r.text).toBe(200);
+  const pid = r.json().project_id;
+  const speaker = (await c.get(`/v1/projects/${pid}/speakers`)).json().speakers[0];
+  const persona = (await c.post("/v1/personas", { json: { name: "Mara", default_delivery: { speed: 1.1, pause_after: 300 } } })).json();
+  expect((await c.patch(`/v1/speakers/${speaker.id}`, { json: { persona_id: persona.id } })).status).toBe(200);
+  r = await c.get(`/v1/projects/${pid}/export`);
+  expect(r.status, r.text).toBe(200);
+  const saved = JSON.parse(ZipReader.fromBuffer(r.content).read(`personas/${persona.id}.json`).toString("utf8"));
+  expect(saved.default_delivery).toEqual({ speed: 1.1, pause_after: 300 });
+});

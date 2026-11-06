@@ -23,23 +23,16 @@ const frame = (obj, floats) => `data: ${pyJson(obj, { floats })}\n\n`;
  * Poll the generation status until it terminates (completed/failed/cancelled) or the timeout
  * fires. Yields SSE text frames. Terminal statuses: completed / failed / cancelled / not_found.
  *
- * Python's bug, copied on purpose: the loop re-queried through ONE SQLAlchemy session, whose
- * identity map hands back the row object it loaded first without refreshing it — so the
- * stream never sees a status change after its first frame (measured: a row updated from
- * another session still reads its first status), only the row's deletion (the query then
- * finds nothing). The row is therefore read once and only its existence re-checked.
+ * The row is read fresh on every poll. (Python re-queried through one SQLAlchemy session whose
+ * identity map handed back the first row unrefreshed, so its stream never saw a change after the
+ * first frame — copied into the port on purpose, fixed 2026-11-05 as decided 2026-10-08.)
  */
 export async function* _streamGenerationStatus(generationId) {
   const h = session.getDb();
   let elapsed = 0.0;
   let lastStatus = null;
-  let loaded = null; // the identity map's copy
   while (elapsed < cfg.SSE_TIMEOUT_S) {
-    let gen = h.one(`select * from ${Generation} where id = ? limit 1`, [generationId], Generation);
-    if (gen !== null) {
-      if (loaded === null) loaded = gen;
-      gen = loaded;
-    }
+    const gen = h.one(`select * from ${Generation} where id = ? limit 1`, [generationId], Generation);
     if (gen === null) {
       yield frame({ id: generationId, status: "not_found" });
       return;

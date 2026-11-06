@@ -920,7 +920,8 @@ export function router() {
       changes.metadata_json = pyJson(metadata);
     }
     h.tx(() => _dirtyUpdate(h, Project, p, changes));
-    return c.json(projectOut(projectById(h, id)));
+    // As GET answers it, its chapter count included (it said 0 until 2026-11-05).
+    return c.json(projectOut(projectById(h, id), h.count(Scene, { project_id: id })));
   });
 
   app.delete("/v1/projects/:project_id", (c) => {
@@ -1016,8 +1017,10 @@ export function router() {
   app.post("/v1/scenes/:scene_id/blocks", input({ body: CreateBlockRequest, pyFloats: true }), (c) => {
     const h = session.getDb();
     const id = c.req.param("scene_id");
-    if (!sceneById(h, id)) throw notFound(`scene ${id}`);
+    const scene = sceneById(h, id);
+    if (!scene) throw notFound(`scene ${id}`);
     const body = c.req.valid("json");
+    _speakerOfBook(h, body.speaker_id, scene.project_id);
     const b = h.tx(() => {
       const row = insertRow(h, Block, {
         scene_id: id,
@@ -1034,6 +1037,15 @@ export function router() {
     });
     return c.json(blockOut(b), 201);
   });
+
+  /** A line's speaker must be one of its book's: else a 404 naming it, the words Discover's corrections
+   * use — not a 500 from the foreign key (a Python bug copied into the port, fixed 2026-11-05 as
+   * decided 2026-10-08). No speaker (null) is always fine. */
+  function _speakerOfBook(h, speakerId, projectId) {
+    if (speakerId === null || speakerId === undefined) return;
+    const sp = h.get(Speaker, speakerId);
+    if (sp === null || sp.project_id !== projectId) throw new HttpError(404, `speaker ${speakerId} not found in this book`);
+  }
 
   app.patch("/v1/blocks/:block_id", input({ body: UpdateBlockRequest, pyFloats: true }), (c) => {
     const h = session.getDb();
@@ -1056,7 +1068,10 @@ export function router() {
       if (body.text !== cur.text) dropSourceText = true;
       cur.text = body.text;
     }
-    if (body.speaker_id !== null || sent.has("speaker_id")) cur.speaker_id = body.speaker_id;
+    if (body.speaker_id !== null || sent.has("speaker_id")) {
+      _speakerOfBook(h, body.speaker_id, sceneById(h, b.scene_id)?.project_id ?? null);
+      cur.speaker_id = body.speaker_id;
+    }
     if (body.direction !== null) cur.direction = body.direction;
     if (body.metadata !== null) cur.metadata_json = pyJson(body.metadata);
     if (body.line_override !== null) {

@@ -4914,7 +4914,11 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         /v1/generations?scope=<anything>&confirm=true` deletes every generation; `PATCH
         /v1/projects/{id}` always answers `scene_count: 0`; an unknown `speaker_id` on a line is a
         500, not a 404; a speaker renamed to blanks stores an empty name; smart-assign reads
-        booleans as ids (filtered, harmless).
+        booleans as ids (filtered, harmless). FIXED 2026-11-05 under the finish run (as this
+        2026-10-08 rec said), each with its test: all but smart-assign's (harmless, left), plus two
+        more still marked in the code — the bundle.zip header (the kit's `attachment()`) and the
+        status stream that never saw a change — and the audit's `scanNames` "Invalid escape" on a
+        hyphenated lexicon phrase.
         FINDING: the labs CLI never installs the LLM, so every passage reports ✗; the tracked
         `latest-auto.md` shows that and still says "Tier". (RESEARCH §6, wave D.)
         DECIDED 2026-10-08 — the user, after the list "Waiting on you (none of these blocks the

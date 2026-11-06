@@ -15,7 +15,7 @@ import { statSync } from "node:fs";
 import { attachment, Hono, input } from "@delebash/core/platform";
 import { safeTitle } from "@delebash/core/platform/filename";
 import { opt, T } from "@delebash/core/platform/models";
-import { strip } from "@delebash/core/platform/py";
+import { isDict, strip } from "@delebash/core/platform/py";
 import { jsonLoads, pyJson } from "@delebash/core/platform/pyjson";
 import { ZipWriter } from "@delebash/core/platform/zip";
 import { Block, Generation, Lexicon, LexiconEntry, Persona, Project, Scene, Speaker, Take } from "../database/models.js";
@@ -115,11 +115,18 @@ export function router() {
 
     // personas/<persona_id>.json — the voices that play them
     for (const persona of personas) {
-      // PYTHON-BUG (copied on purpose): the row's `default_delivery` is the stored JSON TEXT, and
-      // Python called `.model_dump(exclude_none=True)` on it — so a persona with any delivery
-      // saved fails the whole export with a 500 ("'str' object has no attribute 'model_dump'").
-      // Only a persona with none saved exports (`{}`). The effects chain goes out as its text.
-      if (persona.default_delivery) throw new TypeError("'str' object has no attribute 'model_dump'");
+      // The row's `default_delivery` is the stored JSON text of the delivery, nulls already left out
+      // (storage/personas.js `_dumpDelivery`) — it goes out as that object, `{}` when none is saved.
+      // (Python called `.model_dump()` on the text, so a persona with any delivery saved failed the
+      // whole export with a 500; copied into the port, fixed 2026-11-05 as decided 2026-10-08.) The
+      // effects chain goes out as its text.
+      let delivery = {};
+      try {
+        const parsed = persona.default_delivery ? jsonLoads(persona.default_delivery) : {};
+        if (isDict(parsed)) delivery = parsed;
+      } catch {
+        // an unreadable row exports as none saved
+      }
       zf.writestr(
         `personas/${persona.id}.json`,
         dump({
@@ -131,7 +138,7 @@ export function router() {
           note: persona.note,
           // How it speaks — pace, pitch, gain, pauses and each model's own settings — and its
           // effects (2026-10-03).
-          default_delivery: {},
+          default_delivery: delivery,
           effects_chain: persona.effects_chain,
           lexicon_id: persona.lexicon_id,
         }),

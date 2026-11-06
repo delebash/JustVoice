@@ -22,7 +22,6 @@ export const BulkDeleteResult = T.Object({ deleted_count: T.Integer(), freed_byt
 const Query = T.Object({
   voice_id: opt(nullable(T.String()), null),
   engine: opt(nullable(T.String()), null),
-  scope: opt(nullable(T.String()), null),
   status: opt(nullable(OkStatus), null),
   older_than: opt(nullable(T.String()), null),
   chapter_id: opt(nullable(T.String()), null),
@@ -83,10 +82,13 @@ export function router() {
     const h = session.getDb();
     const q = c.req.valid("query");
     const olderThan = q.older_than === null ? null : _queryDatetime(q.older_than);
-    const present = [q.voice_id, q.engine, q.scope, q.status, olderThan, q.chapter_id, q.project_id].some((v) => v !== null);
+    // `scope` (the old storage layer's cache scope, in no table) is no filter: it counted as one and
+    // filtered nothing, so `?scope=x&confirm=true` deleted every generation — a Python bug copied
+    // into the port, fixed 2026-11-05 as decided 2026-10-08. An unknown query key is ignored.
+    const present = [q.voice_id, q.engine, q.status, olderThan, q.chapter_id, q.project_id].some((v) => v !== null);
     if (!present) {
       throw badRequest(
-        "At least one filter required to prevent accidental nuke-all. Use voice_id / engine / scope / status / older_than / chapter_id / project_id.",
+        "At least one filter required to prevent accidental nuke-all. Use voice_id / engine / status / older_than / chapter_id / project_id.",
       );
     }
 
@@ -103,8 +105,6 @@ export function router() {
       where.push("engine = ?");
       params.push(q.engine);
     }
-    // scope is the cache_scope from the old storage layer; not in the table — accepted as a
-    // no-op for forward compat with the docs.
     if (q.status !== null) {
       where.push("ok_status = ?");
       params.push(q.status);
