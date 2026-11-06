@@ -24,6 +24,10 @@ vi.mock("@delebash/ui", () => ({
   requestBlob: vi.fn(),
   postForm: vi.fn(),
   serverUrl: () => "",
+  // the kit's token door (2026-10-29), which the api store reads when it is made — without it the
+  // store failed to build and the page's loads threw (as the Speech tab tests' mocks, 0b9f04d5)
+  getServerToken: () => "",
+  setServerToken: () => {},
   pageFlow: () => ({}),
   useModelApply: () => ({}),
   // the kit's area: each Speech slot rendered with the scope the kit tab gives it

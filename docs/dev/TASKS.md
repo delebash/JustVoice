@@ -105,8 +105,13 @@ OPEN:   whether upstream is merged into `jv` before the release — your call. T
         Nemotron 3.5 Transcribe and Phonon-2). Decided under the finish run's go, attacked: the model files'
         revision stays 661a224e (decided 2026-10-29: the next one gives 28 files on this PC other bytes), so
         PocketTTS Small, Underdog Bark 3, Haas ASR and the rest aren't offered until that pin moves — with the
-        release. OPEN: the dev build, the fork's tests, the app under `npm run dev` on what the update adds
-        (TASKS "An audio.cpp update tests only…"), then push `jv` — waiting for the card (the shared-card queue).
+        release. BUILT 2026-11-05: the dev build at 281de44a (CUDA 12.4, 1169 steps, 1079 s, 6 jobs — the
+        shared machine; `audiocpp_dsp 1 (281de44a)`); the fork's tests in a clean CPU test build
+        (`build/jv-test`, MSVC 14.51, its own toolset): 97 of 99 — `lfm2_audio_assets_test` needs a model
+        package folder (round E's known case), `lfm3_audio_assets_test` (upstream's, new in this merge)
+        can't open its synthetic GGUF for writing, in any folder tried — its harness on Windows, not
+        investigated further. OPEN: the app under `npm run dev` on what the update adds (AGENTS.md: an
+        update is tested on what it adds), then push `jv` — waiting for the card (the shared-card queue).
 GO:     given for the release's timing; the merge given 2026-11-05.
 
 ### The test kit and round 4, then the one-click slices — "do it all" (decided 2026-10-16)
