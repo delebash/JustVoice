@@ -373,6 +373,13 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   all 30 Qwen3-ASR languages, detection for anything else. (was: raw codes for the 20 outside
   `QWEN_LANGUAGE`, and "English" to the aligner — until 2026-10-04.) — *code + tests,
   2026-10-04* · `slot.py` `QWEN_LANGUAGE`, `ASR_LANGUAGE`; audit §5 D6, D7, §13.5.
+- The aligner's language only picks how it splits the words: "Chinese" or "Cantonese" by character,
+  every other name — "English", which `kit_speech.align` sends for a language outside
+  `ASR_LANGUAGE`, included — at spaces (`processor.cpp` `tokenize_alignable_words`). So sending
+  "English" for an unknown language changes nothing, and Japanese or Thai text with no spaces aligns
+  as one "word" per unbroken run. Its model covers zh, en, yue, fr, de, it, ja, ko, pt, ru, es
+  (its spec's `languages`). — *code, 2026-11-05* · fork `281de44a`
+  `src/models/qwen3_forced_aligner/processor.cpp:174-182`.
 - A Qwen3 clone decodes the **whole** reference clip again with every line, then trims it; the
   decoder works in 300-frame chunks with 25 frames of left context. — *code, 2026-10-04* ·
   `../audio.cpp/src/models/qwen3_tts/tokenizer_speech_decoder.cpp:47-48, 1267-1292`.
