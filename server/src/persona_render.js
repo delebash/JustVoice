@@ -81,7 +81,7 @@ function _tagsets(model) {
 }
 
 /** The emotions a persona on `model` can pick from: the model's own emotion tags (Turbo's
- * seven), or where the model takes written direction the app's nine — or only those its direction
+ * seven), or where the model takes written direction the app's feelings — or only those its direction
  * file maps (CosyVoice3's five, Higgs's seven; the adoption plan, E8) — or none. */
 export function emotionChoices(model) {
   const sets = _tagsets(model);
@@ -175,7 +175,7 @@ export function checkDelivery(delivery) {
       if (!(lo <= value && value <= hi)) problems.push(`${name}'s ${spec.label} ${rangeWords(spec)}; ${fmtG(value)} is outside it`);
     }
     // An emotion is understood when it's one the model's choices name — or, on a written-direction
-    // model, any of the app's nine (a family file that maps only some leaves the others plain, so
+    // model, any of the app's feelings (a family file that maps only some leaves the others plain, so
     // one saved before its choices narrowed still saves).
     const known = Object.hasOwn(_tagsets(model), "emotion") || !row.supports_instruct_freeform ? emotionChoices(model) : EMOTION_VALUES;
     if (ms.emotion != null && !known.includes(ms.emotion)) {

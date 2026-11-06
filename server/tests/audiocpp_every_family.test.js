@@ -20,6 +20,7 @@ import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
 import * as hooks from "../src/engines/audiocpp/kit_hooks.js";
 import { runtimeModelRows } from "../src/engines/audiocpp/kit_models.js";
+import { EMOTION_VALUES } from "../src/models.js";
 import * as kitSpeech from "../src/engines/audiocpp/kit_speech.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
@@ -196,9 +197,10 @@ test("a model with no direction file can't be directed yet; the persona page off
   // E8); a model taking words, on every emotion.
   expect(lookup("cosyvoice3").emotions).toEqual(["happy", "sad", "angry", "whispered", "shouted"]);
   expect(emotionChoices("cosyvoice3")).toEqual(["happy", "sad", "angry", "whispered", "shouted"]);
-  expect(emotionChoices("higgs_audio_tts")).toEqual(["happy", "sad", "angry", "fearful", "whispered", "shouted", "contemptuous"]);
+  // The three of 2026-11-05 its tags name (RESEARCH §10.38); curious has none.
+  expect(emotionChoices("higgs_audio_tts")).toEqual(["happy", "sad", "angry", "fearful", "whispered", "shouted", "contemptuous", "surprised", "relieved", "eager"]);
   expect(lookup("breeze_tts").emotions).toBeNull();
-  expect(emotionChoices("breeze_tts")).toHaveLength(9);
+  expect(emotionChoices("breeze_tts")).toEqual(EMOTION_VALUES); // every one, in its words
   expect(emotionChoices("supertonic")).toEqual([]);
   // An emotion saved before the choices narrowed still saves; one no model knows doesn't.
   expect(checkDelivery({ models: { cosyvoice3: { emotion: "fearful" } } })).toEqual([]);

@@ -487,10 +487,13 @@ Direction reads a chapter and writes **how each spoken line should be said** —
 only where the book says so (since 2026-10-16). *“Off with her head!” the Queen
 shouted* gets *shouted*; *“I don't see any wine,” she remarked* gets nothing,
 because the text gives no reason. For each line it marks, the model gives one
-of the nine emotions — neutral, happy, sad, angry, fearful, whispered,
-shouted, sarcastic, contemptuous, or none when none fits — and a few words
-taken from the book's own cue: *indignantly*, *grumbling*, *talking in his
-sleep*. Most lines get nothing, and that is the point: a line the book says
+of the app's emotions — neutral, happy, sad, angry, fearful, whispered,
+shouted, sarcastic, contemptuous, surprised, curious, relieved, eager, or none
+when none fits — and a few words taken from the book's own cue: *indignantly*,
+*grumbling*, *talking in his sleep*. A manner isn't a feeling: *very politely*,
+*hastily* or *thinking to herself* gets its words and no emotion (since
+2026-11-05, when *surprised*, *curious*, *relieved* and *eager* joined the
+nine — relief and eagerness had been told *happy*). Most lines get nothing, and that is the point: a line the book says
 nothing about is read as the persona always speaks.
 
 **The carry.** A speaker often says two things in one paragraph with the cue
@@ -514,10 +517,11 @@ model of the persona that speaks the line:
 
 - **A model that takes written direction** (Qwen3-TTS, VoxCPM2): the words go
   to the line's **Style Instructions**, the emotion to its **Emotion** — where
-  the model's list has it (CosyVoice3 takes five of the nine).
+  the model's list has it (CosyVoice3 takes five of them).
 - **A tag model** (Chatterbox Turbo and Nano): the emotion becomes the model's
-  own tag — *fearful* is *[fear]*. An emotion it has no tag for (sad, shouted,
-  contemptuous) gives nothing.
+  own tag — *fearful* is *[fear]*, *surprised* is *[surprised]*. An emotion it
+  has no tag for (sad, shouted, contemptuous, curious, relieved, eager) gives
+  nothing.
 - **Every other model**, or a speaker with no voice yet: nothing. Cast the
   speakers first.
 

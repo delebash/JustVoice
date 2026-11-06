@@ -157,7 +157,7 @@ const dirty = computed(() => {
 
 // ── Server facts ────────────────────────────────────────────────────────
 const caps = ref({});            // capability rows, keyed by model or engine id
-const emotionValues = ref([]);   // the app's nine
+const emotionValues = ref([]);   // the app's feelings (models.js EMOTION_VALUES)
 const usage = ref(null);         // {speakers, total_lines, directed_lines}
 // Opened from Cast's ＋ New persona (`?project=<id>&for=<speaker id>`): Save
 // gives the new persona to that speaker and goes back to the book's Cast.

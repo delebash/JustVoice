@@ -3,7 +3,7 @@
 // step 6, built as its slice 2 (docs/plans/2026-10-11-one-click-audiobook.md §2 step 6, §3, §5).
 //
 // For a chapter the model reads the text with its spoken lines marked [D#] and the speaker named,
-// and answers, per line, one of the nine emotions (models.js EMOTION_VALUES) and a few words of
+// and answers, per line, one of the app's emotions (models.js EMOTION_VALUES) and a few words of
 // direction — only where the text gives a reason. Then the CARRY: a speaker's direction goes to
 // their other lines in the same paragraph that got none, forward, then back (RESEARCH §10.5,
 // measured by hand on Alice VII: cue lines caught 60 % → 88 %, no-cue lines marked 4 % → 5 %).
@@ -63,8 +63,9 @@ The words of the line alone, or an exclamation mark alone, are not a reason.
 Most lines get nothing.
 
 For each line you mark, answer:
-  - "emotion": the nearest of neutral, happy, sad, angry, fearful, whispered,
-    shouted, sarcastic, contemptuous — or "" when none of them fits the cue;
+  - "emotion": the nearest of ${EMOTION_VALUES.join(", ")} — or "" when none of
+    them fits the cue. A manner is not a feeling: "very politely", "hastily",
+    "sleepily", "thinking to herself" get "" and their words;
   - "direction": a few words for the narrator, from the text's own cue
     ("indignantly", "grumbling", "talking in his sleep", "thinking to herself").
 
@@ -173,7 +174,7 @@ function _entries(value) {
   return keyed.length ? keyed.map(([k, v]) => ({ id: k, ...v })) : null;
 }
 
-/** One line's answer as stored: an emotion from the nine (else "") and the direction's words,
+/** One line's answer as stored: an emotion from the app's (else "") and the direction's words,
  * whitespace folded. */
 function _clean(entry) {
   const emotion = strip(pyStrOf(entry.emotion ?? "")).toLowerCase();
@@ -193,7 +194,7 @@ export const isMarked = (a) => Boolean(a && ((a.emotion && a.emotion !== "neutra
  * Every place a JSON object or array can start is tried and the one with the most answers wins —
  * a thinking model's reply can carry prose around its JSON (the lesson of
  * pipeline._extractFirstJsonArray, 2026-09-28). An answer names its line by `id` ("D12", 12); an
- * emotion outside the nine is dropped, the words kept.
+ * emotion outside the app's is dropped, the words kept.
  */
 export function parseAnswers(text) {
   const reply = strip((text || "").replace(/<think>[\s\S]*?<\/think>/g, ""));
@@ -464,7 +465,7 @@ export async function directChapter({ segments, cast = [], earlier = [], recipe 
 /**
  * What an answer writes on a line whose voice speaks on `model` (the plan's step 6): on a model that
  * takes written direction, the words — and the emotion where the model's choices name it
- * (persona_render.emotionChoices: the nine, or the few its direction file maps); on a tag model, the
+ * (persona_render.emotionChoices: the app's, or the few its direction file maps); on a tag model, the
  * emotion as the model's own tag (render_core's `value_map` — Chatterbox Turbo's `fear` for
  * fearful; an emotion it has no tag for, nothing); on any other model, or with no model, nothing.
  * "neutral" is never written — it says nothing. → `{direction, emotion}`, each null when nothing.

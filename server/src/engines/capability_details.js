@@ -318,7 +318,7 @@ export const CAPABILITY_DETAILS = {
         // expressible, emits no tag. Absent keys are not expressible here — `shouted` and
         // `contemptuous` have no token, and `[crying]` is a behaviour rather than `sad`'s
         // state, so sad is not mapped onto it.
-        value_map: { neutral: "", happy: "happy", angry: "angry", fearful: "fear", whispered: "whispering", sarcastic: "sarcastic" },
+        value_map: { neutral: "", happy: "happy", angry: "angry", fearful: "fear", whispered: "whispering", sarcastic: "sarcastic", surprised: "surprised" },
       }),
       tags({
         category: "register",

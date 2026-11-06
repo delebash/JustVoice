@@ -1196,6 +1196,13 @@ export const EMOTION_VALUES = [
   "shouted",
   "sarcastic",
   "contemptuous",
+  // Four more, 2026-11-05 (TASKS "More feelings than nine", item 4; RESEARCH §10.38): relief and
+  // eagerness were told "happy", surprise and curiosity nothing. Appended, so the nine keep their
+  // order everywhere they are listed.
+  "surprised",
+  "curious",
+  "relieved",
+  "eager",
 ];
 export const Emotion = literal(...EMOTION_VALUES);
 
