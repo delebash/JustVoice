@@ -17,7 +17,7 @@ import { getLogger } from "@delebash/core/platform/log";
 import { RuntimeError } from "@delebash/core/platform/py";
 import { openDatabase } from "@delebash/core/platform/sql";
 import { defaultDataDir } from "../paths.js";
-import { TABLES } from "./models.js";
+import { ADDED_COLUMNS, TABLES } from "./models.js";
 
 const log = getLogger("justvoice.database.session");
 
@@ -53,7 +53,7 @@ export function initDb(dataDir = null) {
 
   const h = openDatabase(cfg.dbPath, { foreignKeys: true });
   h.register(TABLES);
-  h.createTables(TABLES);
+  h.createTables(TABLES, ADDED_COLUMNS);
   cfg.handle = h;
   log.info(`database ready at ${cfg.dbPath}`);
 }

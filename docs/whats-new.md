@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **Webhooks fire, and stay signed after a restart (2026-11-05)** — the four events Settings →
+  Webhooks offers (`render.completed`, `render.failed`, `generation.created`, `voice.created`) were
+  never sent; now each fires from where it happens, with what it is about
+  ([Webhooks](webhooks.md#event-catalog)). And a webhook keeps its secret to sign with: before, only a
+  fingerprint was kept, so after a restart every delivery was signed with an empty key — a webhook
+  made before today needs deleting and adding again
 - **Eight fixes (2026-11-05)** — a book's export no longer fails when a persona that plays someone has
   its own pace, pitch or settings saved, and carries them; a voice named in Japanese (or any script
   past Western European) exports as a bundle; Generate's take plays itself when it finishes, and the

@@ -453,3 +453,36 @@ test("a_line_deleted_while_it_renders_is_not_saved", async () => {
   expect(s.status).toBe("completed");
   expect(saved).toEqual([]);
 });
+
+test("a_render_tells_its_webhooks_each_take_then_the_end", async () => {
+  // The render webhooks fire (since 2026-11-05 — nothing fired them before): each take written is
+  // generation.created, the job's end render.completed, both signed with the webhook's own secret.
+  const http = await import("@delebash/core/platform/http");
+  const whApi = await import("../src/api/webhooks_api.js");
+  const { pyJson } = await import("@delebash/core/platform/pyjson");
+  const { Webhook } = await import("../src/database/models.js");
+  h.insert(Webhook, {
+    id: "wh-1",
+    url: "https://example.com/hook",
+    events_json: pyJson(["generation.created", "render.completed"]),
+    secret_hash: whApi._hashSecret("s3cret-key"),
+    secret: "s3cret-key",
+    enabled: true,
+  });
+  const sent = [];
+  vi.spyOn(http, "fetch").mockImplementation(async (url, opts) => {
+    sent.push({ event: opts.headers["X-JustVoice-Event"], body: JSON.parse(opts.body.toString("utf8")), sig: opts.headers["X-JustVoice-Signature"] });
+    return { status: 204, arrayBuffer: async () => new ArrayBuffer(0) };
+  });
+  const [projectId, , blockIds] = seedProject(["Line one.", "Line two."]);
+  fakeRender(async () => line(7));
+  const job = renderJobs.createJob(projectId, "blocks", blockIds);
+  renderJobs.startJob(job.id);
+  await waitTerminal(job.id);
+  for (let i = 0; i < 50 && sent.length < 3; i++) await sleep(10);
+  expect(sent.map((s) => s.event).sort()).toEqual(["generation.created", "generation.created", "render.completed"]);
+  const end = sent.find((s) => s.event === "render.completed").body.data;
+  expect(end).toMatchObject({ job_id: job.id, project_id: projectId, status: "completed", completed_blocks: 2, failed_blocks: 0 });
+  const { createHmac } = await import("node:crypto");
+  for (const s of sent) expect(s.sig).toBe(createHmac("sha256", "s3cret-key").update(Buffer.from(pyJson(s.body), "utf8")).digest("hex"));
+});

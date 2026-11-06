@@ -29,6 +29,7 @@ import { getLogger } from "@delebash/core/platform/log";
 import { pyRound, pyStr, strip, ValueError } from "@delebash/core/platform/py";
 import { pyJson } from "@delebash/core/platform/pyjson";
 import { personaForBlock } from "./api/_speaker_helpers.js";
+import * as webhooks from "./api/webhooks_api.js";
 import * as appState from "./app_state.js";
 import { writeWavContainer } from "./audio/wav.js";
 import * as session from "./database/session.js";
@@ -77,6 +78,19 @@ const _db = () => session.getDb();
  * take rolled its own seed (↻ New take). `block` is the block row, or the job runner's plain
  * copy that already carries `persona_id`. Returns the new take row.
  */
+/** A render job as the render webhooks carry it. */
+function _jobEvent(job) {
+  return {
+    job_id: job.id,
+    project_id: job.project_id,
+    scope: job.scope,
+    status: job.status,
+    total_blocks: job.total_blocks,
+    completed_blocks: job.completed_blocks,
+    failed_blocks: job.failed_blocks,
+  };
+}
+
 export function persistBlockTake(h, state, block, rl, { newSeed = false } = {}) {
   const scene = h.one(`select * from ${Scene} where id = ? limit 1`, [block.scene_id], Scene);
   // The persona that voiced it (line → speaker → persona); the job runner hands a plain copy
@@ -87,6 +101,8 @@ export function persistBlockTake(h, state, block, rl, { newSeed = false } = {}) 
     personaId = found !== null ? found.id : null;
   }
   const frame = 2 * Math.max(1, rl.channels) * Math.max(1, rl.sampleRate);
+  const durationSec = pyRound(rl.pcm.length / frame, 3);
+  const source = newSeed ? lineTakes.NEW_TAKE : lineTakes.CHAPTER_RENDER;
   const genId = uuid();
   const file = path.join(generationsRoot(state.dataDir), `${genId}.wav`);
   writeFileSync(file, writeWavContainer(rl.pcm, rl.sampleRate, rl.channels));
@@ -105,12 +121,22 @@ export function persistBlockTake(h, state, block, rl, { newSeed = false } = {}) 
       instruct: block.direction || null,
       cache_key: rl.inputsKey || null,
       status: "completed",
-      source: newSeed ? lineTakes.NEW_TAKE : lineTakes.CHAPTER_RENDER,
-      duration_sec: pyRound(rl.pcm.length / frame, 3),
+      source,
+      duration_sec: durationSec,
       audio_path: mediaPaths.storeMediaPath(file),
     });
     h.update(Take, { is_default: false }, "block_id = ? and is_default = 1", [block.id]);
     h.insert(Take, { id: takeId, block_id: block.id, generation_id: genId, is_default: true });
+  });
+  webhooks.fireEvent("generation.created", {
+    id: genId,
+    take_id: takeId,
+    block_id: block.id,
+    project_id: scene ? scene.project_id : null,
+    chapter_id: block.scene_id,
+    persona_id: personaId,
+    duration_sec: durationSec,
+    source,
   });
   return h.get(Take, takeId);
 }
@@ -570,13 +596,18 @@ export async function _runJob(jobId) {
         _setFields(db, RenderJob, jobId, { status: cancelEvt.isSet() ? "cancelled" : "completed", finished_at: utcnow() });
         _refreshCounters(db, jobId);
       });
+      // A job that ran to its end — its lines that failed are counted in it; a cancelled one tells no one.
+      if (!cancelEvt.isSet()) webhooks.fireEvent("render.completed", _jobEvent(db.get(RenderJob, jobId)));
     }
   } catch (e) {
     log.exception(`render job ${jobId} crashed: ${e?.message ?? e}`);
     try {
       const db = _db();
       const job = db.get(RenderJob, jobId);
-      if (job !== null && !_TERMINAL.includes(job.status)) db.update(RenderJob, { status: "failed", finished_at: utcnow() }, { id: jobId });
+      if (job !== null && !_TERMINAL.includes(job.status)) {
+        db.update(RenderJob, { status: "failed", finished_at: utcnow() }, { id: jobId });
+        webhooks.fireEvent("render.failed", { ..._jobEvent(db.get(RenderJob, jobId)), error: pyStr(e?.message ?? e) });
+      }
     } catch {
       /* nothing more to do */
     }

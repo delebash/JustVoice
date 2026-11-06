@@ -1026,7 +1026,8 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         runtime options, accepted terms and default model; `PUT /v1/speech-runtime` without a
         `backend` resets a saved backend to "auto" and stops both processes; a capture whose
         transcription fails leaves its WAV behind; download progress was never written, so
-        active tasks never list downloads; `webhooks.dispatch_event` has no callers. And from
+        active tasks never list downloads; `webhooks.dispatch_event` has no callers (FIXED 2026-11-05:
+        the four events fire, and the signing secret is kept on the row). And from
         the API wave's agent 2: a clone on an engine that can't clone stores a voice with the
         engine id as its model; an invalid base64 clip stores an empty clip; a blended
         stream-ticket with no ids or weights is a 500; a voice name past latin-1 makes

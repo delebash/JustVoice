@@ -17,6 +17,16 @@ import { TABLES } from "./models_schema.js";
 
 export { TABLES };
 
+// Additive columns: an existing database gains a column added after it was made, without a reset
+// (the kit's createTables runs `ALTER TABLE … ADD COLUMN` when it's missing — JustWrite's way, its
+// `database/models.js`). Each declaration matches its column in models_schema.js, so old and new
+// databases end up alike. `[table, column, "SQL type + default"]`.
+export const ADDED_COLUMNS = [
+  // 2026-11-05: a webhook's signing secret. Only its hash was kept, so after a restart every
+  // delivery was signed with an empty key (HMAC needs the secret itself).
+  ["webhooks", "secret", "VARCHAR"],
+];
+
 /** The table names, in the schema's order. */
 export const TABLE_NAMES = TABLES.map((t) => t.name);
 

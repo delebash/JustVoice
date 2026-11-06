@@ -137,7 +137,8 @@ integration decisions record (2026-07-15) is executed history at
   `takes` table, `database/models_schema.js:762`). Voice previews: in-memory LRU cap 20 /
   10-min TTL, discarded unless promoted — no library pollution
   (`api/voice_preview_api.js:5,124`).
-- Webhooks: at-least-once, backoff 1s/5s/30s/5m (4 retries, 5 attempts),
+- Webhooks: the four events fire from one place each (a take saved, a render job's end, a voice
+  made — `fireEvent`, since 2026-11-05), each signed with the secret kept on its row; at-least-once, backoff 1s/5s/30s/5m (4 retries, 5 attempts),
   `X-JustVoice-Signature: hex(hmac_sha256(secret, body))` (`api/webhooks_api.js:5-6,201`).
   Bulk-delete (`DELETE /v1/generations`): `confirm=false` is a dry-run, ≥1 filter required
   (`api/bulk_delete_api.js:77-91,144`). Unverified: generations sourced `mcp`/`rest` skip

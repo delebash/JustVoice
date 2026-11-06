@@ -8,17 +8,20 @@ Webhooks tab → "+ Add webhook":
 
 1. **URL** — the endpoint JustVoice POSTs to.
 2. **Events** — checkboxes for the events you want delivered.
-3. **Secret** — auto-generated 32 random bytes if blank. JustVoice shows the plaintext secret **exactly once** at creation — copy it now, it's not retrievable later.
+3. **Secret** — auto-generated 32 random bytes if blank. JustVoice shows the plaintext secret **exactly once** at creation — copy it now, it's not retrievable later. It keeps the secret itself to sign every delivery (as any webhook sender must); a webhook made before 2026-11-05 kept only a fingerprint of it and signs with an empty key — delete it and add it again.
 4. **Enabled** — toggle delivery without deleting the row.
 
 ## Event catalog
 
-| Event | When it fires |
-|---|---|
-| `render.completed` | A chapter / project render finishes successfully. |
-| `render.failed` | A render fails. Body includes error details. |
-| `generation.created` | A new Block render lands in the DB. High-frequency. |
-| `voice.created` | A new voice profile is added. |
+| Event | When it fires | `data` |
+|---|---|---|
+| `render.completed` | A render job runs to its end — its lines that failed are counted in it (a cancelled job sends nothing). | `job_id`, `project_id`, `scope`, `status`, `total_blocks`, `completed_blocks`, `failed_blocks` |
+| `render.failed` | A render job stops on an error of its own. | the same, and `error` |
+| `generation.created` | A take is saved — each line a render makes, and each MCP `justvoice.speak`. High-frequency. | `id`, `take_id`, `block_id`, `project_id`, `chapter_id`, `persona_id`, `duration_sec`, `source` (a render's take; `id`, `persona_id`, `duration_sec`, `source: "mcp"` from MCP) |
+| `voice.created` | A voice is made — cloned, designed, imported, or kept from a preview. | `id`, `name`, `engine`, `source` |
+
+The body is `{"event": "<name>", "data": {…}, "timestamp": <unix seconds>}`. (Until 2026-11-05 none of
+these four fired — the app never sent them; only the **Test** button's event did.)
 
 ## HMAC signing
 

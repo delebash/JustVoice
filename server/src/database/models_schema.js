@@ -266,7 +266,7 @@ export const TABLES = [
   },
   {
     "name": "webhooks",
-    "ddl": "CREATE TABLE webhooks (\n\tid VARCHAR NOT NULL, \n\turl VARCHAR NOT NULL, \n\tevents_json TEXT NOT NULL, \n\tsecret_hash VARCHAR NOT NULL, \n\tenabled BOOLEAN NOT NULL, \n\tlast_delivery_at DATETIME, \n\tlast_status_code INTEGER, \n\tlog_tail_json TEXT NOT NULL, \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id)\n)",
+    "ddl": "CREATE TABLE webhooks (\n\tid VARCHAR NOT NULL, \n\turl VARCHAR NOT NULL, \n\tevents_json TEXT NOT NULL, \n\tsecret_hash VARCHAR NOT NULL, \n\tsecret VARCHAR, \n\tenabled BOOLEAN NOT NULL, \n\tlast_delivery_at DATETIME, \n\tlast_status_code INTEGER, \n\tlog_tail_json TEXT NOT NULL, \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id)\n)",
     "indexes": [],
     "columns": {
       "id": {
@@ -286,6 +286,9 @@ export const TABLES = [
       "secret_hash": {
         "kind": "text",
         "notNull": true
+      },
+      "secret": {
+        "kind": "text"
       },
       "enabled": {
         "kind": "bool",

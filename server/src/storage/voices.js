@@ -18,6 +18,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, wri
 import path from "node:path";
 import { getLogger } from "@delebash/core/platform/log";
 import { KeyError, pySorted, ValueError } from "@delebash/core/platform/py";
+import { fireEvent } from "../api/webhooks_api.js";
 import { construct, dtIso, dtMicros, floatify, modelDump, utcNow, VoiceRecord } from "../models.js";
 import { voicesRoot } from "../paths.js";
 import { atomicWriteJson } from "./atomic.js";
@@ -88,6 +89,7 @@ export class VoiceStore {
     const full = construct(VoiceRecord, record);
     this._flush(full);
     this._cache.set(full.id, full);
+    fireEvent("voice.created", { id: full.id, name: full.name, engine: full.engine, source: full.source });
     return pyClone(full);
   }
 

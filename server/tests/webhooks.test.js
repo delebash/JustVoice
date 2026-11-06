@@ -162,3 +162,42 @@ test("log_tail_capped_at_50", async () => {
   }
   expect(jsonLoads(fetchRow(h, wid).log_tail_json).length).toBe(whApi._LOG_TAIL_CAP);
 });
+
+test("a_voice_made_fires_voice_created_signed_with_the_kept_secret", async () => {
+  // voice.created fires from the one place every voice is made (VoiceStore.create), and the
+  // delivery is signed with the secret kept on the row — not an in-memory copy a restart lost
+  // (both 2026-11-05).
+  const { VoiceStore } = await import("../src/storage/voices.js");
+  const { tmpPath } = await import("./helpers.js");
+  const h = tmpDb();
+  h.insert(Webhook, {
+    id: "wh-v",
+    url: "https://example.com/hook",
+    events_json: pyJson(["voice.created"]),
+    secret_hash: _hashSecret("kept-secret"),
+    secret: "kept-secret",
+    enabled: true,
+  });
+  whApi.cfg.SessionLocal = h;
+  const sent = [];
+  vi.spyOn(http, "fetch").mockImplementation(async (url, opts) => {
+    sent.push(opts);
+    return { status: 204, arrayBuffer: async () => new ArrayBuffer(0) };
+  });
+  const store = new VoiceStore(tmpPath());
+  const v = store.create({ engine: "chatterbox", source: "cloned", name: "Nettle", language: "en-US" });
+  for (let i = 0; i < 50 && !sent.length; i++) await new Promise((r) => setTimeout(r, 10));
+  expect(sent.length).toBe(1);
+  expect(sent[0].headers["X-JustVoice-Event"]).toBe("voice.created");
+  expect(JSON.parse(sent[0].body.toString("utf8")).data).toEqual({ id: v.id, name: "Nettle", engine: "chatterbox", source: "cloned" });
+  expect(sent[0].headers["X-JustVoice-Signature"]).toBe(createHmac("sha256", "kept-secret").update(sent[0].body).digest("hex"));
+  vi.restoreAllMocks();
+});
+
+test("a_webhook_says_whether_it_keeps_a_signing_secret", () => {
+  const h = tmpDb();
+  h.insert(Webhook, { id: "old", url: "https://example.com/a", events_json: "[]", secret_hash: _hashSecret("x"), enabled: true });
+  h.insert(Webhook, { id: "new", url: "https://example.com/b", events_json: "[]", secret_hash: _hashSecret("y"), secret: "y", enabled: true });
+  expect(whApi.fromOrm(fetchRow(h, "old")).secret_set).toBe(false);
+  expect(whApi.fromOrm(fetchRow(h, "new")).secret_set).toBe(true);
+});

@@ -73,10 +73,11 @@ export const cfg = {
   },
 };
 
-// In-process secret cache. The secret is hashed for storage, but the dispatcher needs the raw
-// secret to sign payloads — so raw secrets stay in memory after creation. On server restart the
-// operator must rotate them.
-export const _SECRETS_CACHE = new Map();
+// The signing secret is kept on the row (`secret`, since 2026-11-05) — HMAC needs the secret itself,
+// as every webhook sender keeps it (GitHub's, Stripe's); the API still returns it once, at creation.
+// Before, only its hash was stored and the plain secret lived in memory, so after a restart every
+// delivery was signed with an empty key. A webhook made before then has no secret: delete it and
+// add it again. `secret_hash` stays (the column is NOT NULL) and is written as before.
 
 export const _hashSecret = (raw) => createHash("sha256").update(Buffer.from(raw, "utf8")).digest("hex");
 
@@ -113,7 +114,7 @@ export function fromOrm(row) {
     url: row.url,
     // an event gone since it was saved is left out — the subscription still lists
     events: jsonLoads(row.events_json).filter((e) => self.WEBHOOK_EVENTS.includes(e)),
-    secret_set: Boolean(row.secret_hash),
+    secret_set: Boolean(row.secret),
     enabled: row.enabled,
     created_at: row.created_at,
     last_delivery_at: row.last_delivery_at,
@@ -142,9 +143,9 @@ export function router() {
       url,
       events_json: pyJson(body.events),
       secret_hash: _hashSecret(rawSecret),
+      secret: rawSecret,
       enabled: body.enabled,
     });
-    _SECRETS_CACHE.set(id, rawSecret);
     return c.json(construct(WebhookWithSecret, { subscription: fromOrm(byId(h, id)), secret: rawSecret }), 201);
   });
 
@@ -153,7 +154,6 @@ export function router() {
     const webhookId = c.req.param("webhook_id");
     if (byId(h, webhookId) === null) throw notFound(`webhook ${webhookId}`);
     h.delete(Webhook, { id: webhookId });
-    _SECRETS_CACHE.delete(webhookId);
     return c.json({ deleted: true });
   });
 
@@ -165,7 +165,7 @@ export function router() {
     const bodyBytes = Buffer.from(pyJson({ event: "webhook.test", ping: Math.trunc(Date.now() / 1000) }), "utf8");
     const headers = {
       "Content-Type": "application/json",
-      "X-JustVoice-Signature": sign(_SECRETS_CACHE.get(webhookId) ?? "", bodyBytes),
+      "X-JustVoice-Signature": sign(wh.secret ?? "", bodyBytes),
     };
     const start = performance.now();
     try {
@@ -211,6 +211,12 @@ export function _openBgDb() {
   return cfg.SessionLocal ?? session.cfg.handle ?? null;
 }
 
+/** A webhook's signing secret, read from its row at each delivery ("" when none is kept). */
+function _secretOf(webhookId) {
+  const h = _openBgDb();
+  return (h === null ? null : byId(h, webhookId)?.secret) ?? "";
+}
+
 /**
  * Persist one delivery attempt: bump last_status_code + last_delivery_at and append a capped
  * `{timestamp, status, error?}` entry to log_tail_json. Every attempt (success AND failure) is
@@ -244,8 +250,24 @@ export function _recordAttempt(webhookId, statusCode, error) {
   }
 }
 
-/** Fan out an event to all enabled webhooks subscribed to it. The caller fire-and-forgets it.
- * (Nothing calls it today — as in Python.) */
+/**
+ * Tell every enabled webhook subscribed to `event` — fire-and-forget: a delivery's outcome, or no
+ * database at all (a store used alone in a test), never reaches the caller. The four events fire
+ * from one place each (since 2026-11-05; nothing fired them before, in Python either):
+ * `generation.created` — a take written (render_jobs `persistBlockTake`, MCP's `speak`);
+ * `render.completed` / `render.failed` — a render job's end (render_jobs `runJob`);
+ * `voice.created` — a voice made (storage/voices `VoiceStore.create`).
+ */
+export function fireEvent(event, payload) {
+  try {
+    const h = _openBgDb();
+    if (h !== null) self.dispatchEvent(event, payload, h).catch(() => {});
+  } catch {
+    /* no database: nothing to tell */
+  }
+}
+
+/** Fan out an event to all enabled webhooks subscribed to it. The caller fire-and-forgets it. */
 export async function dispatchEvent(event, payload, h) {
   const subs = h.all(`select * from ${Webhook} where enabled = 1`, undefined, Webhook);
   for (const sub of subs) {
@@ -259,7 +281,7 @@ export async function _deliverWithRetry(webhookId, url, event, payload) {
   const bodyBytes = Buffer.from(pyJson({ event, data: payload, timestamp: Math.trunc(Date.now() / 1000) }), "utf8");
   const headers = {
     "Content-Type": "application/json",
-    "X-JustVoice-Signature": sign(_SECRETS_CACHE.get(webhookId) ?? "", bodyBytes),
+    "X-JustVoice-Signature": sign(_secretOf(webhookId), bodyBytes),
     "X-JustVoice-Event": event,
   };
 

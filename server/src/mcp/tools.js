@@ -23,6 +23,7 @@ import path from "node:path";
 import { b64decode, pyRound, strRepr } from "@delebash/core/platform/py";
 import * as z from "zod/v4";
 import { getState } from "../app_state.js";
+import { fireEvent } from "../api/webhooks_api.js";
 import { parseWavHeader } from "../audio/wav.js";
 import { Generation, uuid } from "../database/models.js";
 import { getDb } from "../database/session.js";
@@ -102,6 +103,7 @@ async function speak({ text, voice = null, persona = null, language = null }) {
     writeFileSync(file, wav);
     h.update(Generation, { audio_path: storeMediaPath(file) }, { id });
   });
+  fireEvent("generation.created", { id, persona_id: resolved.persona?.id ?? null, duration_sec: durationSec, source: "mcp" });
 
   return {
     generation_id: id,
