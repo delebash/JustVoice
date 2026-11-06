@@ -2,7 +2,7 @@
 
 ## v0.1.0
 
-- **Seven fixes (2026-11-05)** — a book's export no longer fails when a persona that plays someone has
+- **Eight fixes (2026-11-05)** — a book's export no longer fails when a persona that plays someone has
   its own pace, pitch or settings saved, and carries them; a voice named in Japanese (or any script
   past Western European) exports as a bundle; Generate's take plays itself when it finishes, and the
   dictation window's agent speech starts, instead of waiting ten minutes; a lexicon entry with a
