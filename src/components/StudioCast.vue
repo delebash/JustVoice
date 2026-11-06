@@ -31,7 +31,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   AiTaskStrips, EmptyState, UiButton, UiCheckbox, UiChip, UiInput, UiMultiSelect, UiSelect, UiTable, UiTag, UiTextarea,
-  confirmDialog, languageName, promptDialog, pushToast, withAiTask,
+  confirmDialog, languageName, promptDialog, pushToast, reportError, withAiTask,
 } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import CastNewPersonas from "./CastNewPersonas.vue";
@@ -264,7 +264,7 @@ async function assign(persona) {
       message: same ? `${s.name} no longer has persona ${persona.name}.` : `${s.name} cast with persona ${persona.name}.`,
     });
   } catch (e) {
-    pushToast({ kind: "error", message: `Assign failed: ${e?.message || e}` });
+    reportError(e, { title: "Assign failed" });
   } finally {
     busy.value = false;
   }
@@ -310,7 +310,7 @@ async function saveField(field) {
     if (saved) resetDraft(saved, field);
     emit("changed");
   } catch (e) {
-    pushToast({ kind: "error", message: `Save failed: ${e?.message || e}` });
+    reportError(e, { title: "Save failed" });
     resetDraft(s, field);
   }
 }
@@ -329,7 +329,7 @@ async function savePronouns(value) {
     await projectsService.updateSpeaker(s.id, { pronouns: value || null });
     emit("changed");
   } catch (e) {
-    pushToast({ kind: "error", message: `Save failed: ${e?.message || e}` });
+    reportError(e, { title: "Save failed" });
   }
 }
 function blurOnEnter(e) {
@@ -350,7 +350,7 @@ async function addSpeaker() {
         : `Added ${sp.name} — now pick a persona.`,
     });
   } catch (e) {
-    pushToast({ kind: "error", message: `Add failed: ${e?.message || e}` });
+    reportError(e, { title: "Add failed" });
   }
 }
 
@@ -374,7 +374,7 @@ async function removeSpeaker(s) {
     emit("changed", { moved: s.lines, ignored: got?.ignored?.length || 0 });
     pushToast({ kind: "success", message: `${s.name} removed from this book.` });
   } catch (e) {
-    pushToast({ kind: "error", message: `Remove failed: ${e?.message || e}` });
+    reportError(e, { title: "Remove failed" });
   }
 }
 
@@ -394,7 +394,7 @@ async function clearCast() {
     emit("changed");
     pushToast({ kind: "warning", message: "Cleared every assignment. The speakers stay." });
   } catch (e) {
-    pushToast({ kind: "error", message: `Clear personas failed: ${e?.message || e}` });
+    reportError(e, { title: "Clear personas failed" });
   } finally {
     busy.value = false;
   }
@@ -416,7 +416,7 @@ async function setNarrator(s) {
       message: `${s.name} narrates now${moved ? ` — ${plural(moved, "line")} of narration moved to them` : ""}.`,
     });
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't change the narrator: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't change the narrator" });
   } finally {
     busy.value = false;
   }
@@ -438,7 +438,7 @@ async function addNarrator() {
       message: `Narrator added as a speaker${moved ? ` — ${plural(moved, "narration line")} now read by it` : ""}.`,
     });
   } catch (e) {
-    pushToast({ kind: "error", message: `Add Narrator failed: ${e?.message || e}` });
+    reportError(e, { title: "Add Narrator failed" });
   } finally {
     busy.value = false;
   }
@@ -521,13 +521,11 @@ async function smartAssign() {
         : "Smart-assign returned no matches.",
     });
   } catch (e) {
-    pushToast({
-      kind: "warning",
-      duration: 6000,
-      message: e?.message?.includes("501") || e?.status === 501
-        ? "Smart-assign needs a language model — set one in AI Settings."
-        : `Smart-assign failed: ${e?.message || e}`,
-    });
+    if (e?.message?.includes("501") || e?.status === 501) {
+      pushToast({ kind: "warning", duration: 6000, message: "Smart-assign needs a language model — set one in AI Settings." });
+    } else {
+      reportError(e, { title: "Smart-assign failed" });
+    }
   } finally {
     smartBusy.value = false;
   }
@@ -551,7 +549,7 @@ async function play(p) {
     }
   } catch (e) {
     if (handleTermsRefusal(e)) return;
-    pushToast({ message: `Preview failed: ${e?.message || e}`, kind: "error", duration: 6000 });
+    reportError(e, { title: "Preview failed" });
   } finally {
     previewing.value = null;
   }
@@ -612,13 +610,11 @@ async function proposeNewPersonas() {
       });
       proposals = rest.map((sp) => ({ speaker: sp, voice: voiceById.value[assignments[sp.id]] || null }));
     } catch (e) {
-      pushToast({
-        kind: "warning",
-        duration: 6000,
-        message: e?.message?.includes("501") || e?.status === 501
-          ? "New personas need a language model — set one in AI Settings."
-          : `New personas failed: ${e?.message || e}`,
-      });
+      if (e?.message?.includes("501") || e?.status === 501) {
+        pushToast({ kind: "warning", duration: 6000, message: "New personas need a language model — set one in AI Settings." });
+      } else {
+        reportError(e, { title: "New personas failed" });
+      }
       return;
     } finally {
       newBusy.value = false;
@@ -655,8 +651,7 @@ async function createNewPersonas(picked) {
     pushToast({ kind: "success", duration: 5000, message: `${said.join(" · ")}.` });
     newAsk.value = null;
   } catch (e) {
-    pushToast({ kind: "error", duration: 7000,
-      message: `Stopped after ${plural(made, "new persona")}: ${e?.message || e}` });
+    reportError(e, { title: `Stopped after ${plural(made, "new persona")}` });
   } finally {
     newBusy.value = false;
     await personasStore.reload();

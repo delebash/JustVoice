@@ -15,7 +15,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast, pageFlow } from "@delebash/ui";
+import { pushToast, reportError, pageFlow } from "@delebash/ui";
 import { confirmDialog, promptDialog } from "@delebash/ui";
 import { UiButton, UiInput, UiTag, UiChip, UiTable } from "@delebash/ui";
 
@@ -102,11 +102,7 @@ async function onEditorSaved(newChain) {
         kind: "success",
       });
     } catch (e) {
-      pushToast({
-        message: `Update failed: ${e?.message || e}`,
-        kind: "error",
-        duration: 6000,
-      });
+      reportError(e, { title: "Update failed" });
     }
   } else {
     // Create new — name it via our dialog (native prompt() is banned:
@@ -128,11 +124,7 @@ async function onEditorSaved(newChain) {
       });
       pushToast({ message: `Created "${name}".`, kind: "success" });
     } catch (e) {
-      pushToast({
-        message: `Create failed: ${e?.message || e}`,
-        kind: "error",
-        duration: 6000,
-      });
+      reportError(e, { title: "Create failed" });
     }
   }
   editorOpen.value = false;
@@ -155,7 +147,7 @@ async function deletePreset(p) {
     await refresh();
     pushToast({ message: `Deleted "${p.name}".`, kind: "success" });
   } catch (e) {
-    pushToast({ message: `Delete failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Delete failed" });
   }
 }
 

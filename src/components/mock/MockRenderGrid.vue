@@ -13,7 +13,7 @@
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
-  AiTaskStrip, AiTaskStrips, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
+  AiTaskStrip, AiTaskStrips, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, reportError, useAiTasksStore, withAiTask,
 } from "@delebash/ui";
 import PagePlayer from "../PagePlayer.vue";
 import PlayTransport from "../PlayTransport.vue";
@@ -103,7 +103,7 @@ async function renderOne(ch) {
     const r = await renderChapter(ch, { onRetry: () => renderQueue([ch]) });
     if (r?.url) player.play(playKey(ch.id), r.url);
   } catch (e) {
-    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${titleOf(ch)}: ${e?.message || e}`, duration: 9000 });
+    if (e?.name !== "AbortError") reportError(e, { title: titleOf(ch) });
   }
 }
 function renderAll() {

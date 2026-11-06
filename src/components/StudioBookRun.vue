@@ -13,7 +13,7 @@
 <script setup>
 import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { confirmDialog, openPath, pushToast, saveBlob, useAiTasksStore } from "@delebash/ui";
+import { confirmDialog, openPath, pushToast, reportError, saveBlob, useAiTasksStore } from "@delebash/ui";
 import BookRunCard from "./BookRunCard.vue";
 import {
   LIVE, bookRunFor, followBookRun, followLive, loadBookRun, priceQuestion, resumeBookRun, runFollowed, startBookRun, stopBookRun,
@@ -46,7 +46,7 @@ async function load() {
     follow();
   } catch (e) {
     if (id === props.project.id) plan.value = null;
-    pushToast({ kind: "error", message: `Couldn't read the audiobook run: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't read the audiobook run" });
   }
 }
 watch(() => props.project.id, load, { immediate: true });
@@ -80,7 +80,7 @@ async function start() {
     await startBookRun(api, props.project.id, { acceptPrice });
     follow();
   } catch (e) {
-    pushToast({ kind: "error", message: String(e?.message || e), duration: 7000 });
+    reportError(e);
   } finally {
     busy.value = false;
   }
@@ -90,7 +90,7 @@ async function stop() {
   try {
     await stopBookRun(api, run.value);
   } catch (e) {
-    pushToast({ kind: "error", message: String(e?.message || e) });
+    reportError(e);
   }
 }
 
@@ -101,7 +101,7 @@ async function resume() {
     await resumeBookRun(api, run.value);
     follow();
   } catch (e) {
-    pushToast({ kind: "error", message: String(e?.message || e), duration: 7000 });
+    reportError(e);
   } finally {
     busy.value = false;
   }
@@ -120,7 +120,7 @@ async function save() {
       ...(said.folder ? { action: { label: "Open folder", fn: () => openPath(said.folder) } } : {}),
     });
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't save the M4B: ${e?.message || e}`, duration: 7000 });
+    reportError(e, { title: "Couldn't save the M4B" });
   }
   load();
 }

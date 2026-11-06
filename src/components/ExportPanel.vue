@@ -14,7 +14,7 @@
 import { ref, computed, watch } from "vue";
 import { copyToClipboard } from "quasar";
 import { useApi } from "../stores/api.js";
-import { AiTaskStrips, openPath, pushToast, saveBlob } from "@delebash/ui";
+import { AiTaskStrips, errorText, openPath, pushToast, reportError, saveBlob } from "@delebash/ui";
 import { exportRun, savedMessage } from "../services/exportRun.js";
 import { useCopy } from "../services/copy.js";
 import { masterLabel, projectMaster } from "../services/masterTargets.js";
@@ -58,7 +58,7 @@ async function runExportQc() {
     // toasting a raw error (user-hit: QC exploded on opening Export).
     qcError.value = String(e?.message || e).includes("400")
       ? "Nothing to measure yet — load an engine and render at least one chapter, then re-check."
-      : `QC failed: ${e?.message || e}`;
+      : `QC failed: ${errorText(e)}`;
   } finally {
     exportQcBusy.value = false;
   }
@@ -97,7 +97,7 @@ async function exportM4B() {
     sayWhereSaved(await saveBlob(blob, filename,
       { title: "Save audiobook", filterName: "M4B audiobook", filterExt: "m4b" }), filename);
   } catch (e) {
-    if (e?.name !== "AbortError") pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    if (e?.name !== "AbortError") reportError(e, { title: "Export failed" });
   } finally {
     exportBusy.value = "";
   }
@@ -118,7 +118,7 @@ async function exportChapterWavs() {
     sayWhereSaved(res, filename);
     if (note && savedMessage(res, filename).kind === "success") pushToast({ kind: "warning", message: note });
   } catch (e) {
-    if (e?.name !== "AbortError") pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    if (e?.name !== "AbortError") reportError(e, { title: "Export failed" });
   } finally {
     exportBusy.value = "";
   }
@@ -142,7 +142,7 @@ async function generateShowNotes() {
     });
   } catch (e) {
     if (!/abort/i.test(String(e?.message || ""))) {
-      pushToast({ message: `Show notes failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+      reportError(e, { title: "Show notes failed" });
     }
   }
 }
@@ -157,7 +157,7 @@ async function copyShowNotes() {
     await copyToClipboard(md);
     pushToast({ message: "Show notes copied.", kind: "success", duration: 2000 });
   } catch (e) {
-    pushToast({ message: `Copy failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Copy failed" });
   }
 }
 

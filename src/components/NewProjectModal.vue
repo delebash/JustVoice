@@ -17,7 +17,7 @@
 //   create  — { name, project_type, language } with no file (caller owns the API call)
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton, UiInput, UiSelect, UiTable, UiTag, AppModal, fmtBytes, openHelp, pushToast } from "@delebash/ui";
+import { UiButton, UiInput, UiSelect, UiTable, UiTag, AppModal, fmtBytes, openHelp, pushToast, reportError } from "@delebash/ui";
 import { bookLanguageOptions } from "../services/personaFacts.js";
 import { projectKind } from "../services/projectKinds.js";
 import { projectsService } from "../services/projects.js";
@@ -140,7 +140,7 @@ async function read() {
     if (!kindChosen.value && KINDS.some((k) => k.id === p.kind)) selected.value = p.kind;
     if (!language.value && p.language) language.value = p.language;
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't read ${file.value?.name}: ${e?.message || e}` });
+    reportError(e, { title: `Couldn't read ${file.value?.name}` });
   } finally {
     reading.value = false;
   }
@@ -207,7 +207,7 @@ onMounted(async () => {
   nameInput.value?.focus();
   adaptersLoad = projectsService.listImportAdapters().then(
     (r) => { adapters.value = r?.adapters || []; },
-    (e) => pushToast({ kind: "error", message: `Couldn't load what JustVoice imports: ${e?.message || e}` }),
+    (e) => reportError(e, { title: "Couldn't load what JustVoice imports" }),
   );
   await adaptersLoad;
 });

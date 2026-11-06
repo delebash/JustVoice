@@ -4,7 +4,7 @@ import { ref, computed, onActivated, onMounted, watch } from "vue";
 import { copyToClipboard } from "quasar";
 import { useI18n } from "vue-i18n";
 import { useApi } from "../stores/api.js";
-import { pushToast, pageFlow } from "@delebash/ui";
+import { pushToast, reportError, pageFlow } from "@delebash/ui";
 import { confirmDialog } from "@delebash/ui";
 import { AppearancePanel, DataManagement, LanguagePicker, LogsPanel, SettingsShell, StoragePanel, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, renderHelpMarkdown, serverUrl, useAiTasksStore, SETTINGS_SECTION_ORDER } from "@delebash/ui";
 import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
@@ -218,7 +218,7 @@ async function reload() {
     await refresh();
     pushToast({ message: "Reconnected.", duration: 2500 });
   } catch (e) {
-    pushToast({ message: `Reconnect failed: ${e.message || e}`, kind: "error" });
+    reportError(e, { title: "Reconnect failed" });
   }
 }
 
@@ -232,7 +232,7 @@ async function save() {
     settings.value = resp.settings || settings.value;
     pushToast({ message: "Settings saved. Some changes may need a server restart.", duration: 5000 });
   } catch (e) {
-    pushToast({ message: `Save failed: ${e.message || e}`, kind: "error" });
+    reportError(e, { title: "Save failed" });
   }
 }
 
@@ -436,7 +436,7 @@ async function saveCaptureLanguage(value) {
     pushToast({ message: "Capture language saved.", duration: 2000 });
   } catch (e) {
     captureLanguage.value = before;
-    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Save failed" });
   }
 }
 onMounted(loadCaptureLanguage);
@@ -528,7 +528,7 @@ async function saveBinding() {
     bindingDraft.value = { client_id: "", label: "", persona_id: "" };
     await loadMcpBindings();
   } catch (e) {
-    pushToast({ message: `Binding save failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Binding save failed" });
   }
 }
 function editBinding(b) {
@@ -539,7 +539,7 @@ async function deleteBinding(b) {
     await api.request(`/v1/mcp/bindings/${encodeURIComponent(b.client_id)}`, { method: "DELETE" });
     await loadMcpBindings();
   } catch (e) {
-    pushToast({ message: `Delete failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Delete failed" });
   }
 }
 async function saveMcpDefaultVoice() {
@@ -551,7 +551,7 @@ async function saveMcpDefaultVoice() {
     });
     pushToast({ message: "MCP default voice saved.", duration: 2000 });
   } catch (e) {
-    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Save failed" });
   }
 }
 
@@ -627,7 +627,7 @@ async function saveAuth(patch) {
       body: JSON.stringify(next),
     });
   } catch (e) {
-    pushToast({ message: `Could not save: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Could not save" });
   }
 }
 function addToken() {

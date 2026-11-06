@@ -19,7 +19,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { UiButton, UiChip, UiField, UiInput, UiSelect, UiTextarea, languageName, pushToast } from "@delebash/ui";
+import { UiButton, UiChip, UiField, UiInput, UiSelect, UiTextarea, languageName, pushToast, reportError } from "@delebash/ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import {
   DESIGN_NOTE, MODEL_NOTE, engineOfRow, makerModelOptions, preferredModel, previewCandidate,
@@ -106,7 +106,7 @@ async function runPreview() {
     takes.value = [...takes.value.slice(dropped ? 1 : 0), { n, url: URL.createObjectURL(blob), previewId }];
     chosen.value = n;
   } catch (e) {
-    if (!handleTermsRefusal(e)) pushToast({ message: `Preview failed: ${e?.message || e}`, kind: "error" });
+    if (!handleTermsRefusal(e)) reportError(e, { title: "Preview failed" });
   } finally {
     busy.value = false;
   }
@@ -141,7 +141,7 @@ async function keepDescription() {
     pushToast({ message: `Voice "${voice.name}" saved to Voices.`, kind: "success" });
     emit("kept", voice);
   } catch (e) {
-    pushToast({ message: `Keep failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Keep failed" });
   } finally {
     keeping.value = false;
   }
@@ -160,7 +160,7 @@ async function keepTake() {
     pushToast({ message: `Voice "${voice.name}" saved to Voices — take ${take.n} is its clip.`, kind: "success" });
     emit("kept", voice);
   } catch (e) {
-    pushToast({ message: `Keep failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Keep failed" });
   } finally {
     keeping.value = false;
   }

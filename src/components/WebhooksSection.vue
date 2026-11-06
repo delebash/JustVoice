@@ -8,7 +8,7 @@
 import { onMounted, ref } from "vue";
 import { copyToClipboard } from "quasar";
 import { webhooksService } from "../services/projects.js";
-import { pushToast } from "@delebash/ui";
+import { pushToast, reportError } from "@delebash/ui";
 import { confirmDialog } from "@delebash/ui";
 import { UiButton, UiInput, UiField, UiCheckbox, UiTag, UiTable } from "@delebash/ui";
 
@@ -38,7 +38,7 @@ async function refresh() {
     const res = await webhooksService.list();
     subscriptions.value = res.subscriptions ?? [];
   } catch (e) {
-    pushToast({ kind: "error", title: "Couldn't load webhooks", description: String(e?.message ?? e) });
+    reportError(e, { title: "Couldn't load webhooks" });
   }
 }
 
@@ -60,7 +60,7 @@ async function createWebhook() {
     showAdd.value = false;
     await refresh();
   } catch (e) {
-    pushToast({ kind: "error", title: "Create failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Create failed" });
   }
 }
 
@@ -76,7 +76,7 @@ async function deleteWebhook(w) {
     await webhooksService.remove(w.id);
     await refresh();
   } catch (e) {
-    pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Delete failed" });
   }
 }
 
@@ -89,7 +89,7 @@ async function testWebhook(w) {
       pushToast({ kind: "error", title: "Test failed", description: result.error || `HTTP ${result.status_code}` });
     }
   } catch (e) {
-    pushToast({ kind: "error", title: "Test failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Test failed" });
   }
 }
 

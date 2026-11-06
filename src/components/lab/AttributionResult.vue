@@ -22,7 +22,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { UiButton, UiSelect, pushToast } from "@delebash/ui";
+import { UiButton, UiSelect, pushToast, reportError } from "@delebash/ui";
 import { SOURCE_LEGEND, routeWords, sourceChipClass, sourceMeaning } from "../../services/attribution.js";
 import { useApi } from "../../stores/api.js";
 import { useActiveProject } from "../../stores/activeProject.js";
@@ -163,7 +163,7 @@ async function reassign(row, newSpeaker) {
     pushToast({ message: `Recorded — the next run for ${projectName.value} learns from it.`, kind: "success", duration: 3000 });
   } catch (e) {
     row.speaker = prev;
-    pushToast({ message: `Couldn't record the correction: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Couldn't record the correction" });
   }
 }
 

@@ -14,7 +14,7 @@
 -->
 <script setup>
 import { computed } from "vue";
-import { UiButton, UiSelect, languageName, loadRuntimeModel, openExternal, pushToast } from "@delebash/ui";
+import { UiButton, UiSelect, languageName, loadRuntimeModel, openExternal, pushToast, reportError } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { setDefaultVariant } from "../services/engineDefaults.js";
@@ -57,7 +57,7 @@ async function setDefault() {
     pushToast({ message: `${v.value.name} is now ${e.value.name || e.value.id}'s default version.`, kind: "success" });
     await engines.reload(); // the list serves the RESOLVED default — re-read the badge truth
   } catch (err) {
-    pushToast({ message: `Couldn't set the default: ${err?.message || err}`, kind: "error" });
+    reportError(err, { title: "Couldn't set the default" });
   }
 }
 
@@ -108,7 +108,7 @@ async function setRuntimeOption(key, value) {
   try {
     r = await api.put(`/v1/engines/${encodeURIComponent(e.value.id)}/models/${encodeURIComponent(v.value.id)}/runtime-options`, { options: next });
   } catch (err) {
-    pushToast({ message: `Couldn't change ${v.value.name}'s options: ${err?.message || err}`, kind: "error" });
+    reportError(err, { title: `Couldn't change ${v.value.name}'s options` });
     return;
   }
   await engines.loadModels(e.value.id);

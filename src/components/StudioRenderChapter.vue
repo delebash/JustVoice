@@ -27,7 +27,7 @@
 import { computed, nextTick, reactive, ref, watch } from "vue";
 import {
   AiTaskStrips, AppModal, UiButton, UiChip, UiField, UiSelect, UiTable, UiTag, UiTextarea,
-  confirmDialog, promptDialog, pushToast, useAiTasksStore,
+  confirmDialog, errorText, promptDialog, pushToast, reportError, useAiTasksStore,
 } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import DeliveryKnobs from "./DeliveryKnobs.vue";
@@ -83,7 +83,7 @@ async function load() {
     loadError.value = "";
     adopt(r);
   } catch (e) {
-    if (id === props.sceneId) loadError.value = String(e?.message || e);
+    if (id === props.sceneId) loadError.value = errorText(e);
   }
 }
 async function loadPause() {
@@ -170,7 +170,7 @@ async function changeSpeaker(l, speakerId) {
     await load();
     emit("changed", { sceneId: props.sceneId });
   } catch (e) {
-    pushToast({ kind: "error", message: `The speaker didn't change: ${e?.message || e}`, duration: 7000 });
+    reportError(e, { title: "The speaker didn't change" });
   } finally {
     speakerBusy[l.block_id] = false;
   }
@@ -268,7 +268,7 @@ async function patchBlock(l, body) {
     await load();
     emit("changed", { sceneId: props.sceneId });
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't save the line: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't save the line" });
   }
 }
 function setDirection(l, v) {
@@ -311,7 +311,7 @@ async function renderOne(l, { newTake = false } = {}) {
     if (open.value === l.block_id) await loadTakes(l.block_id);
     emit("changed", { sceneId: props.sceneId });
   } catch (e) {
-    pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
+    reportError(e, { title: "Render failed" });
   } finally {
     busy[l.block_id] = false;
   }
@@ -344,7 +344,7 @@ function adopt(r) {
   if (!job || chapterRunning(aiTasks, r.scene_id) || jobFollowed(aiTasks, job.id)) return;
   followRender(api, { sceneId: r.scene_id, title: title.value, job })
     .catch((e) => {
-      if (e?.name !== "AbortError") pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
+      if (e?.name !== "AbortError") reportError(e, { title: "Render failed" });
     })
     .finally(() => emit("changed", { sceneId: r.scene_id }));
 }
@@ -372,7 +372,7 @@ async function runLines(which) {
   try {
     await renderLines(api, { sceneId: id, title: title.value, which });
   } catch (e) {
-    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
+    if (e?.name !== "AbortError") reportError(e, { title: "Render failed" });
   } finally {
     delete runs[id];
     await load();
@@ -393,7 +393,7 @@ async function playChapter() {
     // Played only where it was asked for — another chapter may be open by now.
     if (r?.url && props.sceneId === id) player.play("chapter", r.url);
   } catch (e) {
-    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${e?.message || e}`, duration: 9000 });
+    if (e?.name !== "AbortError") reportError(e);
   } finally {
     delete runs[id];
     await load();
@@ -425,7 +425,7 @@ async function makeLive(l, t) {
     await Promise.all([load(), loadTakes(l.block_id)]);
     emit("changed", { sceneId: props.sceneId });
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't choose that take: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't choose that take" });
   }
 }
 // The take in use can go too (decided 2026-10-07): it asks first, and the
@@ -454,7 +454,7 @@ async function deleteTake(l, t) {
     await Promise.all([load(), loadTakes(l.block_id)]);
     if (t.is_default) emit("changed", { sceneId: props.sceneId });
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't delete the take: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't delete the take" });
   }
 }
 
@@ -587,7 +587,7 @@ async function runRewrite() {
     r.text = out?.text || out?.rewritten || "";
     if (!r.text) r.error = "The model returned nothing — try again.";
   } catch (e) {
-    r.error = `Rewrite failed: ${e?.message || e}`;
+    r.error = `Rewrite failed: ${errorText(e)}`;
   } finally {
     r.busy = false;
   }
@@ -629,7 +629,7 @@ async function pronounce(l) {
     if (lex.created) pushToast({ kind: "info", message: `“${lex.name}” made — this book's lexicon (Overview → Pronunciation lexicon).` });
     window.location.hash = "#lexicons";
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't open the book's lexicon: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't open the book's lexicon" });
   }
 }
 

@@ -12,7 +12,7 @@
 <script setup>
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { UiButton, pushToast } from "@delebash/ui";
+import { UiButton, reportError } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 
 const props = defineProps({
@@ -46,7 +46,7 @@ async function unload(l) {
     await api.post(`/v1/ai/runtimes/audiocpp/models/${encodeURIComponent(l.modelId)}/unload`, {});
     window.dispatchEvent(new Event("jv:health-refresh"));
   } catch (e) {
-    pushToast({ message: `Unload failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Unload failed" });
   }
   await props.refresh?.();
 }

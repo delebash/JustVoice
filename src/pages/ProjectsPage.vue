@@ -20,7 +20,7 @@ import NewProjectModal from "../components/NewProjectModal.vue";
 import { projectsService } from "../services/projects.js";
 import { openProjectInStudio } from "../services/openProject.js";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/ui";
+import { pushToast, reportError } from "@delebash/ui";
 import { chapterWordForKind, useCopy } from "../services/copy.js";
 import { PROJECT_KINDS, kindLabel, projectKind } from "../services/projectKinds.js";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -82,7 +82,7 @@ async function refresh() {
   try {
     await projectsStore.reload();
   } catch (e) {
-    pushToast({ kind: "error", title: "Failed to load projects", description: String(e?.message ?? e) });
+    reportError(e, { title: "Failed to load projects" });
   }
 }
 
@@ -118,7 +118,7 @@ async function onCreateProject({ name, project_type, language }) {
     await refresh();
     landOnOverview(projects.value.find((p) => p.id === created.id));
   } catch (e) {
-    pushToast({ kind: "error", title: "Create failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Create failed" });
   }
 }
 
@@ -136,7 +136,7 @@ async function onCreateDemo(kind) {
     pushToast({ kind: "success", title: "Demo project loaded", description: "Explore freely — deleting it touches nothing else." });
     landOnOverview(projects.value.find((p) => p.id === run?.project_id));
   } catch (e) {
-    pushToast({ kind: "error", title: "Demo failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Demo failed" });
   }
 }
 

@@ -11,7 +11,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { UiButton, UiTag, AppModal } from "@delebash/ui";
+import { UiButton, UiTag, AppModal, errorText } from "@delebash/ui";
 
 const props = defineProps({
   takeId: { type: String, default: null },
@@ -33,7 +33,7 @@ async function load() {
     const r = await api.request(`/v1/takes/${props.takeId}/lineage`);
     chain.value = r?.chain || [];
   } catch (e) {
-    error.value = String(e?.message || e);
+    error.value = errorText(e);
     chain.value = [];
   } finally {
     loading.value = false;

@@ -11,7 +11,7 @@
 -->
 <script setup>
 import { ref, computed, onActivated } from "vue";
-import { pushToast, pageFlow } from "@delebash/ui";
+import { pushToast, reportError, pageFlow } from "@delebash/ui";
 import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { openProjectInStudio } from "../services/openProject.js";
@@ -75,7 +75,7 @@ async function changeSplit(splitOn) {
     draft.value = getImportDraft();
     excluded.value = new Set(); // chapter indices changed — reset picks
   } catch (e) {
-    pushToast({ kind: "error", title: "Re-split failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Re-split failed" });
   } finally {
     splitBusy.value = false;
   }
@@ -144,7 +144,7 @@ async function doImport() {
     } catch { /* fall through */ }
     window.location.hash = "#projects";
   } catch (e) {
-    pushToast({ kind: "error", title: "Import failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Import failed" });
   } finally {
     committing.value = false;
   }

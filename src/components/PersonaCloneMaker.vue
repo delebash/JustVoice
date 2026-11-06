@@ -18,7 +18,7 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
-  UiButton, UiCheckbox, UiField, UiInput, UiSelect, UiTag, UiTextarea, fmtBytes, languageName, pushToast,
+  UiButton, UiCheckbox, UiField, UiInput, UiSelect, UiTag, UiTextarea, fmtBytes, languageName, pushToast, reportError,
 } from "@delebash/ui";
 import { acceptEngineTerms, handleTermsRefusal } from "../services/engineTerms.js";
 import {
@@ -92,7 +92,7 @@ watch(sourceUrl, (v) => {
       await setClip(new File([blob], raw.split("/").pop() || "reference.wav", { type: blob.type || "audio/wav" }));
       pushToast({ message: "Audio fetched.", kind: "success" });
     } catch (e) {
-      pushToast({ message: `Couldn't fetch that audio: ${e.message || e}`, kind: "error" });
+      reportError(e, { title: "Couldn't fetch that audio" });
     }
   }, 600);
 });
@@ -117,7 +117,7 @@ async function toggleRecord() {
     mediaRecorder.start();
     recording.value = true;
   } catch (e) {
-    pushToast({ message: `Microphone unavailable: ${e.message || e}`, kind: "error" });
+    reportError(e, { title: "Microphone unavailable" });
     recording.value = false;
   }
 }
@@ -149,7 +149,7 @@ async function pickCapture(id) {
     await setClip(new File([blob], `capture-${id}.wav`, { type: blob.type || "audio/wav" }));
     if (c.transcript && !transcript.value.trim()) transcript.value = c.transcript;
   } catch (e) {
-    pushToast({ message: `Couldn't read that capture: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Couldn't read that capture" });
   }
 }
 
@@ -174,7 +174,7 @@ async function acceptTerms() {
     await acceptEngineTerms(api, e.id);
     pushToast({ message: `${e.name} can clone voices now.`, kind: "success" });
   } catch (err) {
-    pushToast({ message: `Couldn't record that: ${err?.message || err}`, kind: "error" });
+    reportError(err, { title: "Couldn't record that" });
   } finally {
     termsBusy.value = false;
   }
@@ -237,7 +237,7 @@ async function runPreview() {
     clearPreview();
     preview.value = { url: URL.createObjectURL(blob), label: `${name.value.trim() || "The clone"} on ${row.value?.display_name || model.value}, as this persona speaks` };
   } catch (e) {
-    if (!handleTermsRefusal(e)) pushToast({ message: `Preview failed: ${e?.message || e}`, kind: "error" });
+    if (!handleTermsRefusal(e)) reportError(e, { title: "Preview failed" });
   } finally {
     busy.value = false;
   }
@@ -258,7 +258,7 @@ async function keep() {
     pushToast({ message: `Voice "${voice.name}" saved to Voices.`, kind: "success" });
     emit("kept", voice);
   } catch (e) {
-    if (!handleTermsRefusal(e)) pushToast({ message: `Keep failed: ${e?.message || e}`, kind: "error" });
+    if (!handleTermsRefusal(e)) reportError(e, { title: "Keep failed" });
   } finally {
     keeping.value = false;
   }

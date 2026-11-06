@@ -70,7 +70,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import {
-  UiButton, UiCheckbox, UiChip, UiTable, UiTag, confirmDialog, pushToast, runAiEndpoint,
+  UiButton, UiCheckbox, UiChip, UiTable, UiTag, confirmDialog, pushToast, reportError, runAiEndpoint,
 } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -321,7 +321,7 @@ async function find() {
   } catch (e) {
     // Stopped: nothing changed. No model, or the model failed: the line says why.
     if (e?.name !== "AbortError" && e?.status !== 501 && e?.status !== 502) {
-      pushToast({ kind: "error", message: `${FIND} failed: ${e?.message || e}` });
+      reportError(e, { title: `${FIND} failed` });
     }
   } finally {
     finding.value = null;
@@ -350,7 +350,7 @@ async function act(run) {
   try {
     await run();
   } catch (e) {
-    pushToast({ kind: "error", message: e?.message || String(e) });
+    reportError(e);
   } finally {
     peopleBusy.value = false;
   }
@@ -467,7 +467,7 @@ async function linkSelected() {
     picked.value = { ...picked.value };
     pushToast({ kind: "success", message: `${plural(rows.length, "name")} linked as one person, ${linkedAs(names)}. Unlink takes it back.` });
   } catch (e) {
-    pushToast({ message: `Link failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Link failed" });
   } finally {
     bulkBusy.value = false;
   }
@@ -502,7 +502,7 @@ async function addSelected() {
     }
     emit("cast-changed", { moved });
   } catch (e) {
-    pushToast({ message: `Add failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Add failed" });
   } finally {
     bulkBusy.value = false;
   }
@@ -524,7 +524,7 @@ async function ignoreSelected() {
     projectsStore.reload();
     for (const row of rows) delete picked.value[row.key];
   } catch (e) {
-    pushToast({ message: `Ignore failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Ignore failed" });
   } finally {
     bulkBusy.value = false;
   }
@@ -561,7 +561,7 @@ async function add(c) {
     });
     emit("cast-changed");
   } catch (e) {
-    pushToast({ message: `Add failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Add failed" });
   } finally {
     busyName.value = null;
   }
@@ -587,7 +587,7 @@ async function unignore(names) {
       kind: "info",
     });
   } catch (e) {
-    pushToast({ message: `Couldn't take that off the list: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Couldn't take that off the list" });
   }
 }
 
@@ -669,7 +669,7 @@ async function ignore(c) {
     ignored.value = r?.ignored || ignored.value;
     projectsStore.reload();
   } catch (e) {
-    pushToast({ message: `Ignore failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Ignore failed" });
   } finally {
     busyName.value = null;
   }

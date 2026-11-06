@@ -14,7 +14,7 @@
 -->
 <script setup>
 import { computed, onBeforeUnmount, ref } from "vue";
-import { AppModal, UiButton, UiCheckbox, UiSelect, UiTable, UiTag, pushToast } from "@delebash/ui";
+import { AppModal, UiButton, UiCheckbox, UiSelect, UiTable, UiTag, reportError } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { andList } from "../services/newPersonas.js";
@@ -75,7 +75,7 @@ async function play(p) {
       playing.value = { id: p.speaker.id, url: URL.createObjectURL(blob) };
     }
   } catch (e) {
-    if (!handleTermsRefusal(e)) pushToast({ kind: "error", message: `Couldn't play the voice: ${e?.message || e}` });
+    if (!handleTermsRefusal(e)) reportError(e, { title: "Couldn't play the voice" });
   } finally {
     loading.value = null;
   }

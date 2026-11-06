@@ -41,7 +41,7 @@
 import { computed, onActivated, onMounted, ref, watch } from "vue";
 import {
   UiButton, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, UiToggle,
-  confirmDialog, pushToast, saveBlob,
+  confirmDialog, pushToast, reportError, saveBlob,
 } from "@delebash/ui";
 import ImportModal from "./ImportModal.vue";
 import StudioBookRun from "./StudioBookRun.vue";
@@ -139,7 +139,7 @@ async function patch(body) {
     clearTimeout(flashTimer);
     flashTimer = setTimeout(() => { savedFlash.value = false; }, 1500);
   } catch (e) {
-    pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Save failed" });
   }
 }
 function commitName() {
@@ -200,7 +200,7 @@ async function exportPackage() {
       { title: "Save project", filterName: "JustVoice project", filterExt: "zip" });
     pushToast({ kind: "success", title: "Project exported" });
   } catch (e) {
-    pushToast({ kind: "error", title: "Export failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Export failed" });
   }
 }
 
@@ -220,7 +220,7 @@ async function deleteProject() {
     pushToast({ kind: "success", title: "Project deleted" });
     window.location.hash = "#projects";
   } catch (e) {
-    pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Delete failed" });
   }
 }
 </script>

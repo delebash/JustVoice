@@ -9,7 +9,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { captureReadinessService } from "../services/projects.js";
 import { captureLanguageWord } from "../services/captureLanguage.js";
-import { pushToast, pageFlow } from "@delebash/ui";
+import { pushToast, reportError, pageFlow } from "@delebash/ui";
 import { UiButton, UiInput, UiCheckbox, UiTag, UiChip } from "@delebash/ui";
 
 const api = useApi();
@@ -50,7 +50,7 @@ async function togglePin(c) {
     const idx = captures.value.findIndex((x) => x.id === c.id);
     if (idx >= 0) captures.value[idx] = updated;
   } catch (e) {
-    pushToast({ kind: "error", title: "Pin failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Pin failed" });
   }
 }
 
@@ -77,7 +77,7 @@ async function refresh() {
     captures.value = res.captures ?? res ?? [];
     if (!selectedId.value && captures.value.length > 0) selectedId.value = captures.value[0].id;
   } catch (e) {
-    pushToast({ kind: "error", title: "Couldn't load captures", description: String(e?.message ?? e) });
+    reportError(e, { title: "Couldn't load captures" });
   }
 }
 

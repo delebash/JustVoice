@@ -10,7 +10,7 @@
 <script setup>
 import { computed, ref, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/ui";
+import { pushToast, reportError } from "@delebash/ui";
 import { confirmDialog, promptDialog } from "@delebash/ui";
 import { UiButton, UiTag, UiTable } from "@delebash/ui";
 import { useVoicesStore } from "../stores/voices.js";
@@ -93,7 +93,7 @@ async function purgeAll() {
     await loadStats();
     pushToast({ kind: "success", title: "Cache purged" });
   } catch (e) {
-    pushToast({ kind: "error", title: "Purge failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Purge failed" });
   }
 }
 
@@ -103,7 +103,7 @@ async function purgeScope(scope) {
     await loadStats();
     pushToast({ kind: "success", title: `Scope "${scope}" purged` });
   } catch (e) {
-    pushToast({ kind: "error", title: "Purge failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Purge failed" });
   }
 }
 
@@ -120,7 +120,7 @@ async function pruneOlderThan(days) {
     await loadStats();
     pushToast({ kind: "success", title: `Pruned ${r?.removed ?? 0} entries older than ${days} days` });
   } catch (e) {
-    pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Prune failed" });
   }
 }
 
@@ -145,7 +145,7 @@ async function pruneGenerations(query, label) {
     await loadPickers();
     pushToast({ kind: "success", title: `Pruned ${r?.deleted_count ?? 0} renders (${label})` });
   } catch (e) {
-    pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Prune failed" });
   }
 }
 async function pruneByVoice() {
@@ -192,7 +192,7 @@ async function deleteEntry(id) {
     recent.value = recent.value.filter((r) => r.id !== id);
     await loadStats();
   } catch (e) {
-    pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Delete failed" });
   }
 }
 

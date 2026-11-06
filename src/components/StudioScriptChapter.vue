@@ -28,7 +28,7 @@
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from "vue";
 import {
   AiTaskStrip, AppModal, UiButton, UiCheckbox, UiChip, UiSelect, UiTable, UiTag, UiTextarea,
-  confirmDialog, pushToast,
+  confirmDialog, errorText, pushToast, reportError,
 } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
@@ -81,7 +81,7 @@ async function load() {
     lines.value = r.lines || [];
     loadError.value = "";
   } catch (e) {
-    loadError.value = String(e?.message || e);
+    loadError.value = errorText(e);
   } finally {
     loading.value = false;
   }
@@ -359,7 +359,7 @@ async function splitAtCursor() {
     await restructured("Split into two lines. Undo was cleared — Merge puts them back together.");
   } catch (e) {
     busy.value = false;
-    pushToast({ message: String(e?.message || e), kind: "error" });
+    reportError(e);
   }
 }
 const mergeCheck = computed(() => mergeState(lines.value, tickedIds.value));
@@ -385,7 +385,7 @@ async function mergeTicked() {
     await restructured(`Merged ${m.ids.length} lines into one. Undo was cleared — Split takes them apart again.`);
   } catch (e) {
     busy.value = false;
-    pushToast({ message: String(e?.message || e), kind: "error" });
+    reportError(e);
   }
 }
 

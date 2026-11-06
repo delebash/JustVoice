@@ -38,7 +38,7 @@ import { computed, onActivated, onBeforeUnmount, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
   AiTaskStrips, AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
-  UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, loadRuntimeModel, pushToast, runAiEndpoint, saveBlob,
+  UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, loadRuntimeModel, pushToast, reportError, runAiEndpoint, saveBlob,
 } from "@delebash/ui";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
@@ -466,7 +466,7 @@ async function playRaw() {
     const blob = await auditionVoice(api, voice.value);
     if (blob instanceof Blob) setAudio(blob, `${voice.value.name} on its own`);
   } catch (e) {
-    if (!handleTermsRefusal(e)) pushToast({ kind: "error", message: `Couldn't play the voice: ${e?.message || e}` });
+    if (!handleTermsRefusal(e)) reportError(e, { title: "Couldn't play the voice" });
   } finally {
     rawBusy.value = false;
   }
@@ -542,7 +542,7 @@ async function chooseVersion(id) {
       message: `${mv.model_name} ${versionShort(id)} — every persona on ${mv.model_name} speaks with it.` });
     await loadModelVersion();
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't change the version: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't change the version" });
   } finally {
     versionBusy.value = false;
   }
@@ -727,13 +727,11 @@ const rewriteBusy = ref(false);
 const rewritePreview = ref(null);   // { original, rewritten }
 function aiFailed(what, e) {
   if (/abort/i.test(String(e?.message || ""))) return;
-  pushToast({
-    kind: "warning",
-    duration: 6000,
-    message: e?.status === 501 || e?.message?.includes("501")
-      ? `${what} needs a language model — set one in AI Settings.`
-      : `${what} failed: ${e?.message || e}`,
-  });
+  if (e?.status === 501 || e?.message?.includes("501")) {
+    pushToast({ kind: "warning", duration: 6000, message: `${what} needs a language model — set one in AI Settings.` });
+  } else {
+    reportError(e, { title: `${what} failed` });
+  }
 }
 async function composeLine() {
   if (aiWhy.value || composeBusy.value) return;
@@ -804,7 +802,7 @@ async function listen() {
     const blob = await hear(hearText.value.trim());
     if (blob instanceof Blob) setAudio(blob, draft.value.name || "This persona");
   } catch (e) {
-    if (!handleTermsRefusal(e)) pushToast({ kind: "error", message: `Listen failed: ${e?.message || e}` });
+    if (!handleTermsRefusal(e)) reportError(e, { title: "Listen failed" });
   } finally {
     hearBusy.value = false;
   }
@@ -818,7 +816,7 @@ async function saveWav() {
   if (!audio.value?.blob) return;
   const name = (draft.value?.name || "persona").replace(/[^\w.-]+/g, "_");
   try { await saveBlob(audio.value.blob, `${name}.wav`); } catch (e) {
-    pushToast({ kind: "error", message: `Save failed: ${e?.message || e}` });
+    reportError(e, { title: "Save failed" });
   }
 }
 
@@ -886,7 +884,7 @@ async function runCompare() {
       if (blob instanceof Blob) compareResults.value = [...compareResults.value, { value, blob, url: URL.createObjectURL(blob) }];
     }
   } catch (e) {
-    if (!handleTermsRefusal(e)) pushToast({ kind: "error", message: `Compare failed: ${e?.message || e}` });
+    if (!handleTermsRefusal(e)) reportError(e, { title: "Compare failed" });
   } finally {
     compareBusy.value = false;
   }
@@ -941,7 +939,7 @@ async function save() {
       pushToast({ kind: "success", message: lines ? `Saved. ${lines} line${lines === 1 ? " is" : "s are"} now stale.` : "Saved." });
     }
   } catch (e) {
-    pushToast({ kind: "error", message: `Save failed: ${e?.message || e}` });
+    reportError(e, { title: "Save failed" });
   } finally {
     saving.value = false;
   }
@@ -962,7 +960,7 @@ async function saveAsNew() {
     pushToast({ kind: "success", message: was ? `Saved as a new persona. ${was} is untouched.` : `${p.name} created.` });
     router.push({ name: "persona", params: { id: p.id } });
   } catch (e) {
-    pushToast({ kind: "error", message: `Save as new failed: ${e?.message || e}` });
+    reportError(e, { title: "Save as new failed" });
   }
 }
 function revert() {

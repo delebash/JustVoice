@@ -9,7 +9,7 @@
 -->
 <script setup>
 import { computed } from "vue";
-import { UiButton, confirmDialog, pushToast } from "@delebash/ui";
+import { UiButton, confirmDialog, errorText, pushToast } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { openEngineTerms } from "../services/engineTerms.js";
@@ -42,7 +42,7 @@ async function removeEngineModels() {
     try {
       await api.del(`/v1/ai/runtimes/audiocpp/models/${encodeURIComponent(m.id)}`);
     } catch (err) {
-      failed.push(`${m.name}: ${err?.message || err}`);
+      failed.push(`${m.name}: ${errorText(err)}`);
     }
   }
   window.dispatchEvent(new Event("jv:health-refresh"));

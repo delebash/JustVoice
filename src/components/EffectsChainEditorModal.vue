@@ -30,7 +30,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useSortable } from "@vueuse/integrations/useSortable";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/ui";
+import { pushToast, reportError } from "@delebash/ui";
 import { Icon, UiButton, UiInput, UiCheckbox, UiNumber, UiTag, UiSelect, AppModal } from "@delebash/ui";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
@@ -150,7 +150,7 @@ async function hearAB(which) {
     await player.play("ab:wet", wet.url);
   } catch (e) {
     if (handleTermsRefusal(e)) return;
-    pushToast({ kind: "error", message: `Couldn't play it: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't play it" });
   } finally {
     abBusy.value = null;
   }
@@ -254,11 +254,7 @@ async function saveAsPreset() {
     await loadPresetsIfNeeded();
     pushToast({ message: `Saved "${name}" to the Effects page as a chain preset.`, kind: "success", duration: 6000 });
   } catch (e) {
-    pushToast({
-      message: `Save preset failed: ${e?.message || e}`,
-      kind: "error",
-      duration: 6000,
-    });
+    reportError(e, { title: "Save preset failed" });
   }
 }
 

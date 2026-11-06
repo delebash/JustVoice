@@ -26,7 +26,7 @@
 // `onChapterDone` and re-read what changed.
 
 import { computed, reactive, toValue } from "vue";
-import { pushToast, runAiEndpoint, runAiEndpointStream, useAiTasksStore, useSurfaceTasks } from "@delebash/ui";
+import { errorText, pushToast, runAiEndpoint, runAiEndpointStream, useAiTasksStore, useSurfaceTasks } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { proseFromBlocks } from "./attribution.js";
 import { bookRunOn } from "./bookRun.js";
@@ -290,7 +290,7 @@ async function drain(projectId) {
       } else {
         // The server's own words — a 409 that would destroy takes, a model
         // that would not load — are already written for the user.
-        run.failed[failKey(item.kind, item.sceneId)] = { kind: item.kind, reason: msg };
+        run.failed[failKey(item.kind, item.sceneId)] = { kind: item.kind, reason: errorText(e) };
       }
     }
     step.finished += 1;

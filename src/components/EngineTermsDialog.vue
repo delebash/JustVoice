@@ -10,7 +10,7 @@
 -->
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { AppModal, UiButton, openExternal, pushToast } from "@delebash/ui";
+import { AppModal, UiButton, openExternal, pushToast, reportError } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { TERMS_EVENT, acceptEngineTerms } from "../services/engineTerms.js";
 
@@ -48,7 +48,7 @@ async function accept() {
     close();
     again?.();
   } catch (e) {
-    pushToast({ message: `Couldn't record that: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Couldn't record that" });
   } finally {
     busy.value = false;
   }

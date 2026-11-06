@@ -10,7 +10,7 @@
 -->
 <script setup>
 import { computed } from "vue";
-import { UiButton, openExternal, pushToast } from "@delebash/ui";
+import { UiButton, openExternal, pushToast, reportError } from "@delebash/ui";
 import { useEnginesStore } from "../stores/engines.js";
 import { licClass, licTitle, reading } from "../services/engineFacts.js";
 
@@ -37,7 +37,7 @@ async function setDefault() {
     await engines.setDefaultEngine(props.engineId);
     pushToast({ message: `${e.value.name || e.value.id} is now the default speech engine.`, kind: "success" });
   } catch (err) {
-    pushToast({ message: `Couldn't set the default: ${err?.message || err}`, kind: "error" });
+    reportError(err, { title: "Couldn't set the default" });
   }
 }
 </script>

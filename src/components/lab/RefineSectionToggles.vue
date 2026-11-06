@@ -14,7 +14,7 @@
 -->
 <script setup>
 import { onMounted, ref } from "vue";
-import { UiToggle, pushToast } from "@delebash/ui";
+import { UiToggle, reportError } from "@delebash/ui";
 import { useApi } from "../../stores/api.js";
 
 // `intro` — the line above the switches; Settings → Capture gives its own
@@ -59,7 +59,7 @@ async function toggle(key, value) {
     emit("changed");
   } catch (e) {
     flags.value = { ...flags.value, [key]: prev };
-    pushToast({ message: `Couldn't save: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Couldn't save" });
   } finally {
     busy.value = "";
   }

@@ -8,7 +8,7 @@
 // library's persona called Narrator when there is exactly one, and the
 // narration with no speaker moves to it.
 
-import { pushToast } from "@delebash/ui";
+import { pushToast, reportError } from "@delebash/ui";
 import { projectsService } from "./projects.js";
 
 /** Narration lines in Script's chapter rows: read, not spoken. */
@@ -34,7 +34,7 @@ export async function addNarrator(projectId) {
     });
     return moved;
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't add the narrator: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't add the narrator" });
     return null;
   }
 }

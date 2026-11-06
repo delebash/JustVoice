@@ -13,7 +13,7 @@
 import { computed, nextTick, onActivated, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { kokoroCantSayWords, previewLexiconText } from "../services/lexiconPreview.js";
-import { pushToast, saveBlob, pageFlow } from "@delebash/ui";
+import { pushToast, reportError, saveBlob, pageFlow } from "@delebash/ui";
 import { confirmDialog, promptDialog } from "@delebash/ui";
 import { UiButton, UiField, UiInput, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/ui";
 import { EmptyState } from "@delebash/ui";
@@ -249,7 +249,7 @@ async function hear(text, which, key) {
     await player.play(key, url);
   } catch (e) {
     if (handleTermsRefusal(e)) return;
-    pushToast({ kind: "error", title: "Couldn't play it", description: String(e?.message ?? e) });
+    reportError(e, { title: "Couldn't play it" });
   }
 }
 
@@ -360,7 +360,7 @@ async function saveDialog() {
       pushToast({ kind: "warning", title: w.grapheme, description: kokoroCantSayWords(w.symbols) });
     }
   } catch (e) {
-    pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Save failed" });
   }
 }
 
@@ -379,7 +379,7 @@ async function deleteLexicon(id) {
     await refresh();
     pushToast({ kind: "success", title: "Lexicon deleted" });
   } catch (e) {
-    pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Delete failed" });
   }
 }
 
@@ -401,7 +401,7 @@ async function runNameScan() {
     const have = new Set((draft.value.entries || []).map((e) => (e.grapheme || "").toLowerCase()));
     scanWords.value = (r?.words || []).filter((w) => !have.has(w.word.toLowerCase()));
   } catch (e) {
-    pushToast({ kind: "error", title: "Scan failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Scan failed" });
   } finally {
     scanBusy.value = false;
   }
@@ -506,7 +506,7 @@ async function importNewFromFile(ev) {
     dialogOpen.value = true;
     pushToast({ kind: "info", title: `Loaded ${draft.value.entries.length} entries — review and Save` });
   } catch (e) {
-    pushToast({ kind: "error", title: "Import failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Import failed" });
   }
 }
 
@@ -521,7 +521,7 @@ async function importIntoDraft(ev) {
     if (!draft.value.name && parsed.name) draft.value.name = parsed.name;
     pushToast({ kind: "success", title: `Merged ${incoming.length} entries into the draft — Save to keep` });
   } catch (e) {
-    pushToast({ kind: "error", title: "Import failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Import failed" });
   }
 }
 

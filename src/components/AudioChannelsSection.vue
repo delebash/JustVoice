@@ -10,7 +10,7 @@
 import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
 import { listAudioOutputDevices } from "../services/native.js";
-import { pushToast } from "@delebash/ui";
+import { pushToast, reportError } from "@delebash/ui";
 import { confirmDialog } from "@delebash/ui";
 import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiTable } from "@delebash/ui";
 
@@ -31,7 +31,7 @@ async function refresh() {
     const res = await channelsService.list();
     channels.value = res.channels ?? [];
   } catch (e) {
-    pushToast({ kind: "error", title: "Couldn't load channels", description: String(e?.message ?? e) });
+    reportError(e, { title: "Couldn't load channels" });
   }
 }
 
@@ -60,7 +60,7 @@ async function save() {
     await refresh();
     pushToast({ kind: "success", title: "Channel saved" });
   } catch (e) {
-    pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Save failed" });
   }
 }
 
@@ -76,7 +76,7 @@ async function deleteChannel(c) {
     await channelsService.remove(c.id);
     await refresh();
   } catch (e) {
-    pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Delete failed" });
   }
 }
 

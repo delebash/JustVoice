@@ -16,7 +16,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { UiButton, confirmDialog, pushToast } from "@delebash/ui";
+import { UiButton, confirmDialog, errorText, pushToast, reportError } from "@delebash/ui";
 import TtsProviderForm from "./TtsProviderForm.vue";
 
 const props = defineProps({
@@ -125,7 +125,7 @@ async function saveProvider(payload) {
     cancelEdit();
     await loadProviders();
   } catch (e) {
-    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    reportError(e, { title: "Save failed" });
   }
 }
 
@@ -145,7 +145,7 @@ async function deleteProvider() {
     cancelEdit();
     await loadProviders();
   } catch (e) {
-    pushToast({ message: `Delete failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Delete failed" });
   }
 }
 
@@ -163,7 +163,7 @@ async function testProviderRow(pr) {
     });
     rowTest[pr.id] = r ? { ok: true, ms: ms() } : { ok: false, message: "probe failed" };
   } catch (e) {
-    rowTest[pr.id] = { ok: false, message: e?.message || String(e) };
+    rowTest[pr.id] = { ok: false, message: errorText(e) };
   }
   const t = rowTest[pr.id];
   pushToast({

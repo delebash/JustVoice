@@ -3,7 +3,7 @@
 import { ref, onMounted, onActivated, computed, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useApi } from "../stores/api.js";
-import { AiTaskStrips, pushToast, saveBlob, serverUrl as apiPath, pageFlow } from "@delebash/ui";
+import { AiTaskStrips, pushToast, reportError, saveBlob, serverUrl as apiPath, pageFlow } from "@delebash/ui";
 import { confirmDialog, promptDialog } from "@delebash/ui";
 import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/ui";
 import { DIRECTION_OPTIONS, VOICE_KINDS, baseLang, directionCell, tagCount, voiceKind, voiceKindLabel } from "../services/personaFacts.js";
@@ -106,12 +106,13 @@ async function guessUnknownGenders() {
     });
   } catch (e) {
     const msg = String(e?.message || e);
-    if (!/abort/i.test(msg)) pushToast({
-      message: msg.includes("501")
-        ? "No AI model set up — run the LLM engine setup under AI Settings first."
-        : `Gender guess failed: ${msg}`,
-      kind: "error", duration: 6000,
-    });
+    if (/abort/i.test(msg)) {
+      // cancelled — nothing to say
+    } else if (msg.includes("501")) {
+      pushToast({ message: "No AI model set up — run the LLM engine setup under AI Settings first.", kind: "error", duration: 6000 });
+    } else {
+      reportError(e, { title: "Gender guess failed" });
+    }
   } finally {
     genderGuessBusy.value = false;
   }
@@ -133,7 +134,7 @@ async function cycleGender(v) {
       body: JSON.stringify({ gender: v.gender_user_override || "" }),
     });
   } catch (e) {
-    pushToast({ message: `Couldn't save gender: ${e.message || e}`, kind: "error" });
+    reportError(e, { title: "Couldn't save gender" });
   }
 }
 
@@ -419,7 +420,7 @@ async function previewVoice(v) {
     player.el?.play().catch(() => {});
   } catch (e) {
     if (handleTermsRefusal(e)) return;
-    pushToast({ message: `Preview failed: ${e.message || e}`, kind: "error" });
+    reportError(e, { title: "Preview failed" });
   } finally {
     previewingId.value = null;
   }
@@ -446,7 +447,7 @@ async function exportVoice(row) {
     await saveBlob(blob, `${safe}.jvvoice.zip`, { title: "Save voice", filterName: "JustVoice voice", filterExt: "zip" });
     pushToast({ kind: "success", title: "Voice exported" });
   } catch (e) {
-    pushToast({ kind: "error", title: "Export failed", description: String(e?.message ?? e) });
+    reportError(e, { title: "Export failed" });
   }
 }
 function chooseVoiceFile() {
@@ -463,7 +464,7 @@ async function importVoiceFile(ev) {
     await refresh();
     pushToast({ kind: "success", message: `${v.name} imported.` });
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't import that file: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't import that file" });
   }
 }
 
@@ -503,7 +504,7 @@ async function copyToModel(voice) {
       pushToast({ kind: "success", message: `${made.name} added — ${made.model_name || made.engine}.` });
     }
   } catch (e) {
-    if (!handleTermsRefusal(e)) pushToast({ kind: "error", message: `Copy failed: ${e?.message || e}` });
+    if (!handleTermsRefusal(e)) reportError(e, { title: "Copy failed" });
   }
 }
 /** POST the copy; when the model needs the clip's words and the voice has
@@ -562,7 +563,7 @@ async function deleteVoice(voice) {
     await refresh();
     pushToast({ message: `"${voice.name}" deleted.` });
   } catch (e) {
-    pushToast({ message: `Delete failed: ${e.message || e}`, kind: "error" });
+    reportError(e, { title: "Delete failed" });
   }
 }
 

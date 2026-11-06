@@ -24,7 +24,7 @@ import { useRouter } from "vue-router";
 import { UiMenu, UiMenuItem, UiMenuSeparator, pageFlow } from "@delebash/ui";
 import {
   EmptyState, UiButton, UiCheckbox, UiInput, UiSelect, UiTable, UiTag,
-  confirmDialog, languageName, promptDialog, pushToast,
+  confirmDialog, languageName, promptDialog, pushToast, reportError,
 } from "@delebash/ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { facetChoices, facetOptions, narrowed } from "../services/facets.js";
@@ -192,7 +192,7 @@ async function play(p) {
       audition.value = { url: URL.createObjectURL(blob), name: p.name, model: p.model_name || "" };
     }
   } catch (e) {
-    if (!handleTermsRefusal(e)) pushToast({ kind: "error", message: `Couldn't play ${p.name}: ${e?.message || e}` });
+    if (!handleTermsRefusal(e)) reportError(e, { title: `Couldn't play ${p.name}` });
   } finally {
     playingId.value = null;
   }
@@ -215,7 +215,7 @@ async function rename(p) {
     await loadAll();
     pushToast({ kind: "success", message: `Renamed to ${name}.` });
   } catch (e) {
-    pushToast({ kind: "error", message: `Rename failed: ${e?.message || e}` });
+    reportError(e, { title: "Rename failed" });
   }
 }
 
@@ -254,7 +254,7 @@ async function merge(p) {
         + (n ? ` — ${n} speaker${n === 1 ? "" : "s"} moved.` : "."),
     });
   } catch (e) {
-    pushToast({ kind: "error", message: `Merge failed: ${e?.message || e}` });
+    reportError(e, { title: "Merge failed" });
   }
 }
 
@@ -368,13 +368,13 @@ async function removePersona(p) {
             await loadAll();
             pushToast({ kind: "success", message: `${personaName} restored.` });
           } catch (e) {
-            pushToast({ kind: "error", message: `Undo failed: ${e?.message || e}` });
+            reportError(e, { title: "Undo failed" });
           }
         },
       },
     });
   } catch (e) {
-    pushToast({ kind: "error", message: `Delete failed: ${e?.message ?? e}` });
+    reportError(e, { title: "Delete failed" });
   }
 }
 

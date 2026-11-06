@@ -29,7 +29,7 @@ import { UiButton, UiSelect, AppModal, openHelp } from "@delebash/ui";
 import { projectsService } from "../services/projects.js";
 import { groupedFormatOptions, pickAdapter } from "../services/importPicker.js";
 import { setImportDraft } from "../stores/importDraft.js";
-import { pushToast } from "@delebash/ui";
+import { reportError } from "@delebash/ui";
 
 const props = defineProps({
   // When set, the import MERGES into this project by stable line id
@@ -74,7 +74,7 @@ onMounted(async () => {
     const def = adapters.value.find((a) => a.id === "justwrite" && a.implemented);
     selectedSource.value = def?.id || adapters.value.find((a) => a.implemented)?.id || "";
   } catch (e) {
-    pushToast({ message: `Failed to load adapters: ${e.message || e}`, kind: "error" });
+    reportError(e, { title: "Failed to load adapters" });
   } finally {
     loadingAdapters.value = false;
   }
@@ -140,7 +140,7 @@ async function doPreview() {
     window.location.hash = "#importreview";
     return;
   } catch (e) {
-    pushToast({ message: `Preview failed: ${e.message || e}`, kind: "error" });
+    reportError(e, { title: "Preview failed" });
   } finally {
     previewing.value = false;
   }

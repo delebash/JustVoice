@@ -24,7 +24,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, createDownloadTask, fmtBytes, pushToast, runtimeEngineChannel } from "@delebash/ui";
+import { DownloadBar, createDownloadTask, errorText, fmtBytes, pushToast, reportError, runtimeEngineChannel } from "@delebash/ui";
 import { UiButton, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/ui";
 
 const emit = defineEmits(["close"]);
@@ -181,7 +181,7 @@ async function detect() {
     detectedTierKey.value = tierForVramMb(gpu.value.vram_mb || 0);
     tierKey.value = detectedTierKey.value;
   } catch (e) {
-    detectError.value = e?.message || String(e);
+    detectError.value = errorText(e);
   } finally {
     step.value = "confirm";
   }
@@ -245,7 +245,7 @@ async function connectLocal(d) {
     await probeHelpers();
     await detect(); // refresh llmProviders so pins pick it up
   } catch (e) {
-    pushToast({ message: `Connect failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Connect failed" });
   } finally {
     connectingLocal.value = "";
   }

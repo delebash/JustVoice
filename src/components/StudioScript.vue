@@ -36,7 +36,7 @@ import { computed, ref, watch } from "vue";
 import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/ui";
 import {
   AppModal, EmptyState, UiButton, UiCheckbox, UiChip, UiSelect, UiTable, UiTag,
-  UiTextarea, confirmDialog, promptDialog, pushToast,
+  UiTextarea, confirmDialog, promptDialog, pushToast, reportError,
 } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
@@ -229,7 +229,7 @@ async function addChapter() {
     emit("changed");
     pushToast({ kind: "success", message: `“${title}” added — paste its text with ＋ Add text.` });
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't add the ${word.value.singular.toLowerCase()}: ${e?.message || e}` });
+    reportError(e, { title: `Couldn't add the ${word.value.singular.toLowerCase()}` });
   }
 }
 async function rename(r) {
@@ -252,7 +252,7 @@ async function patchScene(r, body) {
     await api.request(`/v1/scenes/${r.scene_id}`, { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify(body) });
     emit("changed");
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't change the ${word.value.singular.toLowerCase()}: ${e?.message || e}` });
+    reportError(e, { title: `Couldn't change the ${word.value.singular.toLowerCase()}` });
   }
 }
 async function remove(r) {
@@ -269,7 +269,7 @@ async function remove(r) {
     await api.request(`/v1/scenes/${r.scene_id}`, { method: "DELETE" });
     emit("changed");
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't delete it: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't delete it" });
   }
 }
 // ＋ Add text — paste a chapter's text; each paragraph becomes a line with no
@@ -285,7 +285,7 @@ async function editText(r) {
     const { text } = await api.request(`/v1/scenes/${r.scene_id}/text`);
     paste.value = { row: r, text, was: text, busy: false, edit: true };
   } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't open the text: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't open the text" });
   }
 }
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
@@ -321,7 +321,7 @@ async function saveText() {
       : "✨ Analyze works out who speaks each line."}` });
   } catch (e) {
     if (paste.value) paste.value.busy = false;
-    pushToast({ kind: "error", message: `Couldn't save the text: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't save the text" });
   }
 }
 async function addLines() {
@@ -339,7 +339,7 @@ async function addLines() {
     pushToast({ kind: "success", message: `${list.length} lines added — ✨ Analyze works out who speaks each one.` });
   } catch (e) {
     paste.value.busy = false;
-    pushToast({ kind: "error", message: `Couldn't add the text: ${e?.message || e}` });
+    reportError(e, { title: "Couldn't add the text" });
   }
 }
 // Import opens on Projects, the way a new book starts.

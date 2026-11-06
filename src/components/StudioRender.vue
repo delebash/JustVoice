@@ -19,7 +19,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import {
-  AiTaskStrip, AiTaskStrips, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
+  AiTaskStrip, AiTaskStrips, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, reportError, useAiTasksStore, withAiTask,
 } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
@@ -78,7 +78,7 @@ watch(() => props.renderState, (rs) => {
     if (!c.running_job || !s || chapterRunning(tasks, s.id) || jobFollowed(tasks, c.running_job.id)) continue;
     followRender(api, { sceneId: s.id, title: titleOf(s), job: c.running_job })
       .catch((e) => {
-        if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${titleOf(s)}: ${e?.message || e}`, duration: 9000 });
+        if (e?.name !== "AbortError") reportError(e, { title: titleOf(s) });
       })
       .finally(() => emit("changed"));
   }
@@ -167,7 +167,7 @@ async function renderOne(s) {
     });
     if (r?.url) player.play(playKey(s.id), r.url);
   } catch (e) {
-    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${titleOf(s)}: ${e?.message || e}`, duration: 9000 });
+    if (e?.name !== "AbortError") reportError(e, { title: titleOf(s) });
   } finally {
     emit("changed");
   }
@@ -232,7 +232,7 @@ async function runQc() {
       });
     }
   } catch (e) {
-    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `ACX QC failed: ${e?.message || e}` });
+    if (e?.name !== "AbortError") reportError(e, { title: "ACX QC failed" });
   } finally {
     qcBusy.value = false;
   }

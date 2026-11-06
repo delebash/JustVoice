@@ -13,7 +13,7 @@
 -->
 <script setup>
 import { onMounted, ref } from "vue";
-import { UiToggle, pushToast } from "@delebash/ui";
+import { UiToggle, pushToast, reportError } from "@delebash/ui";
 import { useApi } from "../../stores/api.js";
 
 const api = useApi();
@@ -41,7 +41,7 @@ async function saveSecondLook(on) {
     pushToast({ message: on ? "Second look on." : "Second look off.", kind: "success", duration: 2500 });
     await load();
   } catch (e) {
-    pushToast({ message: `Couldn't save: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Couldn't save" });
   } finally {
     busy.value = false;
   }
@@ -63,7 +63,7 @@ async function saveMinB() {
     pushToast({ message: `Size rule saved — Direct at ${n} B and up.`, kind: "success", duration: 2500 });
     await load();
   } catch (e) {
-    pushToast({ message: `Couldn't save: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Couldn't save" });
   } finally {
     busy.value = false;
   }

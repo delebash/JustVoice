@@ -16,7 +16,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import {
-  UiButton, UiCheckbox, UiField, UiInput, UiSegmented, UiSelect, UiSlider, languageName, pushToast,
+  UiButton, UiCheckbox, UiField, UiInput, UiSegmented, UiSelect, UiSlider, languageName, pushToast, reportError,
 } from "@delebash/ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { facetOptions, facetTotal, narrowed } from "../services/facets.js";
@@ -179,7 +179,7 @@ async function runPreview() {
     if (preview.value?.url) URL.revokeObjectURL(preview.value.url);
     preview.value = { url: URL.createObjectURL(blob), label: `${recipe()}, as this persona speaks` };
   } catch (e) {
-    if (!handleTermsRefusal(e)) pushToast({ message: `Preview failed: ${e?.message || e}`, kind: "error" });
+    if (!handleTermsRefusal(e)) reportError(e, { title: "Preview failed" });
   } finally {
     busy.value = false;
   }
@@ -196,7 +196,7 @@ async function keep() {
     pushToast({ message: `Voice "${voice.name}" saved to Voices.`, kind: "success" });
     emit("kept", voice);
   } catch (e) {
-    pushToast({ message: `Keep failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Keep failed" });
   } finally {
     keeping.value = false;
   }

@@ -20,7 +20,7 @@
 import { computed, nextTick, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
-  AiTaskStrips, AppModal, UiButton, UiChip, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, confirmDialog, pushToast,
+  AiTaskStrips, AppModal, UiButton, UiChip, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, confirmDialog, pushToast, reportError,
   useAiTasksStore,
 } from "@delebash/ui";
 import PagePlayer from "../../components/PagePlayer.vue";
@@ -183,7 +183,7 @@ async function runLines(which) {
   try {
     await renderLines(ch, which);
   } catch (e) {
-    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
+    if (e?.name !== "AbortError") reportError(e, { title: "Render failed" });
   } finally {
     delete runs[ch.id];
   }
@@ -202,7 +202,7 @@ async function playChapter() {
     const r = await renderChapter(ch, { onRetry: playChapter });
     if (r?.url && chapter.value === ch) player.play("chapter", r.url);
   } catch (e) {
-    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${e?.message || e}`, duration: 9000 });
+    if (e?.name !== "AbortError") reportError(e);
   } finally {
     delete runs[ch.id];
   }

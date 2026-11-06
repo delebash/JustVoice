@@ -14,7 +14,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { AiTaskStrips, withAiTask } from "@delebash/ui";
-import { pushToast, saveBlob } from "@delebash/ui";
+import { pushToast, reportError, saveBlob } from "@delebash/ui";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { UiButton, UiInput, UiChip, UiTag, UiSelect, UiTable } from "@delebash/ui";
@@ -127,7 +127,7 @@ async function loadLines() {
     lines.value = r?.lines || [];
     counts.value = r?.counts || { none: 0, rendered: 0, stale: 0 };
   } catch (e) {
-    pushToast({ message: `Load failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Load failed" });
   } finally {
     loading.value = false;
   }
@@ -139,7 +139,7 @@ async function renderOne(line) {
     await loadLines();
     pushToast({ message: `Rendered ${line.line_id || "line"}.`, kind: "success", duration: 2500 });
   } catch (e) {
-    pushToast({ message: `Render failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Render failed" });
   }
 }
 
@@ -189,7 +189,7 @@ async function rerenderChanged() {
       return last;
     });
   } catch (e) {
-    pushToast({ message: `Re-render failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Re-render failed" });
   } finally {
     rerendering.value = false;
     await loadLines();
@@ -206,7 +206,7 @@ async function exportZip() {
       { title: "Save voiceline package", filterName: "Voiceline package", filterExt: "zip" });
     pushToast({ message: "Voiceline zip exported.", kind: "success" });
   } catch (e) {
-    pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error" });
+    reportError(e, { title: "Export failed" });
   }
 }
 

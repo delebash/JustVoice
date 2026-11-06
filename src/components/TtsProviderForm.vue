@@ -19,7 +19,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { UiButton, UiCheckbox, UiSelect, pushToast } from "@delebash/ui";
+import { UiButton, UiCheckbox, UiSelect, errorText, pushToast } from "@delebash/ui";
 
 const props = defineProps({
   draft: { type: Object, required: true },
@@ -116,7 +116,7 @@ async function fetchVoices() {
     fetchedVoices.value = r?.voices || [];
     if (!fetchedVoices.value.length) voicesError.value = "Server didn't return any voices.";
   } catch (e) {
-    voicesError.value = e?.message || String(e);
+    voicesError.value = errorText(e);
   } finally {
     voicesLoading.value = false;
   }
@@ -159,7 +159,7 @@ async function doTest() {
       test.value = { ok: false, message: "probe failed" };
     }
   } catch (e) {
-    test.value = { ok: false, message: e?.message || String(e) };
+    test.value = { ok: false, message: errorText(e) };
   } finally {
     testBusy.value = false;
   }

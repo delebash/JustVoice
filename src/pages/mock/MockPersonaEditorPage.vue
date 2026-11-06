@@ -27,7 +27,7 @@ import { computed, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
   AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
-  UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, pushToast, saveBlob,
+  UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, pushToast, reportError, saveBlob,
 } from "@delebash/ui";
 import MockEffectsChainEditor from "../../components/mock/MockEffectsChainEditor.vue";
 import SlashTagMenu from "../../components/SlashTagMenu.vue";
@@ -462,7 +462,7 @@ async function saveWav() {
   if (!audio.value?.blob) return;
   const name = (draft.value?.name || "persona").replace(/[^\w.-]+/g, "_");
   try { await saveBlob(audio.value.blob, `${name}.wav`); } catch (e) {
-    pushToast({ kind: "error", message: `Save failed: ${e?.message || e}` });
+    reportError(e, { title: "Save failed" });
   }
 }
 const tagMenuOpen = ref(false);

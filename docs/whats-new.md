@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **Error messages read as sentences (2026-11-05)** — a failure's message says what failed and the
+  server's reason in its own words — *Save failed* over "speaker 7 not found in this book" — where
+  it read "Save failed: HTTP 409 — speaker 7 not found in this book". A server fault adds its log
+  reference, and a lost connection says so. The same goes for the reasons shown in place: a
+  chapter's load error, a provider's test, QC, the lineage viewer
 - **Five fixes for other callers of the API (2026-11-05)** — a clone or a design on an engine with no
   model that can make one (Kokoro clones nothing) is a 400 naming the engine, where a voice that could
   never speak was stored; a clip that isn't base64, or holds nothing, is a 400 on `POST
