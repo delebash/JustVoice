@@ -76,6 +76,21 @@ test("engine_private_knobs_survive_the_trip", async () => {
   expect(calls[0][1]).toEqual({ speed: 1.1, engine: { exaggeration: 1.4 } });
 });
 
+test("a_knob_value_the_delivery_refuses_is_a_422_naming_it", async () => {
+  // A Python bug copied into the port on purpose (TASKS "The family moves to Electron…", agent 2's
+  // list): the delivery was checked inside the handler, so a bad value was a 500. Fixed
+  // 2026-11-05 as decided 2026-10-08.
+  const { c, calls } = await setup();
+  const r = await c.post("/v1/voices/af_heart/preview", { json: { text: "Line.", delivery: { speed: "fast" } } });
+  expect(r.status, r.text).toBe(422);
+  expect(r.json().errors.map((d) => d.loc)).toEqual([["body", "delivery", "speed"]]);
+  expect(calls).toEqual([]);
+  // A knob it doesn't know is still left out, not refused.
+  const ok = await c.post("/v1/voices/af_heart/preview", { json: { text: "Line.", delivery: { speed: 1.2, no_such_knob: 3 } } });
+  expect(ok.status, ok.text).toBe(200);
+  expect(calls).toEqual([["Line.", { speed: 1.2 }]]);
+});
+
 test("key_ignores_delivery_key_order", async () => {
   const { c, calls } = await setup();
   await c.post("/v1/voices/af_heart/preview", { json: { text: "Same line.", delivery: { speed: 1.1, pitch: 2 } } });

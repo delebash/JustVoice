@@ -214,6 +214,13 @@ export function checkModelFor(engineId, model, action) {
     return model;
   }
   const chosen = _defaultModel(engineId, { need: action });
+  // A catalog with no model that can (Kokoro can't clone) is refused by name — it stored a voice
+  // with the engine id as its model (a Python bug copied into the port, fixed 2026-11-05 as
+  // decided 2026-10-08).
+  if (chosen === null && families.length) {
+    if (!Object.hasOwn(VERBS, action)) throw new KeyError(action);
+    throw new ValueError(`${modelCatalog.getManifest(engineId)?.name || engineId} has no model that can ${VERBS[action]}`);
+  }
   // No catalog to choose from (an online provider): the engine is the model.
   return chosen ?? engineId;
 }
