@@ -45,6 +45,22 @@ test("parse_keeps_the_evidence_quote", () => {
   expect(parseCandidates(raw, [])).toEqual([new SpeakerCandidate({ name: "Edith", role_hint: "poured the tea", approx_lines: 0, evidence: "Edith’s hands" })]);
 });
 
+test("an_evidence_quote_loses_a_quote_mark_whose_partner_was_cut_off", () => {
+  // the 2026-09-29 walkthrough (e): Discover showed “"Come here, Ode” — the model cut the quote
+  const ev = (evidence) => parseCandidates(JSON.stringify([{ name: "Tom", evidence }]), [])[0].evidence;
+  expect(ev('"Come here, Ode')).toBe("Come here, Ode");
+  expect(ev("go home now,” said Tom")).toBe("go home now,” said Tom"); // the stray is inside: left
+  expect(ev("“Come here, Ode")).toBe("Come here, Ode");
+  expect(ev("go home now.”")).toBe("go home now.");
+  expect(ev("‘Come here, Ode")).toBe("Come here, Ode");
+  expect(ev("go home now,’")).toBe("go home now,");
+  expect(ev("« Viens ici")).toBe("Viens ici");
+  // a mark with its partner stays, and so do apostrophes and a plural possessive
+  expect(ev('"Come here," said Tom.')).toBe('"Come here," said Tom.');
+  expect(ev("‘Don’t,’ said Tom")).toBe("‘Don’t,’ said Tom");
+  expect(ev("the Harlans’")).toBe("the Harlans’");
+});
+
 test("the_shipped_prompt_asks_for_named_people_not_speakers_or_descriptors", () => {
   // 2026-09-27: the old default asked for speakers only and offered "the stranger" as a name —
   // the demo got "child" / "the elder" and lost Edith.

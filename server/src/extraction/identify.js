@@ -67,6 +67,30 @@ function _stripCodeFences(text) {
   return m ? m[1] : text;
 }
 
+// A closing single mark that isn't an apostrophe (don’t) — a plural possessive (the Harlans’) counts,
+// which only ever keeps a mark. An opening one: ‘, or ' at a word's start.
+const SINGLE_CLOSER = /(?<![\p{L}\p{N}])['’]|['’](?![\p{L}\p{N}])/u;
+const SINGLE_OPENER = /‘|(?<![\p{L}\p{N}])'(?=[\p{L}\p{N}])/u;
+const PARTNER_AFTER = { '"': /"/u, "“": /[”"]/u, "„": /[“”"]/u, "«": /»/u, "‘": SINGLE_CLOSER, "'": SINGLE_CLOSER };
+const PARTNER_BEFORE = { '"': /"/u, "”": /[“„"]/u, "»": /«/u, "’": SINGLE_OPENER, "'": SINGLE_OPENER };
+
+/** The model's evidence can start or end on a quote mark whose partner it cut off — Discover showed
+ * “"Come here, Ode” (the 2026-09-29 walkthrough's (e)). Such a mark at either end goes; a mark with a
+ * partner stays, and a single mark after a letter (a possessive) stays too. */
+function _trimStrayQuotes(text) {
+  let s = text;
+  for (let pass = 0; pass < 2; pass++) {
+    const before = s;
+    const first = s.charAt(0);
+    if (Object.hasOwn(PARTNER_AFTER, first) && !PARTNER_AFTER[first].test(s.slice(1))) s = strip(s.slice(1));
+    const last = s.charAt(s.length - 1);
+    const afterALetter = (last === "’" || last === "'") && /[\p{L}\p{N}]/u.test(s.charAt(s.length - 2));
+    if (Object.hasOwn(PARTNER_BEFORE, last) && !afterALetter && !PARTNER_BEFORE[last].test(s.slice(0, -1))) s = strip(s.slice(0, -1));
+    if (s === before) break;
+  }
+  return s;
+}
+
 /** Parse the LLM reply into deduped candidates. Tolerates fences, stray text around the
  * array, and partially-malformed entries. */
 export function parseCandidates(raw, knownNames) {
@@ -102,7 +126,7 @@ export function parseCandidates(raw, knownNames) {
         name,
         role_hint: truthy(role) ? strip(pyStrOf(role)) || null : null,
         approx_lines: isNumber(approx) ? pyIntOfNumber(approx) : null,
-        evidence: truthy(evidence) ? strip(pyStrOf(evidence)) || null : null,
+        evidence: truthy(evidence) ? _trimStrayQuotes(strip(pyStrOf(evidence))) || null : null,
       }),
     );
   }
