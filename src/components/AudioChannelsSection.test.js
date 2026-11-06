@@ -10,6 +10,7 @@ import { createTestApp } from "@delebash/ui/quasar/install.js";
 const stub = (tag) => ({ props: ["label", "modelValue"], setup: (p, { slots }) => () => h(tag, [p.label, slots.default?.()]) });
 vi.mock("@delebash/ui", () => ({
   pushToast: vi.fn(),
+  reportError: vi.fn(),
   confirmDialog: vi.fn(),
   UiButton: stub("button"),
   UiInput: stub("input"),

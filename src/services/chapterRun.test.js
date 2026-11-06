@@ -16,6 +16,7 @@ vi.mock("@delebash/ui", async () => {
   const { computed, toValue } = await import("vue");
   return {
     pushToast: vi.fn(),
+    errorText: (e) => String(e?.message ?? e),
     runAiEndpoint: vi.fn((o) => held(o)),
     runAiEndpointStream: vi.fn((o) => held(o)),
     useAiTasksStore: () => kitTasks,

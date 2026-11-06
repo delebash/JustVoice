@@ -11,6 +11,7 @@ import { createTestApp } from "@delebash/ui/quasar/install.js";
 vi.mock("@delebash/ui", () => ({
   openHelp: vi.fn(),
   pushToast: vi.fn(),
+  reportError: vi.fn(),
   fmtBytes: (n) => `${n} B`,
   languageName: (c) => c,
   UiButton: { props: ["label", "disabled", "intent"], setup: (p, { slots }) => () => h("button", { disabled: p.disabled }, p.label ?? slots.default?.()) },

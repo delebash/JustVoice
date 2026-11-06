@@ -12,10 +12,11 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
 
 const api = vi.hoisted(() => ({ request: vi.fn(), safeRequest: vi.fn(), get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), del: vi.fn() }));
-const ui = vi.hoisted(() => ({ confirmDialog: vi.fn(), pushToast: vi.fn() }));
+const ui = vi.hoisted(() => ({ confirmDialog: vi.fn(), pushToast: vi.fn(), reportError: vi.fn() }));
 vi.mock("@delebash/ui", () => ({
   ...api,
   ...ui,
+  errorText: (e) => String(e?.message ?? e),
   lastError: { value: null },
   requestBlob: vi.fn(),
   postForm: vi.fn(),

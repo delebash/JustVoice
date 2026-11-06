@@ -30,6 +30,8 @@ vi.mock("@delebash/ui", () => ({
   createDownloadTask: vi.fn(),
   fmtBytes: (b) => `${Math.round(b / 1024 / 1024)} MB`,
   pushToast: vi.fn(),
+  reportError: vi.fn(),
+  errorText: (e) => String(e?.message ?? e),
   runtimeEngineChannel: vi.fn(),
 }));
 const { default: QuickSetup } = await import("./QuickSetup.vue");

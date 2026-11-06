@@ -14,6 +14,7 @@ const openHelp = vi.fn();
 vi.mock("@delebash/ui", () => ({
   openHelp: (...a) => openHelp(...a),
   pushToast: vi.fn(),
+  reportError: vi.fn(),
   UiButton: { props: ["label", "disabled", "intent", "loading"], setup: (p) => () => h("button", { disabled: p.disabled }, p.label) },
   UiSelect: { props: ["modelValue", "options", "placeholder", "disabled"], setup: () => () => h("select") },
   AppModal: { setup: (_p, { slots }) => () => h("div", [slots.default?.(), slots.footer?.()]) },

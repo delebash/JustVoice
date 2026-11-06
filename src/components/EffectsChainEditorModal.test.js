@@ -29,6 +29,7 @@ vi.mock("../stores/api.js", () => ({
 const slot = (tag, cls) => ({ setup: (_p, { slots }) => () => h(tag, { class: cls }, slots.default?.()) });
 vi.mock("@delebash/ui", () => ({
   pushToast: vi.fn(),
+  reportError: vi.fn(),
   Icon: { render: () => h("i") },
   UiButton: { props: ["label", "disabled"], setup: (p) => () => h("button", { disabled: p.disabled }, p.label) },
   UiCheckbox: { render: () => h("input", { type: "checkbox" }) },

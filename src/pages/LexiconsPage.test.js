@@ -33,6 +33,7 @@ vi.mock("../components/PlayTransport.vue", () => ({ default: { render: () => nul
 const slot = (tag) => ({ setup: (_p, { slots }) => () => h(tag, slots.default?.()) });
 vi.mock("@delebash/ui", () => ({
   pushToast: vi.fn(),
+  reportError: vi.fn(),
   saveBlob: vi.fn(),
   pageFlow: () => ({}),
   confirmDialog: vi.fn(),
