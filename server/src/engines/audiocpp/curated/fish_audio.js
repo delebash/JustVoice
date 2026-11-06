@@ -22,11 +22,6 @@ export const DIRECTION = {
     contemptuous: "[contemptuous]",
     whispered: "[whispering]",
     shouted: "[shouting]",
-    // The four of 2026-11-05 (RESEARCH §10.38): its tags are free-form, so each goes as its word.
-    surprised: "[surprised]",
-    curious: "[curious]",
-    relieved: "[relieved]",
-    eager: "[eager]",
   },
   words: "[{text}]",
 };

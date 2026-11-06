@@ -1476,7 +1476,7 @@ because there you are still choosing the voice. In the persona page's order:
   — every model.
 - **Style Instructions** — a model that takes written direction (Qwen3-TTS,
   VoxCPM2); added after the persona's (see [Can be directed](#can-be-directed)).
-- **Emotion** — the app's list on a model that takes written direction; on a tag
+- **Emotion** — the nine on a model that takes written direction; on a tag
   model (Chatterbox Turbo and Nano) its own emotion tags, with its **Register**
   tags beside it.
 - **Sampling** — the model's own settings (temperature, top k, exaggeration …),

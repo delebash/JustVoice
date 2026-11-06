@@ -462,8 +462,8 @@ authors document it:
 | **IndexTTS 2 / 2.5** | The line's direction in words, which its own emotion model turns into an emotion mix — the way JustVoice tested it (12 of 21 lines acted like the book). Its *emotion_alpha* setting (how strongly) applies when you set it; otherwise audio.cpp's own, full strength. In that test it never muttered or sounded contemptuous |
 | **CosyVoice3** | Only what its authors document: very happy, very sad, very angry, as loudly as possible, and in a very soft voice. Other directions are spoken plainly |
 | **Breeze TTS 2** | The direction as its instruction, with its guidance raised to 4 on a directed line unless you set it yourself |
-| **Higgs Audio 3** | Its own emotion and style tags — happy, sad, angry, fearful, contemptuous (as disgust), surprised, relieved, eager (as enthusiasm), whispered, shouted. It reads any other tag aloud, so nothing else is sent — curious has no tag of its own |
-| **Fish Audio S2 Pro** | The emotion as a tag in its own word (*[relieved]*) and the direction as a short description at the start of the line |
+| **Higgs Audio 3** | Its own emotion and style tags — happy, sad, angry, fearful, contemptuous (as disgust), whispered, shouted. It reads any other tag aloud, so nothing else is sent |
+| **Fish Audio S2 Pro** | The emotion as a tag and the direction as a short description at the start of the line |
 | **Fish Audio Drama 3** | One note in square brackets before the words, as its makers write it (*[choked up, crying quietly] I left his jacket by the door.*): the line's direction in words, else a word for its emotion (*[sad]*, *[whispering]*). Tested by JustVoice: in blind listening it was the best of the models you can sell with on loud lines, plain on most quiet ones, and a delivery note in other words than the book's cue hurt it. Its licence is *Conditional* — under USD 500,000 a year, with "Built with Fish Audio" shown ([why](#commercial-use-in-plain-words)). It loads with `npm run dev` now, and in the installed app once the next speech runtime release ships |
 | **MOSS-TTSD**, **MOSS-TTS v1.5** | The line's direction in words, as its instruction (since 2026-10-15; not yet tested by JustVoice) |
 | **OmniVoice** (and VoiceTut-TTS) | Only *whispered*, as its own word *whisper*: OmniVoice takes nothing but its own list of words there (gender, age, pitch, whisper, accents) and refuses anything else, so no other emotion and no written direction is sent (since 2026-10-15; not yet tested) |
@@ -1243,7 +1243,7 @@ Several of audio.cpp's other models also direct a cloned voice — IndexTTS,
 CosyVoice3, Breeze, Higgs and Fish ([How a model takes
 direction](#how-a-model-takes-direction)).
 
-**Emotion** is a one-word label from the app's list rather than a sentence. On Qwen3
+**Emotion** is a nine-value label rather than a sentence. On Qwen3
 CustomVoice and VoiceDesign it becomes part of the instruction; on Turbo and
 Nano it becomes their own emotion tag at the start of the line, where they have
 one for it; of audio.cpp's other models, those whose notes map it take the

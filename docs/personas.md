@@ -458,8 +458,8 @@ ms`. An empty pause is the book's own gap between lines.
 - **Written-direction models** (Qwen3 CustomVoice, VoxCPM2, Qwen3 VoiceDesign):
   **Style Instructions (optional)** — how this voice always speaks, in words (see
   [Style Instructions](#style-instructions-the-words-that-change-the-performance))
-  — and **Emotion**, one of the app's: neutral, happy, sad, angry, fearful,
-  whispered, shouted, sarcastic, contemptuous, surprised, curious, relieved, eager. On Qwen3 VoiceDesign the page
+  — and **Emotion**, one of the app's nine: neutral, happy, sad, angry, fearful,
+  whispered, shouted, sarcastic, contemptuous. On Qwen3 VoiceDesign the page
   warns: *On Qwen3 VoiceDesign these words reshape the voice itself, not just
   how it speaks.*
 - **Tag models** (Chatterbox Turbo and Nano): **Emotion** from their own seven

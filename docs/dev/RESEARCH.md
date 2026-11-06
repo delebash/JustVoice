@@ -5489,6 +5489,20 @@ card (below); no searches run.
   surprise nothing, not fearful** — round 7's note prompt (which lost round 8) called them fearful.
   A wrong label joined into the words: 17 of the 157 (happy on polite, eager and relief 12; sad and
   happy on a thought 2; angry on severity 2; whispered on hurried 1). — *measured, the saved runs*.
+- **The four feelings tried, and reverted (2026-11-05)** — surprised, curious, relieved, eager added to
+  the nine, under the merged fork's `npm run dev` on gemma 26B, the same cast and speakers, the old and
+  new prompt on each of Alice VII–X (`server/scripts/feelings_check.js`, `data/feelings-check/`). The
+  rule set before measuring: fewer wrong labels and none worse, else reverted. **First version** (the
+  four plus "A manner is not a feeling: … get "" and their words"): chapter IX directed 127 lines
+  against 52 — 95 of them words and no feeling, nearly every spoken line, the over-marking the prompt's
+  "most lines get nothing" guards against (`direction-v1-with-manner-rule.json`). **Second** (the four
+  alone): the lines directed back to 78 · 56 · 56 · 48 against 66 · 53 · 52 · 47; wrong labels in the
+  §10.38 groups 16 → 13 — relief 2 → 1 (relieved 1 of 2), eager 5 → 2 (eager 3), surprise 1 → 0
+  (surprised 4, curious 2), firm 2 → 1, thinking 2 → 2 — but polite 2 → 3 (told eager, relieved, happy)
+  and hurried 2 → 4 (eager, fearful), and 10 lines the old prompt called shouted became surprised
+  ("cried", "exclaimed" — a tag model then loses the shout) (`direction-v2-without-manner-rule.json`).
+  Two groups worse, so by the rule both versions are reverted; one run each, so whether +1 and +2 are
+  noise is not known. The live database's two direction rows were put back. — *measured, 2026-11-05*.
 
 ## Records not yet distilled
 

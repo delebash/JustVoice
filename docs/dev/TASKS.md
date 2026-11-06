@@ -319,20 +319,16 @@ BUILT:  5 — `CapturePill.vue`: outline 2px white, box-shadow 0 0 0 4px #18181b
         2026-11-05, after rounds 8 and 9 were scored, shown as next: the fork's build and test, then
         item 4 ("what each engine can be told and bring you the list of feelings for your words"). The
         user: "your rec go lets get the app done in best shape".
-        Item 4, decided by me under the finish run's go (2026-11-05; the user: "dont stop and ask me
-        unless you absolutley need to") — the list as shown that day, with my suggested words:
-        surprised, curious, relieved, eager (buttons: Relieved · A bit relieved; Surprised · A bit
-        surprised; Very curious · A bit curious; Eager, excited · A bit eager), and manners get no
-        feeling. The attack: dropped thoughtful and timid; no listening round.
-BUILT:  4 (2026-11-05) — `models.js` EMOTION_VALUES appended with the four; the direction prompt's
-        list from EMOTION_VALUES plus the manner rule (`extraction/direction.js` RULES); the live
-        database's two direction rows replaced (they held the old default word for word; a backup in
-        the session scratchpad); tags — Higgs surprise/relief/enthusiasm, Fish S2 and Drama 3 their
-        word, Chatterbox Turbo [surprised] (`curated/higgs_audio_tts.js`, `fish_audio.js`,
-        `fish_drama3.js`, `capability_details.js`); the mock's list; tests; docs ai-features,
-        engines, personas, studio, whats-new.
-OPEN:   4's check — the direction step on Alice VII–X before and after (the 157 cue lines, RESEARCH
-        §10.38): fewer wrong labels and none worse, else it is reverted; needs the card (gemma).
+        Item 4, 2026-11-05 under the finish run's go: the list was decided by me (surprised, curious,
+        relieved, eager; manners get no feeling), built (f997b787), measured against the rule set before —
+        fewer wrong labels and none worse, else reverted — and REVERTED: the manner sentence made the
+        model mark nearly every line of chapter IX; without it, relief and eagerness and surprise were
+        labelled right more often (16 wrong → 13) but polite and hurried lines got worse and 10 shouted
+        lines turned surprised (RESEARCH §10.38). The live database's direction rows put back.
+OPEN:   4 — the user's word on what next. Options measured or open: the same four with the polite and
+        hurried lines watched over more runs (one run each so far); only "relieved" (the user's own
+        example, 1 of 2 right); or no new labels, and the label left out of what a words engine is told
+        when the line has its own words (untested by ear).
 GO:     given 2026-10-24 ("your rec go while i listen to the pages").
 
 ### Round 7 — Drama 3 directed in the app, a delivery note, the narrator's own voice (decided 2026-10-19)

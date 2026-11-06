@@ -47,12 +47,6 @@
   voices — PocketTTS Small, Underdog Bark 3 and others — aren't offered yet: their files are newer
   than the model downloads JustVoice is pinned to. The two load with `npm run dev` now, and in
   the installed app once that release ships
-- **Four more feelings: surprised, curious, relieved, eager (2026-11-05)** — the direction step and a
-  persona's or a line's **Emotion** have thirteen now. A relieved or eager line was told *happy*
-  before, and a surprised or curious one nothing; a manner such as *very politely* or *thinking to
-  herself* now gets its words and no feeling. A model that takes words is told the new word; Higgs
-  Audio 3 gets its own *surprise*, *relief* and *enthusiasm* tags, Chatterbox Turbo *[surprised]*,
-  Fish Audio's models the word as a tag ([AI features → Direction](ai-features.md#direction--two-recipes-and-the-carry)).
 - **A reset stops the work in progress first (2026-11-05)** — Settings → Backups → **Reset…** now
   stops a book being made into an audiobook, a chapter rendering and an export, and waits for each,
   before it deletes the folders they write into, the way a restore already did

@@ -1520,11 +1520,7 @@
   "whispered",
   "shouted",
   "sarcastic",
-  "contemptuous",
-  "surprised",
-  "curious",
-  "relieved",
-  "eager"
+  "contemptuous"
  ],
  "presets": [
   {

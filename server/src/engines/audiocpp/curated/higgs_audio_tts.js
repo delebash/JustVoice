@@ -16,12 +16,6 @@ export const DIRECTION = {
     contemptuous: "<|emotion:disgust|>",
     whispered: "<|style:whispering|>",
     shouted: "<|style:shouting|>",
-    // Of the four of 2026-11-05, the three its 21 emotions name (PROMPTING.md, read 2026-11-05,
-    // RESEARCH §10.38); curious has none — awe and confusion are other feelings, and an unknown tag
-    // "degrades output or gets read literally".
-    surprised: "<|emotion:surprise|>",
-    relieved: "<|emotion:relief|>",
-    eager: "<|emotion:enthusiasm|>",
   },
 };
 

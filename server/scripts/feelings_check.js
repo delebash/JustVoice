@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: MIT
+// REVERTED 2026-11-05 — the four feelings failed their rule (RESEARCH §10.38), so the prompt this
+// script expects is gone and it stops at its check; it stays as the record of how they were measured.
+//
 // The check for "More feelings than nine", item 4 (TASKS; RESEARCH §10.38): the app's direction step
 // on Alice VII–X twice on the same input — once with the prompt as it was before 2026-11-05 (the nine,
 // no manner rule; `--system` override) and once with the live row (thirteen feelings, a manner is not
@@ -30,9 +33,10 @@ const SERVER = args.server.replace(/\/+$/, "");
 const OUT = path.resolve(ROOT, args.out);
 
 // The prompt before 2026-11-05: today's with the emotion bullet as it was.
+// The live prompt's bullet. (A first version also said "A manner is not a feeling: … get "" and
+// their words"; on chapter IX it marked 127 of 135 spoken lines — RESEARCH §10.38 — and was dropped.)
 const NEW_BULLET = `  - "emotion": the nearest of ${EMOTION_VALUES.join(", ")} — or "" when none of
-    them fits the cue. A manner is not a feeling: "very politely", "hastily",
-    "sleepily", "thinking to herself" get "" and their words;`;
+    them fits the cue;`;
 const OLD_BULLET = `  - "emotion": the nearest of neutral, happy, sad, angry, fearful, whispered,
     shouted, sarcastic, contemptuous — or "" when none of them fits the cue;`;
 if (LOCAL_SYSTEM.split(NEW_BULLET).length !== 2) throw new Error("the live prompt's emotion bullet isn't the one this check knows");
@@ -85,7 +89,8 @@ for (const numeral of args.chapters.split(",")) {
     save();
   }
   if (!ch.after) {
-    ch.after = (await post("/v1/extraction/direction-text", request)).lines;
+    // The code's prompt sent explicitly: a running server may hold its prompt row from before a change.
+    ch.after = (await post("/v1/extraction/direction-text", { ...request, systemPrompt: LOCAL_SYSTEM })).lines;
     save();
   }
   console.log(`${scene.title}: ${ch.before.length} lines directed before, ${ch.after.length} after, ${((Date.now() - t0) / 1000).toFixed(0)} s`);
