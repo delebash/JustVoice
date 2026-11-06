@@ -33,10 +33,29 @@
   Speakers and personas are two things (2026-09-29): a name that is EXACTLY a
   persona in your library says so (In your library), and Add makes the speaker
   already cast with that persona — matched here in code; the model is no longer
-  sent the library. Spellings of one person merge into one row ("Sedge" + "Old
-  Sedge") and Add keeps the others as "Also called"; a quote the server could
-  not find in the chapter is flagged; Ignore is remembered for the project and
-  listed below as well. A row In this book has Remove from book, and ticked
+  sent the library. A quote the server could not find in the chapter is
+  flagged; Ignore is remembered for the project and listed below as well.
+
+  THE AI SUGGESTS, YOU LINK (decided 2026-10-16, TASKS "Discover's names: the AI
+  suggests, you link"; drawn first in the mock, pages/mock/MockDiscoverPage.vue).
+  Every name the scans found is its own row until you link it — nothing joins
+  spellings unseen. Find same people asks the AI which names are one person
+  (POST /v1/projects/{id}/discover/find, a kit task with its Cancel) and changes
+  nothing: its answer is a Same person? list, each with Link and Not the same,
+  and Link all (Google Contacts' Merge & fix). A linked row goes by the fullest
+  name — the speaker's, when one of them is a speaker, whose Also called the
+  others become — and reads "also written …" with Unlink beside each other
+  name. Not the same and Unlink both keep the pair apart: Kept apart, a chip
+  beside Ignored, each pair with Undo, and Find won't suggest it again. Link
+  selected as one person links ticked names the AI missed; two ticked speakers
+  can't be linked (lines would move — a different feature). Make the audiobook
+  links on its own, and the row says so; Unlink still works there — it takes
+  the name out of the speaker's Also called and it shows as new again, while
+  the lines already given stay where Script put them. The state is the
+  project's `discover_people`, which Studio's project carries; every answer
+  replies with it. Add keeps a linked row's other names as "Also called".
+
+  A row In this book has Remove from book, and ticked
   rows a "Remove N selected"; removing deletes the speaker from the book and
   its lines go back to No speaker, so it asks first, naming each one's lines
   ("yes ask first", 2026-09-29). The names the scans gave them go on the
@@ -51,14 +70,17 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import {
-  UiButton, UiCheckbox, UiChip, UiTable, UiTag, confirmDialog, pushToast,
+  UiButton, UiCheckbox, UiChip, UiTable, UiTag, confirmDialog, pushToast, runAiEndpoint,
 } from "@delebash/ui";
 import { useApi } from "../stores/api.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useCopy } from "../services/copy.js";
+import { RECIPE_WORDS, RUN_TITLE } from "../services/bookRun.js";
 import { chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
 import { addNarrator, hasNarrator } from "../services/narrator.js";
-import { foundSpeakers, isWaiting } from "../services/studioStatus.js";
+import {
+  examplePair, foundNames, foundSpeakers, isWaiting, sameName, sameSuggestions,
+} from "../services/studioStatus.js";
 import StudioRunBanner from "./StudioRunBanner.vue";
 
 const props = defineProps({
@@ -135,23 +157,36 @@ const narratorRow = computed(() => {
     chapters: props.scenes.filter((s) => props.narrationByScene[s.id] > 0).map((s) => s.id),
   };
 });
-// Everyone the saved scans found, each once, with a status — the narrator first
-// when the book needs one.
+// The book's same people (decided 2026-10-16): Find's suggestions, your links,
+// the pairs kept apart and Find's last check — the project's, seeded from it
+// and kept current from each answer's reply.
+const NO_PEOPLE = { check: { status: "none" }, suggestions: [], links: [], apart: [] };
+const people = ref(NO_PEOPLE);
+watch(() => props.project, (p) => { people.value = p?.discover_people || NO_PEOPLE; }, { immediate: true });
+
+// Everyone the saved scans found, each person once, with a status — the
+// narrator first when the book needs one. Names join only by your links.
 const found = computed(() => {
-  const rows = foundSpeakers(props.scenes, props.cast, ignored.value, props.personas);
+  const rows = foundSpeakers(props.scenes, props.cast, ignored.value, props.personas, people.value.links);
   return narratorRow.value ? [narratorRow.value, ...rows] : rows;
 });
+const scannedNames = computed(() => foundNames(props.scenes));
+// The pairs kept apart that a row's names are in.
+const apartOf = (row) => people.value.apart.filter((p) => p.names.some((n) => row.names.some((m) => sameName(m, n))));
+const otherIn = (pair, row) => pair.names.find((n) => !row.names.some((m) => sameName(m, n))) ?? pair.names[1];
 const counts = computed(() => ({
   all: found.value.length,
   new: found.value.filter(isWaiting).length,
   cast: found.value.filter((r) => r.status === "cast").length,
   ignored: found.value.filter((r) => r.status === "ignored").length,
+  apart: people.value.apart.length,
 }));
 // The chips: New is everyone still waiting for Add or Ignore — new names and
-// names a persona in your library has.
+// names a persona in your library has; Kept apart, the rows with a pair you
+// said are different people.
 const filter = ref("all");
 const shown = computed(() => found.value.filter((r) => filter.value === "all"
-  || (filter.value === "new" ? isWaiting(r) : r.status === filter.value)));
+  || (filter.value === "new" ? isWaiting(r) : filter.value === "apart" ? apartOf(r).length > 0 : r.status === filter.value)));
 // Per chapter: everyone it names, and how many of them are still waiting.
 function foundIn(scene) {
   const rows = found.value.filter((r) => r.chapters.includes(scene.id));
@@ -221,6 +256,156 @@ function ago(iso) {
   return d === 1 ? "yesterday" : `${d} days ago`;
 }
 
+// ── Find same people: the line, the AI's suggestions, Link and Unlink ─────────
+const FIND = "Find same people";
+const FIND_TITLE = "Ask the AI which of these names are one person — nothing changes until you link them";
+const finding = ref(null);    // {model} while Find same people asks
+const check = computed(() => people.value.check || NO_PEOPLE.check);
+// Chapters scanned after the check was asked.
+const sinceCheck = computed(() => {
+  const c = check.value;
+  if (c.status !== "done" || !c.at) return 0;
+  const at = new Date(c.at).getTime();
+  return props.scenes.filter((s) => s.metadata?.discover?.scanned_at && new Date(s.metadata.discover.scanned_at).getTime() > at).length;
+});
+const checkedBy = (m) => [m.model, RECIPE_WORDS[m.recipe]].filter(Boolean).join(" · ");
+const findLine = computed(() => {
+  if (finding.value) {
+    return { text: `Asking ${finding.value.model} which of these names are one person…`, label: FIND, intent: "secondary", loading: true };
+  }
+  const m = check.value;
+  if (m.status === "failed") return { failed: true, text: `Couldn't check the names. ${m.error}`, label: "Try again", intent: "secondary" };
+  if (m.status === "done") {
+    const how = m.by === "run" ? `, during ${RUN_TITLE}` : "";
+    const n = sinceCheck.value;
+    const since = n ? ` · ${n} ${(n === 1 ? chapterWord.value.singular : chapterWord.value.plural).toLowerCase()} scanned since` : "";
+    return { text: `Checked ${ago(m.at)} by ${checkedBy(m)}${how}${since}.`, label: "Find again", intent: n ? "secondary" : "ghost" };
+  }
+  const pair = examplePair(scannedNames.value.map((x) => x.name), people.value.links);
+  const example = pair ? ` — “${pair[0]}” and “${pair[1]}”` : "";
+  return { text: `Some people are named more than one way${example}. ${FIND} asks the AI which names are one person; you link them.`, label: FIND, intent: "secondary" };
+});
+
+const whose = (name) => (name.endsWith("s") ? `${name}'` : `${name}'s`);
+// The AI's answer, less what you linked or kept apart — each with what the scans say.
+const suggestions = computed(() => sameSuggestions(props.scenes, people.value, props.cast));
+const SUGGEST_COLUMNS = [
+  { id: "names", header: "Names" },
+  { id: "lines", header: "Lines", headerStyle: { textAlign: "right" }, cellStyle: { textAlign: "right" } },
+  { id: "chapters", header: "Where" },
+  { id: "quotes", header: "How the book names them" },
+  { id: "actions", header: "", headerStyle: { width: "1%" }, cellStyle: { whiteSpace: "nowrap", textAlign: "right" } },
+];
+
+// Ask the AI. The kit's AI task shows it, and its Cancel stops the model's call
+// (the server writes nothing then). A failure is the check's: the line says why.
+async function find() {
+  if (finding.value) return;
+  const id = props.project.id;
+  let route = null;
+  try {
+    route = await api.request(`/v1/projects/${id}/discover/find`);
+  } catch {
+    // The ask itself says why.
+  }
+  if (route?.configured) finding.value = { model: route.model };
+  try {
+    const r = await runAiEndpoint({
+      request: (p, o) => api.request(p, o),
+      path: `/v1/projects/${id}/discover/find`,
+      task: { feature: "speaker_merge", label: `${FIND} · ${props.project.name || "Book"}`, meta: { projectId: id } },
+    });
+    if (props.project?.id !== id) return;
+    people.value = r?.discover_people || people.value;
+    if (!suggestions.value.length) pushToast({ kind: "info", message: "Nothing new to link — the AI found no other names that are one person." });
+  } catch (e) {
+    // Stopped: nothing changed. No model, or the model failed: the line says why.
+    if (e?.name !== "AbortError" && e?.status !== 501 && e?.status !== 502) {
+      pushToast({ kind: "error", message: `${FIND} failed: ${e?.message || e}` });
+    }
+  } finally {
+    finding.value = null;
+    projectsStore.reload();
+  }
+}
+
+// One of your answers: the server's state comes back; a speaker whose Also
+// called it rewrote is read again.
+const peopleBusy = ref(false);
+async function answer(path, body) {
+  const r = await api.request(`/v1/projects/${props.project.id}/discover/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  people.value = r?.discover_people || people.value;
+  projectsStore.reload();
+  return r;
+}
+// The name the link holding these names goes by.
+const linkedAs = (names) => people.value.links.find((l) => names.some((n) => l.names.some((m) => sameName(m, n))))?.name ?? "";
+async function act(run) {
+  if (peopleBusy.value) return;
+  peopleBusy.value = true;
+  try {
+    await run();
+  } catch (e) {
+    pushToast({ kind: "error", message: e?.message || String(e) });
+  } finally {
+    peopleBusy.value = false;
+  }
+}
+function linkSuggestion(s) {
+  return act(async () => {
+    const r = await answer("link", { names: s.names });
+    if (r?.speaker_id) emit("cast-changed");
+    pushToast({ kind: "success", message: `${s.names.join(" and ")} linked as one person, ${linkedAs(s.names)}. Unlink takes it back.` });
+  });
+}
+function linkAll() {
+  return act(async () => {
+    const list = suggestions.value;
+    let rewrote = false;
+    for (const s of list) {
+      const r = await answer("link", { names: s.names });
+      rewrote ||= Boolean(r?.speaker_id);
+    }
+    if (rewrote) emit("cast-changed");
+    pushToast({ kind: "success", message: `${plural(list.length, "suggestion")} linked. Unlink on a row takes one back.` });
+  });
+}
+function notSame(s) {
+  return act(async () => {
+    await answer("keep-apart", { names: s.names });
+    pushToast({ kind: "info", message: `${s.names.join(" and ")} kept apart — ${FIND} won't suggest them again. Undo is under Kept apart.` });
+  });
+}
+// Unlink is offered where it can act: a name in the row's link, or one of its
+// speaker's Also called.
+const canUnlink = (row, n) => Boolean(row.link?.names.some((m) => sameName(m, n))
+  || (row.speaker && (castById.value[row.speaker.id]?.aliases || []).some((a) => sameName(a, n))));
+function unlink(row, name) {
+  return act(async () => {
+    const r = await answer("unlink", { name });
+    if (r?.speaker_id) emit("cast-changed");
+    pushToast({
+      kind: "info",
+      message: row.status === "cast"
+        ? `${name} is no longer ${whose(row.name)} other name and shows as new. Lines already given to ${row.name} stay. Undo is under Kept apart.`
+        : `${name} unlinked from ${row.name} and kept apart. Undo is under Kept apart.`,
+    });
+  });
+}
+function undoApart(pair) {
+  return act(async () => {
+    const r = await answer("undo-apart", { names: pair.names });
+    if (r?.speaker_id) emit("cast-changed");
+    pushToast(pair.from === "unlink"
+      ? { kind: "success", message: `${pair.names.join(" and ")} linked again.` }
+      : { kind: "info", message: `${pair.names.join(" and ")} are back under Same person?.` });
+  });
+}
+
 // Queue the ticked chapters on the project's run. A run already going (an
 // Analyze, say) takes them after its own.
 function scan() {
@@ -261,6 +446,32 @@ const pickedWaiting = computed(() => found.value.filter((r) => isWaiting(r) && p
 // narrowings review C9, 2026-10-13: "Ignore 3 selected" ignored 2).
 const pickedIgnorable = computed(() => pickedWaiting.value.filter((r) => !r.narrator));
 const pickedCast = computed(() => found.value.filter((r) => r.status === "cast" && picked.value[r.key]));
+// Link selected as one person (decided 2026-10-16): the ticked names the AI
+// missed — the narrator's row aside — and at most one speaker among them
+// (joining two speakers would move lines: a different feature).
+const pickedLinkable = computed(() => [...pickedWaiting.value.filter((r) => !r.narrator), ...pickedCast.value]);
+const linkBlock = computed(() => {
+  if (pickedCast.value.length > 1) return "Two of the ticked names are already speakers in this book — joining speakers isn't done here.";
+  if (pickedLinkable.value.length < 2) return "Tick two or more names that are one person.";
+  return "";
+});
+async function linkSelected() {
+  const rows = pickedLinkable.value;
+  if (linkBlock.value || bulkBusy.value) return;
+  bulkBusy.value = true;
+  try {
+    const names = rows.flatMap((r) => r.names);
+    const r = await answer("link", { names });
+    if (r?.speaker_id) emit("cast-changed");
+    for (const row of rows) delete picked.value[row.key];
+    picked.value = { ...picked.value };
+    pushToast({ kind: "success", message: `${plural(rows.length, "name")} linked as one person, ${linkedAs(names)}. Unlink takes it back.` });
+  } catch (e) {
+    pushToast({ message: `Link failed: ${e?.message || e}`, kind: "error" });
+  } finally {
+    bulkBusy.value = false;
+  }
+}
 const tickableShown = computed(() => shown.value.filter(tickable));
 const allRowsPicked = computed(() =>
   tickableShown.value.length > 0 && tickableShown.value.every((r) => picked.value[r.key]));
@@ -546,12 +757,47 @@ async function ignore(c) {
         <span class="jv-hint">nothing is created until you add someone</span>
       </div>
       <div class="jv-card__body">
+        <div v-if="scannedNames.length" class="jv-inline-row jv-mb14">
+          <UiTag v-if="findLine.failed" intent="danger">failed</UiTag>
+          <span class="jv-hint">{{ findLine.text }}</span>
+          <UiButton :intent="findLine.intent" size="small" :label="findLine.label" :loading="!!findLine.loading"
+            :title="FIND_TITLE" @click="find" />
+        </div>
+        <template v-if="suggestions.length">
+          <div class="jv-eyebrow--row">
+            <span class="jv-eyebrow">Same person? · {{ suggestions.length }}</span>
+            <span v-if="check.status === 'done'" class="jv-hint">from {{ checkedBy(check) }}</span>
+            <UiButton intent="secondary" size="small" label="Link all" :disabled="peopleBusy"
+              title="Link every suggestion — Unlink on a row takes one back" @click="linkAll" />
+          </div>
+          <UiTable class="jv-table-look jv-mb14" :data="suggestions" :columns="SUGGEST_COLUMNS" data-key="key">
+            <template #names="{ row }"><strong>{{ row.names.join(" + ") }}</strong></template>
+            <template #lines="{ row }">
+              <span class="jv-mono" title="Roughly how many lines of dialogue they speak in what was scanned, both names together">≈ {{ row.lines }}</span>
+            </template>
+            <template #chapters="{ row }">
+              <span class="jv-muted">{{ row.chapters.map((id) => titleById[id]).filter(Boolean).join(", ") }}</span>
+            </template>
+            <template #quotes="{ row }">
+              <span v-for="q in row.quotes" :key="q.name" class="studio-discover__quote">“{{ q.evidence }}”</span>
+            </template>
+            <template #actions="{ row }">
+              <UiButton intent="primary" size="small" label="Link" :disabled="peopleBusy"
+                :title="`Link ${row.names.join(' and ')} as one person, ${row.name}`" @click="linkSuggestion(row)" />
+              <UiButton intent="ghost" size="small" label="Not the same" :disabled="peopleBusy"
+                title="Keep them apart — Find same people won't suggest them again; Undo is under Kept apart"
+                @click="notSame(row)" />
+            </template>
+          </UiTable>
+        </template>
         <div v-if="found.length" class="jv-inline-row studio-discover__chips">
           <UiChip :selected="filter === 'all'" @click="filter = 'all'">All {{ counts.all }}</UiChip>
           <UiChip :selected="filter === 'new'" title="Not in this book yet: new names, and names a persona in your library has"
             @click="filter = 'new'">New {{ counts.new }}</UiChip>
           <UiChip :selected="filter === 'cast'" @click="filter = 'cast'">In this book {{ counts.cast }}</UiChip>
           <UiChip :selected="filter === 'ignored'" @click="filter = 'ignored'">Ignored {{ counts.ignored }}</UiChip>
+          <UiChip :selected="filter === 'apart'" title="Names you said are different people — Find same people won't suggest them again"
+            @click="filter = 'apart'">Kept apart {{ counts.apart }}</UiChip>
         </div>
         <UiTable class="jv-table-look" :data="shown" :columns="RESULT_COLUMNS" data-key="key">
           <template #head-pick>
@@ -565,7 +811,21 @@ async function ignore(c) {
           </template>
           <template #name="{ row }">
             <strong>{{ row.name }}</strong>
-            <div v-if="row.names.some((n) => n !== row.name)" class="jv-hint">also written {{ row.names.filter((n) => n !== row.name).join(", ") }}</div>
+            <div v-for="n in row.names.filter((x) => x !== row.name)" :key="n" class="jv-aka">
+              <span class="jv-hint">also written {{ n }}</span>
+              <UiButton v-if="canUnlink(row, n)" intent="ghost" size="small" label="Unlink" :disabled="peopleBusy"
+                :title="row.status === 'cast'
+                  ? `Take ${n} out of ${whose(row.name)} Also called — it shows as new again; lines already given to ${row.name} stay`
+                  : `${n} is someone else — it gets its own row again`"
+                @click="unlink(row, n)" />
+            </div>
+            <div v-if="row.link?.by === 'run'" class="jv-hint">linked by {{ RUN_TITLE }}</div>
+            <div v-for="p in apartOf(row)" :key="p.names.join('|')" class="jv-aka">
+              <span class="jv-hint">kept apart from {{ otherIn(p, row) }}</span>
+              <UiButton intent="ghost" size="small" label="Undo" :disabled="peopleBusy"
+                :title="p.from === 'unlink' ? `Link ${otherIn(p, row)} with ${row.name} again` : `Show ${p.names.join(' and ')} under Same person? again`"
+                @click="undoApart(p)" />
+            </div>
             <div v-if="row.role_hint" class="jv-hint">{{ row.role_hint }}</div>
           </template>
           <template #status="{ row }">
@@ -625,7 +885,11 @@ async function ignore(c) {
             :label="pickedCast.length ? `Remove ${pickedCast.length} selected` : 'Remove selected'"
             title="Remove every ticked speaker from this book — asks first; their lines go back to No speaker"
             @click="removeSelected" />
-          <span class="jv-hint">{{ pickedWaiting.length || pickedCast.length ? `${pickedWaiting.length + pickedCast.length} ticked` : "Tick names to add, ignore or remove several at once." }}</span>
+          <UiButton intent="ghost" size="small" :disabled="!!linkBlock || bulkBusy || busyName !== null || peopleBusy"
+            :label="pickedLinkable.length > 1 ? `Link ${pickedLinkable.length} selected as one person` : 'Link selected as one person'"
+            :title="linkBlock || 'Link the ticked names as one person — Unlink takes it back'"
+            @click="linkSelected" />
+          <span class="jv-hint">{{ pickedWaiting.length || pickedCast.length ? `${pickedWaiting.length + pickedCast.length} ticked` : "Tick names to add, ignore, remove or link several at once." }}</span>
         </div>
       </div>
     </div>

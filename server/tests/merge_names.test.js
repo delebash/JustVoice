@@ -13,6 +13,10 @@ import { SpeakerCandidate } from "../src/extraction/identify.js";
 import * as mergeNames from "../src/extraction/merge_names.js";
 import { applyPeople, collectFound, containmentGroups, fullestName, mergeBook, parsePeople } from "../src/extraction/merge_names.js";
 import { bare, isVariantBare } from "../src/extraction/names.js";
+import { noCheck, readPeople } from "../src/extraction/same_people.js";
+import * as extraction from "../src/api/extraction_api.js";
+import * as session from "../src/database/session.js";
+import * as run from "../src/engines/llm/run.js";
 import { ALICE_SCANS, ONE_QUEEN } from "./alice_fixtures.js";
 import { appClient, closeApps } from "./app_helpers.js";
 import { bookJson, scene } from "./jw_fixtures.js";
@@ -181,6 +185,51 @@ describe("the frontier recipe", () => {
   });
 });
 
+describe("your answers on Discover come over the model's (decided 2026-10-16)", () => {
+  test("a group holding names you kept apart is split; the model's own groups are the suggestions", async () => {
+    stubMerge(ONE_QUEEN);
+    const found = collectFound(ALICE_SCANS);
+    const asked = await mergeBook(found, { recipe: "local" });
+    expect(asked.suggested).toEqual([["Queen of Hearts", "the Queen"]]);
+    // Not the same (or Unlink) on the pair: the model's answer no longer joins them.
+    const apart = [{ names: ["the Queen", "Queen of Hearts"] }];
+    const { people, left_out, suggested } = await mergeBook(found, { recipe: "local", apart });
+    expect(suggested).toEqual([]);
+    expect(people.find((p) => p.name === "the Queen")).toMatchObject({ aliases: [], lines: 22 });
+    expect(names(left_out)).toContain("Queen of Hearts"); // 0 lines on its own
+  });
+
+  test("names you linked are one person, going by the link's name, and the model's group joins it", () => {
+    const found = collectFound(ALICE_SCANS);
+    const at = (n) => found.findIndex((f) => f.name === n);
+    // The model joined the Queen's two names; you linked "the Queen" with the King.
+    const persons = applyPeople(found, [{ name: "Queen of Hearts", names: ["Queen of Hearts", "the Queen"] }]);
+    const joined = mergeNames.joinLinked(found, persons, [{ names: ["the Queen", "the King"], name: "the King" }]);
+    const p = joined.find((x) => x.idx.includes(at("the King")));
+    expect(p.idx.map((i) => found[i].name)).toEqual(["Queen of Hearts", "the Queen", "the King"]);
+    expect(mergeNames.personOf(found, p).name).toBe("the King");
+    // …unless the model's other name is one you kept apart from the link's: it stays on its own.
+    const apart = [{ names: ["the King", "Queen of Hearts"] }];
+    const split = mergeNames.joinLinked(found, persons, [{ names: ["the Queen", "the King"], name: "the King" }], apart);
+    expect(split.find((x) => x.idx.includes(at("the King"))).idx.map((i) => found[i].name)).toEqual(["the Queen", "the King"]);
+    expect(split.find((x) => x.idx.includes(at("Queen of Hearts"))).idx.length).toBe(1);
+  });
+
+  test("the same people's state is read defensively", () => {
+    expect(readPeople(null)).toEqual({ check: noCheck(), suggestions: [], links: [], apart: [] });
+    const got = readPeople({
+      check: { status: "running", at: "x" },
+      suggestions: [{ names: ["A"] }, { names: ["the Queen", "Queen of Hearts", "the queen"] }],
+      links: [{ names: ["A", "B"], by: "someone" }, "junk"],
+      apart: [{ names: ["A", "B"], from: "unlink", link: { name: "A" } }],
+    });
+    expect(got.check.status).toBe("none");
+    expect(got.suggestions).toEqual([{ names: ["the Queen", "Queen of Hearts"], name: "Queen of Hearts" }]);
+    expect(got.links).toEqual([{ names: ["A", "B"], name: "A", by: "you" }]);
+    expect(got.apart).toEqual([{ names: ["A", "B"], from: "unlink", link: { name: "A", by: "you" } }]);
+  });
+});
+
 // ── Through the app ────────────────────────────────────────────────────────
 
 async function importBook(c) {
@@ -221,10 +270,11 @@ test("merge reads every chapter's scan; promote adds the people with their other
 
   const calls = [];
   stubMerge(ONE_QUEEN, calls);
-  const r = await c.post(`/v1/projects/${pid}/speakers/merge`);
-  expect(r.status, r.text).toBe(200);
-  const got = r.json();
+  // The run's merge step calls it directly (book_run.js); Discover's Find same people too.
+  const got = await extraction.mergeFoundNames(session.getDb(), pid);
   expect(got).toMatchObject({ project_id: pid, recipe: "local", scanned: 2 });
+  expect(got.suggested).toEqual([["Queen of Hearts", "the Queen"]]);
+  expect(got.groups).toEqual([{ name: "Queen of Hearts", names: ["Queen of Hearts", "the Queen"] }]);
   expect(got.usage).toMatchObject({ prompt_tokens: 120, completion_tokens: 30 });
   expect(names(got.people)).not.toContain("Two");
   expect(names(got.people)).not.toContain(someone);
@@ -244,20 +294,24 @@ test("merge reads every chapter's scan; promote adds the people with their other
   expect(queen.description).toBe("the queen the Hatter sang for");
 });
 
-test("merge on a book with no scans asks nothing; a failed call is the provider's words", async () => {
+test("Find same people on a book with no scans asks nothing; a failed call is the provider's words, kept as the check", async () => {
   const { c } = await appClient(undefined, { seed: true });
   const [pid, scenes] = await importBook(c);
+  vi.spyOn(run, "featureRoute").mockReturnValue({ configured: true, model: "gemma-test", provider: "Built-in engine", provider_id: "builtin", cloud: false, detail: null });
   const spy = stubMerge(ONE_QUEEN);
-  let r = await c.post(`/v1/projects/${pid}/speakers/merge`);
+  let r = await c.post(`/v1/projects/${pid}/discover/find`);
   expect(r.status, r.text).toBe(200);
-  expect(r.json()).toMatchObject({ scanned: 0, people: [], left_out: [], usage: null });
+  expect(r.json()).toMatchObject({ added: 0, usage: null, discover_people: { suggestions: [], check: { status: "done", by: "button", model: "gemma-test", recipe: "local" } } });
   expect(spy).not.toHaveBeenCalled();
 
   vi.spyOn(identify, "identifySpeakers").mockResolvedValueOnce(ALICE_SCANS[1].candidates.map((x) => new SpeakerCandidate(x)));
   expect((await c.post(`/v1/scenes/${scenes[0].id}/discover-speakers`, { json: { text: "Some text." } })).status).toBe(200);
   vi.spyOn(mergeNames, "runFeature").mockRejectedValue(new Error("connection refused"));
-  r = await c.post(`/v1/projects/${pid}/speakers/merge`);
+  r = await c.post(`/v1/projects/${pid}/discover/find`);
   expect(r.status).toBe(502);
-  expect(r.text).toContain("merging names failed: connection refused");
-  expect((await c.post("/v1/projects/nope/speakers/merge")).status).toBe(404);
+  expect(r.text).toContain("finding the same people failed: connection refused");
+  const check = (await c.get(`/v1/projects/${pid}`)).json().discover_people.check;
+  expect(check).toMatchObject({ status: "failed", by: "button", model: "gemma-test" });
+  expect(check.error).toContain("connection refused");
+  expect((await c.post("/v1/projects/nope/discover/find")).status).toBe(404);
 });

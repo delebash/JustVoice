@@ -55,6 +55,7 @@ import * as run from "../engines/llm/run.js";
 import { ApiError, badRequest, HttpError, notFound } from "../errors.js";
 import * as exportAudiobook from "../export_audiobook.js";
 import * as exportVoicelines from "../export_voicelines.js";
+import * as samePeople from "../extraction/same_people.js";
 import { listAdapters, runAdapter } from "../imports/index.js";
 import { AdapterListResponse, ImportRunResponse } from "../imports/standard_schema.js";
 import * as lineTakes from "../line_takes.js";
@@ -131,6 +132,10 @@ export const ProjectResponse = T.Object({
   scene_count: opt(T.Integer(), 0),
   // Names Discover was told to ignore here (2026-09-27, fix 4).
   discover_ignored: opt(T.Array(T.String()), []),
+  // Discover's same people (decided 2026-10-16): Find's suggestions, the names linked as one
+  // person, the pairs kept apart, Find's last check. Kept in the project's metadata under its own
+  // key, which only the discover routes and the one-click run write — `metadata` leaves it out.
+  discover_people: extraction.DiscoverPeople,
   created_at: DateTime(),
   updated_at: DateTime(),
 });
@@ -138,18 +143,20 @@ export const ProjectResponse = T.Object({
 /** `ProjectResponse.from_orm(row, scene_count)`. */
 export function projectOut(row, sceneCount = 0) {
   const metadata = loadsJson(row.metadata_json || "{}");
+  const shown = isDict(metadata) ? Object.fromEntries(Object.entries(metadata).filter(([k]) => k !== samePeople.KEY)) : metadata;
   return construct(ProjectResponse, {
     id: row.id,
     name: row.name,
     description: row.description,
     project_type: row.project_type,
-    metadata,
+    metadata: shown,
     language: isDict(metadata) ? (truthy(dget(metadata, "language")) ? dget(metadata, "language") : null) : null,
     default_lexicon_id: row.default_lexicon_id,
     mastering_preset: row.mastering_preset,
     imported_from: row.imported_from,
     scene_count: sceneCount,
     discover_ignored: extraction.projectIgnored(row),
+    discover_people: extraction.projectPeople(row),
     created_at: row.created_at,
     updated_at: row.updated_at,
   });
@@ -896,7 +903,20 @@ export function router() {
     const changes = {};
     if (body.name !== null) changes.name = body.name;
     if (body.description !== null) changes.description = body.description;
-    if (body.metadata !== null) changes.metadata_json = pyJson(body.metadata);
+    if (body.metadata !== null) {
+      // Discover's same people are the server's (the discover routes and the run write them): a
+      // client's metadata — sent from a copy that leaves them out — never replaces them.
+      const metadata = { ...body.metadata };
+      delete metadata[samePeople.KEY];
+      let stored;
+      try {
+        stored = loadsJson(p.metadata_json || "{}");
+      } catch {
+        stored = {};
+      }
+      if (isDict(stored) && samePeople.KEY in stored) metadata[samePeople.KEY] = stored[samePeople.KEY];
+      changes.metadata_json = pyJson(metadata);
+    }
     // Overview's "Pronunciation lexicon". Left out = unchanged; sent as null = "None" (it could
     // not be cleared before 2026-09-30). An id that names no lexicon is refused here, not left
     // to the foreign key.

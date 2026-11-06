@@ -38,15 +38,28 @@ export function blockStats(blocks, scene = null) {
   };
 }
 
-// Name comparison, the same rules as the server's extraction/names.py.
+// Name comparison, the same rules as the server's extraction/names.js `norm`.
 const normName = (n) => (n || "").normalize("NFKC").replace(/’/g, "'").toLowerCase()
   .replace(/[^\p{L}\p{N}\s'-]/gu, " ").replace(/\s+/g, " ").trim();
+/** Two spellings are the same name — case, curly quotes and punctuation aside. */
+export const sameName = (a, b) => normName(a) === normName(b);
 
-/** One name is the other with whole words added ("Sedge" / "Old Sedge"). */
-export function isVariant(a, b) {
-  const x = normName(a).split(" ").filter(Boolean);
-  const y = normName(b).split(" ").filter(Boolean);
-  if (!x.length || !y.length) return false;
+// The articles a name can start with — the server's `names.bare` (extraction/names.js), which
+// only Find same people's example reads here.
+const LEADING_ARTICLES = new Set(["the", "a", "an", "le", "la", "les", "l'", "der", "die", "das", "el", "los", "las", "il", "lo", "gli"]);
+const words = (n) => normName(n).split(" ").filter(Boolean);
+function bareWords(n) {
+  const w = words(n);
+  if (w.length > 1 && LEADING_ARTICLES.has(w[0])) return w.slice(1);
+  if (w.length && /^l'./u.test(w[0])) return [w[0].slice(2), ...w.slice(1)];
+  return w;
+}
+/** One name is the other with whole words added, a leading article aside ("the Queen" / "Queen
+ * of Hearts") — the server's `names.isVariantBare`. */
+function containsName(a, b) {
+  const x = bareWords(a);
+  const y = bareWords(b);
+  if (!x.length || !y.length || x.join(" ") === y.join(" ")) return false;
   const [short, long] = x.length <= y.length ? [x, y] : [y, x];
   for (let i = 0; i + short.length <= long.length; i += 1) {
     if (short.every((w, j) => long[i + j] === w)) return true;
@@ -55,14 +68,61 @@ export function isVariant(a, b) {
 }
 
 /**
- * Everyone a project's saved scans found, merged across chapters, each person
- * once with a status — Discover's record (decided 2026-09-29):
+ * The book's own example for Discover's line, "Some people are named more than one way — “the
+ * Queen” and “Queen of Hearts”": the first two names, in book order, of which one is the other
+ * with words added (a leading article aside), the shorter first — or null. Names you linked
+ * already aren't an example.
+ */
+export function examplePair(names, links = []) {
+  const linked = new Set((links || []).flatMap((l) => (l.names || []).map(normName)));
+  const open = (names || []).filter((n) => !linked.has(normName(n)));
+  for (let i = 0; i < open.length; i += 1) {
+    for (let j = i + 1; j < open.length; j += 1) {
+      if (containsName(open[i], open[j])) {
+        return bareWords(open[i]).length <= bareWords(open[j]).length ? [open[i], open[j]] : [open[j], open[i]];
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Each name the saved scans found, once (compared as the server compares names), in book order:
+ * `{name, key, lines, mentions, chapters, evidence, evidence_found}` — the AI's names
+ * (`candidates`) and the speakers each chapter names (`named_cast`).
+ */
+export function foundNames(scenes) {
+  const out = new Map();
+  for (const s of scenes || []) {
+    const saved = s.metadata?.discover;
+    if (!saved) continue;
+    for (const c of [...(saved.named_cast || []), ...(saved.candidates || [])]) {
+      const name = (c.name || "").trim();
+      const key = normName(name);
+      if (!key) continue;
+      let n = out.get(key);
+      if (!n) {
+        n = { name, key, lines: 0, mentions: 0, chapters: [], evidence: "", evidence_found: null };
+        out.set(key, n);
+      }
+      n.lines += c.approx_lines || 0;
+      n.mentions += c.mentions || 0;
+      if (!n.evidence && c.evidence) Object.assign(n, { evidence: c.evidence, evidence_found: c.evidence_found ?? null });
+      if (!n.chapters.includes(s.id)) n.chapters.push(s.id);
+    }
+  }
+  return [...out.values()];
+}
+
+/**
+ * Everyone a project's saved scans found, each person once with a status —
+ * Discover's record (decided 2026-09-29):
  *   "cast"    a speaker of this book; `speaker` is who
  *   "library" no speaker yet, but a persona in the library has exactly this
  *             name; Add makes the speaker already cast with it (`persona`)
  *   "new"     no speaker, no persona of that name; Add makes the speaker
  *   "ignored" on the project's ignore list; Undo takes it off
- * [{key, status, name, names, speaker, persona, role_hint, evidence,
+ * [{key, status, name, names, speaker, persona, link, role_hint, evidence,
  *   evidence_found, lines, mentions, chapters}], waiting rows first.
  *
  * A saved scan holds the AI's names that were not speakers (`candidates`,
@@ -71,14 +131,18 @@ export function isVariant(a, b) {
  * someone added, removed or ignored since shows as such — Add and Ignore change
  * a row, they never remove it; a removed speaker's row turns New.
  *
- * Merged (Discover fixes A + D, 2026-09-27): everything that points at one
- * speaker is one row; among the rest, a name that is another with words added
- * is one row ("Sedge" + "Old Sedge"), shown under its longest form.
+ * One row per person: everything that points at one speaker — their name or an
+ * Also called, exactly — is their row; every other name is its own row until
+ * you link it (decided 2026-10-16, "Discover's names: the AI suggests, you
+ * link": nothing joins spellings unseen). Names linked as one person (`links`,
+ * the project's `discover_people.links` — `[{names, name, by}]`) are one row,
+ * going by the link's name, or the speaker's when one of them is a speaker;
+ * `link` is that link. A linked row is Ignored when one of its names is.
  * `cast` is the book's speakers [{id, name, aliases}] (names alone are accepted
  * too); `ignored` the project's ignore list; `personas` the library.
  */
 const STATUS_ORDER = { new: 0, library: 1, cast: 2, ignored: 3 };
-export function foundSpeakers(scenes, cast = [], ignored = [], personas = []) {
+export function foundSpeakers(scenes, cast = [], ignored = [], personas = [], links = []) {
   const castRows = cast.map((c) => (typeof c === "string" ? { id: null, name: c } : c));
   const castById = new Map(castRows.filter((c) => c.id).map((c) => [c.id, c]));
   const castByName = new Map();
@@ -99,31 +163,13 @@ export function foundSpeakers(scenes, cast = [], ignored = [], personas = []) {
     else personaByName.set(k, p);
   }
   for (const k of twice) personaByName.delete(k);
+  const linkOf = (key) => (links || []).find((l) => (l.names || []).some((n) => normName(n) === key)) ?? null;
+  const speakerOfLink = (l) => (l.names || []).map((n) => castByName.get(normName(n))).find((c) => c?.id) ?? null;
 
-  const rows = [];
-  const speakerRow = (sp) => {
-    let row = rows.find((r) => r.speaker?.id === sp.id);
-    if (!row) {
-      row = blank(`s:${sp.id}`, sp.name);
-      row.status = "cast";
-      row.speaker = { id: sp.id, name: sp.name };
-      rows.push(row);
-    }
-    return row;
-  };
-  const nameRow = (status, name) => {
-    let row = rows.find((r) => r.status === status && r.names.some((n) => isVariant(n, name)));
-    if (!row) {
-      row = blank(`${status}:${normName(name)}`, name);
-      row.status = status;
-      rows.push(row);
-    }
-    return row;
-  };
+  const rows = new Map();
   const note = (row, s, name, c) => {
     const clean = (name || "").trim();
     if (clean && !row.names.includes(clean)) row.names.push(clean);
-    if (!row.speaker && clean.length > row.name.length) row.name = clean;
     row.lines += c.approx_lines || 0;
     row.mentions += c.mentions || 0;
     if (!row.role_hint && c.role_hint) row.role_hint = c.role_hint;
@@ -134,51 +180,51 @@ export function foundSpeakers(scenes, cast = [], ignored = [], personas = []) {
     }
     if (!row.chapters.includes(s.id)) row.chapters.push(s.id);
   };
-  // A name with no speaker behind it: Ignored, In your library, or New.
-  const byName = (s, name, c) => {
+  // One name, onto its person's row: the speaker it is (`sp` — the scan's own record of a speaker
+  // the chapter names — else by name), else its link, else its own.
+  const place = (s, name, c, sp = null) => {
     const key = normName(name);
     if (!key) return;
-    const sp = castByName.get(key);
-    if (sp?.id) note(speakerRow(sp), s, name, c);
-    else if (ignoredNames.has(key)) note(nameRow("ignored", name), s, name, c);
-    else if (personaByName.has(key)) {
-      const row = nameRow("library", name);
-      row.persona = { id: personaByName.get(key).id, name: personaByName.get(key).name };
-      note(row, s, name, c);
-    } else note(nameRow("new", name), s, name, c);
+    const link = linkOf(key);
+    const speaker = sp ?? (castByName.get(key)?.id ? castByName.get(key) : null) ?? (link ? speakerOfLink(link) : null);
+    const id = speaker ? `s:${speaker.id}` : link ? `l:${normName(link.name)}` : `n:${key}`;
+    let row = rows.get(id);
+    if (!row) {
+      row = blank(id, speaker ? speaker.name : link ? link.name : name);
+      if (speaker) row.speaker = { id: speaker.id, name: speaker.name };
+      rows.set(id, row);
+    }
+    if (link && !row.link) row.link = link;
+    note(row, s, name, c);
   };
   for (const s of scenes || []) {
     const saved = s.metadata?.discover;
     if (!saved) continue;
-    for (const m of saved.named_cast || []) {
-      const sp = castById.get(m.speaker_id);
-      if (sp) note(speakerRow(sp), s, m.name, m);
-      else byName(s, m.name, m);   // removed since the scan
-    }
-    for (const c of saved.candidates || []) byName(s, c.name, c);
+    // A speaker removed since the scan is a name like any other.
+    for (const m of saved.named_cast || []) place(s, m.name, m, castById.get(m.speaker_id) ?? null);
+    for (const c of saved.candidates || []) place(s, c.name, c);
   }
-  // A new name that is a library row's name with words dropped ("Sedge" beside
-  // "Old Sedge" when a persona is called Old Sedge) is that person: one row,
-  // and Add keeps the other spelling as "Also called".
-  for (const row of rows.filter((r) => r.status === "new")) {
-    const lib = rows.find((r) => r.status === "library" && r.names.some((n) => row.names.some((m) => isVariant(n, m))));
-    if (!lib) continue;
-    for (const n of row.names) if (!lib.names.includes(n)) lib.names.push(n);
-    lib.lines += row.lines;
-    lib.mentions += row.mentions;
-    if (!lib.role_hint) lib.role_hint = row.role_hint;
-    if (!lib.evidence && row.evidence) Object.assign(lib, { evidence: row.evidence, evidence_found: row.evidence_found });
-    for (const id of row.chapters) if (!lib.chapters.includes(id)) lib.chapters.push(id);
-    rows.splice(rows.indexOf(row), 1);
+  const out = [];
+  for (const row of rows.values()) {
+    if (row.speaker) {
+      row.status = "cast";
+    } else {
+      const keys = row.names.map(normName);
+      const persona = keys.map((k) => personaByName.get(k)).find(Boolean);
+      row.status = keys.some((k) => ignoredNames.has(k)) ? "ignored" : persona ? "library" : "new";
+      if (row.status === "library") row.persona = { id: persona.id, name: persona.name };
+      row.key = `${row.status}:${normName(row.name)}`;
+    }
+    out.push(row);
   }
   // Waiting rows first; then most lines, then most mentions; a tie keeps book
   // order (a named speaker often speaks none in the chapters scanned).
-  return rows.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+  return out.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
     || b.lines - a.lines || b.mentions - a.mentions);
 }
 function blank(key, name) {
   return {
-    key, status: null, name: (name || "").trim(), names: [], speaker: null, persona: null,
+    key, status: null, name: (name || "").trim(), names: [], speaker: null, persona: null, link: null,
     role_hint: "", evidence: "", evidence_found: null, lines: 0, mentions: 0, chapters: [],
   };
 }
@@ -186,10 +232,48 @@ function blank(key, name) {
 export const isWaiting = (r) => r.status === "new" || r.status === "library";
 
 /**
+ * Find same people's answers still to review — Discover's Same person? list (decided
+ * 2026-10-16) → [{key, names, name, lines, chapters, quotes: [{name, evidence}]}]. From the
+ * project's `discover_people` (`people`): each suggestion whose names the scans still find, not
+ * every name in one link already, no set you kept apart inside it, and not one speaker already —
+ * nor two (the server's `same_people.isOpen`). Lines are the scans' counts, both names together.
+ */
+export function sameSuggestions(scenes, people, cast = []) {
+  if (!people) return [];
+  const info = new Map(foundNames(scenes).map((n) => [n.key, n]));
+  const castRows = cast.map((c) => (typeof c === "string" ? { id: null, name: c } : c));
+  const speakerOf = (n) => castRows.find((c) => [c.name, ...(c.aliases || [])].some((x) => normName(x) === normName(n))) ?? null;
+  const inside = (inner, outer) => {
+    const o = new Set(outer.map(normName));
+    return inner.every((n) => o.has(normName(n)));
+  };
+  const out = [];
+  for (const s of people.suggestions || []) {
+    const names = s.names || [];
+    if (names.length < 2 || !names.every((n) => info.has(normName(n)))) continue;
+    if ((people.links || []).some((l) => inside(names, l.names || []))) continue;
+    if ((people.apart || []).some((a) => inside(a.names || [], names))) continue;
+    const sps = [...new Set(names.map(speakerOf).filter(Boolean))];
+    if (sps.length > 1 || (sps.length === 1 && names.every((n) => speakerOf(n) === sps[0]))) continue;
+    const found = names.map((n) => info.get(normName(n)));
+    out.push({
+      key: names.map(normName).join("|"),
+      names,
+      name: s.name,
+      lines: found.reduce((sum, n) => sum + n.lines, 0),
+      chapters: [...new Set(found.flatMap((n) => n.chapters))],
+      quotes: found.filter((n) => n.evidence).map((n) => ({ name: n.name, evidence: n.evidence })),
+    });
+  }
+  return out;
+}
+
+/**
  * Roll the chapters and the cast up into the project's state.
  * `stats` is {sceneId: blockStats}; `cast` is the book's speakers [{id, name,
  * aliases, ready, narrator}] — `ready` = played by a persona that has a voice;
- * `ignored` is the project's Discover ignore list; `personas` the library;
+ * `ignored` is the project's Discover ignore list; `links` its names linked as
+ * one person (`discover_people.links`); `personas` the library;
  * `render` is GET /v1/projects/{id}/render_state's `totals` (§8.16's counts:
  * lines, needs_speaker, needs_voice, ready, rendered, stale — Studio Slice 4),
  * or null before it loads;
@@ -197,7 +281,7 @@ export const isWaiting = (r) => r.status === "new" || r.status === "library";
  * server's), or null before it loads; `running` counts chapters being analyzed.
  */
 export function projectState({
-  scenes = [], scenesLoaded = true, speakersLoaded = true, stats = {}, cast = [], ignored = [], personas = [],
+  scenes = [], scenesLoaded = true, speakersLoaded = true, stats = {}, cast = [], ignored = [], links = [], personas = [],
   render = null, script = null, running = 0,
 }) {
   let lines = 0;
@@ -226,7 +310,7 @@ export function projectState({
   const noNarrator = narration > 0 && !cast.some((sp) => sp.narrator);
   const scanned = scenes.filter((s) => s.metadata?.discover?.scanned_at).length;
   // Found names still waiting for Add or Ignore.
-  const proposed = foundSpeakers(scenes, cast, ignored, personas).filter(isWaiting).length;
+  const proposed = foundSpeakers(scenes, cast, ignored, personas, links).filter(isWaiting).length;
   // Lines of speakers no persona-with-a-voice plays — the render stops on them.
   const blocked = notReady.reduce((sum, sp) => sum + (bySpeaker[sp.id] || 0), 0);
   return {

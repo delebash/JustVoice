@@ -203,6 +203,7 @@ const overviewState = computed(() => projectState({
     narrator: sp.id === narratorSpeaker.value?.id,
   })),
   ignored: selectedProject.value?.discover_ignored || [],
+  links: selectedProject.value?.discover_people?.links || [],
   personas: personas.value,
   render: renderState.value?.totals || null,
 }));
@@ -554,7 +555,8 @@ async function onScriptChanged() {
 // The one-click run stopped or ended: it added speakers, decided lines, made
 // personas and takes — every page's numbers follow.
 async function onRunChanged() {
-  await Promise.all([personasStore.reload(), voicesStore.reload()]);
+  // The run's Find same people links names (decided 2026-10-16): Discover reads them from the project.
+  await Promise.all([personasStore.reload(), voicesStore.reload(), projectsStore.reload()]);
   await loadSpeakers();
   await loadScenesForProject(selectedProjectId.value);
   await loadRenderState();

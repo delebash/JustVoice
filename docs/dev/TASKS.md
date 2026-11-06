@@ -403,13 +403,39 @@ WHY:    the AI's answer joined names with no list to check and no undo; the butt
 NOT:    joining two speakers (lines would move — a different feature).
         This reverses answer 4 of "The one-click run's leftovers, rethought" (the server's grouping
         shown as one row before the AI): every name is its own row until you link it.
-BUILT:  —
-OPEN:   the mock first (`#/mock/discover`: before the AI, finding, suggestions, linked, kept
-        apart, after the run, a new scan, failed, nothing scanned), then the user's look; the
-        server part (the stored suggestions, links and kept-apart pairs; the run writing its links
-        there), the real page, the step's new name (Find same people — the run's step label, the
-        AI feature, the docs) after that.
-GO:     given 2026-10-16 ("your rec go") for the mock.
+BUILT:  the mock (`#/mock/discover`, 2026-10-16). 2026-11-05, the server and the real page:
+        the state is the project's `metadata.discover_people` = {check, suggestions, links,
+        apart} (`extraction/same_people.js` — readPeople :61, isOpen :126, addSuggestions :137,
+        link :158, unlink :189, notSame :220, undoApart :232), on the project payload as
+        `discover_people` and kept out of `metadata`, which a client's PATCH never replaces
+        (`api/projects_api.js` :138, :159, :907). Routes beside discover/ignore
+        (`api/extraction_api.js`): GET + POST `…/discover/find` :2352 :2363 (`findSamePeople`
+        :1536 — suggestions only; Cancel → 499 and nothing written; no model → 501 and 502 kept as
+        the failed check), `…/discover/link` :2376, `…/unlink` :2384, `…/keep-apart` (Not the
+        same) :2391, `…/undo-apart` :2399. The question is `mergeFoundNames` :1469 (the book's
+        speakers' names in what it reads; your links and kept-apart pairs over the model's —
+        `merge_names.js` keepApart :280, joinLinked :296, peopleOf :322, mergeAction :95); the
+        run's step links its groups by "run" and writes the check by "run" (`linkFoundPeople`
+        :1575, `book_run.js` :844), never a pair kept apart; its Add step unchanged. The old `POST
+        …/speakers/merge` is gone (one way per job; its callers — eval_speakers.js, the tests —
+        moved to find / mergeFoundNames). The step's name: Find same people (`bookRun.js`
+        STEP_LABELS, `feature_catalog.js` speaker_merge). The model a step runs on is
+        `engines/llm/run.js` featureRoute :37 (book_run.stepRoute calls it). Client:
+        `studioStatus.foundSpeakers` :145 joins names only by links (`foundNames` :94,
+        `sameSuggestions` :241, `examplePair` :76); `StudioDiscover.vue` — the line :272, Find
+        :302 (a kit task with Cancel), Same person? with Link / Not the same / Link all :358,
+        also written … [Unlink] :387, linked by Make the audiobook, Kept apart chip + Undo :399,
+        Link selected as one person :458; Studio's step count reads the links. Docs studio.md
+        (Same people: the AI suggests, you link), ai-features.md, code-map.md, whats-new. Tests:
+        server discover_same_people.test.js (8), merge_names.test.js (+3), ai_cancel_routes
+        (find's Cancel), one_click_alice (the run's links); unit studioStatus.test.js (+5),
+        StudioDiscover.test.js (8, mounted in the mock's states).
+OPEN:   the user's look in the real app (Discover before the AI, Find, Link, Unlink, Kept apart,
+        after Make the audiobook) beside the mock at the same width.
+GO:     given 2026-10-16 ("your rec go") for the mock; the server and the real page under the finish run's go
+        of 2026-11-05 ("just keep going fix all the things you think yo can … dont stop and ask me unless
+        you absolutley need to"), the user's look skipped as not absolutely needed — the design was argued
+        twice and approved, the mock drawn.
 
 ### The one-click run's leftovers, rethought (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the gemma acceptances (RESEARCH §10.24), the recs shown for the

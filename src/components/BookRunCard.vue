@@ -21,8 +21,8 @@ import { computed } from "vue";
 import { useQuasar } from "quasar";
 import { LuFeatureChip, UiButton, UiProgress, UiTable, UiTag } from "@delebash/ui";
 import {
-  LIVE, PROBLEMS, RUN_TAGS, RUNS_ON_SERVER, STEP_LABELS, planLine, priceText, problemWords, reviewItems,
-  runBanner, runningLine, stepStatusText, stepsDone,
+  LIVE, PROBLEMS, RECIPE_WORDS, RUN_TAGS, RUN_TITLE, RUNS_ON_SERVER, STEP_LABELS, planLine, priceText, problemWords,
+  reviewItems, runBanner, runningLine, stepStatusText, stepsDone,
 } from "../services/bookRun.js";
 import { licClass, licTitle } from "../services/engineFacts.js";
 import { clock } from "../services/renderRun.js";
@@ -80,12 +80,11 @@ function modelText(row) {
   if (row.key === "check" && props.plan?.warnings.some((w) => w.code === "no_recognition")) return `${row.model} — not installed`;
   return row.model || "—";
 }
-const RECIPES = { local: "Local", frontier: "Frontier" };
 // The same, as one line under the step's name at phone width: the model, then the recipe.
 function narrowModel(row) {
   if (row.kind !== "ai") return modelText(row);
   if (!row.configured) return "No model set";
-  return [row.model, row.recipe ? RECIPES[row.recipe] : null].filter(Boolean).join(" · ");
+  return [row.model, row.recipe ? RECIPE_WORDS[row.recipe] : null].filter(Boolean).join(" · ");
 }
 // A speech step's licence chip, as the Speech tab shows it; its hover names the licence.
 const licenceHover = (l) => licTitle({ ...l, name: l.licence });
@@ -110,7 +109,7 @@ const numbers = computed(() => (props.run?.steps ?? [])
   .map((s) => ({
     key: s.key,
     label: STEP_LABELS[s.key],
-    used: [s.model, s.recipe ? RECIPES[s.recipe] : null].filter(Boolean).join(" · ") || "—",
+    used: [s.model, s.recipe ? RECIPE_WORDS[s.recipe] : null].filter(Boolean).join(" · ") || "—",
     tokens: s.tokens_in || s.tokens_out ? `${s.tokens_in.toLocaleString()} / ${s.tokens_out.toLocaleString()}` : "—",
     calls: s.calls ? s.calls.toLocaleString() : "—",
     time: clock(s.seconds),
@@ -120,7 +119,7 @@ const numbers = computed(() => (props.run?.steps ?? [])
 <template>
   <div class="jv-card book-run">
     <div class="jv-card__header">
-      <h3 class="jv-card__title">Make the audiobook</h3>
+      <h3 class="jv-card__title">{{ RUN_TITLE }}</h3>
       <UiTag v-if="tag" :intent="tag.intent">{{ tag.label }}</UiTag>
     </div>
     <div class="jv-card__body">
@@ -166,7 +165,7 @@ const numbers = computed(() => (props.run?.steps ?? [])
               :resolved-provider-name="row.provider || '—'" :resolved-model="row.model || '—'"
               @navigate="emit('routing', row)" />
             <span v-else class="jv-text-warn">No model set</span>
-            <UiTag v-if="row.recipe && row.configured" intent="ghost">{{ RECIPES[row.recipe] }}</UiTag>
+            <UiTag v-if="row.recipe && row.configured" intent="ghost">{{ RECIPE_WORDS[row.recipe] }}</UiTag>
           </span>
           <span v-else class="book-run__runs-on">{{ modelText(row) }}
             <span v-for="l in row.licences" :key="l.model" class="ev-lic" :class="licClass(l.commercial)"

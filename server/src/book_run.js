@@ -12,7 +12,8 @@
 // Each step is a function the run calls directly — the same one its route calls (the plan's §4):
 //
 //   discover     each chapter — extraction_api.discoverChapter
-//   merge        the scans' names, one person each — extraction_api.mergeFoundNames
+//   merge        Find same people: the scans' names, one person each, linked as Discover shows
+//                them — extraction_api.mergeFoundNames, linkFoundPeople
 //   add          them as the book's speakers, and the narrator — promoteSpeakers, addNarrator
 //   analyze      each chapter — extraction_api.analyzeChapter (Analyze's route)
 //   group_lines  each chapter's lines with no single speaker — extraction_api.giveGroupLines
@@ -39,9 +40,8 @@
 // from the text each AI step reads (`estimateRun`) and priced from the kit's pricing table, and
 // the start must carry `accept_price` (book_runs_api.js).
 
-import { LLMNotConfiguredError, resolveRoute, stores as llmStores } from "@delebash/core/llm";
+import { LLMNotConfiguredError, stores as llmStores } from "@delebash/core/llm";
 import { costFor, priceFor } from "@delebash/core/llm/pricing";
-import { resolveFeaturePresetWithSource } from "@delebash/core/llm/preset_resolve";
 import { background } from "@delebash/core/platform/asyncutil";
 import { getLogger } from "@delebash/core/platform/log";
 import { isDict, strip } from "@delebash/core/platform/py";
@@ -57,7 +57,7 @@ import * as bookVoices from "./book_voices/index.js";
 import { ACTIONS as VOICE_ACTIONS, FEATURE as VOICES_FEATURE } from "./book_voices/prompts.js";
 import { Block, BookRun, Project, Scene, Speaker, utcnow, uuid } from "./database/models.js";
 import * as session from "./database/session.js";
-import { jvLlmConfig } from "./engines/llm/run.js";
+import * as llmRun from "./engines/llm/run.js";
 import { conflict, HttpError, notFound } from "./errors.js";
 import * as exportAudiobook from "./export_audiobook.js";
 import * as direction from "./extraction/direction.js";
@@ -69,7 +69,7 @@ import { around } from "./extraction/second_look.js";
 import { resolveMarks, segmentParagraphs, splitIntoParagraphs } from "./extraction/segmentation.js";
 import { isMarker } from "./line_takes.js";
 import * as lineTakes from "./line_takes.js";
-import { construct, ExtractionSettings } from "./models.js";
+import { construct, dtIso, ExtractionSettings, utcNow } from "./models.js";
 import * as renderJobs from "./render_jobs.js";
 import * as self from "./book_run.js";
 import { flushSync } from "./sync.js";
@@ -94,7 +94,7 @@ const AI_STEPS = {
   discover: { feature: "speaker_discovery", action: () => "speaker_attribution.identify", recipe: () => null },
   merge: {
     feature: mergeNames.FEATURE,
-    action: () => (mergeNames.mergeRecipe() === "frontier" ? mergeNames.FRONTIER_ACTION : mergeNames.LOCAL_ACTION),
+    action: () => mergeNames.mergeAction(),
     recipe: () => mergeNames.mergeRecipe(),
   },
   analyze: {
@@ -220,31 +220,11 @@ const ALREADY = {
 
 /**
  * The model an AI step runs on right now → `{configured, model, provider, provider_id, cloud,
- * detail}` — the kit's own resolution, as GET /v1/ai/resolved-route reports it (the action's
- * preset over the feature's route). `cloud`: a provider that isn't on this machine (a metered
- * account — the kit's `local` flag, which `presetRecipe` reads too).
+ * detail}` — `run.featureRoute`, the kit's own resolution (as GET /v1/ai/resolved-route reports
+ * it). Its own export so a test can stand in for every step's route at once.
  */
 export function stepRoute(feature, action) {
-  const [preset] = resolveFeaturePresetWithSource(action, feature);
-  try {
-    const [adapter, model] = resolveRoute(jvLlmConfig(), feature, {
-      action,
-      providerOverride: preset?.providerId || null,
-      modelOverride: preset?.model || null,
-    });
-    const provider = llmStores.getProviderStore().get(adapter.provider_id);
-    return {
-      configured: true,
-      model,
-      provider: provider?.name || adapter.provider_id,
-      provider_id: adapter.provider_id,
-      cloud: provider?.local === false,
-      detail: null,
-    };
-  } catch (e) {
-    if (!(e instanceof LLMNotConfiguredError)) throw e;
-    return { configured: false, model: null, provider: null, provider_id: null, cloud: false, detail: reasonOf(e) };
-  }
+  return llmRun.featureRoute(feature, action);
 }
 
 /** A prompt row's own words — its system prompt and template — in characters. */
@@ -532,7 +512,7 @@ export function termsUses(uses) {
 /** A problem's words, for an API caller (the screen says its own). */
 export function problemText(p) {
   if (p.code === "no_text") return "This book has no text yet — import it or add its chapters first.";
-  if (p.code === "no_model") return p.detail || "No language model is set up — set one in AI Settings first.";
+  if (p.code === "no_model") return p.detail || extraction.NO_MODEL;
   if (p.code === "no_language") return "Set the book's language on its Overview first — its voices are made in it.";
   if (p.code === "terms") return `${p.name}'s licence isn't accepted on this computer. Accept it to ${termsUses(p.uses)}.`;
   if (p.code === "all_ignored") return "Every name the scans found is ignored — the book would be read in one voice. Undo some on Discover first.";
@@ -855,8 +835,13 @@ const STEP_FNS = {
 
   async merge(ctx) {
     const st = ctx.steps.merge;
+    const at = dtIso(utcNow());
     const out = await extraction.mergeFoundNames(ctx.h, ctx.projectId, { signal: ctx.signal });
     ctx.count("merge", out.usage, out.recipe);
+    // One click is the run's point: it links the same people itself, and Discover's row says so
+    // ("linked by Make the audiobook"; decided 2026-10-16) — never a pair you kept apart there.
+    const model = st.model || self.stepRoute(mergeNames.FEATURE, mergeNames.mergeAction()).model;
+    extraction.linkFoundPeople(ctx.h, ctx.projectId, out.groups, { at, model, recipe: out.recipe });
     st.people = out.people.map((p) => ({ name: p.name, description: p.description ?? null, aliases: p.aliases ?? [], lines: p.lines ?? null }));
     st.left_out = out.left_out.map((p) => p.name);
     st.total = st.done = st.people.length;

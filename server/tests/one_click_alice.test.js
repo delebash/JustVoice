@@ -14,6 +14,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
+import * as extraction from "../src/api/extraction_api.js";
+import * as session from "../src/database/session.js";
 import * as gl from "../src/extraction/group_lines.js";
 import * as identify from "../src/extraction/identify.js";
 import { SpeakerCandidate } from "../src/extraction/identify.js";
@@ -89,8 +91,13 @@ test("Alice VII–VIII: one Queen, no one with 0 lines a speaker, 'No room!' to 
     expect((await c.post(`/v1/scenes/${s.id}/discover-speakers`, { json: { text: texts[s.title] } })).status).toBe(200);
   }
   vi.spyOn(mergeNames, "runFeature").mockResolvedValue({ text: JSON.stringify(ONE_QUEEN), prompt_tokens: 0, completion_tokens: 0, model: "stub" });
-  const merged = (await c.post(`/v1/projects/${pid}/speakers/merge`)).json();
+  // As the run's merge step takes it (book_run.js): Find same people's question, its groups linked.
+  const merged = await extraction.mergeFoundNames(session.getDb(), pid);
   expect(merged.recipe).toBe("local");
+  extraction.linkFoundPeople(session.getDb(), pid, merged.groups, { at: "2026-11-05T10:00:00+00:00", model: "stub", recipe: "local" });
+  expect((await c.get(`/v1/projects/${pid}`)).json().discover_people.links).toEqual([
+    { names: ["Queen of Hearts", "the Queen"], name: "Queen of Hearts", by: "run" },
+  ]);
 
   // 3 · Add them.
   const add = await c.post(`/v1/projects/${pid}/speakers/promote`, {

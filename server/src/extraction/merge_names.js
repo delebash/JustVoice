@@ -23,6 +23,11 @@
 // it makes up is dropped, and (local) a person stays inside one group. Lines are summed from the
 // scans, never asked of the model; a person every scan counted 0 lines for is left out, one a
 // scan gave no number for is kept.
+//
+// Your answers on Discover come over the model's (decided 2026-10-16, TASKS "Discover's names: the
+// AI suggests, you link"; `same_people.js`): a group holding names you kept apart — Not the same,
+// or Unlink — is split, each name on its own; names you linked are one person, going by the
+// link's name. The step's user-facing name is Find same people.
 
 import { presetRecipe, resolveFeaturePreset } from "@delebash/core/llm";
 import { getLogger } from "@delebash/core/platform/log";
@@ -84,6 +89,11 @@ export const runFeature = (action, variables, overrides, opts) => run.runFeature
  * as speaker attribution's Auto, which reads Direct's (`pipeline.routeRecipe`). */
 export function mergeRecipe() {
   return presetRecipe(resolveFeaturePreset(FRONTIER_ACTION, FEATURE)) === "frontier" ? "frontier" : "local";
+}
+
+/** The prompt row the merge runs on now — its recipe's card. */
+export function mergeAction() {
+  return mergeRecipe() === "frontier" ? FRONTIER_ACTION : LOCAL_ACTION;
 }
 
 /**
@@ -252,13 +262,88 @@ export function personOf(found, { idx, chosen }) {
   };
 }
 
+/** Each set of names you kept apart, as `names.norm` keys — two or more names each. */
+const apartKeys = (apart) => (apart || []).map((a) => [...new Set((a?.names || []).map(norm))]).filter((s) => s.length > 1);
+
+/** Do these found names hold every name of a set you kept apart? */
+function holdsApart(found, idx, sets) {
+  const keys = new Set(idx.map((i) => found[i].key));
+  return sets.some((s) => s.every((k) => keys.has(k)));
+}
+
 /**
- * The scans' names merged into people → `{people, left_out}`: `people` most lines first (book
- * order among equals), `left_out` those every scan counted 0 lines for. `recipe` is "local" or
- * "frontier". `runFn(action, variables)` is the model seam (tests stand in for it); `rawOut.usage`
- * receives the call's usage — none when no call ran.
+ * The model's people with what you kept apart (Discover's Not the same, or Unlink): a person
+ * holding every name of such a set is split, each of its names a person of its own — as a name the
+ * answer leaves out is ("A missed match is easy to fix; a wrong one is not"). `apart` is
+ * `[{names}]`.
  */
-export async function mergeBook(found, { recipe = "local", runFn = null, rawOut = null, signal = null } = {}) {
+export function keepApart(found, persons, apart = []) {
+  const sets = apartKeys(apart);
+  if (!sets.length) return persons;
+  const out = [];
+  for (const p of persons) {
+    if (p.idx.length > 1 && holdsApart(found, p.idx, sets)) for (const i of p.idx) out.push({ idx: [i], chosen: null });
+    else out.push(p);
+  }
+  return out.sort((a, b) => a.idx[0] - b.idx[0]);
+}
+
+/**
+ * The people with the names you linked (`[{names, name}]`): each link is one person going by the
+ * link's name, and a person the model made with one of its names joins it — unless that would put
+ * names you kept apart together, when that person's other names stay on their own.
+ */
+export function joinLinked(found, persons, links = [], apart = []) {
+  if (!links?.length) return persons;
+  const at = new Map(found.map((f, i) => [f.key, i]));
+  const sets = apartKeys(apart);
+  let out = persons.map((p) => ({ idx: [...p.idx], chosen: p.chosen }));
+  for (const link of links) {
+    const mine = (link?.names || []).map((n) => at.get(norm(n))).filter((i) => i !== undefined);
+    if (!mine.length) continue;
+    const touched = out.filter((p) => p.idx.some((i) => mine.includes(i)));
+    const idx = [...new Set(mine)];
+    const loose = [];
+    for (const p of touched) {
+      const extra = p.idx.filter((i) => !idx.includes(i));
+      if (!extra.length) continue;
+      if (holdsApart(found, [...idx, ...extra], sets)) loose.push(...extra.map((i) => ({ idx: [i], chosen: null })));
+      else idx.push(...extra);
+    }
+    idx.sort((a, b) => a - b);
+    const chosen = at.get(norm(link.name || ""));
+    out = [...out.filter((p) => !touched.includes(p)), ...loose, { idx, chosen: chosen !== undefined && idx.includes(chosen) ? chosen : null }];
+  }
+  return out.sort((a, b) => a.idx[0] - b.idx[0]);
+}
+
+/** People → `{people, left_out}`: `people` most lines first (book order among equals),
+ * `left_out` those every scan counted 0 lines for (book order). */
+export function peopleOf(found, persons) {
+  const all = persons.map((p) => ({ ...personOf(found, p), _first: p.idx[0] }));
+  const order = (a, b) => (b.lines ?? 0) - (a.lines ?? 0) || a._first - b._first;
+  const out = ({ _first, ...p }) => p;
+  return {
+    people: all
+      .filter((p) => p.lines !== 0)
+      .sort(order)
+      .map(out),
+    left_out: all
+      .filter((p) => p.lines === 0)
+      .sort((a, b) => a._first - b._first)
+      .map(out),
+  };
+}
+
+/**
+ * The scans' names merged into people → `{people, left_out, suggested}` (`peopleOf`), your links
+ * and the sets you kept apart applied (`links`, `apart` — Discover's, `same_people.js`).
+ * `suggested` is the model's own answer once what you kept apart is split off: each group of two
+ * or more names it says are one person, in book order — Discover's Same person? list. `recipe` is
+ * "local" or "frontier". `runFn(action, variables)` is the model seam (tests stand in for it);
+ * `rawOut.usage` receives the call's usage — none when no call ran.
+ */
+export async function mergeBook(found, { recipe = "local", runFn = null, rawOut = null, signal = null, links = [], apart = [] } = {}) {
   const call = runFn || ((action, variables) => self.runFeature(action, variables, {}, { signal }));
   let persons;
   let ask = null;
@@ -291,17 +376,7 @@ export async function mergeBook(found, { recipe = "local", runFn = null, rawOut 
       };
     }
   }
-  const all = persons.map((p) => ({ ...personOf(found, p), _first: p.idx[0] }));
-  const order = (a, b) => (b.lines ?? 0) - (a.lines ?? 0) || a._first - b._first;
-  const out = ({ _first, ...p }) => p;
-  return {
-    people: all
-      .filter((p) => p.lines !== 0)
-      .sort(order)
-      .map(out),
-    left_out: all
-      .filter((p) => p.lines === 0)
-      .sort((a, b) => a._first - b._first)
-      .map(out),
-  };
+  persons = keepApart(found, persons, apart);
+  const suggested = persons.filter((p) => p.idx.length > 1).map((p) => p.idx.map((i) => found[i].name));
+  return { ...peopleOf(found, joinLinked(found, persons, links, apart)), suggested };
 }

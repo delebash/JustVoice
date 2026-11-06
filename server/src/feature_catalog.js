@@ -54,13 +54,14 @@ export const FEATURE_CATALOG = [
     "Gives a line Analyze left with no speaker — often one several people say at once — to one of them, or to the narrator, and marks it to check.",
     "Analysis",
   ),
-  // The one-click plan's slice 4 (2026-10-16): Discover's names across chapters, merged. A heading
-  // with two routed cards under it, Local and Frontier — the recipes (merge_names.js) — so it sits
-  // with the headed blocks, after the plain cards.
+  // The one-click plan's slice 4 (2026-10-16): which of Discover's names are one person — Find same
+  // people (renamed from "Merge found names" when Discover's names became the AI suggests, you
+  // link, decided 2026-10-16). A heading with two routed cards under it, Local and Frontier — the
+  // recipes (merge_names.js) — so it sits with the headed blocks, after the plain cards.
   e(
     "speaker_merge",
-    "Merge found names",
-    'Decides which names Discover found in different chapters are one person — "the Queen" and "Queen of Hearts" — before they become speakers.',
+    "Find same people",
+    'Asks which names Discover found are one person — "the Queen" and "Queen of Hearts". On Discover you review its answer and link them; Make the audiobook links them itself.',
     "Analysis",
   ),
   e("speaker_attribution", "Speaker attribution", "Extracts who says what and what they say.", "Analysis"),

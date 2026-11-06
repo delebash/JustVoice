@@ -16,14 +16,45 @@
 // layer, MissingTemplateVariables → a caller bug named loudly, UnknownActionError → an
 // unseeded row).
 
-import { measureAction, runAction, stores, streamAction } from "@delebash/core/llm";
+import { LLMNotConfiguredError, measureAction, resolveRoute, runAction, stores, streamAction } from "@delebash/core/llm";
 import { buildLlmConfig } from "@delebash/core/llm/config_builder";
+import { resolveFeaturePresetWithSource } from "@delebash/core/llm/preset_resolve";
 import { PREFER_LOCAL_FEATURES } from "../../feature_catalog.js";
 
 /** The dispatch view over the shared stores — JV's one per-app input is the prefer-local set
  * (the same value installLlm registers). */
 export function jvLlmConfig() {
   return buildLlmConfig(PREFER_LOCAL_FEATURES);
+}
+
+/**
+ * The model a feature action runs on right now → `{configured, model, provider, provider_id,
+ * cloud, detail}` — the kit's own resolution, as GET /v1/ai/resolved-route reports it (the
+ * action's preset over the feature's route). `cloud`: a provider that isn't on this machine (a
+ * metered account — the kit's `local` flag, which `presetRecipe` reads too). The one-click run's
+ * plan (`book_run.stepRoute`) and Discover's Find same people both ask it.
+ */
+export function featureRoute(feature, action) {
+  const [preset] = resolveFeaturePresetWithSource(action, feature);
+  try {
+    const [adapter, model] = resolveRoute(jvLlmConfig(), feature, {
+      action,
+      providerOverride: preset?.providerId || null,
+      modelOverride: preset?.model || null,
+    });
+    const provider = stores.getProviderStore().get(adapter.provider_id);
+    return {
+      configured: true,
+      model,
+      provider: provider?.name || adapter.provider_id,
+      provider_id: adapter.provider_id,
+      cloud: provider?.local === false,
+      detail: null,
+    };
+  } catch (e) {
+    if (!(e instanceof LLMNotConfiguredError)) throw e;
+    return { configured: false, model: null, provider: null, provider_id: null, cloud: false, detail: String(e?.message ?? e) };
+  }
 }
 
 /** Run one feature action → the kit's LLMResponse. `signal` (the kit's, 2026-10-21): a run's
