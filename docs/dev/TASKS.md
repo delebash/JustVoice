@@ -72,11 +72,16 @@ WHY:    the family releases together once every app is complete (just-core TASKS
         together"); this run takes JustVoice as far as it can go without the user's ears or word.
 NOT:    deleting IDEAS entries (each needs the user's do-or-remove word: just-core TASKS "Each app's
         roadmap and ideas"); a tag or release (the family's, all apps together).
-OPEN:   the feelings list (items 1–2 with my suggested words, "More feelings than nine"); the fork's
-        build and test once the card is free; the factory reset's running jobs (TASKS "The kit's
-        changes of 2026-10-19/20", 8); round 8's page tally; the tracker sweep (closed items deleted,
-        standing rules moved to their homes); then the open items in the order this entry's BUILT
-        line records.
+BUILT:  2026-11-05 — the feelings list (four feelings built, measured and reverted: RESEARCH §10.38,
+        "More feelings than nine"); the fork merged, built, tested in the app and pushed, and
+        Phonon-2's refused files kept out ("Our audio.cpp fork is released with the family"); the
+        factory reset stops running jobs first; round 8's page tally; the tracker sweep (closed items
+        deleted, standing rules moved to their homes); the port's copied bugs, webhooks, Discover's
+        Find same people, the New project race the e2e found, docs truth fixes (git log 2026-11-05).
+OPEN:   the in-app looks (Discover's Find same people, Render's Advanced fold, Settings → Storage's
+        Change folder without the data-dir variable) and the end pass once — lint, server, unit,
+        family guard, build:spa, smoke, build:unpacked and e2e — when the shared card is free (the app
+        warms its language model onto it). Then the items that wait on the user's word.
 GO:     given 2026-11-05.
 
 ### Our audio.cpp fork is released with the family, once every app is done
