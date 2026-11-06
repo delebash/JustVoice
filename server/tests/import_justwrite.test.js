@@ -2,9 +2,9 @@
 // justwrite adapter — the book zip JustWrite really exports (the port of
 // tests/test_import_justwrite.py).
 //
-// The other half of this contract lives in JustWrite: a test there asserting
-// `book_io.assemble()` still emits the key paths read here. It is recorded in docs/dev/TASKS.md
-// and not built, so these fixtures are JustVoice's only guard against the shape drifting.
+// These fixtures are JustVoice's guard against JustWrite's shape drifting, and the adapter refuses
+// what it can't read — a scene without its `body` among them — rather than importing it as empty
+// (decided 2026-11-06 in place of a lock test in JustWrite's suite).
 import { ZipWriter } from "@delebash/core/platform/zip";
 import { expect, test } from "vitest";
 import { ApiError } from "../src/errors.js";
@@ -117,6 +117,17 @@ test("a_non_justwrite_json_is_rejected_and_names_the_right_adapter", () => {
   const raw = Buffer.from(JSON.stringify({ schema_version: "1.0", source: "justvoice_standard", project: { name: "x" } }), "utf8");
   const e = apiError(() => runAdapter("justwrite", raw, { filename: "payload.json" }));
   expect(e.detail).toContain("justvoice_standard");
+});
+
+test("a_scene_without_a_body_is_refused_rather_than_read_as_empty", () => {
+  // JustWrite always writes `body` (an empty scene's is ""), so a scene without one means its export
+  // changed shape — reading it as empty would drop the prose without a word.
+  const raw = bookZip(bookJson({ chapters: [["ch1", "One", [scene("s1", "Real prose."), { id: "s2", title: "", content: "<p>Moved.</p>" }]]] }));
+  const e = apiError(() => runAdapter("justwrite", raw, { filename: "b.zip" }));
+  expect(e.detail).toContain("scene 's2' has no 'body'");
+  // An empty scene still imports (its chapter's other scene carries the text).
+  const ok = runAdapter("justwrite", bookZip(bookJson({ chapters: [["ch1", "One", [scene("s1", "Real prose."), scene("s2")]]] })), { filename: "b.zip" });
+  expect(ok.scenes[0].lines.map((ln) => ln.text)).toEqual(["Real prose."]);
 });
 
 test("a_zip_without_book_json_is_rejected", () => {

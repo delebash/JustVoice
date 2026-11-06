@@ -259,9 +259,12 @@ integration decisions record (2026-07-15) is executed history at
   `server/justvoice/openapi.json` + `server/tests/test_contract.py` as the
   JW→JV HTTP contract's enforcement — neither file was ever written, and the
   handoff above is a FILE export with no runtime HTTP, so there is nothing for
-  an HTTP-contract suite to enforce. (If the book-zip import format ever wants
-  enforcement, that is a new decision, not this one — open as TASKS "The JW→JV
-  book-format contract has no lock on the JustWrite side".)
+  an HTTP-contract suite to enforce. The book zip's shape is guarded on
+  JustVoice's side only (decided 2026-11-06, in place of a lock test in
+  JustWrite's suite): the `justwrite` adapter refuses what it can't read — a
+  missing `parts`/`scenes`, a field of the wrong type, a scene without its
+  `body` — by name, never importing it as empty
+  (`server/src/imports/adapters/justwrite.js`, `server/tests/import_justwrite.test.js`).
 
 ## 4 · Convergence outcomes (2026-06-24 arc, closed)
 

@@ -151,7 +151,9 @@ per-chapter checkboxes on the import review screen before committing.
 **A file that can't be read is refused with the reason.** A damaged zip says
 *zip file is damaged* — export the book from JustWrite again. A `book.json` whose
 fields have the wrong type names the field, for example *book.json is malformed —
-'characters' must be a list*.
+'characters' must be a list*. A scene with no `body` at all — a JustWrite
+export of a shape JustVoice doesn't read — is refused by name (*scene 's2' has
+no 'body'*) rather than imported as empty, so no prose goes missing silently.
 
 ---
 

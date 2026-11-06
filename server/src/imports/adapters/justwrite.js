@@ -232,6 +232,11 @@ export function parse(raw, { filename = null } = {}) {
         if (!isDict(scene)) continue;
         const sceneId = pyStrOf(or(pyGet(scene, "id"), ""));
         // The scene TITLE is deliberately not narrated: it is a JustWrite planning label.
+        // JustWrite writes every scene's `body` (an empty one's is ""): a scene without it is an
+        // export of another shape, refused rather than read as empty — its prose would be lost silently.
+        if (!Object.hasOwn(scene, "body")) {
+          throw badRequest(`justwrite import: scene ${strRepr(sceneId)} has no 'body' — this book.json is not in the shape JustVoice reads (JustWrite's scenes[].body)`);
+        }
         const body = or(pyGet(scene, "body"), "");
         if (typeof body !== "string") throw _malformed(`'body' of scene ${strRepr(sceneId)}`, "text");
         const blocks = htmlBlocks(body, { skipClasses: _SKIP_CLASSES });

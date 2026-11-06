@@ -1597,20 +1597,6 @@ template's shape — AGENTS.md says how it runs.
 
 ## Docs and repo debt
 
-### The JW→JV book-format contract has no lock on the JustWrite side
-
-STATE: OPEN — your call, and the concrete successor to the "book-zip import
-format" item §3 records as a future decision. Became real 2026-08-08 when the
-`justwrite` adapter started parsing JW's actual `book.json`.
-WHY: JV's own fixture test catches JV regressions but cannot catch JW CHANGING
-the shape — a rename of `scenes[].body` or a re-nesting of `parts[].chapters[]`
-would break JV silently, and the two repos share no code by design (see the
-zip-import item's NOT list).
-OPEN: a shape-lock test in JW's suite asserting `book_io.assemble()` still emits
-the exact key paths JV reads, naming JustVoice in its failure message. Lives in
-`../justwrite-app/docs/dev/TASKS.md` once you take it — JW work belongs there.
-GO: needed.
-
 ## Known deviations, recorded so they aren't re-litigated
 
 - **`capture.llm_model` is a dormant settings field** — decided KEEP. Its UI
