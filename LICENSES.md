@@ -2,15 +2,21 @@
 
 Authoritative inventory of third-party software shipped with, bundled into, or installed alongside JustVoice. License texts live in `LICENSES/<SPDX-id>.txt`. Per-component attribution detail lives in `NOTICE.md`.
 
-> `LICENSES/` holds `MIT.txt`, `Apache-2.0.txt` and `BSD-3-Clause.txt` — the three licences most of the
-> distributed set is under. Apache-2.0 §4(a) and BSD-3-Clause cl. 1–2 require the licence text to accompany
-> a redistribution, which is why these are files here and not links. Each is the canonical upstream
-> text carrying the `<year> <owner>` placeholder; per-component copyright holders belong in `NOTICE.md`,
-> not in these shared texts. The rest — ISC, BlueOak-1.0.0, OFL-1.1 — are each package's own
-> `LICENSE`, and `NOTICE.md` names them. **Open (2026-11-05):** the installer carries none of these
-> files yet — not `LICENSE`, `NOTICE.md`, `LICENSES/`, nor the renderer bundle's packages' licences
-> (the server's packages keep theirs inside the app). A family gap: TASKS "The installer carries no
-> licence or notice files".
+> `LICENSES/` holds `MIT.txt`, `Apache-2.0.txt`, `BSD-3-Clause.txt` and `OFL-1.1.txt` — the licences
+> most of the distributed set is under (OFL-1.1: the bundled fonts, whose condition 2 asks each copy to
+> carry the font's copyright notice and the licence). Apache-2.0 §4(a) and BSD-3-Clause cl. 1–2 require
+> the licence text to accompany a redistribution, which is why these are files here and not links. Each
+> is the canonical upstream text (MIT, Apache and BSD with the `<year> <owner>` placeholder); per-component
+> copyright holders belong in `NOTICE.md`, not in these shared texts. The rest — ISC, BlueOak-1.0.0 —
+> are each package's own `LICENSE`, and `NOTICE.md` names them.
+>
+> **What the installer carries (since 2026-11-06):** `LICENSE`, `NOTICE.md` and `LICENSES/` beside the
+> executable, with `THIRD_PARTY_NOTICES.md` — the name, version, licence and licence text of every
+> package bundled into the renderer, written by Vite at build time (`build.license`,
+> `quasar.config.js`); the headless server serves the same file with the page. Electron's own
+> (`LICENSE.electron.txt`, `LICENSES.chromium.html`) electron-builder adds, and the server's packages
+> keep their `LICENSE` files inside the app. Vite's file lists only what JavaScript imports, so the
+> fonts (imported by CSS) are in `NOTICE.md` and `LICENSES/OFL-1.1.txt` instead.
 >
 > No text is owed for the GPL: eSpeak NG is not redistributed, and shipping the GPL text would wrongly
 > imply that it is.
@@ -46,7 +52,7 @@ The project was GPL-3.0-or-later between 2026-06-08 and 2026-07-29, forced by ex
 | **github-slugger** | 2.0.0 | ISC | https://github.com/Flet/github-slugger |
 | **qrcode** | 1.5.4 | MIT | https://github.com/soldair/node-qrcode |
 | **sortablejs** | 1.15.7 | MIT | https://github.com/SortableJS/Sortable |
-| **Fontsource fonts** (Inter, JetBrains Mono, and the kit's sixteen) | 5.3.x | OFL-1.1 | https://github.com/fontsource/font-files |
+| **Fontsource fonts** (Inter, JetBrains Mono — `src/css/fonts.css`; the kit's sixteen are not in JustVoice's build) | 5.3.x | OFL-1.1 | https://github.com/fontsource/font-files |
 | **hono** + **@hono/node-server** | 4.13.13 / 2.1.4 | MIT | https://github.com/honojs/hono |
 | **better-sqlite3** (carries SQLite, public domain) | 13.0.3 | MIT | https://github.com/WiseLibs/better-sqlite3 |
 | **typebox** | 1.3.36 | MIT | https://github.com/sinclairzx81/typebox |

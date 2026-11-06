@@ -79,10 +79,9 @@ recogniser's transcript with it (added 2026-10-16).
   Authors (github.com/rsms/inter). SIL Open Font License 1.1.
 - **JetBrains Mono** (`@fontsource/jetbrains-mono` 5.3.0, `src/css/fonts.css`) — Copyright 2020 The
   JetBrains Mono Project Authors (github.com/JetBrains/JetBrainsMono). SIL Open Font License 1.1.
-- The kit's sixteen (`@delebash/ui` `common/fonts.css` — Inter, Spline Sans, Geist, Hanken Grotesk,
-  Albert Sans, Manrope, DM Sans, Atkinson Hyperlegible, Fraunces, Source Serif 4, Newsreader, Libre
-  Caslon Text, Playfair Display, EB Garamond, Spectral, Spline Sans Mono), each SIL Open Font License
-  1.1; each Fontsource package's `LICENSE` holds its copyright and the licence.
+
+The licence's text is `LICENSES/OFL-1.1.txt`. JustVoice bundles only these two (its build's font files,
+checked 2026-11-06); the kit's sixteen (`@delebash/ui` `common/fonts.css`) are not in its stylesheets.
 
 ---
 

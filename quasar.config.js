@@ -19,6 +19,21 @@ const kitUi = path.resolve(root, '../just-core/packages/ui')
 // the audiocpp_dsp an installer carries (scripts/audiocpp-dsp-package.js stages it here)
 const dspStage = path.join(root, 'dist', 'audiocpp-dsp')
 
+// The licence files the installer carries beside the app — MIT, Apache-2.0 §4(a) and BSD-3-Clause
+// cl. 2 ask for the licence texts and notices to travel with every copy (the template's, app-structure
+// §Q.2): JustVoice's LICENSE, NOTICE.md and LICENSES/ (the licence texts NOTICE.md refers to), and
+// THIRD_PARTY_NOTICES.md, the licences of the packages bundled into the renderer, which Vite writes
+// into the renderer's build (`build.license`, extendViteConf below; Quasar builds the desktop
+// renderer into dist/electron/UnPackaged). Electron's own (LICENSE.electron.txt,
+// LICENSES.chromium.html) electron-builder adds itself, and the server's packages keep their
+// LICENSE files inside the app. `to` is the launcher's folder, per platform.
+const notices = (to) => [
+  { from: path.join(root, 'LICENSE'), to },
+  { from: path.join(root, 'NOTICE.md'), to },
+  { from: path.join(root, 'LICENSES'), to: path.join(to, 'LICENSES') },
+  { from: path.join(root, 'dist', 'electron', 'UnPackaged', 'THIRD_PARTY_NOTICES.md'), to }
+]
+
 export default defineConfig(() => {
   return {
     // vue-i18n first (as the CLI's i18n preset wires it), then the renderer's start-up (the old
@@ -64,6 +79,10 @@ export default defineConfig(() => {
         }
         // The dev server reads the repo and the sibling kit's UI, consumed from source.
         viteConf.server.fs = { ...(viteConf.server.fs || {}), allow: [ root, kitUi ] }
+        // The bundled packages' licences, one file beside index.html in every build — the installer
+        // carries it (`notices` above), the headless server and the phone app serve it with the page
+        // (vite.dev/config/build-options#build-license; the template's)
+        viteConf.build = { ...(viteConf.build || {}), license: { fileName: 'THIRD_PARTY_NOTICES.md' } }
       },
 
       // `npm run dev` runs our audio.cpp checkout, not the release (since 2026-10-03; TASKS
@@ -172,7 +191,7 @@ export default defineConfig(() => {
           target: 'nsis',
           executableName: 'justvoice',
           extraFiles: [ { from: dspStage, to: '.' } ],
-          extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '..', filter: [ '*.cmd' ] } ]
+          extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '..', filter: [ '*.cmd' ] }, ...notices('..') ]
         },
         nsis: {
           oneClick: false,
@@ -195,17 +214,17 @@ export default defineConfig(() => {
         mac: {
           category: 'public.app-category.music',
           target: [ { target: 'dmg', arch: [ 'universal' ] }, { target: 'zip', arch: [ 'universal' ] } ],
-          extendInfo: { NSMicrophoneUsageDescription: 'JustVoice records your voice when you clone it.' },
+          extendInfo: { NSMicrophoneUsageDescription: 'JustVoice records your voice when you dictate or clone a voice.' },
           extraFiles: [ { from: dspStage, to: 'MacOS' } ],
           // already universal (lipo'd when staged), so the same file in both builds is expected
           x64ArchFiles: 'Contents/MacOS/audiocpp_dsp',
-          extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '.', filter: [ '!*.cmd' ] } ]
+          extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '.', filter: [ '!*.cmd' ] }, ...notices('.') ]
         },
         linux: {
           target: [ 'AppImage', 'deb' ],
           category: 'AudioVideo',
           extraFiles: [ { from: dspStage, to: '.' } ],
-          extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '..', filter: [ '!*.cmd' ] } ]
+          extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '..', filter: [ '!*.cmd' ] }, ...notices('..') ]
         },
         // the AppImage on the AppImage project's static runtime: it needs no FUSE 2 library, which
         // Ubuntu 24.04 doesn't install — the legacy toolset's AppImage stops there with "AppImages

@@ -63,7 +63,7 @@
 
 ## The next build
 
-### The finish run's nine decisions: 2–9 at my rec; 1 waits for its tool by name (decided 2026-11-06)
+### The finish run's nine decisions, all at my rec (decided 2026-11-06)
 STATE:  DECIDED 2026-11-06 — shown (the finish run's reply, "Your decisions (my recommendation first)"):
         "1. The installer ships no licence or notice files. … Rec: add rollup-plugin-license to the kit's
         template … This is a new tool for the family, so it needs your word by name. 2. Dictation. Nothing
@@ -80,12 +80,33 @@ STATE:  DECIDED 2026-11-06 — shown (the finish run's reply, "Your decisions (m
         except dictation (item 2). … 7. Folds have no arrow. … Rec: bring the arrow back on every fold,
         app and kit. 8. More feelings (item 4). Rec: close it with the nine we have. 9. The 1.18 GB
         Phonon-2 file I downloaded … Rec: delete it." The user: "your rec go".
+        Then 1, shown alone (the next reply, "The one decision left"): "1. The installer ships no licence
+        or notice files. … Rec: add `rollup-plugin-license` (MIT) to the kit template's Vite build. It
+        writes one file listing every bundled package's licence. It can also stop the build if a package
+        has no licence or a copyleft one … The installer would then carry that file plus `LICENSE`,
+        `NOTICE.md` and `LICENSES/`. It goes into the template first, then into each app. … It's a new
+        tool for the family, so it needs your word by name: reply "rollup-plugin-license go"." The user:
+        "your rec go" (a one-item list — taken as the word for it).
 WHY:    the release rule allows only do or remove (just-core TASKS "Each app's roadmap and ideas"); each
         rec was attacked in the reply (2: no "dictate into any app" in v1; 3: against "applies straight
         away, as it always has", 2026-10-16; 7: the quiet look of 2026-10-15).
-NOT:    1 under this go — a NOT STANDARD piece waits for its own word by name ("The installer carries no
-        licence or notice files" below).
-BUILT:  2026-11-06 — 2: Captures' ● Record (the kit's new recordMicrophone / toWav, kit 96e60248; JV
+NOT:    `rollup-plugin-license` itself — before the code, the attack found Vite's own `build.license`
+        (Vite 8.3.4, every app; vite.dev/config/build-options), which the kit's 2026-10-17 template
+        research had already ranked for the template and my rec missed: the build tool's own option is
+        the standard, so no new tool. What it lacks against the plugin: stopping the build on a
+        copyleft or unlicensed package — LICENSES.md's rule (check each new package's licence) stays
+        the gate. No `.github/` change (the Actions stay off).
+BUILT:  2026-11-06 — 1: Vite writes THIRD_PARTY_NOTICES.md (the bundled packages' licences) beside
+        index.html in every build; each platform's installer carries it with LICENSE and NOTICE.md (and
+        JustVoice's LICENSES/) beside the launcher — the kit's template, JustVoice, JustWrite, docgen and
+        just-house-paint (`notices(to)` in each quasar.config.js); the guard checks it (app-structure
+        §Q.2, §Q.10, §19). Vite's file lists only what JavaScript imports, so the fonts (CSS imports,
+        OFL-1.1: "each copy contains the above copyright notice and this license") went into the notices
+        by hand: each font's copyright notice and the OFL text in the template's, JustWrite's, docgen's
+        and just-house-paint's NOTICE.md; JustVoice's LICENSES/OFL-1.1.txt (its NOTICE.md had the two
+        notices). JustVoice's NOTICE.md and LICENSES.md no longer claim the kit's sixteen fonts — its
+        build has only Inter and JetBrains Mono. The Mac microphone prompt now says "when you dictate or
+        clone a voice" (2's Record). 2: Captures' ● Record (the kit's new recordMicrophone / toWav, kit 96e60248; JV
         dff16f77), the hotkey card, pill card and Home banner gone. 3: f9229bc6. 4: 69e00a8d. 5: IDEAS
         emptied (the review's 28 removed with what they left: the channels tables, route and hidden
         section, the disabled Trained type, dead CSS, doc promises; blank Script rows removed — none of
@@ -102,9 +123,9 @@ CHECKED 2026-11-06, once at the end: lint; server 1295 (+1 skipped); unit 306; k
         NOT built: the review's "better aligner error" for Arabic — RESEARCH §1.3: the aligner's
         language only picks the word split, so Arabic doesn't fail; refusing languages outside its 11
         is unmeasured.
-OPEN:   1 (its tool by name). After the release: re-add the five "later" ideas and the global hotkey
-        and paste (`git show 69e00a8d:docs/dev/IDEAS.md`).
-GO:     given 2026-11-06 for 2–9.
+OPEN:   After the release: re-add the five "later" ideas and the global hotkey and paste
+        (`git show 69e00a8d:docs/dev/IDEAS.md`).
+GO:     given 2026-11-06 for 2–9, then for 1.
 
 ### Finish JustVoice: everything I can fix, each decision attacked before the code (decided 2026-11-05)
 STATE:  DECIDED 2026-11-05 — after the feelings list was shown, the user: "just keep going fix all the
@@ -131,7 +152,7 @@ CHECKED 2026-11-06, once at the end, on the user's data under `npm run dev`: Dis
         smoke all views, zero JS errors; e2e 10/10; server 1294 (+1 skipped), unit 304, lint, the
         guard; kit UI 89. NOT looked at: Settings → Storage's Change folder in a run without
         JUSTVOICE_DATA_DIR (the desktop window itself; the e2e covers the run with it).
-OPEN:   the finish run's nine decisions (the item above); item 1 waits on its tool by name.
+OPEN:   nothing of its own — the item above holds what waits for the release.
 GO:     given 2026-11-05.
 
 ### Our audio.cpp fork is released with the family, once every app is done
@@ -1552,24 +1573,6 @@ The harness half is built (2026-10-29, the kit's hand-offs under "ok do 1"): `e2
 template's shape — AGENTS.md says how it runs.
 
 ## Docs and repo debt
-
-### The installer carries no licence or notice files
-STATE:  FINDING — code-verified 2026-11-05 (the finish run's licence-file refresh). `quasar.config.js`'s
-        electron-builder config ships no `LICENSE`, `NOTICE.md` or `LICENSES/`, and the renderer bundle
-        (Vite) carries none of its packages' licences — MIT, Apache-2.0 §4(a) and BSD-3-Clause cl. 2 ask
-        for the text and notices to travel with a copy. The server's packages keep their `LICENSE` files
-        inside the app. No family app ships them (the kit's template and JustWrite's config checked); no
-        kit item tracks it.
-WHY:    every app releases together; a release without its notices breaks the licences it depends on.
-NOT:    a JustVoice-only fix — one way per job: it goes into the kit's template so every app gets it.
-OPEN:   the user's word on the tool (NOT STANDARD in the family): my lean — `rollup-plugin-license`
-        (MIT; "Create a file containing all third-parties used in the bundle", README) in the renderer's
-        Vite build, its `thirdParty.output` writing THIRD_PARTY_NOTICES and `allow` with
-        `failOnUnlicensed` / `failOnViolation` (the copyleft gate `LICENSES.md` asks for), and
-        electron-builder's `extraResources` shipping it with `LICENSE`, `NOTICE.md` and `LICENSES/`.
-        Its README doesn't name Vite (Vite's build runs Rollup plugins); the other option,
-        `rollup-license-plugin` (codepunkt), has a Vite helper. Then into the kit's template and each app.
-GO:     needed.
 
 ### The JW→JV book-format contract has no lock on the JustWrite side
 
