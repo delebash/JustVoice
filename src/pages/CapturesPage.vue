@@ -181,10 +181,8 @@ onMounted(() => {
             🌐 Capture language: <strong>{{ captureLanguageWord(captureLanguage) }}</strong>
           </span>
         </div>
-        <p class="jv-muted captures__hint">
-          ● Record dictates here: what you say is transcribed, cleaned up and listed below.
-          Settings → Capture sets the language and the cleanup.
-        </p>
+        <!-- the page's lede already says what ● Record does; the card says only where it's set -->
+        <p class="jv-muted captures__hint">Settings → Capture sets the language and the cleanup.</p>
       </section>
     </div>
 

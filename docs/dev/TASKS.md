@@ -92,6 +92,13 @@ BUILT:  2026-11-06 — 2: Captures' ● Record (the kit's new recordMicrophone /
         the dev database's 767 lines is blank; the Stories tables KEPT, the 2026-08-15 ruling "keep the
         tables"). 6: ROADMAP is its dictation section. 7: kit fbcc3f0b (theme.css gives summary its
         list-item display back). 8: the item deleted. 9: the file and its blob deleted.
+CHECKED 2026-11-06, once at the end: lint; server 1295 (+1 skipped); unit 306; kit UI 92; the guard;
+        e2e 10/10; smoke all views, zero JS errors (8741 on the user's data — its chat model refused
+        for the machine's free RAM, the kit's guard). Seen: Captures' ● Record and its 465 px card (no
+        hotkey text), Home with no hotkey banner, ▸ on Render's "Advanced (2)" and the kit's Samplers
+        and Preview folds (summary display list-item). NOT seen: a real recording transcribed (no
+        microphone here), the kit's engine-binaries / class-tunes / switches folds on screen (same
+        rule, not opened).
         NOT built: the review's "better aligner error" for Arabic — RESEARCH §1.3: the aligner's
         language only picks the word split, so Arabic doesn't fail; refusing languages outside its 11
         is unmeasured.
