@@ -84,6 +84,9 @@ const languageOptions = computed(() => bookLanguageOptions(voicesStore.items)
 // mock's (`_s1`, decided 2026-10-15): Source (its file endings under it), What lands, and whether
 // the file says who speaks each line — the server's `says_who_speaks`, a yes / no tag.
 const adapters = ref([]);
+// The list's load (onMounted): a file chosen before it ends waits for it — it was matched against an
+// empty list and refused as "isn't a file JustVoice imports" (2026-11-05, the desktop e2e).
+let adaptersLoad = Promise.resolve();
 const sourceRows = computed(() => adapters.value.filter((a) => a.implemented)
   .map((a) => ({ id: a.id, label: a.label, files: a.file_extensions.join(" · "), lands: a.description, speaks: !!a.says_who_speaks })));
 const SOURCE_COLUMNS = [
@@ -153,6 +156,7 @@ async function acceptFile(f) {
   } catch {
     /* a zip or a DOCX — the extension decides */
   }
+  await adaptersLoad;
   const match = dot < 0 ? null : pickAdapter({ ext: f.name.slice(dot).toLowerCase(), head, adapters: adapters.value });
   if (!match) {
     pushToast({ kind: "error", message: `${f.name} isn't a file JustVoice imports — the table lists what it reads.` });
@@ -201,11 +205,11 @@ function onKey(e) {
 onMounted(async () => {
   window.addEventListener("keydown", onKey);
   nameInput.value?.focus();
-  try {
-    adapters.value = (await projectsService.listImportAdapters()).adapters || [];
-  } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't load what JustVoice imports: ${e?.message || e}` });
-  }
+  adaptersLoad = projectsService.listImportAdapters().then(
+    (r) => { adapters.value = r?.adapters || []; },
+    (e) => pushToast({ kind: "error", message: `Couldn't load what JustVoice imports: ${e?.message || e}` }),
+  );
+  await adaptersLoad;
 });
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 </script>

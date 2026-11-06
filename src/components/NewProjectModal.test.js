@@ -28,14 +28,19 @@ vi.mock("@delebash/ui", () => ({
   },
   AppModal: { setup: (_p, { slots }) => () => h("div", [slots.default?.(), slots.footer?.()]) },
 }));
+// A test can hold the adapter list's load open (`gate.wait`).
+const gate = vi.hoisted(() => ({ wait: null }));
 vi.mock("../services/projects.js", () => ({
   projectsService: {
-    listImportAdapters: async () => ({
+    listImportAdapters: async () => {
+      if (gate.wait) await gate.wait;
+      return {
       adapters: [
         { id: "book_prose", label: "Book / manuscript", description: "Chapters and paragraphs.", file_extensions: [".epub", ".txt"], implemented: true, says_who_speaks: false },
         { id: "csv_lines", label: "CSV lines", description: "A line per row.", file_extensions: [".csv"], implemented: true, says_who_speaks: true },
       ],
-    }),
+      };
+    },
   },
 }));
 vi.mock("../stores/importDraft.js", () => ({ setImportDraft: vi.fn() }));
@@ -65,4 +70,28 @@ test("the_sources_table_says_what_lands_and_who_speaks", async () => {
     ["CSV lines.csv", "A line per row.", "yes"],
   ]);
   expect(el.querySelector("tbody tr:nth-child(2) .tag").className).toContain("tag--success");
+});
+
+test("a_file_chosen_before_the_list_loads_waits_for_it", async () => {
+  // It was matched against the empty list and refused — "isn't a file JustVoice imports" — when chosen
+  // before the dialog's list of sources arrived (2026-11-05, the desktop e2e's .md step).
+  const { pushToast } = await import("@delebash/ui");
+  pushToast.mockClear();
+  let release;
+  gate.wait = new Promise((r) => { release = r; });
+  el = document.createElement("div");
+  document.body.appendChild(el);
+  app = createTestApp(NewProjectModal, {});
+  app.mount(el);
+  await nextTick();
+  const input = el.querySelector("input[type=file]");
+  Object.defineProperty(input, "files", { value: [new File(["Chapter One. It began."], "notes.txt", { type: "text/plain" })] });
+  input.dispatchEvent(new Event("change"));
+  await new Promise((r) => setTimeout(r, 0));
+  release();
+  gate.wait = null;
+  for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
+  const refused = pushToast.mock.calls.map(([t]) => t?.message || "").filter((m) => m.includes("isn't a file JustVoice imports"));
+  expect(refused).toEqual([]);
+  expect(el.textContent).toContain("notes.txt");
 });
