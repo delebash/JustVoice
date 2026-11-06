@@ -360,7 +360,12 @@ OPEN:   the ears are in (2026-10-20, RESEARCH §10.34): the note helps Breeze an
         Breeze's narration copy picked 10 of 10; whispers best at −18 dB. What follows waits for
         the user's word. With jv.7: docs/engines.md gets Drama 3's rows (its
         direction, its licence), and Drama 3's request sends top-k 30 (upstream #978 makes 4097 the
-        default; RESEARCH §10.33).
+        default; RESEARCH §10.33). 2026-11-05, the finish run: Drama 3's row is in docs/engines.md (the dev
+        build runs it). Top-k stays audio.cpp's (the user's 2026-10-13 rule, adopt its defaults), attacked:
+        30 measured better on short lines but 4097 guards long chunked narration, and the merged fork's
+        Drama 3 fixes (history anchors, fitting generation to context) can change both — a re-measure on
+        the merged build decides it, with the release; Drama 3 maps ~17 GB of RAM, so not while the card
+        and memory are shared.
 GO:     given 2026-10-19 ("your rec all go").
 
 ### Discover's names: the AI suggests, you link — Find same people, Link, Unlink, Kept apart (decided 2026-10-16)
