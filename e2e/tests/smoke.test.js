@@ -110,6 +110,21 @@ test("a labelled .md is read as a podcast script (the file's content decides bet
   await closeModals();
 });
 
+test("Settings → Storage reads the data folder through the desktop shell", async () => {
+  // The kit's StoragePanel asks the window's shell where the data folder is (storageGetRoot). Here the
+  // folder is named by JUSTVOICE_DATA_DIR (the run's temp data), so the panel says so in place of
+  // Change folder, as it must — a move would be ignored at the next start. That note shows only when
+  // the shell answered; Change folder itself shows in a run without the variable (TASKS "The kit's
+  // fifteenth-review changes taken in").
+  await closeModals();
+  await d.navigate("#/settings");
+  await page.waitForURL(/#\/settings/);
+  await page.locator(".ui-tabstrip__tab", { hasText: "Storage" }).click();
+  const note = page.getByText("This data folder is set by JUSTVOICE_DATA_DIR — change it there.");
+  await note.waitFor({ timeout: 10_000 });
+  assert.equal(await page.locator("button", { hasText: "Change folder…" }).count(), 0);
+});
+
 test("every page opens with no error", async () => {
   for (const name of PAGES) {
     await d.navigate(`#/${name}`);

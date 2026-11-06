@@ -289,7 +289,11 @@ BUILT:  `@internationalized/number` ^3.6.9; Settings → Storage on the kit's St
         focus back into the field after a 422 (the template's NoteDialog) — each dialog's own change;
         no JustVoice CSS styles `.q-field__bottom`.
 OPEN:   Change folder, Remove the old copy and Move back show only in the desktop app — not seen;
-        the 8741 browser shows the panel without them.
+        the 8741 browser shows the panel without them. 2026-11-05: the desktop e2e now proves the
+        window's shell answers the panel (e2e/tests/smoke.test.js "Settings → Storage reads the data
+        folder through the desktop shell" — its run names the folder by JUSTVOICE_DATA_DIR, so the panel
+        rightly shows "set by JUSTVOICE_DATA_DIR" in place of Change folder); the buttons themselves
+        wait for a desktop run without that variable (the installed app, or `npm run dev`).
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
 
 ### More feelings than nine, after round 8; the dictation pill's ring on any ground (decided 2026-10-24)
