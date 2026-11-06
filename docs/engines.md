@@ -685,7 +685,14 @@ Word timings — chapter captions and `/v1/align` — need an aligner, and audio
 has only Qwen3's. They run on the Transcription feature's model when it carries
 one (Qwen3-ASR's three models do), else on Qwen3-ASR's default model. The aligner
 is part of Qwen3-ASR's download, and it is loaded only the first time a caption
-request needs it, so a dictation or a read-back doesn't hold its 1.1 GB. Each
+request needs it, so a dictation or a read-back doesn't hold its 1.1 GB. A
+chapter's captions are aligned in its book's language (Studio → Overview), or the
+Captures language when the book has none (since 2026-11-05; before, always the
+Captures one). The aligner knows Chinese, English, Cantonese, French, German,
+Italian, Japanese, Korean, Portuguese, Russian and Spanish; it finds Chinese and
+Cantonese words character by character and every other language's at spaces, so
+text written without spaces (Japanese, Thai) gets one caption word per unbroken
+run. Each
 recogniser hears the recording at 16 kHz mono, as audio.cpp's own page sends it:
 several (OWSM, CrisperWhisper, MOSS-Transcribe-Diarize, Hviske v6) can't take any
 other rate. Where a model adds times or speaker labels to its text

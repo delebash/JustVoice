@@ -21,6 +21,9 @@ import { RuntimeError, strip } from "@delebash/core/platform/py";
 import { alignKnownText } from "../alignment.js";
 import { getState } from "../app_state.js";
 import { parseWavHeader } from "../audio/wav.js";
+import { projectLanguage } from "../book_run.js";
+import { Project, Scene } from "../database/models.js";
+import * as session from "../database/session.js";
 import { toSrt, toVtt } from "../captions.js";
 import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
 import { badRequest } from "../errors.js";
@@ -35,6 +38,15 @@ export async function _alignWavBytes(wav, text, language) {
   const lang = language || getState().settings.get().captures.language;
   const hyp = await kitSpeech.align(wav, text, lang === "" || lang === "auto" ? null : lang);
   return alignKnownText(text, hyp, { totalDuration: _wavSeconds(wav) });
+}
+
+/** The language a chapter's captions are aligned in: its book's, else null (the setting). The
+ * aligner splits words by it — Chinese by character, the rest at spaces (RESEARCH §1.3). */
+export function captionLanguage(sceneId) {
+  const h = session.getDb();
+  const scene = h.one(`select * from ${Scene} where id = ? limit 1`, [sceneId], Scene);
+  const project = scene && h.one(`select * from ${Project} where id = ? limit 1`, [scene.project_id], Project);
+  return (project && projectLanguage(project)) || null;
 }
 
 export function _wavSeconds(wav) {
@@ -102,7 +114,7 @@ export function router() {
       const wav = await renderChapter.renderSceneToWav(st, sceneId, { strict: false, master: true });
       let words;
       try {
-        words = await _alignWavBytes(wav, text, null);
+        words = await _alignWavBytes(wav, text, captionLanguage(sceneId));
       } catch (e) {
         if (e instanceof RuntimeError) throw badRequest(msg(e));
         throw e;

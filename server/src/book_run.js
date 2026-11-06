@@ -183,7 +183,8 @@ function projectOf(h, projectId) {
   return p;
 }
 
-function projectLanguage(project) {
+/** The book's language ("" when none is set) — the run's, the captions' (align_api). */
+export function projectLanguage(project) {
   const meta = _json(project.metadata_json, {});
   return isDict(meta) ? strip(String(meta.language || "")) : "";
 }

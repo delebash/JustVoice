@@ -17,6 +17,7 @@ import path from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { sleep } from "@delebash/core/platform/asyncutil";
 import { endState, useState } from "./engines_helpers.js";
+import * as alignApi from "../src/api/align_api.js";
 import { router as projectsRouter } from "../src/api/projects_api.js";
 import * as renderChapterApi from "../src/api/render_chapter_api.js";
 import { router as renderJobsRouter } from "../src/api/render_jobs_api.js";
@@ -164,6 +165,16 @@ test("the_chapter_plays_the_star_take", async () => {
   expect(out[0].pcm.length).toBe(2 * 100 * "Take me.".length); // the take's audio, its old words
   expect(renderChapterApi.playedTexts(ls)).toEqual(["Take me.", "No take."]);
   expect(await states(st, b.sid)).toEqual(["stale", "ready"]); // playing it rendered nothing new
+});
+
+test("a_chapters_captions_align_in_the_books_language", () => {
+  // 2026-11-05: the captions were aligned in the dictation language (Settings → Captures), and
+  // the aligner splits words by its language — Chinese by character, the rest at spaces — so a
+  // Chinese book's captions came out one "word" per sentence.
+  const b = book(st, ["他来了。"]);
+  expect(alignApi.captionLanguage(b.sid)).toBe(null); // no language set: the setting, as before
+  h().update("projects", { metadata_json: JSON.stringify({ language: "zh" }) }, { id: b.pid });
+  expect(alignApi.captionLanguage(b.sid)).toBe("zh");
 });
 
 test("the_exports_warm_leaves_out_lines_that_play_a_take", async () => {
