@@ -552,7 +552,10 @@ feature there are two cards, each with its own prompt, engine preset and Lab:
   reads one (the same two settings, [Long chapters](#speaker-attribution--two-routes-and-the-auto-row)).
 - **Frontier** — reads the chapter with the book's earlier chapters and who is
   who, and thinks before it answers, for a large cloud model. Its prompt runs
-  without JSON mode, because JSON mode turns a model's thinking off.
+  without JSON mode, because JSON mode turns a model's thinking off. When a
+  long book's earlier chapters no longer fit the model, it leaves out the
+  oldest of them — half at a time — and asks again; who is who and the chapter
+  itself are always sent whole.
 
 **Frontier** runs when the Frontier card's model is a frontier one — its
 preset's **Recipe**, which is Frontier by default for a cloud account

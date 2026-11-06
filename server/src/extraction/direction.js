@@ -377,7 +377,10 @@ export async function directChapter({ segments, cast = [], earlier = [], recipe 
   const ext = settings?.extraction ?? construct(ExtractionSettings, {});
   const paragraphIdx = [...new Set(segments.map((s) => s.paragraph_idx))].sort((a, b) => a - b);
   const nPara = paragraphIdx.length;
-  const base = use === "frontier" ? { speakers: formatCast(cast), earlier: formatEarlier(earlier) } : {};
+  // The earlier chapters the Frontier recipe still sends: a long book's run past the model's context
+  // drops the oldest of them first (below), before it cuts this chapter — the cast stays whole.
+  let kept = use === "frontier" ? [...earlier] : [];
+  let base = use === "frontier" ? { speakers: formatCast(cast), earlier: formatEarlier(kept) } : {};
   const segsIn = (lo, hi) => segments.filter((s) => paragraphIdx[lo] <= s.paragraph_idx && s.paragraph_idx < (hi < nPara ? paragraphIdx[hi] : Number.POSITIVE_INFINITY));
   const varsFor = (segs) => ({ ...base, paragraphs: formatLines(segs) });
 
@@ -435,6 +438,15 @@ export async function directChapter({ segments, cast = [], earlier = [], recipe 
       if (e instanceof LLMNotConfiguredError || isAbortError(e)) throw e;
       if (!_isOverflow(e)) throw new DirectionModelError(modelFailureMessage(e), { cause: e });
       [cutOff, refused] = [true, e];
+    }
+    if (cutOff && kept.length) {
+      // the book so far is what outgrew the context: send the newer half of it and ask again
+      const drop = Math.ceil(kept.length / 2);
+      kept = kept.slice(drop);
+      base = { ...base, earlier: formatEarlier(kept) };
+      queue.unshift(pc);
+      log.info(`direction: the book so far did not fit - left out its ${drop} oldest chapter(s), ${kept.length} kept`);
+      continue;
     }
     if (cutOff) {
       if (pc.end - pc.start < 2) throw new DirectionModelError(refused ? modelFailureMessage(refused) : _tooBig);

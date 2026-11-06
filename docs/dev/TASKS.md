@@ -63,6 +63,25 @@
 
 ## The next build
 
+### JustVoice closed out for its release — the list A–D (decided 2026-11-06)
+STATE:  DECIDED 2026-11-06 — the user: "i want to get jv in the same state where all items are closed out … only
+        give me items that a human absolutely has to do". Shown ("JustVoice close-out"): "A. Already done; I just
+        delete them from TASKS … B. I do these myself: 1. Long books on the cloud recipe … drop the oldest and try
+        again … 2. JustWrite import. A scene with no `body` gets refused with a clear message … 3. The run card's four
+        differences … 4. The looks I'd left for you, done by me … 5. A real recording through ● Record … 6. The Qwen3
+        silence bug … 7. A paused re-render after a check adds a second take … 8. Drama 3's top-k: keep audio.cpp's
+        default … 9. Dependencies to their latest … 10. Release prep … 11. Docs and Help checked against every
+        screen, and TASKS cleaned down to the release. C. Removed for this release (they go back into IDEAS
+        afterwards with the other five) … D. Only you: 1. Listen to one fresh one-click audiobook … 2. Turn on
+        JustVoice's Release workflow … 3. Release-day go … 4. A JustVoice website … Rec: none for this release".
+        The user: "just continue", then "that was not a go stop", then "your recs think adversierliy on it again
+        make sure you dont keep changing your recs go" (and before: "of work is done clean up the docs"). Attacked
+        again: no rec changed.
+WHY:    the family releases each app with nothing open (just-core TASKS "The family release").
+NOT:    the cloud (Frontier) route's provider and its tests — another session's.
+OPEN:   B1–B11, then D1–D3 (the user's).
+GO:     given 2026-11-06 ("your recs think adversierliy on it again … go").
+
 ### The finish run's nine decisions, all at my rec (decided 2026-11-06)
 STATE:  DECIDED 2026-11-06 — shown (the finish run's reply, "Your decisions (my recommendation first)"):
         "1. The installer ships no licence or notice files. … Rec: add rollup-plugin-license to the kit's

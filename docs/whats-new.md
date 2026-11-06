@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **Direction on a cloud model reads a long book to the end (2026-11-06)** — when a book's earlier
+  chapters no longer fit the model, the Frontier card leaves out the oldest of them and asks again,
+  where its last chapters failed with "A paragraph of this chapter is too long"
+  ([Direction](ai-features.md))
 - **Dictate on Captures (2026-11-06)** — **● Record** records your microphone until **■ Stop**; the
   recording is transcribed and cleaned up, and the new capture opens in the list
   ([Dictation](dictation.md)). Captures no longer shows a Hotkeys card or the pill's states, and Home

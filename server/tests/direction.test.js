@@ -251,6 +251,24 @@ test("the_frontier_recipe_reads_the_cast_and_the_chapters_before", async () => {
   expect(calls[1].variables.earlier).toBe("(none — this is the first chapter)");
 });
 
+test("a_long_book_past_the_cloud_models_context_leaves_out_its_oldest_chapters_first", async () => {
+  // The cloud model refuses any prompt holding more than two earlier chapters; the chapter itself fits.
+  vi.spyOn(direction, "measureFeature").mockResolvedValue(null);
+  const sent = [];
+  vi.spyOn(direction, "runFeature").mockImplementation(async (_action, variables) => {
+    sent.push(variables.earlier);
+    if ((variables.earlier.match(/^Ch \d+$/gm) || []).length > 2) throw new Error("400: prompt is too long: 250000 tokens > 200000 maximum");
+    return { text: JSON.stringify({ lines: [{ id: "D0", emotion: "sad", direction: "quietly" }] }), prompt_tokens: 10, completion_tokens: 5, model: "cloud", finish_reason: "stop" };
+  });
+  const earlier = [1, 2, 3, 4, 5, 6, 7].map((i) => [`Ch ${i}`, `Text of chapter ${i}.`]);
+  const r = await direction.directChapter({ segments: chapterSegments(1), cast: [{ name: "Mara" }], earlier, recipe: "frontier" });
+  // 7 → 3 (the 4 oldest left out) → 1: the newest are kept, the chapter itself never cut.
+  expect(sent.map((e) => (e.match(/^Ch \d+$/gm) || []).length)).toEqual([7, 3, 1]);
+  expect(sent[2]).toContain("Ch 7");
+  expect([...r.answers]).toEqual([[0, { emotion: "sad", direction: "quietly" }]]);
+  expect(r.usage.pieces).toBe(1);
+});
+
 test("a_long_chapter_is_read_in_pieces_each_line_answered_once", async () => {
   // Measured: 10 paragraphs cost far more than the room one call has.
   vi.spyOn(direction, "measureFeature").mockImplementation(async (_a, variables) =>
