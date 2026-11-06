@@ -630,7 +630,9 @@ STATE:  DECIDED 2026-10-24 — shown: "4. Should the app get more feelings than 
         the pages".
 WHY:    4: on round 8's lines the app's direction step called relief happy and wondering, curiosity
         and surprise fearful (`models.js` EMOTION_VALUES has nine), and every engine is told that
-        word; the user, listening: "happy is not the feeling of relief". 5: the look the 2026-10-20
+        word; the user, listening: "happy is not the feeling of relief". (Corrected 2026-11-05,
+        RESEARCH §10.38: the app's live prompt calls relief happy but gives wondering, curiosity and
+        surprise no feeling; "fearful" was round 7's note prompt's.) 5: the look the 2026-10-20
         rec waited for (TASKS "The kit's changes of 2026-10-19/20", 8): the ring shows once (the
         pill's own shadow beats the kit's zero-specificity ring), but white on a light window is
         invisible.
@@ -638,6 +640,9 @@ NOT:    4 built before round 8 is scored.
 BUILT:  5 — `CapturePill.vue`: outline 2px white, box-shadow 0 0 0 4px #18181b (C40's form,
         https://www.w3.org/WAI/WCAG22/Techniques/css/C40), the pill's shadow kept; seen focused by
         Tab on a light ground, headless against the running dev app. Docs: whats-new.
+        2026-11-05, after rounds 8 and 9 were scored, shown as next: the fork's build and test, then
+        item 4 ("what each engine can be told and bring you the list of feelings for your words"). The
+        user: "your rec go lets get the app done in best shape".
 OPEN:   4 — after round 8's results: what each engine can be told (RESEARCH), then the list.
 GO:     given 2026-10-24 ("your rec go while i listen to the pages").
 

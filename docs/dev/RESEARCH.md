@@ -5441,6 +5441,47 @@ TASKS "dots.tts through the scorer on round 4's lines". Through `npm run dev`.
   the page; by ear dots.tts's edit moves a take only part of the way, below VoxCPM2. — *the page's
   answers* (scratchpad `r9_score.js`, session 7174f3f8).
 
+### 10.38 More feelings than nine — what each engine is told, and where the nine fail (2026-11-05)
+
+TASKS "More feelings than nine", item 4. Read first: §10.8 (each model's documented way), §10.11
+(scorers), §10.35 (round 8). Pages read today: Higgs Audio TTS 3's PROMPTING.md and Drama 3's model
+card (below); no searches run.
+
+- **What a line's label does today:** the direction step picks one of the nine (`models.js:1189`)
+  and writes the book's cue words. On a model that takes words — BreezeTTS 2, Qwen3, VoxCPM2,
+  IndexTTS (text), MOSS, Drama 3 and Fish S2 with words — the label is joined into what it is told:
+  `composeInstruct(design, instruct, emotion, direction)` (`persona_render.js:324`,
+  `generate_api.js:260`). Round 8's relief line went to Breeze as `{emotion: "happy", instruct: "in
+  a tone of great relief"}` (`data/round8/cue/manifest.json`). On a tag model only the label's own
+  tag goes (`generated.js` `applyDirection`; `capability_details.js:321`). "neutral" is never
+  written (`direction.js` `shapeFor`). — *code*.
+- **What each tag model can be told:** Higgs Audio TTS 3 — 21 emotions "affection, amusement,
+  anger, arousal, awe, bitterness, confusion, contemplation, contentment, determination, disgust,
+  elation, enthusiasm, fear, helplessness, longing, pride, relief, sadness, shame, surprise"; styles
+  singing, shouting, whispering; prosody speed_very_slow … speed_very_fast, pitch_low/high,
+  expressive_high/low, pause, long_pause; "Only the tags below are recognized — anything else
+  degrades output or gets read literally" (huggingface.co/bosonai/higgs-tts-3-4b PROMPTING.md,
+  *web*, read 2026-11-05). IndexTTS's vector: happy, angry, sad, afraid, disgusted, melancholic,
+  surprised, calm (§10.8) — the app tells IndexTTS in words, the vector only in the rounds.
+  CosyVoice3: very happy, very sad, very angry, loud, soft only (§10.8). OmniVoice: whisper only
+  (`curated/omnivoice.js`); its `[surprise-ah]`-style tags are sounds (fork `docs/models/omnivoice.md:
+  199-201`). Chatterbox Turbo: `[surprised]` is one of its undocumented tokens, heard as no effect
+  (§10.8). Drama 3's card names no feelings — "natural-language control" among its features,
+  undescribed; its only examples are sound tags (`[sighs]`, `[laughs]`) (huggingface.co/fishaudio/
+  drama-3, *web*, read 2026-11-05). — *web + code*.
+- **Where the nine fail — the live prompt on Alice VII–X** (157 cue lines with words, carried lines
+  left out; `data/round5-direction.json` run 0, `data/round8/direction.json` cue arm), the label
+  each group got: thinking ("thinking to herself", "thought Alice", "thoughtfully") 29 — none 20,
+  neutral 7, sad 1, happy 1; timid ("timidly", "cautiously", "ventured", "meekly") 11 — none 5,
+  fearful 3, neutral 3; polite ("very politely", "humbly", "gently", "pleaded") 7 — happy 5;
+  eager ("eagerly", "triumphantly", "encouraging", "earnestly") 6 — happy 5; surprise
+  ("great surprise", "wondering", "great curiosity", "confused") 6 — none 5, fearful 1; sleepy 6 —
+  none 6; hurried 6 — none 4, whispered 1, neutral 1; firm ("decidedly", "severely", "solemnly") 6
+  — angry 2, none 3, neutral 1; relief 2 — happy 2. **The live prompt calls wondering, curiosity and
+  surprise nothing, not fearful** — round 7's note prompt (which lost round 8) called them fearful.
+  A wrong label joined into the words: 17 of the 157 (happy on polite, eager and relief 12; sad and
+  happy on a thought 2; angry on severity 2; whispered on hurried 1). — *measured, the saved runs*.
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next
