@@ -202,6 +202,19 @@ integration decisions record (2026-07-15) is executed history at
   remapped to the prompt's handles (`extraction/pipeline.js:685-688`). Why, in the code's
   words: a feedback loop (extraction_api.js:188) — the corrections are "ground truth — apply
   the same reasoning to similar lines" (prompts.js:42-43).
+- **Product rules the user ruled, kept here when their tracker items closed (2026-11-05):**
+  - **Voice tuning stays on the voice, and the Voice Designer stays** (2026-08-15, the voice-workflow
+    redesign §8 — `../plans/2026-08-15-voice-workflow-redesign.md`).
+  - **A run is scoped with an inline grid, never a modal; every line can always be seen, by chapter,
+    in order** — filters are lenses, never the view (the same redesign).
+  - **An emotion reaches a model only as its own tag — never a near neighbour** (sad is not
+    `[crying]`), and the written direction is composed persona → emotion → line
+    (`delivery_merge.js` `composeInstruct`; decided 2026-08-17 when `style_prompt` was deleted).
+  - **The self-hosted provider list keeps Dia-TTS-Server** (`src/components/TtsProviderForm.vue`) although
+    the Dia engine was dropped (2026-08-17): it points at someone else's OpenAI-compatible server and
+    costs nothing.
+  - **The kit's corner task stack stays out of JustVoice:** a page shows only its own AI tasks; the ✨
+    button and the AI Tasks page show them all (2026-10-18; `src/layouts/MainLayout.vue`).
 
 ## 3 · The JV↔JW boundary (from CONTRACT, endpoint table corrected)
 

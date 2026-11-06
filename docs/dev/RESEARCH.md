@@ -2450,6 +2450,12 @@ Claude Code" (2026-10-10). **Records:**
 [`2026-10-11-one-click-audiobook.md`](../plans/2026-10-11-one-click-audiobook.md) — the plan, its
 steps, recipes and slices, and §13 what the research found that bears on it.
 
+**A listening page asks in the line's own feeling** (decided 2026-10-17, the user on round 6b's page:
+"your options are not good"): each take's buttons name the feeling as the book describes it — the
+full feeling, a milder one, Plain, Something else (or A different feeling) — plus an optional note
+under each take; never one scale for every feeling, never a required note. The page names what to
+listen for on every row.
+
 ### 10.1 What the pipeline already has
 
 - The AI steps that exist: Analyze (speaker attribution and its second look), Smart-assign

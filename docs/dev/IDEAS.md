@@ -153,10 +153,12 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 - **2026-10-05 · Global dictation hotkeys, in-app recording, and paste into any field** —
   the dictation pipeline works on the server (`POST /v1/captures` transcribes and cleans),
-  but nothing in the app starts a recording: the desktop shell has a hotkey monitor
-  (`src-tauri/src/hotkey_monitor.rs`, with `enable_hotkey` / `update_chord_bindings`)
-  that the renderer never calls, the Captures tab's **Record (soon)** is off, and
-  pasting the result isn't built. Settings → Capture's fake Hotkeys card, auto-paste
+  but nothing in the app starts a recording: no global hotkey (the Tauri shell's hotkey
+  monitor, which the renderer never called, went with Tauri on 2026-10-08; the Electron shell
+  has none), the Captures tab's **Record (soon)** is off, and pasting the result isn't built.
+  When the paste is built it must save and restore the clipboard and look the paste key up
+  from the keyboard layout — the Tauri code that cleared the clipboard and sent Cmd+V as
+  keycode 0x09 (ANSI V, wrong off QWERTY) went with it (TASKS FINDING, closed 2026-11-05). Settings → Capture's fake Hotkeys card, auto-paste
   switch and playback voice were removed 2026-10-05 (TASKS "Five small findings").
   The server keeps `captures.hotkey_enabled` and the two chord lists, which Home's
   hotkey banner reads.

@@ -84,8 +84,12 @@ first."; one a closed session left behind is stopped). The Speech tab's engine l
 dev · <commit>`. **Test the app this way** — never a private audio.cpp server with a scratch
 config. A packaged app, `npm run server` and the tests run the pinned release. **Before any work
 on the fork, bring it up to date first** — merge its upstream, build it, test the merged build
-here under `npm run dev` (the family rule, `../just-core/docs/family-rules.md`). Record: TASKS
-"`npm run dev` always runs the latest audio.cpp".
+here under `npm run dev` (the family rule, `../just-core/docs/family-rules.md`). Its record is in git
+(`git log -S "always runs the latest audio.cpp" -- docs/dev/TASKS.md`). **An audio.cpp update is
+tested on what it adds** — its new engines and models, through the app; models already proven
+there are not run again (decided 2026-10-15). **The fork stays a fork:** `audiocpp_dsp` lives in
+it (a repo of its own only if DSP releases wait too long), and nothing goes upstream as a pull
+request unless the user asks for that one (decided 2026-10-13).
 
 **The headless launcher is `justvoice-server`, never `justvoice`.** The app's exe is
 `justvoice.exe`; a launcher with the same name makes Windows resolve the bare name to the GUI exe
@@ -176,6 +180,10 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 
 ## Invariants that bite
 
+- **Commit with `git commit -F - -- <paths>`, never a bare `git commit`.** Another session may have
+  work staged, and a bare commit takes the whole index: on 2026-08-21 one published another
+  session's staged deletions under its own message and turned main red. The `--` pathspec limits
+  the commit to your files whatever else is staged.
 - **Settings live in SQLite via `SettingsStore`**, reachable through `PATCH /v1/settings`; the database runs on the kit's `platform/sql.js` (better-sqlite3). `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite; `SettingsStore` imports a legacy `settings.json` once). The tables are `server/src/database/models_schema.js`. Per-artifact JSON sidecars on disk are the exception and still live: `storage/atomic.js`'s `atomicWriteJson` (tmp + rename + fsync) writes voice manifests (`storage/voices.js`).
 - **`server/src/models.js` is the source of truth for the wire shapes.** The Vue client fetches directly against those shapes; the JustWrite-facing boundary rules are `docs/dev/design-decisions.md` §3.
 - **A mock is production minus the plumbing.** When a mock is asked for, the only thing it may omit is the wiring — no server, no real audio, no persistence. Everything else is the deliverable: **production copy only** (never design commentary, "still a proposal", or notes on what changed), **nav and controls that actually work**, **real enum values and labels verified in the code** (an invented-but-plausible option is worse than a missing one), **real states** — empty, blocked, stale, error — not just the happy path, **counts and names consistent across every screen**, **no leftovers from earlier drafts**, and the app's own tokens and density. Audit the whole file before publishing, not just the screen last edited.
