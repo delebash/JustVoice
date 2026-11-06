@@ -35,7 +35,7 @@ test("all_actions_seed_as_shared_rows", async () => {
   for (const key of Object.keys(DEFAULT_FEATURE_PROMPTS)) expect(rows, `missing shared row ${key}`).toHaveProperty([key]);
   // 21 actions over 14 features (the refine x4 composition + attribution's two routes + discovery
   // as its own speaker_discovery feature + Analyze's second look; Reasoned died 2026-08-07; the
-  // one-click plan's slice 2 added direction's two recipes, its slice 4 Merge found names' two
+  // one-click plan's slice 2 added direction's two recipes, its slice 4 Find same people's two
   // recipes and the group lines, its slice 3 voices from the book's three rows, 2026-10-16).
   expect(Object.keys(DEFAULT_FEATURE_PROMPTS).length).toBe(21);
   expect(rows["direction.local"].json_mode).toBe(true);

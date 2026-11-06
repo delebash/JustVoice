@@ -20,10 +20,17 @@ import { clock } from "./renderRun.js";
 
 // ── the words ────────────────────────────────────────────────────────────
 
+/** The run's own name — its card's title, and what Discover says linked a name ("linked by Make
+ * the audiobook"). */
+export const RUN_TITLE = "Make the audiobook";
+
+/** A recipe, in words — beside a step's model on the card, and on Discover's Find same people. */
+export const RECIPE_WORDS = { local: "Local", frontier: "Frontier" };
+
 /** Each step's name, in the run's order (book_run.STEPS). */
 export const STEP_LABELS = {
   discover: "Discover the speakers",
-  merge: "Merge found names",
+  merge: "Find same people",
   add: "Add the speakers",
   analyze: "Analyze — who speaks each line",
   group_lines: "Lines with no single speaker",

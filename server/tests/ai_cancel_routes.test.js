@@ -118,7 +118,7 @@ test("a persona's Compose and Rewrite, and a speaker's Rewrite as them", async (
   }
 });
 
-test("a book's show notes, its voices' descriptions and the merge of its names", async () => {
+test("a book's show notes, its voices' descriptions and Find same people", async () => {
   const { app, c } = await appClient(undefined, { seed: true });
   const { pid, sceneId, mara } = await book(c);
   // Mara speaks the chapter's line, and one line is enough for a voice of her own.
@@ -128,12 +128,14 @@ test("a book's show notes, its voices' descriptions and the merge of its names",
     vi.restoreAllMocks();
     await leaveMidCall(app, holdTheModel(), "POST", url, url.endsWith("describe") ? {} : undefined);
   }
-  // One chapter's names share no words, so the merge asks no model: it is held a level up (its
-  // own call is merge_names.test.js's).
+  // One chapter's names share no words, so Find same people asks no model: it is held a level up
+  // (its own call is merge_names.test.js's). A Stop writes nothing — no suggestion, no check.
   vi.restoreAllMocks();
   const model = holdTheModel();
+  vi.spyOn(run, "featureRoute").mockReturnValue({ configured: true, model: "gemma-test", provider: "Built-in engine", provider_id: "builtin", cloud: false, detail: null });
   vi.spyOn(mergeNames, "mergeBook").mockImplementation((_found, opts) => heldCall(opts?.signal, model));
-  await leaveMidCall(app, model, "POST", `/v1/projects/${pid}/speakers/merge`);
+  await leaveMidCall(app, model, "POST", `/v1/projects/${pid}/discover/find`);
+  expect((await c.get(`/v1/projects/${pid}`)).json().discover_people.check.status).toBe("none");
 });
 
 test("Cancel means cancel on Discover's scan, direction, the lines with no single speaker and the match", async () => {

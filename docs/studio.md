@@ -114,7 +114,7 @@ through every step of Studio by itself, in this order:
 | Step | What it does | What it runs on |
 |---|---|---|
 | Discover the speakers | scans each chapter for the people it names ([Discover](#discover)) | the language model |
-| Merge found names | one person per name — *the Queen* and *Queen of Hearts* — leaving out people never heard speaking ([One list for the whole book](#one-list-for-the-whole-book)) | the language model |
+| Find same people | which names are one person — *the Queen* and *Queen of Hearts* — linked as Discover shows them, never a pair you kept apart; people never heard speaking left out ([Same people: the AI suggests, you link](#same-people-the-ai-suggests-you-link)) | the language model |
 | Add the speakers | adds them to the book, and the narrator | — |
 | Analyze — who speaks each line | each chapter, as Script's Analyze does ([How Analyze reads a chapter](#how-analyze-reads-a-chapter)) | the language model |
 | Lines with no single speaker | gives each line several people say to one of them, or the narrator, marked to check ([below](#lines-with-no-single-speaker)) | the language model |
@@ -259,11 +259,14 @@ chapter. It creates nothing on its own.
 4. **Speakers found** lists everyone the scanned chapters name, each person
    once, with a **status**, roughly how many lines they speak in what was
    scanned (**0** means named but not heard speaking; a speaker already in this book shows how many times the text names them instead), the **First appearance**
-   — the quote that names them — and which chapters. Spellings of one person
-   are one row: "Sedge" and "Old Sedge" show as *Old Sedge, also written Sedge*.
+   — the quote that names them — and which chapters. Every name is its own row
+   until you link it (since 2026-11-05): "Sedge" and "Old Sedge" are two rows,
+   and **Find same people** above the list asks the AI which names are one
+   person ([Same people: the AI suggests, you link](#same-people-the-ai-suggests-you-link)).
+   A speaker's *Also called* names are on that speaker's row.
    **Script never adds speakers** (since 2026-10-06) — they come from the import,
    Discover's **＋ Add**, or Cast's **＋ Add** for someone Discover missed.
-   The chips above it filter the list: **All**, **New** (everyone not in this book yet — new names and names a persona in your library has), **In this book** and **Ignored**. The statuses:
+   The chips above it filter the list: **All**, **New** (everyone not in this book yet — new names and names a persona in your library has), **In this book**, **Ignored** and **Kept apart** (the rows with a pair you said are different people). The statuses:
    - **In this book** — a speaker this book already has, whatever the text calls
      them: full name, first name, surname, or one of their *Also called*
      names. The row's action cell says *already a speaker*, with **Remove from book** beside it (see [Removing a speaker](#removing-a-speaker)).
@@ -288,11 +291,16 @@ chapter. It creates nothing on its own.
    - **quote not in the chapter** means the quote the model gave is not in the
      text — treat the name as suspect.
    - **Several at once:** tick rows — the box in the header ticks every New, In your library and In this book row shown — then **＋ Add N selected**,
-     **Ignore N selected** or **Remove N selected**. Add and Ignore act on the
+     **Ignore N selected**, **Remove N selected** or **Link N selected as one
+     person**. Add and Ignore act on the
      ticked New and In-your-library rows, Remove on the ticked In-this-book rows.
      Each works exactly as its row's own button would — so Ignore's count leaves
      out the ticked **Narrator** row, which has no Ignore (since 2026-10-13 —
-     before, it counted it).
+     before, it counted it). Link joins the ticked names as one person — the
+     ones the AI missed (see below); the **Narrator** row isn't linked, and two
+     ticked rows that are both **In this book** can't be: *Two of the ticked
+     names are already speakers in this book — joining speakers isn't done
+     here.*
 
 **What counts as a name.** Discover proposes everyone the text *names* — a
 proper name ("Edith") or a title used as one ("the harbour-master") — whether
@@ -327,31 +335,74 @@ there ("Answers to Ode") is not proposed as someone new.
 called *Gudgeon* that rides on someone's shoulder — can read to the model as
 a being, and it may propose it. **Ignore** it once and it stays out.
 
-### One list for the whole book
+### Same people: the AI suggests, you link
 
-**Speakers found** puts the spellings of one person on one row when one is the
-other with words added — *Sedge* and *Old Sedge*. A chapter can also write a
-person in a way that shares no such run of words with another chapter's: in
-*Alice*, the Queen is *Queen of Hearts* in chapter VII and *the Queen* in VIII,
-two rows here. [Make the audiobook](#make-the-audiobook) adds speakers without
-you, so before it adds anyone it merges every chapter's scan into one list of
-people (`POST /v1/projects/{id}/speakers/merge`, since 2026-10-16):
+A book writes one person more than one way, and a chapter often writes them its
+own way: in *Alice*, the Queen is *Queen of Hearts* in chapter VII and *the
+Queen* in VIII. Nothing joins those names on its own — every name is its own
+row in **Speakers found** until you link it (since 2026-11-05; before, the page
+joined a name with its longer form by itself, with no list to check and no
+undo).
 
-- names that contain one another once a leading *the* or *a* is set aside are
-  checked by the AI, which says which of them are one person — *the Queen* and
-  *Queen of Hearts* are; the heading *THE KING AND QUEEN OF HEARTS*, which
-  shares words with both the King and the Queen, is no one; with a cloud model
-  (a **Frontier** recipe) the AI reads every name, its counts and its quotes at
-  once, so names that share no words can be one person too;
-- a person every scanned chapter counted **0** lines for is left out — named,
-  never heard speaking;
-- your **Ignored** names stay out, and a name that is already a speaker of the
-  book isn't added again.
+1. **Before the AI** — a line above the list says what to do: *Some people are
+   named more than one way — “the Queen” and “Queen of Hearts”. Find same people
+   asks the AI which names are one person; you link them.* (the example is two
+   names of your own book, when it has two that contain one another).
+   **Find same people** asks the language model. While it asks, the line says
+   *Asking ‹model› which of these names are one person…*, and the AI tasks
+   panel shows it with its **Cancel**, which stops the question and changes
+   nothing.
+2. **Its answer is a list to review — nothing in the table has changed.**
+   *Same person? · 1 from gemma-4-26b-a4b-qat · Local*, with **Link all**, and a
+   row for each group of names the AI says are one person: *Queen of Hearts +
+   the Queen*, roughly how many lines they speak together, the chapters, the
+   quote that names each, **Link** and **Not the same**. The line now says
+   *Checked 4 min ago by ‹model› · Local.* with **Find again**. If the AI
+   finds no one, it says *Nothing new to link — the AI found no other names
+   that are one person.*
+3. **Link** makes them one row, going by the fullest name (*Queen of Hearts*
+   over *the Queen*) — or by the speaker's name when one of them is already a
+   speaker in this book, whose *Also called* the others become. Under the name:
+   *also written the Queen* with **Unlink**. **＋ Add** on a linked row makes
+   one speaker, the other names kept as *Also called*. **Link N selected as one
+   person**, in the row of buttons under the list, links names the AI missed.
+4. **Not the same**, or **Unlink**, says *these are different people*: the pair
+   goes to **Kept apart** — a chip beside **Ignored** — and each of its rows
+   says *kept apart from the Queen* with **Undo**. Find won't suggest the pair
+   again. **Undo** on a pair you unlinked links it again; on one you said were
+   not the same, it puts the suggestion back under **Same person?**.
+5. **After [Make the audiobook](#make-the-audiobook)** — one press is the
+   point, so the run links the names its own Find same people step finds,
+   never a pair you kept apart, and the row says so: *also written the Queen
+   [Unlink] · linked by Make the audiobook*; the line reads *Checked … by
+   ‹model› · Local, during Make the audiobook.* **Unlink** still works: it
+   takes *the Queen* out of that speaker's *Also called* and shows it as a new
+   row again — *the Queen is no longer Queen of Hearts' other name and shows as
+   new. Lines already given to Queen of Hearts stay. Undo is under Kept apart.*
+   The lines Script already gave stay where they are.
+6. **A new scan after a check** — the line counts it: *Checked 4 min ago by
+   ‹model› · Local · 1 chapter scanned since.*, and **Find again** stands out.
+   New suggestions join the list; your earlier answers stay.
 
-Each person then becomes a speaker as **＋ Add** makes one, the other names kept
-as *Also called*. This page doesn't use the merge yet — it still shows the rows
-as they are. How the AI is asked, and its two recipes: [AI features → The
-one-click audiobook's speaker steps](ai-features.md#the-one-click-audiobooks-speaker-steps).
+Without a language model the line says *Couldn't check the names. No language
+model is set up — set one in AI Settings first.* with **Try again**; a model
+that fails says its own words there. Two names that are both already speakers
+are never suggested, and can't be linked: joining two speakers would move
+their lines — that isn't done here.
+
+**How the AI is asked.** Names that contain one another once a leading *the* or
+*a* is set aside are checked by the AI, which says which of them are one
+person — *the Queen* and *Queen of Hearts* are; the heading *THE KING AND QUEEN
+OF HEARTS*, which shares words with both the King and the Queen, is no one.
+With a cloud model (a **Frontier** recipe) the AI reads every name, its counts
+and its quotes at once, so names that share no words can be one person too. It
+also reads the book's speakers' names, so it can say a new name is someone
+already in the book. Your **Ignored** names stay out. When [Make the
+audiobook](#make-the-audiobook) adds the speakers, a person every scanned
+chapter counted **0** lines for is left out — named, never heard speaking —
+and a person already in the book isn't added again. The feature's cards and
+recipes: [AI features → The one-click audiobook's speaker
+steps](ai-features.md#the-one-click-audiobooks-speaker-steps).
 
 ### Removing a speaker
 

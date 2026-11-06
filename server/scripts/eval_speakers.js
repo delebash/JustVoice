@@ -24,13 +24,14 @@
 // Unlike eval:discover and eval:attribution it WRITES: it imports the sample's keyed chapters as a
 // new book on that server (its data folder) and deletes the book at the end unless --keep. The
 // model and the prompts are the server's live ones (AI Settings → Features: Find new speakers,
-// Merge found names, Speaker attribution, … lines with no single speaker).
+// Find same people, Speaker attribution, … lines with no single speaker).
 //
 // Built 2026-10-16 with slice 4; run on gemma when the graphics card is free.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import * as mergeNames from "../src/extraction/merge_names.js";
 import { bare } from "../src/extraction/names.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
@@ -106,19 +107,24 @@ async function main() {
     }
 
     // 2 · Discover each chapter.
+    const scans = [];
     for (const s of scenes) {
       const t0 = Date.now();
       const r = await call(server, "POST", `/v1/scenes/${s.id}/discover-speakers`, { json: { text: texts[s.id] } });
+      scans.push({ id: s.id, title: s.title, candidates: r.candidates });
       console.log(`discover · ${s.title}: ${r.candidates.map((c) => `${c.name} ${c.approx_lines ?? "?"}`).join(", ")}  (${secs(t0)}, ${tokens(r.usage)})`);
     }
 
-    // The names merged across chapters.
+    // Find same people (Discover's button — the run's own step), then the people the run would
+    // add: every suggestion linked, as the run links them, over the same scans (merge_names' own
+    // functions — the book is new, so nothing else is linked or kept apart).
     let t0 = Date.now();
-    const merged = await call(server, "POST", `/v1/projects/${pid}/speakers/merge`);
-    console.log(`\nmerge · recipe ${merged.recipe} (${secs(t0)}, ${tokens(merged.usage)})`);
+    const found = await call(server, "POST", `/v1/projects/${pid}/discover/find`);
+    console.log(`\nfind same people · recipe ${found.discover_people.check.recipe} (${secs(t0)}, ${tokens(found.usage)})`);
+    const names = mergeNames.collectFound(scans);
+    const merged = mergeNames.peopleOf(names, mergeNames.applyPeople(names, found.discover_people.suggestions));
     for (const p of merged.people) console.log(`   ${p.name}${p.aliases.length ? ` (also ${p.aliases.join(", ")})` : ""} — ${p.lines ?? "?"} line(s)`);
     if (merged.left_out.length) console.log(`   left out, 0 lines: ${merged.left_out.map((p) => p.name).join(", ")}`);
-    if (merged.in_book.length) console.log(`   already in the book: ${merged.in_book.map((x) => x.name).join(", ")}`);
     const problems = [];
     for (const k of cast.filter((k) => spokenInKey.has(k.name))) {
       const hits = merged.people.filter((p) => keyOf(p).includes(k.name));

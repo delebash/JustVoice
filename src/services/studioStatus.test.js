@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from "vitest";
 
-import { blockStats, foundSpeakers, projectState, stepStatus } from "./studioStatus.js";
+import {
+  blockStats, examplePair, foundNames, foundSpeakers, projectState, sameSuggestions, stepStatus,
+} from "./studioStatus.js";
 
 const UNIT = { singular: "Chapter", plural: "Chapters" };
 
@@ -171,7 +173,7 @@ describe("foundSpeakers", () => {
     const rows = foundSpeakers(scenes, cast);
     expect(rows[0]).toEqual({
       key: "new:tom harlan", status: "new", name: "Tom Harlan", names: ["Tom Harlan", "tom harlan"],
-      speaker: null, persona: null, role_hint: "neighbor", evidence: "Tom Harlan kept the ledger",
+      speaker: null, persona: null, link: null, role_hint: "neighbor", evidence: "Tom Harlan kept the ledger",
       evidence_found: true, lines: 5, mentions: 0, chapters: ["a", "b"],
     });
     // The AI's "Mara" (her alias) and the name match are ONE row: her.
@@ -191,14 +193,36 @@ describe("foundSpeakers", () => {
     expect(projectState({ scenes, cast, ignored: ["Gudgeon"] })).toMatchObject({ proposed: 1 });
   });
 
-  it("folds a name into its longer variant — Sedge and Old Sedge are one person", () => {
+  it("never joins spellings on its own — Sedge and Old Sedge are two rows until you link them (2026-10-16)", () => {
     const scenes = [
       { id: "a", metadata: scan([{ name: "Sedge", approx_lines: 4 }]) },
       { id: "b", metadata: scan([{ name: "Old Sedge", approx_lines: 0 }]) },
     ];
-    const [row, ...rest] = foundSpeakers(scenes, []);
+    expect(pick(foundSpeakers(scenes, []))).toEqual([["Sedge", "new"], ["Old Sedge", "new"]]);
+    // Linked: one row, going by the link's name, its lines summed, its chapters joined.
+    const link = { names: ["Sedge", "Old Sedge"], name: "Old Sedge", by: "you" };
+    const [row, ...rest] = foundSpeakers(scenes, [], [], [], [link]);
     expect(rest).toEqual([]);
-    expect(row).toMatchObject({ name: "Old Sedge", names: ["Sedge", "Old Sedge"], lines: 4, chapters: ["a", "b"] });
+    expect(row).toMatchObject({ key: "new:old sedge", name: "Old Sedge", names: ["Sedge", "Old Sedge"], lines: 4,
+      chapters: ["a", "b"], link });
+    expect(projectState({ scenes, links: [link] })).toMatchObject({ proposed: 1 });
+    expect(projectState({ scenes })).toMatchObject({ proposed: 2 });
+  });
+
+  it("a link with a speaker in it is that speaker's row; one ignored name ignores the row", () => {
+    const scenes = [
+      { id: "a", metadata: scan([{ name: "Queen of Hearts", approx_lines: 0 }]) },
+      { id: "b", metadata: scan([{ name: "the Queen", approx_lines: 13 }, { name: "Five", approx_lines: 4 }]) },
+    ];
+    const link = { names: ["Queen of Hearts", "the Queen"], name: "Queen of Hearts", by: "run" };
+    const cast = [{ id: "q", name: "Queen of Hearts", aliases: [] }];
+    const rows = foundSpeakers(scenes, cast, [], [], [link]);
+    expect(rows.map((r) => [r.name, r.status, r.names])).toEqual([
+      ["Five", "new", ["Five"]], ["Queen of Hearts", "cast", ["Queen of Hearts", "the Queen"]]]);
+    expect(rows[1]).toMatchObject({ key: "s:q", lines: 13, link });
+    // Unlinked (and out of her Also called): "the Queen" shows as new again.
+    expect(pick(foundSpeakers(scenes, cast))).toEqual([["the Queen", "new"], ["Five", "new"], ["Queen of Hearts", "cast"]]);
+    expect(pick(foundSpeakers(scenes, [], ["the queen"], [], [link]))).toEqual([["Five", "new"], ["Queen of Hearts", "ignored"]]);
   });
 
   it("In your library = a persona of EXACTLY that name, one only (2026-09-29)", () => {
@@ -214,15 +238,17 @@ describe("foundSpeakers", () => {
     expect(projectState({ scenes, personas })).toMatchObject({ proposed: 3 });
   });
 
-  it("a shorter spelling joins the library row — Sedge is Old Sedge", () => {
+  it("a linked spelling joins the library row — Sedge linked with Old Sedge", () => {
     const scenes = [
       { id: "a", metadata: scan([{ name: "Sedge", approx_lines: 2 }]) },
       { id: "b", metadata: scan([{ name: "Old Sedge", approx_lines: 1 }]) },
     ];
-    const rows = foundSpeakers(scenes, [], [], [{ id: "p1", name: "Old Sedge" }]);
+    const personas = [{ id: "p1", name: "Old Sedge" }];
+    expect(pick(foundSpeakers(scenes, [], [], personas))).toEqual([["Sedge", "new"], ["Old Sedge", "library"]]);
+    const rows = foundSpeakers(scenes, [], [], personas, [{ names: ["Sedge", "Old Sedge"], name: "Old Sedge", by: "you" }]);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ status: "library", names: ["Old Sedge", "Sedge"], lines: 3,
-      chapters: ["b", "a"], persona: { id: "p1" } });
+    expect(rows[0]).toMatchObject({ status: "library", names: ["Sedge", "Old Sedge"], lines: 3,
+      chapters: ["a", "b"], persona: { id: "p1" } });
   });
 
   it("a speaker removed since the scan turns New, and stays in the list", () => {
@@ -234,5 +260,43 @@ describe("foundSpeakers", () => {
   it("never merges different people who only share a prefix", () => {
     const scenes = [{ id: "a", metadata: scan([{ name: "Ann" }, { name: "Annabel" }]) }];
     expect(foundSpeakers(scenes, []).map((r) => r.name)).toEqual(["Ann", "Annabel"]);
+  });
+});
+
+describe("Find same people on Discover (decided 2026-10-16)", () => {
+  const scan = (candidates) => ({ discover: { scanned_at: "t", candidates, named_cast: [] } });
+  const scenes = [
+    { id: "vii", metadata: scan([{ name: "Queen of Hearts", approx_lines: 0, evidence: "the great concert given by the Queen of Hearts" }]) },
+    { id: "viii", metadata: scan([{ name: "the Queen", approx_lines: 13, evidence: "if the Queen was to find it out" }, { name: "the King", approx_lines: 5 }]) },
+  ];
+  const suggestion = { names: ["Queen of Hearts", "the Queen"], name: "Queen of Hearts" };
+  const people = (more = {}) => ({ suggestions: [suggestion], links: [], apart: [], ...more });
+
+  it("each suggestion with what the scans say of it", () => {
+    expect(sameSuggestions(scenes, people())).toEqual([{
+      key: "queen of hearts|the queen", names: suggestion.names, name: "Queen of Hearts", lines: 13, chapters: ["vii", "viii"],
+      quotes: [{ name: "Queen of Hearts", evidence: "the great concert given by the Queen of Hearts" },
+        { name: "the Queen", evidence: "if the Queen was to find it out" }],
+    }]);
+  });
+
+  it("answered ones leave the list: linked, kept apart, one speaker already, or two", () => {
+    expect(sameSuggestions(scenes, people({ links: [{ names: ["the Queen", "Queen of Hearts"], name: "Queen of Hearts" }] }))).toEqual([]);
+    expect(sameSuggestions(scenes, people({ apart: [{ names: ["the Queen", "Queen of Hearts"], from: "suggestion" }] }))).toEqual([]);
+    expect(sameSuggestions(scenes, people(), [{ id: "q", name: "Queen of Hearts", aliases: ["the Queen"] }])).toEqual([]);
+    expect(sameSuggestions(scenes, people(), [{ id: "q", name: "Queen of Hearts" }, { id: "k", name: "the Queen" }])).toEqual([]);
+    // One of them a speaker: still a suggestion — Link makes the other their Also called.
+    expect(sameSuggestions(scenes, people(), [{ id: "q", name: "Queen of Hearts" }])).toHaveLength(1);
+    // A name no scan finds any more: not shown.
+    expect(sameSuggestions(scenes.slice(1), people())).toEqual([]);
+    expect(sameSuggestions(scenes, null)).toEqual([]);
+  });
+
+  it("the line's example is the book's own: the shorter name first, none once linked", () => {
+    expect(examplePair(["Queen of Hearts", "Alice", "the Queen", "the King"])).toEqual(["the Queen", "Queen of Hearts"]);
+    expect(examplePair(["Hatter", "Alice"])).toBeNull();
+    expect(examplePair(["the King", "the Queen"])).toBeNull();
+    expect(examplePair(["Queen of Hearts", "the Queen"], [{ names: ["Queen of Hearts", "the Queen"] }])).toBeNull();
+    expect(foundNames(scenes).map((n) => [n.name, n.lines])).toEqual([["Queen of Hearts", 0], ["the Queen", 13], ["the King", 5]]);
   });
 });

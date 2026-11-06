@@ -146,7 +146,7 @@ export const DEFAULT_FEATURE_PROMPTS = {
 Manuscript text:
 {{manuscript}}`,
   },
-  // ── Merge found names (the one-click plan's slice 4, 2026-10-16) — TWO ROUTED CARDS, one per
+  // ── Find same people (the one-click plan's slice 4, 2026-10-16) — TWO ROUTED CARDS, one per
   // recipe (§3: "Local — merge by name containment, then one short model call to confirm;
   // Frontier — the whole book's candidates in one call"). The Frontier card's preset decides
   // which runs (merge_names.mergeRecipe). Object answers → json_mode on.

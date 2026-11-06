@@ -2,6 +2,20 @@
 
 ## v0.1.0
 
+- **Discover's names: the AI suggests, you link (2026-11-05)** — **Speakers found** no longer joins
+  the spellings of one person by itself: every name is its own row until you link it. **Find same
+  people** asks the AI which names are one person and lists its answer under **Same person?** —
+  *Queen of Hearts + the Queen*, with **Link**, **Not the same** and **Link all** — without changing
+  anything else. A linked row goes by the fullest name (or the speaker's, whose *Also called* the
+  other names become) and reads *also written the Queen* with **Unlink**; **Link N selected as one
+  person** links names the AI missed. **Not the same** and **Unlink** keep the pair apart — the
+  **Kept apart** chip, each pair with **Undo** — and Find won't suggest it again. **Make the
+  audiobook**'s step of the same name links on its own, never a pair you kept apart, and the row
+  says *linked by Make the audiobook*; Unlink there takes the name out of the speaker's *Also
+  called*. The line above the list says when the names were last checked, by which model, and how
+  many chapters were scanned since. The AI feature *Merge found names* is now **Find same people**
+  ([Studio → Same people: the AI suggests, you link](studio.md#same-people-the-ai-suggests-you-link),
+  [AI features → The one-click audiobook's speaker steps](ai-features.md#the-one-click-audiobooks-speaker-steps))
 - **audio.cpp's update of 2026-11-05: two more speech recognisers** — the speech engines list now
   has NVIDIA's Nemotron 3.5 Transcribe (40 languages; 34 billion parameters, more than an 8 GB card
   holds — audio.cpp keeps part of it on the CPU) and FermionResearch's Phonon-2 (English, built on
@@ -158,7 +172,7 @@
   attribution · lines with no single speaker** gives a line several people say at once to one of
   them — or to the narrator when no one is clear — marked to check. No button runs them yet. In
   the AI tasks panel, Discover's scan now carries its feature's own name, `speaker_discovery`
-  ([Studio → One list for the whole book](studio.md#one-list-for-the-whole-book),
+  ([Studio → Same people: the AI suggests, you link](studio.md#same-people-the-ai-suggests-you-link),
   [Lines with no single speaker](studio.md#lines-with-no-single-speaker))
 - **Voices from the book (2026-10-16)** — the one-click audiobook's voices step, not on a screen
   yet: your language model describes each main speaker's voice from how the book shows them and the

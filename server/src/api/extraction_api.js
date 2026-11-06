@@ -41,13 +41,14 @@ import * as mergeNames from "../extraction/merge_names.js";
 import * as names from "../extraction/names.js";
 import * as pipeline from "../extraction/pipeline.js";
 import { AttributionModelError, AttributionRow } from "../extraction/pipeline.js";
+import * as samePeople from "../extraction/same_people.js";
 import * as sl from "../extraction/second_look.js";
 import { paragraphsOf, QUOTE_PAIRS, resolveMarks, segmentParagraphs, segmentsFromLines, splitIntoParagraphs } from "../extraction/segmentation.js";
 import { leftOutBlocks } from "../extraction/tags.js";
 import { blockMeta, isMarker, mergeOverride } from "../line_takes.js";
 import { construct, dtIso, ExtractionSettings, ProjectScript, SceneScript, utcNow } from "../models.js";
 import * as vmod from "../voice_model.js";
-import { ensureSpeaker, narratorSpeakerId, speakerAliases } from "./_speaker_helpers.js";
+import { cleanAliases, ensureSpeaker, narratorSpeakerId, speakerAliases } from "./_speaker_helpers.js";
 import { sseResponse } from "./sse_streams_api.js";
 
 const log = getLogger("justvoice.api.extraction_api");
@@ -1341,63 +1342,163 @@ export function promoteSpeakers(h, projectId, candidates) {
   return { created, reused };
 }
 
-// ── Discover + merge names across chapters (the one-click plan's step 2, slice 4) ──
+// ── Discover's same people: the AI suggests, you link (decided 2026-10-16) ──
+//
+// The one-click plan's step 2 (slice 4) merged the spellings of one person across chapters without
+// a word; on Discover that is now a list you review (TASKS "Discover's names: the AI suggests, you
+// link — Find same people, Link, Unlink, Kept apart"). The state — Find's suggestions, your links,
+// the names kept apart and Find's last check — is `same_people.js`'s, kept on the project.
 
-/** One person the chapters' scans name, as `promote` takes them (name, description, aliases) and
- * with what the scans say. `lines` is Discover's count summed over the chapters; null when a
- * scan gave no number. */
-export const MergedPerson = T.Object({
-  name: T.String(),
-  aliases: opt(T.Array(T.String()), []),
-  description: opt(nullable(T.String()), null),
-  lines: opt(nullable(T.Integer()), null),
-  chapters: opt(T.Array(T.String()), []),
-  evidence: opt(nullable(T.String()), null),
-  evidence_found: opt(nullable(T.Boolean()), null),
+/** Find same people's last answer: `status` "none" (never asked), "done" or "failed"; `at` when it
+ * was asked; `by` Discover's button or Make the audiobook ("run"); the model and its recipe;
+ * `error` why it failed. */
+export const PeopleCheck = T.Object({
+  status: literal("none", "done", "failed"),
+  at: opt(nullable(T.String()), null),
+  by: opt(nullable(literal("button", "run")), null),
+  model: opt(nullable(T.String()), null),
+  recipe: opt(nullable(literal("local", "frontier")), null),
+  error: opt(nullable(T.String()), null),
 });
 
-/** A found name that is already a speaker of this book. */
-export const InBookName = T.Object({ name: T.String(), speaker_id: T.String() });
+/** One Same person? suggestion: the names the AI says are one person, and the fullest of them. */
+export const SamePersonSuggestion = T.Object({ names: T.Array(T.String()), name: T.String() });
 
-export const MergeSpeakersResponse = T.Object({
-  project_id: T.String(),
-  // Which recipe merged them: the Frontier card's preset decides (merge_names.mergeRecipe).
-  recipe: literal("local", "frontier"),
-  // The people to add, most lines first.
-  people: T.Array(MergedPerson),
-  // Every scan that found them counted 0 lines — named, never heard speaking.
-  left_out: opt(T.Array(MergedPerson), []),
-  in_book: opt(T.Array(InBookName), []),
-  // Chapters with a saved scan.
-  scanned: opt(T.Integer(), 0),
+/** Names linked as one person — by you, or by Make the audiobook ("run") — and the name it goes by. */
+export const PeopleLink = T.Object({ names: T.Array(T.String()), name: T.String(), by: literal("you", "run") });
+
+/** Names you said are different people: Not the same on a suggestion, or Unlink (with the link it
+ * came from, which Undo puts back). */
+export const KeptApart = T.Object({
+  names: T.Array(T.String()),
+  from: literal("suggestion", "unlink"),
+  link: opt(nullable(T.Object({ name: T.String(), by: literal("you", "run") })), null),
+});
+
+/** Discover's same people on a book — the project's `discover_people`. */
+export const DiscoverPeople = T.Object({
+  check: PeopleCheck,
+  suggestions: opt(T.Array(SamePersonSuggestion), []),
+  links: opt(T.Array(PeopleLink), []),
+  apart: opt(T.Array(KeptApart), []),
+});
+
+export const DiscoverPeopleResponse = T.Object({
+  discover_people: DiscoverPeople,
+  // The speaker whose Also called the change rewrote — Studio reads the speakers again — or null.
+  speaker_id: opt(nullable(T.String()), null),
+});
+
+export const FindSamePeopleResponse = T.Object({
+  discover_people: DiscoverPeople,
+  // Suggestions this answer added to the list.
+  added: opt(T.Integer(), 0),
   // null when no model call was needed.
   usage: opt(nullable(RunUsage), null),
 });
 
+/** What Find same people would ask now: the model, its recipe — or why there is none. */
+export const FindSamePeopleRoute = T.Object({
+  configured: T.Boolean(),
+  model: opt(nullable(T.String()), null),
+  recipe: literal("local", "frontier"),
+  detail: opt(nullable(T.String()), null),
+});
+
+export const LinkNamesRequest = T.Object({ names: T.Array(T.String()) });
+export const UnlinkNameRequest = T.Object({ name: T.String() });
+
+/** No language model — the words Discover's line and the one-click run's stop both say. */
+export const NO_MODEL = "No language model is set up — set one in AI Settings first.";
+
+/** Discover's same people on this project (`same_people.readPeople`). */
+export function projectPeople(project) {
+  const meta = _jsonMeta(project?.metadata_json);
+  return samePeople.readPeople(isDict(meta) ? meta[samePeople.KEY] : null);
+}
+
+/** Save the state on the project, beside whatever else its metadata holds now. */
+function _savePeople(h, projectId, state) {
+  let meta = _jsonMeta(projectById(h, projectId)?.metadata_json);
+  if (!isDict(meta)) meta = {};
+  meta[samePeople.KEY] = state;
+  h.update(Project, { metadata_json: pyJson(meta) }, { id: projectId });
+}
+
+/** The book's speakers as same_people reads them: `[{id, name, aliases}]`. */
+function _castOf(h, projectId) {
+  return h.all(`select * from ${Speaker} where project_id = ?`, [projectId], Speaker).map((s) => ({ id: s.id, name: s.name, aliases: speakerAliases(s) }));
+}
+
+/** A speaker's Also called, rewritten by a link or an unlink. */
+function _saveAliases(h, speaker, aliases) {
+  const kept = cleanAliases(aliases, speaker.name);
+  h.update(Speaker, { aliases: kept.length ? pyJson(kept) : null }, { id: speaker.id });
+}
+
 /**
- * Every chapter's saved scan merged into one list of people → MergeSpeakersResponse's fields. Reads
- * the scans (`scene.metadata.discover`), never the text; writes nothing — `promoteSpeakers` adds
- * them. A name on the project's ignore list stays out; a name that is already a speaker
- * (`names.match`) is listed in `in_book`. The merge itself, and its two recipes, is
+ * One of your answers on Discover, in a transaction → DiscoverPeopleResponse's fields. `change(state,
+ * cast)` is a `same_people` call; the speaker's Also called it rewrites is saved with it.
+ */
+export function answerPeople(h, projectId, change) {
+  return h.tx(() => {
+    const project = projectById(h, projectId);
+    if (project === null) throw notFound(`project ${projectId}`);
+    const r = change(projectPeople(project), _castOf(h, projectId));
+    const state = r.state ?? r;
+    const rewrote = Boolean(r.aliases && r.speaker);
+    if (rewrote) _saveAliases(h, r.speaker, r.aliases);
+    _savePeople(h, projectId, state);
+    return { discover_people: state, speaker_id: rewrote ? r.speaker.id : null };
+  });
+}
+
+/**
+ * Every chapter's saved scan merged into people — Make the audiobook's merge step and Discover's
+ * Find same people → `{project_id, recipe, people, left_out, in_book, suggested, groups, scanned,
+ * usage}`. Reads the scans (`scene.metadata.discover`), never the text; writes nothing. A name on
+ * the project's ignore list stays out. The model also reads the book's speakers — the names the
+ * scans gave them and the speakers each chapter names — so it can say a new name is one of them;
+ * a person with a name that is already a speaker (`names.match`) is in neither `people` nor
+ * `left_out` (the run links them rather than adding them again), and the name is in `in_book`.
+ * Your links and the names you kept apart (`projectPeople`) are applied. `suggested` is the
+ * model's own groups (Discover's Same person?), `groups` every person of two or more names with
+ * your links joined in (what the run links). The merge itself, and its two recipes, is
  * `extraction/merge_names.js`. A model failure is an HttpError (501 / 502).
  */
 export async function mergeFoundNames(h, projectId, { runFn = null, signal = null } = {}) {
   const project = projectById(h, projectId);
   if (project === null) throw notFound(`project ${projectId}`);
   const ignored = new Set(projectIgnored(project).map((n) => names.norm(n)));
-  const cast = h.all(`select * from ${Speaker} where project_id = ?`, [projectId], Speaker).map((s) => ({ id: s.id, name: s.name, aliases: speakerAliases(s) }));
+  const cast = _castOf(h, projectId);
+  const byId = new Map(cast.map((s) => [s.id, s]));
+  const { links, apart } = projectPeople(project);
   const inBook = [];
+  const noteInBook = (name, sp) => {
+    if (!inBook.some((x) => x.speaker_id === sp.id && names.norm(x.name) === names.norm(name))) inBook.push({ name, speaker_id: sp.id });
+  };
   const scans = [];
   for (const scene of h.all(`select * from ${Scene} where project_id = ? order by position`, [projectId], Scene)) {
     const saved = dget(_sceneMeta(scene), "discover");
     if (!isDict(saved)) continue;
     const kept = [];
+    const seen = new Set();
     for (const c of Array.isArray(saved.candidates) ? saved.candidates : []) {
       const name = isDict(c) ? strip(pyStrOf(c.name ?? "")) : "";
       if (!name || ignored.has(names.norm(name))) continue;
+      kept.push(c);
+      seen.add(names.norm(name));
       const sp = names.match(name, cast);
-      if (sp === null) kept.push(c);
-      else if (!inBook.some((x) => x.speaker_id === sp.id && names.norm(x.name) === names.norm(name))) inBook.push({ name, speaker_id: sp.id });
+      if (sp !== null) noteInBook(name, sp);
+    }
+    // The speakers the chapter names (found without the AI), under their names as they are now.
+    for (const m of Array.isArray(saved.named_cast) ? saved.named_cast : []) {
+      const sp = isDict(m) ? byId.get(m.speaker_id) : undefined;
+      const key = sp ? names.norm(sp.name) : "";
+      if (!key || ignored.has(key) || seen.has(key)) continue;
+      kept.push({ name: sp.name, approx_lines: null, evidence: m.evidence ?? null });
+      seen.add(key);
+      noteInBook(sp.name, sp);
     }
     scans.push({ id: scene.id, title: scene.title || "", candidates: kept });
   }
@@ -1405,11 +1506,95 @@ export async function mergeFoundNames(h, projectId, { runFn = null, signal = nul
   const rawOut = {};
   let merged;
   try {
-    merged = await mergeNames.mergeBook(mergeNames.collectFound(scans), { recipe, rawOut, signal, ...(runFn ? { runFn } : {}) });
+    merged = await mergeNames.mergeBook(mergeNames.collectFound(scans), { recipe, rawOut, signal, links, apart, ...(runFn ? { runFn } : {}) });
   } catch (e) {
-    throw discoverError(e, "merging names");
+    throw discoverError(e, "finding the same people");
   }
-  return { project_id: projectId, recipe, ...merged, in_book: inBook, scanned: scans.length, usage: rawOut.usage ?? null };
+  const inBookPerson = (p) => [p.name, ...p.aliases].some((n) => names.match(n, cast) !== null);
+  return {
+    project_id: projectId,
+    recipe,
+    people: merged.people.filter((p) => !inBookPerson(p)),
+    left_out: merged.left_out.filter((p) => !inBookPerson(p)),
+    in_book: inBook,
+    suggested: merged.suggested,
+    groups: [...merged.people, ...merged.left_out].filter((p) => p.aliases.length).map((p) => ({ name: p.name, names: [p.name, ...p.aliases] })),
+    scanned: scans.length,
+    usage: rawOut.usage ?? null,
+  };
+}
+
+/**
+ * Discover's Find same people → FindSamePeopleResponse's fields: the merge's question
+ * (`mergeFoundNames`), its answer kept as Same person? suggestions to review — nothing else
+ * changes. A group you linked already, one holding names you kept apart, and one that is already
+ * one speaker — or two — isn't suggested; earlier suggestions and your answers stay. The check
+ * records when it was asked (its start: a chapter scanned after that is "scanned since"), the
+ * model and its recipe. No language model, or a model that fails, is recorded as the check's
+ * failure and thrown (501 / 502); a Stop records nothing.
+ */
+export async function findSamePeople(h, projectId, { runFn = null, signal = null } = {}) {
+  if (projectById(h, projectId) === null) throw notFound(`project ${projectId}`);
+  const at = dtIso(utcNow());
+  const route = run.featureRoute(mergeNames.FEATURE, mergeNames.mergeAction());
+  const recipe = mergeNames.mergeRecipe();
+  const failed = (error) =>
+    h.tx(() => {
+      const project = projectById(h, projectId);
+      if (project === null) return;
+      _savePeople(h, projectId, { ...projectPeople(project), check: { status: "failed", at, by: "button", model: route.model, recipe, error } });
+    });
+  if (!route.configured) {
+    failed(NO_MODEL);
+    throw new HttpError(501, NO_MODEL);
+  }
+  let out;
+  try {
+    out = await mergeFoundNames(h, projectId, { runFn, signal });
+  } catch (e) {
+    if (!isAbortError(e)) failed(e instanceof HttpError && typeof e.detail === "string" ? e.detail : errText(e));
+    throw e;
+  }
+  return h.tx(() => {
+    const project = projectById(h, projectId);
+    if (project === null) throw notFound(`project ${projectId}`);
+    const r = samePeople.addSuggestions(projectPeople(project), out.suggested, _castOf(h, projectId));
+    const state = { ...r.state, check: { status: "done", at, by: "button", model: out.usage?.model || route.model, recipe: out.recipe, error: null } };
+    _savePeople(h, projectId, state);
+    return { discover_people: state, added: r.added, usage: out.usage };
+  });
+}
+
+/**
+ * Make the audiobook links what its merge step found — one click is its point, and Discover says
+ * so on the row ("linked by Make the audiobook", decided 2026-10-16): each of `mergeFoundNames`'
+ * `groups` becomes a link by "run", the other names of a group with a speaker in it that speaker's
+ * Also called. A group that is one link already stays as it is; one holding names you kept apart,
+ * or two speakers, isn't linked. The check is the run's (`at`, `model`, `recipe`). → the links made.
+ */
+export function linkFoundPeople(h, projectId, groups, { at, model = null, recipe = null }) {
+  return h.tx(() => {
+    const project = projectById(h, projectId);
+    if (project === null) return 0;
+    let state = projectPeople(project);
+    let made = 0;
+    for (const g of groups) {
+      if (state.links.some((l) => g.names.every((n) => l.names.some((m) => names.norm(m) === names.norm(n))))) continue;
+      let r;
+      try {
+        r = samePeople.link(state, g.names, _castOf(h, projectId), { by: "run", name: g.name, strict: true });
+      } catch (e) {
+        if (e instanceof HttpError && e.statusCode === 409) continue; // two speakers: not joined here
+        throw e;
+      }
+      if (r.skipped) continue;
+      if (r.aliases && r.speaker) _saveAliases(h, r.speaker, r.aliases);
+      state = r.state;
+      made += 1;
+    }
+    _savePeople(h, projectId, { ...state, check: { status: "done", at, by: "run", model, recipe, error: null } });
+    return made;
+  });
 }
 
 // ── Lines with no single speaker (the one-click plan's answer 7, slice 4) ──
@@ -2159,6 +2344,64 @@ export function router() {
     return c.json(construct(IgnoreDiscoveredResponse, { ignored: current }));
   });
 
+  // ── Discover's same people: the AI suggests, you link (decided 2026-10-16) ──
+  // Find writes suggestions only; Link, Unlink, Not the same (keep-apart) and Undo (undo-apart)
+  // are yours. Each answers the book's whole state (`discover_people`, also on the project).
+
+  /** What Find same people would ask now — the model Discover names while it asks. */
+  app.get("/v1/projects/:project_id/discover/find", (c) => {
+    const h = session.getDb();
+    const projectId = c.req.param("project_id");
+    if (projectById(h, projectId) === null) throw notFound(`project ${projectId}`);
+    const route = run.featureRoute(mergeNames.FEATURE, mergeNames.mergeAction());
+    return c.json(construct(FindSamePeopleRoute, { configured: route.configured, model: route.model, recipe: mergeNames.mergeRecipe(), detail: route.detail }));
+  });
+
+  /** Find same people: asks the AI which of the names the scans found are one person, and keeps
+   * its answer as Same person? suggestions — nothing in the list of names changes. Cancel means
+   * cancel: a client that leaves stops the model's call, and nothing is written (2026-10-21). */
+  app.post("/v1/projects/:project_id/discover/find", async (c) => {
+    const h = session.getDb();
+    const signal = c.req.raw.signal;
+    try {
+      return c.json(construct(FindSamePeopleResponse, await findSamePeople(h, c.req.param("project_id"), { signal })));
+    } catch (e) {
+      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
+      throw e;
+    }
+  });
+
+  /** Link names as one person (a suggestion's Link, Link all, Link selected as one person). One of
+   * them already a speaker: the others become their Also called. Two speakers: 409. */
+  app.post("/v1/projects/:project_id/discover/link", input({ body: LinkNamesRequest }), (c) => {
+    const names_ = c.req.valid("json").names;
+    const out = answerPeople(session.getDb(), c.req.param("project_id"), (state, cast) => samePeople.link(state, names_, cast));
+    return c.json(construct(DiscoverPeopleResponse, out));
+  });
+
+  /** Unlink a name from the person it was linked to — out of their Also called too when it is one —
+   * and keep the pair apart. Lines already given stay where Script put them. */
+  app.post("/v1/projects/:project_id/discover/unlink", input({ body: UnlinkNameRequest }), (c) => {
+    const { name } = c.req.valid("json");
+    const out = answerPeople(session.getDb(), c.req.param("project_id"), (state, cast) => samePeople.unlink(state, name, cast));
+    return c.json(construct(DiscoverPeopleResponse, out));
+  });
+
+  /** Not the same: a suggestion's names kept apart — Find won't suggest them together again. */
+  app.post("/v1/projects/:project_id/discover/keep-apart", input({ body: LinkNamesRequest }), (c) => {
+    const names_ = c.req.valid("json").names;
+    const out = answerPeople(session.getDb(), c.req.param("project_id"), (state) => samePeople.notSame(state, names_));
+    return c.json(construct(DiscoverPeopleResponse, out));
+  });
+
+  /** Undo on Kept apart: an unlinked pair is linked again; a suggestion shows under Same person?
+   * again. */
+  app.post("/v1/projects/:project_id/discover/undo-apart", input({ body: LinkNamesRequest }), (c) => {
+    const names_ = c.req.valid("json").names;
+    const out = answerPeople(session.getDb(), c.req.param("project_id"), (state, cast) => samePeople.undoApart(state, names_, cast));
+    return c.json(construct(DiscoverPeopleResponse, out));
+  });
+
   /** No scene id — the Lab's discovery door (parity batch 2026-08-06), beside
    * /v1/extraction/analyze-text. Same identify pipeline; candidates are a review list. */
   app.post("/v1/extraction/discover-speakers", input({ body: DiscoverTextRequest }), async (c) => {
@@ -2211,24 +2454,6 @@ export function router() {
     if (projectById(h, projectId) === null) throw notFound(`project ${projectId}`);
     const added = h.tx(() => promoteSpeakers(h, projectId, c.req.valid("json").candidates));
     return c.json(construct(PromoteSpeakersResponse, added));
-  });
-
-  /**
-   * The names every chapter's scan found, as one list of people (the one-click plan's step 2,
-   * slice 4): the spellings of one person merged ("Queen of Hearts" / "the Queen"), the people
-   * Discover counted no lines for left out. Writes nothing — promote adds `people`, which it
-   * takes as they come. Run once every chapter is scanned.
-   */
-  app.post("/v1/projects/:project_id/speakers/merge", async (c) => {
-    const h = session.getDb();
-    // It writes nothing, so a client that leaves stops the model's call (2026-10-21).
-    const signal = c.req.raw.signal;
-    try {
-      return c.json(construct(MergeSpeakersResponse, await mergeFoundNames(h, c.req.param("project_id"), { signal })));
-    } catch (e) {
-      if (signal.aborted && isAbortError(e)) return c.body(null, 499); // the client is gone
-      throw e;
-    }
   });
 
   /**

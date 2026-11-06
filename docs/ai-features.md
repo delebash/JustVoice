@@ -14,7 +14,7 @@ is the **AI Settings** page in the sidebar.
 | **Speaker attribution** | Extracts who says what and what they say; its Find new speakers row lists the people a chapter names | Studio Script tab → Analyze · Studio Discover → Scan |
 | **Speaker attribution · second look** | Asks once more about a spoken line Analyze left with no speaker, with the chapters either side; what it finds is marked to check | Runs inside Analyze, only on lines left blank — [Studio → The second look](studio.md#the-second-look) |
 | **Direction** | Writes how each spoken line should be said — an emotion and a few words — only where the book gives a reason, onto the line's Style Instructions and Emotion | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook); the API runs it on one chapter too — [Direction](#direction--two-recipes-and-the-carry) |
-| **Merge found names** | Decides which names Discover found in different chapters are one person — *the Queen* and *Queen of Hearts* — and leaves out the people it counted no lines for | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook), between Discover and adding the speakers — [below](#the-one-click-audiobooks-speaker-steps) |
+| **Find same people** | Says which names Discover found are one person — *the Queen* and *Queen of Hearts*; on Discover its answer is a list you review and link, and the one-click run links them itself | Studio Discover → Find same people ([Same people](studio.md#same-people-the-ai-suggests-you-link)) · a step of [Studio → Make the audiobook](studio.md#make-the-audiobook), between Discover and adding the speakers — [below](#the-one-click-audiobooks-speaker-steps) |
 | **Speaker attribution · lines with no single speaker** | Gives a spoken line Analyze left with no speaker — often one several people say at once — to one of them, or to the narrator, and marks it to check | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook), after Analyze — [below](#the-one-click-audiobooks-speaker-steps) |
 | **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
 | **Voices from the book** | Describes the voice each main speaker should have from how the book shows them, and the narrator's from the book's genre and tone — the one-click audiobook's voices step | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook); three routes too, one per step — [Voices from the book](#voices-from-the-book) |
@@ -39,7 +39,7 @@ machine (the built-in engine, Ollama, LM Studio) is Local and a cloud account
 (Claude, GPT, Gemini …) is Frontier. Change it on a feature's chip, beside
 **Thinking** (since 2026-10-16). Today the recipe picks Speaker attribution's
 route ([Auto](#speaker-attribution--two-routes-and-the-auto-row), below), which of Direction's two
-cards runs ([Direction](#direction--two-recipes-and-the-carry)), which of **Merge found names**'
+cards runs ([Direction](#direction--two-recipes-and-the-carry)), which of **Find same people**'
 two cards runs ([the one-click audiobook's speaker steps](#the-one-click-audiobooks-speaker-steps))
 and which of [Voices from the book](#voices-from-the-book)'s rows run. Before
 [Make the audiobook](studio.md#make-the-audiobook) starts, its card names each step's
@@ -307,18 +307,29 @@ features of their own: the run calls them, each is a route you can call too, and
 card in **AI Settings → Routing by feature**, with its prompt, preset and Lab, like every
 feature.
 
-**Merge found names** (`POST /v1/projects/{id}/speakers/merge`) — Discover reads a book one
-chapter at a time and writes a person the way that chapter does: in *Alice*, the Queen is *Queen
-of Hearts* in chapter VII and *the Queen* in VIII. The merge reads every chapter's saved scan and
-returns one list of people: each with their other names, Discover's line count summed over the
-chapters, who they seem to be, and the quote that first names them. It writes nothing — Discover's
-**＋ Add** route (`POST /v1/projects/{id}/speakers/promote`) adds the list as it comes, the other
-names as *Also called*.
+**Find same people** (Discover's button, `POST /v1/projects/{id}/discover/find`; renamed from
+*Merge found names* 2026-11-05) — Discover reads a book one chapter at a time and writes a person
+the way that chapter does: in *Alice*, the Queen is *Queen of Hearts* in chapter VII and *the
+Queen* in VIII. Find same people reads every chapter's saved scan — each name with Discover's
+line counts, who they seem to be and the quote that names them, and the book's speakers' names —
+and says which names are one person. On Discover its answer is kept as **Same person?**
+suggestions to review, and nothing else changes: you **Link** them, or say **Not the same**
+([Studio → Same people](studio.md#same-people-the-ai-suggests-you-link)). The run calls the same
+step and links each group itself, the person going by the name the AI chose, then adds them as
+Discover's **＋ Add** does, the other names as *Also called*.
 
-- A person every scan counted **0 lines** for — named, never heard speaking (Time, Elsie, the
-  Duchess) — is left out, and listed as left out. A scan that gave no number keeps the person in.
-- A name on the book's Discover **Ignore** list stays out. A name that is already a speaker of
-  the book is listed as one, not added again.
+- Your answers come first: a group holding two names you kept apart (Not the same, or Unlink)
+  isn't suggested or linked; names you linked are one person.
+- A name on the book's Discover **Ignore** list stays out. A group that is already one speaker —
+  or two speakers — isn't suggested; a group with one speaker in it links to that speaker, the
+  others becoming their *Also called*.
+- When the run adds the speakers, a person every scan counted **0 lines** for — named, never
+  heard speaking (Time, Elsie, the Duchess) — is left out. A scan that gave no number keeps the
+  person in.
+- The routes beside it: `GET …/discover/find` (the model it would ask), `POST …/discover/link`
+  `{names}`, `…/discover/unlink` `{name}`, `…/discover/keep-apart` `{names}` (Not the same) and
+  `…/discover/undo-apart` `{names}`; each answers the book's `discover_people` — its suggestions,
+  links, pairs kept apart and last check — which the project carries too.
 - Its two cards are its two **Recipes** ([How routing works](#how-routing-works)):
   - **Local** — names that contain one another, a leading *the* or *a* aside (*the Queen* /
     *Queen of Hearts*, *Hare* / *the March Hare*), are grouped in code, and one short call says

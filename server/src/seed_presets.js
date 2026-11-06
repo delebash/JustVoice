@@ -261,7 +261,7 @@ export const DEFAULT_FEATURE_PRESETS = {
   // recipe's "thinking on".
   "direction.local": "p_extract_reasoned",
   "direction.frontier": "p_extract_reasoned",
-  // Merge found names (the one-click plan's slice 4) — a routed card per recipe. Local asks which
+  // Find same people (the one-click plan's slice 4) — a routed card per recipe. Local asks which
   // names in a group are one person: deterministic, like the second look. Frontier runs with
   // thinking on, the frontier recipe's (plan §3); its preset's recipe picks which card runs.
   "speaker_merge.local": "p_classify",
