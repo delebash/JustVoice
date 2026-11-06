@@ -74,5 +74,8 @@
     "better-sqlite3": true,
     "esbuild": true,
     "@parcel/watcher": true
+  },
+  "overrides": {
+    "sass-embedded": "1.107.1"
   }
 }
