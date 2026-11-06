@@ -614,8 +614,12 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   Kitten TTS 2 keeps its `dignome/kitten_tts2` downloads), Irodori v4.1 Small MeanFlow ×2, VoxCPM2
   VocalRender Pro. (was: `f861648c` — until JustVoice `ea2f01fc`'s follow-up, 2026-10-29.) — *git +
   HF API + the downloaded manifests + tests, 2026-10-29*.
-- **`MODEL_REVISION` `fd2fe4c3` (2026-11-04), moved 2026-11-06 for the release** (the close-out's B10, with
-  fork `281de44a`): the catalog rebuilt there — 140 families (58 speech), 451 packages, 373 offered by
+- **The model revision `fd2fe4c3` (2026-11-04), tried 2026-11-06 and put back the same day** (the close-out's
+  B10, with fork `281de44a`; the pin stays `661a224e`). The move offers packages JustVoice has never curated, and
+  14 server tests fail with it: Kitten TTS 2's `20261021` package beside its first (its 47 voice ids then
+  appear twice — `kitten_tts2_Bella` is both), Pocket TTS Small and VoxCPM2 VocalRender Pro with no licence
+  reading of ours, QwenCleo-ASR's package changed, and the tests that pin `661a224e`'s facts (Phonon-2's
+  family, Plapre and Whistle). What was measured there: the catalog rebuilt — 140 families (58 speech), 451 packages, 373 offered by
   audio.cpp's web UI, 13 package files not in their pinned repo, **0 whose embedded spec names another
   family** (Phonon-2's mismatch at `661a224e` gone). Against `661a224e`: 142 files with other bytes, 27 of
   them on this PC (60.4 GB, 14 families); Pocket TTS's 99 preset voice files keep their SHA-256, and

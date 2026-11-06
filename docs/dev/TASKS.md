@@ -105,14 +105,18 @@ BUILT:  B1 da7d1b05 · B2 c8a7d653 · B7 860a18b8 · B3 abae21a1 (re-run words "
         breaking downgrade); sass-embedded pinned to 1.107.1 (`overrides`: 1.108.0's Windows package has no
         `sass.snapshot`, which its own loader needs — every Quasar build failed); Playwright's 1.65 browser.
         B6: the silence runaway is gone at fork 281de44a (RESEARCH §9; the guard stays; the FINDING closed).
-        B10: the model revision fd2fe4c3, 14 families re-tested (RESEARCH §1.4). B11: the three docs audits'
-        ~65 corrections; Settings → Mastering rebuilt on the server's real targets (it saved nothing); the
-        run card's Stop tooltip ("Stops at once …").
-OPEN:   B4 (Discover and the one-click mock beside the real pages; the character-voice card's words; the kit's
-        three folds; Storage's Change folder in the installed app; Settings → Mastering saving), B5, B9's majors
-        and pins with the family (Electron 45, jsdom 31, Biome, electron-builder), B10's rest (the kit's pin —
-        with the tag; the kit's 2026-10-20 changes 1, 3, 11 and the start checks are tested by the release
-        run), B11's full suites; then D1–D3 (the
+        B10: the model revision fd2fe4c3 tried, its 14 changed families re-tested, and put back (the fork item
+        above: it brings packages not curated yet; 14 server tests fail with it). B11: the three docs audits'
+        ~65 corrections; Settings → Mastering rebuilt on the server's real targets (it saved nothing — checked
+        on the app: ACX −20 → −20.5 on the server and back); the run card's Stop tooltip ("Stops at once …").
+        B4: Discover and the one-click mock beside the real pages — the differences are the data's; the
+        mock's rerun state as the real card; the character-voice card's words as decided; the kit's folds
+        (Engine binaries a list-item, ▸; the class and launch libraries open expanded, their ▸ rows shown);
+        Storage's **Change folder…** in the installed app on its default folder. B5: ● Record through Chrome's
+        fake microphone — "■ Stop · 0:09", a `mic` capture of 9 s, 19 of 19 words read back.
+OPEN:   B9's majors and pins with the family (Electron 45, jsdom 31, Biome, electron-builder), B10's rest (the
+        kit's pin — with the tag; the kit's 2026-10-20 changes 1, 3, 11 and the start checks are tested by the
+        release run), B11's e2e and smoke; then D1–D3 (the
         user's). After the release: re-add the five "later" ideas and the global hotkey and paste
         (`git show 69e00a8d:docs/dev/IDEAS.md`; the hotkey's ruling, a C++ addon: docs/plans/2026-10-05-electron-node-study.md §9).
 GO:     given 2026-11-06 ("your recs think adversierliy on it again … go").
@@ -167,9 +171,11 @@ OPEN:   whether upstream is merged into `jv` before the release — your call. T
         by itself when the revision moves. Nemotron 3.5 Transcribe (15.6–23.3 GB) was not run.
         PUSHED: `jv` at 281de44a (2026-11-05). Left for the release: the tag, the kit's pin and rows,
         the model revision (Phonon-2, PocketTTS Small, Underdog Bark 3 and the rest come with it).
-        2026-11-06 (the close-out's B10): the model revision moved to fd2fe4c3 and the catalog rebuilt at
-        281de44a — 0 files naming another family, so Phonon-2 is offered; the 14 families whose files changed
-        re-tested through the app (RESEARCH §1.4). Left for the release: the tag and the kit's pin and rows.
+        2026-11-06 (the close-out's B10): the model revision fd2fe4c3 tried — the 14 families whose files change
+        re-tested through the app, all well (RESEARCH §1.4) — and put back to 661a224e the same day: it offers
+        packages JustVoice has never curated (Kitten TTS 2's 20261021 beside its first, which doubles its voice
+        ids; Pocket TTS Small and VoxCPM2 VocalRender Pro with no licence reading; QwenCleo-ASR's package
+        changed), and 14 server tests fail with it. Whether to adopt them before the release: the user's call.
 GO:     given for the release's timing; the merge given 2026-11-05.
 
 ### The character voices: BreezeTTS 2, with its licence on the run's card (decided 2026-10-16)
