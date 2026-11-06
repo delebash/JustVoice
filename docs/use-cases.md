@@ -10,7 +10,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 1. **Import** the manuscript (JustWrite export, or any of the supported [import formats](import-and-export.md)).
 2. **Discover** — find the people the manuscript names and add them to the book as its **speakers**.
 3. **Script** — let the AI work out who speaks each line; the result saves onto the chapter. Correct any misattributions in the Script tab — every row is assignable, narration included, and your corrections feed back into subsequent re-analyses. Any line left without a speaker blocks the render rather than going missing from the audio.
-4. **Cast** — give each speaker a **persona**, a finished voice from your [Personas](personas.md) library; one persona can play several speakers. Smart-assign proposes a match for everyone; change any you disagree with.
+4. **Cast** — give each speaker a **persona**, a finished voice from your [Personas](personas.md) library; one persona can play several speakers. Smart-assign proposes a match for every speaker with no persona; change any you disagree with.
 5. **Render** — batch render every chapter. ACX [mastering.md](mastering.md) preset applies automatically.
 6. **Export** — M4B audiobook file with chapter markers, muxed server-side from the Export tab. See [Audiobook → M4B](import-and-export.md#audiobook--m4b).
 
@@ -37,16 +37,16 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 2. **Cast** — give each speaker (hosts and guests) a persona.
 3. **Timeline** *(planned, not built — episodes work through Studio today)* — arrange voiced segments on a multi-track timeline. Add SFX, music beds via drag-drop. Trim, split, version-pin per clip.
 4. **Render** — full episode mix-down. Podcast [mastering.md](mastering.md) preset (-16 LUFS).
-5. **Export** — MP3 / WAV.
+5. **Export** — M4B, or the segment WAVs (zip).
 
 **Engine pick**: Chatterbox Multilingual or Qwen3-TTS Base for the hosts' personas (clone real voices) + Kokoro for minor speakers.
 
 ## ⌨️ Dictation / agent voice
 
-**Goal**: dictate into any text field via global hotkey; or expose JustVoice as a speak tool to agents via MCP.
+**Goal**: dictate on the Captures tab with **● Record** (no global hotkey in this release); or expose JustVoice as a speak tool to agents via MCP.
 
 **Flow**:
-- See [dictation.md](dictation.md) for the 6-gate readiness checklist.
+- See [dictation.md](dictation.md) for the two readiness checks.
 - See [mcp-server.md](mcp-server.md) for connecting Claude Desktop / claude-code / Unreal.
 
 **Engine pick**: Kokoro (lowest latency, CPU-realtime).
@@ -57,7 +57,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 
 **Flow**:
 - Keep JustVoice running headless (`justvoice-server serve`).
-- MCP integrations with assistive tools, or a thin OS-level shim that pipes selected text to `/v1/render`.
+- MCP integrations with assistive tools, or a thin OS-level shim that pipes selected text to `/v1/generate`.
 
 **Engine pick**: Kokoro (faster than real time on the CPU, no GPU needed).
 

@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **Settings → Mastering changes the real targets (2026-11-06)** — pick ACX, iAudio, Podcast or YouTube
+  and change its loudness, true peak, loudness range and head and tail silence; a book on that target
+  masters to them from its next render. The page was a leftover from the preview: its fields, a Custom
+  target, a noise floor and an effects switch were never saved ([Mastering](mastering.md))
+- **The docs match the app again (2026-11-06)** — about 65 lines across the guides that described
+  screens, fields or features as they were before (the Webhooks page's Enabled switch and delivery
+  log, which the app never had; per-project effect presets; a voice's own effects chain; …) now say
+  what the app does
 - **No extra take from an old paused job (2026-11-06)** — resuming a paused new-take job (the take
   check's, or ↻ New take's) skips a line that got a newer take meanwhile, where it made one more and
   put it in use unchecked ([Make the audiobook](studio.md))

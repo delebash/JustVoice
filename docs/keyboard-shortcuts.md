@@ -51,13 +51,13 @@ See [Studio → Script](studio.md#a-chapter).
 
 See [Studio → Cast](studio.md#cast).
 
-## Engines
+## AI Settings → Speech
 
 | Keys | Action |
 |---|---|
-| Click `+ Add provider` | Register a new LLM or TTS provider inline |
+| Click `+ Add provider` | Register a new cloud speech provider inline |
 | Click Edit on a provider row | Expand the row into the edit form |
 
 ## Why the in-app cheatsheet
 
-The cheatsheet is the authoritative list — it stays in sync with the actual key handlers wired in the code. This doc reflects the cheatsheet at the time of writing. If something's bound that this doc doesn't mention, the cheatsheet is right and this doc is stale.
+The cheatsheet is partial: it lists only `?`, `Esc`, clicking a persona on Cast and `+ Add provider`. This page is the fuller list; Studio Script's keys are also behind **⌨ Shortcuts** on its chapter page.

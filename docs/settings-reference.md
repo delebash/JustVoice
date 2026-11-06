@@ -8,7 +8,7 @@ need your attention; this page is the operator config under `/v1/settings`.)
 | Section | What it holds |
 |---|---|
 | `server` | Host/port the server binds — headless, and the desktop app's own; see [Run modes](run-modes.md). |
-| `logging` | Log level + retention for the server log. |
+| `logging` | Log level + format for the server log. (It keeps 30 days of logs; that isn't a setting.) |
 | `cache` | The disk-LRU render cache limits (identical renders cost nothing twice). |
 | `limits` | Guardrails — max text length per generation and friends. |
 | `cors` | Allowed origins when serving browsers beyond localhost. Never `*` — the server refuses it: any web page you opened could then read this server. |

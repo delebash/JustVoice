@@ -14,8 +14,8 @@ you create or import one. The project's settings live there now, not here.
 The kind picker at creation drives the whole app's shape: which workflow tabs
 appear in the sidebar, the default mastering target (ACX for audiobooks,
 −16 LUFS podcast loudness for podcasts), the export surface (M4B vs per-line
-voicelines ZIP), and the terminology (chapters / quests / segments). Kinds:
-`audiobook`, `game voicelines`, `podcast`, `custom`. The underlying data model
+voicelines ZIP), and the terminology (chapters / scenes / segments). Kinds:
+**Audiobook**, **Game**, **Podcast** and **Text**. The underlying data model
 is the same for all — a project holds scenes, scenes hold blocks — so nothing is
 lost if your project outgrows its kind.
 
@@ -79,7 +79,8 @@ Deleting it touches nothing else.
   **Narrator** first among the speakers found, ticked, and Script's **Analyze**
   asks for one — or pick one on Studio's Cast step.
   **Discover** shows the speakers it finds as *In this book*; remove one there
-  (it asks first) and its row turns *New*, ready to ＋ Add back.
+  (it asks first) and its row turns *Ignored*; **Undo** shows it as new again,
+  ready to ＋ Add back.
 - **Game** — *Emberfall VO*, five lines with stable line ids.
 - **Podcast** — *Signal & Noise ep. 42*, three speakers.
 

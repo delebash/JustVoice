@@ -55,10 +55,12 @@ small models) and **Direct** (the same system prompt without the examples,
 for big models) — and the **Auto** row above them (AI Settings → Routing by
 feature) picks which one runs by size alone: Direct at and above the
 editable size line (a mixture-of-experts model counts its total size),
-Guided otherwise and when the size is unknown. Production always runs
-Auto's pick; a route card's Lab run or an API call forces its own route per
-run. Thinking is a per-feature preset setting like anywhere else — every
-preset ships with it off; turn it on on a card's preset to test it.
+Guided otherwise and when the size is unknown. Analyze runs Auto's pick
+unless you choose **Read: with examples** or **Read: rules only** on Script
+for that run; a route card's Lab run or an API call forces its own route per
+run too. Thinking is a per-feature preset setting like anywhere else — it
+ships on for **Reasoned extraction** (speaker attribution's routes, Direction,
+and Find same people's Frontier card) and off on every other preset.
 
 ## Editing or removing
 
@@ -71,7 +73,7 @@ preset ships with it off; turn it on on a card's preset to test it.
 ## Self-hosted TTS — Kokoro / Chatterbox / Dia / Qwen3-TTS
 
 
-If you're running a self-hosted TTS server (community-published OpenAI-compatible projects exist for each), add it under **Speech → Self-hosted servers** with its base URL — no key needed for local servers. The setup-hint band in the form links to each known project's canonical GitHub. JustVoice speaks the standard `POST /v1/audio/speech` shape; non-standard fields (for example Chatterbox's `exaggeration` / `cfg_weight`) ride through `params` JSON.
+If you're running a self-hosted TTS server (community-published OpenAI-compatible projects exist for each), add it under **Speech → Self-hosted servers** with its base URL — no key needed for local servers. The setup-hint band in the form links to each known project's canonical GitHub. JustVoice speaks the standard `POST /v1/audio/speech` shape — `model`, `input`, `voice`, `response_format` and `speed` — and sends nothing else, so a server's own fields (for example Chatterbox's `exaggeration` / `cfg_weight`) stay at the server's defaults.
 
 ## What about feature routing?
 

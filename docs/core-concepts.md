@@ -12,7 +12,7 @@ JustVoice's data model is generic on purpose. The five use cases share one tree 
 | Chapter | Scene / Quest | Segment |
 | Paragraph | Voiceline | Block |
 
-The terminology helper (`useCopy()`) renders the right word automatically based on the use case you picked at first launch.
+The terminology helper (`useCopy()`) renders the right word automatically based on the open project's kind — or, with none open, the use case you picked at first launch.
 
 ## Project
 
@@ -47,10 +47,10 @@ These compose. A Block's speaker is played by a persona; the persona has a voice
 Every list in the app is the same grid, so what you learn on one page holds on
 all of them:
 
-- **Any column heading sorts.** Click once for ascending, again for descending.
-  Lists that group their rows — game lines under their scene, adapters under
-  built-in and trained — sort *within* the whole list, so a sort still finds
-  what you are looking for.
+- **Many column headings sort** — not every list's. Click once for ascending,
+  again for descending. Lists that group their rows — game lines under their
+  scene — sort *within* the whole list, so a sort still finds what you are
+  looking for.
 - **An empty list says why it is empty** in its own body, in the words that fit
   that screen — "No webhooks. Add one below." — rather than showing an empty
   frame under a header.

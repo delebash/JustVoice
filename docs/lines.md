@@ -10,8 +10,9 @@ change of words counted.
 
 ## The id is sacred
 
-Your line ids come from your import (`source_ref` in the CSV, or generated
-`sNN_lNNN`) and never change. That's what makes the writers'-room loop work:
+Your line ids come from your import (the CSV's `id`, `line_id` or
+`dialogue_id` column, else `row:N` for its row; a line with no id at all gets a
+generated `sNN_lNNN`) and never change. That's what makes the writers'-room loop work:
 
 1. The writers send a new sheet. **Re-import it** — lines merge **by id**.
 2. Only lines whose text actually changed go `stale` (a re-import changes only

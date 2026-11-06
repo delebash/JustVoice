@@ -131,7 +131,7 @@ onMounted(refresh);
         messages, voice notifications, batch-generate while you're away.
       </p>
       <pre class="webhooks-view__tools jv-mono">tools exposed
-justvoice.speak           {text, voice|persona, channel}
+justvoice.speak           {text, voice|persona}
 justvoice.list_voices     → library
 justvoice.list_personas   → personas
 justvoice.transcribe      {audio} → text</pre>

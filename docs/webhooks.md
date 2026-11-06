@@ -9,7 +9,6 @@ Webhooks tab → "+ Add webhook":
 1. **URL** — the endpoint JustVoice POSTs to.
 2. **Events** — checkboxes for the events you want delivered.
 3. **Secret** — auto-generated 32 random bytes if blank. JustVoice shows the plaintext secret **exactly once** at creation — copy it now, it's not retrievable later. It keeps the secret itself to sign every delivery (as any webhook sender must); a webhook made before 2026-11-05 kept only a fingerprint of it and signs with an empty key — delete it and add it again.
-4. **Enabled** — toggle delivery without deleting the row.
 
 ## Event catalog
 
@@ -25,7 +24,7 @@ these four fired — the app never sent them; only the **Test** button's event d
 
 ## HMAC signing
 
-Every POST carries an `X-JustVoice-Signature` header: the hex of `HMAC-SHA256(secret, body)` (no prefix). Receivers verify by recomputing and comparing in constant time. JustVoice also sends `X-JustVoice-Event` (event name) and `X-JustVoice-Delivery` (per-delivery UUID).
+Every POST carries an `X-JustVoice-Signature` header: the hex of `HMAC-SHA256(secret, body)` (no prefix). Receivers verify by recomputing and comparing in constant time. JustVoice also sends `X-JustVoice-Event` (event name).
 
 Example receiver (Node):
 
@@ -49,16 +48,12 @@ At-least-once delivery. If the receiver returns non-2xx or times out (15 s; 10 s
 
 - 1s, 5s, 30s, 5min (4 retries total → 5 attempts including the initial).
 
-After exhaustion the delivery is marked **failed** + visible in the webhooks table with the last response code or error message.
+After the last attempt JustVoice stops trying. The webhooks table shows when the last delivery was (**Last delivery**), not its response code or error.
 
 ## Test before shipping
 
-Each webhook row has a **Test** button that fires a synthetic event with payload `{ test: true, timestamp: <iso> }`. Useful to verify URL + signature + receiver are wired up before depending on a real render.
+Each webhook row has a **Test** button that sends a signed test body, `{"event": "webhook.test", "ping": <unix seconds>}`, once — it isn't retried. Useful to verify URL + signature + receiver are wired up before depending on a real render.
 
-## Bulk delivery view
+## Deleting
 
-Settings → Webhooks → Recent deliveries shows the last 100 attempts across all subscriptions with status code + latency. Filter by webhook URL or status to find failures fast.
-
-## Disabling vs deleting
-
-Toggle a webhook to **Enabled: off** to stop deliveries without losing the secret + URL. Useful while debugging the receiver. Delete the webhook only when you're done with it permanently — there's no undo.
+A webhook can't be switched off: to stop its deliveries, **Delete** it, and add it again when the receiver is ready. There's no undo.

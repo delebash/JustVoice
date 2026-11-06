@@ -312,7 +312,7 @@ It never invents a label from how someone talks or is addressed ("child", "the
 elder"), so a chapter whose dialogue is never tied to a name proposes no one.
 
 The instructions Discover gives the model are the **Find new speakers** feature
-in AI Settings → Features. Edit and save them there and the next scan uses your
+in AI Settings → Routing by feature. Edit and save them there and the next scan uses your
 text; **Reset** puts the shipped text back.
 
 **The book's speakers** lists them — the ones Script can choose
@@ -1086,7 +1086,7 @@ narrator ([Personas → The Narrator](personas.md#the-narrator)).
 speaker of the book, the narrator included, and how many still need a persona.
 Click **No persona** to see only those (the narrator's card too, only when it
 has none); **All** shows everyone again. When everyone is cast it says
-*Everyone has a persona.* The chips change only what you see — Smart-assign still reads every speaker but a narrator who already has a persona, and ＋ New persona everyone with none, the narrator included. Its head has three buttons:
+*Everyone has a persona.* The chips change only what you see — Smart-assign and ＋ New persona still read everyone with no persona, the narrator included. Its head has three buttons:
 
 - **＋ Add** asks for a name and adds a speaker to the book — for someone
   [Discover](#discover) missed. Analyze can only give a line to a speaker the
@@ -1721,7 +1721,9 @@ A chapter render gives you a **WAV** — the mastering *processing* (loudness,
 true-peak ceiling, head/tail silence) is applied, but the encoding is not.
 That is deliberate: you are auditioning here, and the .m4b export encodes
 once, at the end, instead of stacking two lossy passes. The encoded
-deliverable (an MP3 for every target, YouTube's too) comes from Export.
+deliverable is Export's **M4B**; its chapter WAVs (zip) are not encoded. An MP3
+of a target comes only from the API: `POST /v1/render_chapter` sent `lines` and
+a `master`.
 
 Mastering needs **ffmpeg**. Without it the pill says so and chapters render
 raw rather than failing — install ffmpeg and restart the server to get the

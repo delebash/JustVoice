@@ -18,8 +18,8 @@ is the **AI Settings** page in the sidebar.
 | **Speaker attribution · lines with no single speaker** | Gives a spoken line Analyze left with no speaker — often one several people say at once — to one of them, or to the narrator, and marks it to check | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook), after Analyze — [below](#the-one-click-audiobooks-speaker-steps) |
 | **Smart-assign** | Matches each speaker in a book with no persona yet to one | Studio Cast tab → Smart-assign |
 | **Voices from the book** | Describes the voice each main speaker should have from how the book shows them, and the narrator's from the book's genre and tone — the one-click audiobook's voices step | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook); three routes too, one per step — [Voices from the book](#voices-from-the-book) |
-| **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
-| **Dictation cleanup** | Raw speech → clean text before paste | Captures — runs after a dictation when auto-refine is on |
+| **Show notes** | Chapter summaries for podcast descriptions | Studio Export tab → 📝 Show notes (podcast projects) |
+| **Dictation cleanup** | Raw speech → clean text | Captures — runs after a dictation when auto-refine is on |
 | **Transcription** | Turns speech into text — your dictation, the read-back that checks each take, and agents' transcriptions | Captures, a capture's transcript, Render's take check, chapter captions, `/v1/transcribe` and the MCP tool — [below](#transcription) |
 | **Voice gender guess** | Labels fetched voices the built-in dictionary doesn't know | Voices → ✨ Guess unknown genders (only when you click) |
 
@@ -45,8 +45,10 @@ and which of [Voices from the book](#voices-from-the-book)'s rows run. Before
 [Make the audiobook](studio.md#make-the-audiobook) starts, its card names each step's
 model and recipe, and asks once before it sends the book to a cloud model.
 
-Until a model is picked, features answer with a "run the LLM engine setup"
-message — the one-click wizard on the AI Settings page installs the built-in
+Until a model is picked, features answer 501 with "No model is set. Set up a
+model on the AI page — run Quick Setup to pick one for this machine, or choose
+a model in the catalog (Set as default)." Quick Setup is **Run LLM engine
+setup**, the one-click wizard on the AI Settings page: it installs the built-in
 engine, downloads a model sized to your PC, and sets it as the default.
 
 ## Picking models: fit, speed, and your override
@@ -283,14 +285,16 @@ in — the same fall-through the run itself uses. So on a fresh setup where
 the presets were never hand-filled, Auto still judges your real default
 instead of giving up.
 
-Production always runs Auto's pick — there is no stored force. After every
-Analyze, Studio's meta line reports the route that ran and whether it was
-Auto's pick or forced per run ("Route: Direct — Auto's pick"). A route
+Analyze runs Auto's pick unless you choose otherwise for that run — there is
+no stored force. Script's **Read:** list picks it: **Read: chosen for your
+model** (Auto's pick), **Read: with examples** (Guided) or **Read: rules only**
+(Direct). After every Analyze, the chapter's page says which ran and why ("Just
+read **rules only** (chosen for your model)", or "(you chose it)"). A route
 card's Lab run or an API call forces its own route for that run only — that
 always wins. Thinking is a per-preset setting like on any feature — both
-routes ship with it off; to try attribution with thinking, turn **think**
-on in a card's Lab column, compare, and **Use in production** if it earns
-it.
+routes ship on **Reasoned extraction**, with it on; to try attribution without
+thinking, turn **think** off in a card's Lab column, compare, and **Use in
+production** if it earns it.
 
 **Long chapters.** Two settings shape how Script splits a chapter too long
 for the model. They have no control in the app yet; they are set through
@@ -588,9 +592,10 @@ prompt gets a direct answer.
 control — Off, or an effort level from Low to Max — is the whole story:
 what you set there is exactly what every run of that feature sends, no
 exceptions, nothing second-guessing it. **Out of the box every preset
-ships with thinking off except one: speaker attribution** (Studio ·
-Script's Analyze), which runs on its own preset, **Reasoned extraction**,
-with thinking on. That one was measured: on two sample novels the built-in
+ships with thinking off except one, Reasoned extraction**, with thinking on.
+Speaker attribution (Studio · Script's Analyze) runs on it, and so do
+Direction's two cards and Find same people's Frontier card. Attribution's was
+measured: on two sample novels the built-in
 Gemma got 928 of 940 lines right without thinking and 937 with it, and the
 one mistake it kept repeating went away — at about 1.7 times the time per
 chapter. Everything else — dictation cleanup, Discover's Find new speakers,
@@ -810,7 +815,7 @@ It closes on a click outside, Escape, or ✕ Close.
 
 ## Troubleshooting
 
-- **501 / "run the LLM engine setup"** — no model is set up yet. AI Settings →
+- **501 / "No model is set"** — no model is set up yet. AI Settings →
   Run LLM engine setup (or connect an online provider on the same page).
 - **A feature uses the wrong model** — check its row under Routing by feature;
   the chip shows exactly what the next run resolves to.

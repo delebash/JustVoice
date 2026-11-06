@@ -389,7 +389,7 @@ fewer. Most models have an **8-bit** row, the first and the default, and a
 **16-bit** row: the same model, a larger download that needs more memory. Some
 have more: an *original precision* row (audio.cpp's own package of the weights as
 their makers published them — Qwen3-TTS Base 1.7B and VoxCPM2 since 2026-10-16),
-a *4-bit* row (MOSS-TTSD, Breeze TTS 2, CrisperWhisper), a *32-bit* row
+a *4-bit* row (MOSS-TTSD, BreezeTTS 2, CrisperWhisper), a *32-bit* row
 (CosyVoice3), or a second package (Irodori-TTS's Anime model beside its v4 one).
 A few ship one download only, or list their original precision first; the first
 row is the engine's default until you pick another.
@@ -461,7 +461,7 @@ authors document it:
 |---|---|
 | **IndexTTS 2 / 2.5** | The line's direction in words, which its own emotion model turns into an emotion mix — the way JustVoice tested it (12 of 21 lines acted like the book). Its *emotion_alpha* setting (how strongly) applies when you set it; otherwise audio.cpp's own, full strength. In that test it never muttered or sounded contemptuous |
 | **CosyVoice3** | Only what its authors document: very happy, very sad, very angry, as loudly as possible, and in a very soft voice. Other directions are spoken plainly |
-| **Breeze TTS 2** | The direction as its instruction, with its guidance raised to 4 on a directed line unless you set it yourself |
+| **BreezeTTS 2** | The direction as its instruction, with its guidance raised to 4 on a directed line unless you set it yourself |
 | **Higgs Audio 3** | Its own emotion and style tags — happy, sad, angry, fearful, contemptuous (as disgust), whispered, shouted. It reads any other tag aloud, so nothing else is sent |
 | **Fish Audio S2 Pro** | The emotion as a tag and the direction as a short description at the start of the line |
 | **Fish Audio Drama 3** | One note in square brackets before the words, as its makers write it (*[choked up, crying quietly] I left his jacket by the door.*): the line's direction in words, else a word for its emotion (*[sad]*, *[whispering]*). Tested by JustVoice: in blind listening it was the best of the models you can sell with on loud lines, plain on most quiet ones, and a delivery note in other words than the book's cue hurt it. Its licence is *Conditional* — under USD 500,000 a year, with "Built with Fish Audio" shown ([why](#commercial-use-in-plain-words)). It loads with `npm run dev` now, and in the installed app once the next speech runtime release ships |
@@ -624,7 +624,7 @@ licence table says "No"*). JustVoice's readings that differ, and why:
 | Higgs Audio 3 | **Conditional** | Its *Creator Use Grant* lets you sell your own audiobooks, podcasts and videos if you credit "Boson AI's Higgs Audio" where listeners can see it; no revenue cap |
 | IndexTTS 2 / 2.5 | **Unclear** | Its own licence caps revenue at RMB 100 million a year (the Chinese text, which governs — the English says 1 billion), but one part it runs, MaskGCT's semantic codec, is non-commercial |
 | FireRedTTS3, FireRedAudio | **Unclear** | Apache-2.0, but their makers write that voice cloning is "solely for academic research purposes". FireRedAudio's speech recognition is outside that sentence: its recogniser reads *Yes* |
-| Fish Audio S2 Pro, Breeze TTS 2 | **Separate licence** | Their free licences grant no commercial rights, and each names the separate written licence its maker offers |
+| Fish Audio S2 Pro, BreezeTTS 2 | **Separate licence** | Their free licences grant no commercial rights, and each names the separate written licence its maker offers |
 | ZipVoice | **No** | Its makers added a non-commercial licence (CC-BY-NC) to it on 2026-10-10 |
 | F5-TTS (Habibi-TTS) | **Conditional** | Its models are licensed two ways: ALG, EGY, IRQ, MAR and MSA under Apache-2.0; Unified, SAU and UAE non-commercial (CC-BY-NC-SA-4.0) because of their training data |
 | Maya1 | **Conditional** | Its card says Apache-2.0, but it was first published as built on Meta's Llama 3.2 3B, so Meta's terms likely apply too: follow Meta's Acceptable Use Policy |
@@ -1522,7 +1522,7 @@ its upstream name.
 - **Delete really deletes.** **Delete** removes that model's files; a file
   another model still uses stays.
 
-To reclaim the whole store at once, **Settings → Storage → Disk usage → AI models
+To reclaim the whole store at once, **Settings → Storage → Disk usage → Models
 cache → Clear** deletes every downloaded model — speech and language models
 alike — in one step (each downloads again when it's needed). It unloads the
 speech models first, and refuses while a language model is loaded or a speech
@@ -1541,7 +1541,6 @@ runtime; the order is in
 
 - **A confidence score from speech recognition.** The old recogniser
   reported how sure it was of each transcript; the new one does not.
-- **Voice training** — see [Voice training](#voice-training).
 
 And three of audio.cpp's models are left off the list until they speak as listed:
 
@@ -1577,7 +1576,7 @@ the old MOSS-TTSD were already marked for removal. (audio.cpp's own MOSS-TTSD is
 
 ## Voice training
 
-Removed on 2026-10-02, to be rebuilt on the speech runtime later. Training a
+Removed on 2026-10-02. Training a
 voice (a LoRA fine-tune of Qwen3 Base) ran on PyTorch in the per-engine Python
 environments the 2026-10-01 switch retired, and the speech runtime cannot
 render a trained voice. The Voices page's LoRA tab, its Preparer and Dataset

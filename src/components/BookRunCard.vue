@@ -187,7 +187,7 @@ const numbers = computed(() => (props.run?.steps ?? [])
         </template>
         <template v-else-if="live">
           <UiButton intent="secondary" label="Stop"
-            title="Stops at the next chapter or line. What is done is kept; Resume picks up there." @click="emit('stop')" />
+            title="Stops at once — a model call in progress is cut off; a render stops at its next line. What is done is kept; Resume picks up there." @click="emit('stop')" />
           <span class="jv-hint">{{ RUNS_ON_SERVER }}</span>
         </template>
         <template v-else-if="resumable">

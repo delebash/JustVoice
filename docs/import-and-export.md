@@ -204,7 +204,7 @@ left alone); unlabeled paragraphs continue the current speaker.
 import as unattributed marker lines (`delivery.marker=true`).
 Paralinguistic tags like `[laughs]` stay in the text, and an engine that
 lists the tag performs it; every other engine has it removed before rendering,
-never read aloud (no engine on the speech runtime takes tags yet). Each label becomes one of the episode's speakers at commit.
+never read aloud (on the speech runtime, Chatterbox Turbo and Nano take tags). Each label becomes one of the episode's speakers at commit.
 
 ### <a id="import-csv_lines"></a>CSV lines (`csv_lines`)
 
@@ -339,7 +339,7 @@ it under one of them.
 Every import lands on a review page before anything is written — a dry run you
 can steer. Change the **split strategy** and the dry run re-runs so you see the
 chapter boundaries move; untick chapters you don't want; if speaker information
-turns up mid-review, a banner surfaces it. Nothing exists until **Commit** — an
+turns up mid-review, a banner surfaces it. Nothing exists until **Import N chapters ➜** — an
 import you abandon leaves no trace.
 
 ## Exporting
@@ -387,8 +387,8 @@ target per render — it is the project's, else the project kind's (see
 - **None** — raw concatenation, no mastering (game voicelines default to this)
 
 The render returns **WAV** with the processing applied; the preset's encoded
-format is what Export produces. The chapter tab's **Render → Export → WAV**
-action emits one mastered WAV per chapter.
+format is what Export produces. On Studio's Render tab, a chapter that has
+rendered gets **⬇ Download** on its row, which saves its WAV.
 
 ### Audiobook → M4B
 
@@ -439,14 +439,14 @@ export (`POST /v1/projects/{project_id}/export_voicelines`) or the ACX check
 (`GET /v1/projects/{project_id}/qc`) renders stops it, and it answers `404` (since
 2026-10-15; `500` before).
 
-1. `assemble_project()` renders every scene through the **production render path** (the same
+1. `assembleProject()` renders every scene through the **production render path** (the same
    scene resolution and `render_core` the Studio Render tab uses), so the exported book sounds
    exactly like what you previewed.
 2. One `ffmpeg` invocation muxes it: the chapter WAVs go through the concat demuxer, an
    FFMETADATA file supplies the chapter marks, and `-f ipod` writes the M4B container at
    `aac 128k`.
-3. Title comes from the project name; author is read from the project description when it starts
-   with `by `.
+3. Title comes from the project name; author from the project's **Author** field on Overview, or,
+   when that is empty, from the project description when it starts with `by `.
 4. Download → upload to ACX.
 
 **ffmpeg must be on the server's PATH.** Without it the endpoint returns `503` with
@@ -495,7 +495,7 @@ leaving out only the characters a Windows file name can't hold (*The Ninth Facet
 - **One WAV per line**, named by its stable line id and grouped into a folder per scene, so the
   archive stays diffable across re-exports — the same line keeps the same path.
 - **`manifest.json`** alongside, in the format above.
-- Every line is rendered through the **production render path** (`render_core.render_line` with
+- Every line is rendered through the **production render path** (`render_core.js` `renderLine` with
   the voice, delivery, effects and lexicon of the persona that plays the line's speaker, after
   the project's own pronunciation lexicon), so the export matches what the Studio Render tab
   produced. It is not a separate, drifting code path.
@@ -511,9 +511,8 @@ would silently mismatch every line the moment the sheet was reordered.
 ### Project export (full project archive)
 
 Studio → Overview → **📦 Export .justvoice.zip** (under *Also from here*) saves the project as one `<name>.justvoice.zip` archive — the project's name as written, leaving out only the characters a Windows file name can't hold (*The Ninth Facet.justvoice.zip*; *project.justvoice.zip* when nothing is left). Fetched straight from `GET /v1/projects/{project_id}/export`, it is `<name>-<time>.justvoice.zip`, the name by the same rule:
-- All chapters' rendered WAVs
-- All takes (not just defaults — full history for re-roll archaeology)
-- The project's full SQLite snapshot
+- Each line's take in use, as a WAV (`audio/`; only that take, not the others)
+- Each chapter and its lines as JSON (`scenes/`)
 - The book's speakers (`speakers/<id>.json` — name, Also called, Pronouns, Who they are, the
   persona that plays them, the narrator role) and the personas that play them (`personas/<id>.json`);
   the archive's `manifest.json` counts both (`speaker_count`, `persona_count`)
@@ -521,11 +520,9 @@ Studio → Overview → **📦 Export .justvoice.zip** (under *Also from here*) 
 
 Useful for archiving a finished book, or handing its audio and script to someone. **Nothing imports it back yet** — there is no "open a .justvoice.zip" in JustVoice; the archive is a backup you can unzip. Importing it is in the backlog.
 
-### Single take → ZIP (with effects history)
+### Single take
 
-Per-take ZIP export (endpoint exists but not yet exposed in the UI): bundles the take's audio + every effects-applied version + a manifest with the lineage. Useful for handing a take to a sound designer.
-
-API: per-line files ride the project voicelines export (`/v1/projects/{id}/export_voicelines`).
+There is no per-take ZIP. A take's audio is `GET /v1/generations/{id}/audio`, and its history is `GET /v1/takes/{id}/lineage` (JSON). Per-line files for a whole project ride the voicelines export (`/v1/projects/{id}/export_voicelines`).
 
 ## Voice bundles
 
@@ -542,7 +539,7 @@ doesn't have.
 ## Troubleshooting
 
 - **M4B export fails with 503** — ffmpeg is not on the server's PATH. Install it and restart the server; the same binary powers [mastering](mastering.md).
-- **M4B is missing chapter markers** — chapters come from the FFMETADATA file `mux_m4b()` writes, one entry per assembled chapter. A project whose scenes have not been rendered produces no chapters; render first, then export.
+- **M4B is missing chapter markers** — chapters come from the FFMETADATA file `muxM4b()` writes, one entry per assembled chapter. The export renders any line that has no take itself, and a chapter that can't render stops the export and says why.
 - **WAV plays at wrong speed** — Mismatched sample rate. Check the engine's output rate vs the destination application's expected rate. Every local engine — Kokoro, Qwen3-TTS, Chatterbox — renders at 24 kHz on the speech runtime; an online provider may differ.
 - **Mastered audio is silent at the start** — A bug in the mastering normalize step. Try the "iAudio" target instead of ACX; iAudio's threshold is gentler.
 - **ZIP export is huge** — Overview's project export holds each line's take in use, unmastered; `GET /v1/projects/{id}/export?include_audio=false` leaves the audio out. Mastered chapters are Export's ⬇ Chapter WAVs (zip), not the project export.

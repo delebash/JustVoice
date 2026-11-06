@@ -29,6 +29,7 @@ import { LOCALE_CODES } from "../i18n/index.js";
 import { useServerStore } from "../stores/server.js";
 import { SETTINGS_SECTION_IDS } from "../services/settingsSections.js";
 import { CAPTURE_LANGUAGES, captureLanguageWord } from "../services/captureLanguage.js";
+import { MASTER_TARGETS } from "../services/masterTargets.js";
 import CacheView from "../components/CacheSection.vue";
 import WebhooksView from "../components/WebhooksSection.vue";
 // The family Sync screen — by path, not the kit barrel (it needs `qrcode`; SyncPanel.vue's header).
@@ -441,42 +442,13 @@ async function saveCaptureLanguage(value) {
 }
 onMounted(loadCaptureLanguage);
 
-// ── Mastering settings (preview parity — preview Mastering sub-tab) ─────
-// Six knobs per preset (LUFS / peak / noise floor / head silence / tail
-// silence / apply-effects-pre-master) + 5 named presets. Active preset
-// drives the chapter render pipeline.
-const MASTER_PRESETS = [
-  { id: "acx",     label: "ACX (audiobook)",     lufs: -20.0, peak: -3.5, noise: -60, head: 0.75, tail: 3.00 },
-  { id: "inaudio", label: "iAudio",              lufs: -19.0, peak: -1.0, noise: -60, head: 0.50, tail: 2.00 },
-  { id: "podcast", label: "Podcast",             lufs: -16.0, peak: -1.0, noise: -55, head: 0.25, tail: 1.00 },
-  { id: "youtube", label: "YouTube",             lufs: -14.0, peak: -1.0, noise: -50, head: 0.10, tail: 0.50 },
-  { id: "custom",  label: "Custom",              lufs: -20.0, peak: -3.5, noise: -60, head: 0.75, tail: 3.00 },
-];
-const mastering = ref({
-  active: "acx",
-  lufs: -20.0,
-  peakDbfs: -3.5,
-  noiseFloor: -60,
-  headSilence: 0.75,
-  tailSilence: 3.00,
-  applyEffectsPreMaster: true,
-});
-function setMasterPreset(id) {
-  const p = MASTER_PRESETS.find((x) => x.id === id);
-  if (!p) return;
-  mastering.value.active = id;
-  if (id !== "custom") {
-    mastering.value.lufs = p.lufs;
-    mastering.value.peakDbfs = p.peak;
-    mastering.value.noiseFloor = p.noise;
-    mastering.value.headSilence = p.head;
-    mastering.value.tailSilence = p.tail;
-  }
-  saveDebounced();
-}
-const masterPresetLabel = computed(
-  () => MASTER_PRESETS.find((p) => p.id === mastering.value.active)?.label || "Custom"
-);
+// ── Mastering targets — what each one masters a chapter to: the server's `settings.mastering`
+// (models.js MasterPresetSettings), which every master render reads. A book picks its target on
+// its Overview (Master). Until 2026-11-06 this section was the preview's: its chips, a noise floor,
+// a Custom target and an effects switch wrote to a local copy that never reached the server.
+const MASTER_EDITABLE = MASTER_TARGETS.filter((t) => t.id !== "none");
+const masterTarget = ref("acx");
+const masterNumbers = computed(() => settings.value.mastering?.[masterTarget.value] ?? null);
 
 // ── MCP server — bindings + default voice (server is always-on at /mcp) ──
 const mcpBindings = ref([]);
@@ -1207,67 +1179,47 @@ onMounted(() => {
     </div>
 
 
-    <!-- ─── Mastering · placeholder until #88 lands. ─── -->
-    <!-- ─── Mastering (preview parity, preview lines 1599-1632) ─── -->
+    <!-- ─── Mastering — the targets' numbers (settings.mastering; 2026-11-06) ─── -->
     <div v-show="activeSub === 'mastering'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header jv-inline-row">
-          <!-- "Target", not "preset" — CONCEPTS §7: three things were
-               called preset; loudness/peak/format specs are TARGETS
-               (ACX target, podcast target). Render presets are gone
-               (2026-10-03); "preset" stays with effect chains. -->
-          <h3 class="jv-card__title jv-m0">Active target</h3>
-          <span class="jv-spacer" />
-          <UiTag intent="success">{{ masterPresetLabel }}</UiTag>
-        </div>
+        <!-- "Target", not "preset" — CONCEPTS §7: loudness/peak/format specs are TARGETS. -->
+        <div class="jv-card__header"><h3 class="jv-card__title">Mastering targets</h3></div>
         <p class="jv-muted jv-hint jv-mb14">
-          The active mastering target applies to every chapter render. Switch targets by
-          clicking a chip. Custom lets you override individual knobs
-          below.
+          What each target masters a chapter to. A book picks its target on its Overview
+          (Master); a change here applies to every book on that target from its next render.
         </p>
 
-        <!-- Preset chips -->
-        <div class="jv-chips">
+        <div class="jv-chips" role="tablist" aria-label="Target">
           <button
-            v-for="p in MASTER_PRESETS"
-            :key="p.id"
+            v-for="t in MASTER_EDITABLE"
+            :key="t.id"
+            type="button"
+            role="tab"
             class="jv-chip"
-            :class="{ 'jv-chip--active': mastering.active === p.id }"
-            @click="setMasterPreset(p.id)"
-          >{{ p.label }}</button>
+            :class="{ 'jv-chip--active': masterTarget === t.id }"
+            :aria-selected="masterTarget === t.id"
+            @click="masterTarget = t.id"
+          >{{ t.label }}</button>
         </div>
 
-        <div class="settings-grid jv-mt16">
+        <div v-if="masterNumbers" class="settings-grid jv-mt16">
           <UiField label="Loudness target (LUFS)" layout="block">
-            <UiInput v-model.number="mastering.lufs" type="number" step="0.5" width="token" />
+            <UiInput v-model.number="masterNumbers.loudness_target_lufs" type="number" step="0.5" width="token" @blur="saveDebounced" />
           </UiField>
           <UiField label="True peak ceiling (dBFS)" layout="block">
-            <UiInput v-model.number="mastering.peakDbfs" type="number" step="0.1" width="token" />
+            <UiInput v-model.number="masterNumbers.true_peak_dbfs" type="number" step="0.1" width="token" @blur="saveDebounced" />
           </UiField>
-          <UiField label="Noise floor (dBFS)" layout="block">
-            <UiInput v-model.number="mastering.noiseFloor" type="number" step="1" width="token" />
+          <UiField label="Loudness range (LU)" layout="block">
+            <UiInput v-model.number="masterNumbers.loudness_range_lu" type="number" step="0.5" width="token" @blur="saveDebounced" />
           </UiField>
           <UiField label="Head silence (s)" layout="block">
-            <UiInput v-model.number="mastering.headSilence" type="number" step="0.05" width="token" />
+            <UiInput v-model.number="masterNumbers.head_silence_secs" type="number" step="0.05" width="token" @blur="saveDebounced" />
           </UiField>
           <UiField label="Tail silence (s)" layout="block">
-            <UiInput v-model.number="mastering.tailSilence" type="number" step="0.25" width="token" />
+            <UiInput v-model.number="masterNumbers.tail_silence_secs" type="number" step="0.25" width="token" @blur="saveDebounced" />
           </UiField>
         </div>
-
-        <div class="setting-row jv-mt14">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Apply effects pre-master</div>
-              <div class="setting-row__desc">
-                Apply the profile's effects chain (reverb, EQ, compressor) BEFORE the mastering
-                pass. Recommended ON — mastering then normalizes the effects-shaped signal.
-                OFF skips effects entirely for this render.
-              </div>
-            </div>
-            <UiToggle v-model="mastering.applyEffectsPreMaster" aria-label="Apply effects pre-master" />
-          </div>
-        </div>
+        <p v-else class="jv-hint jv-mt16">The server's mastering settings haven't loaded.</p>
       </div>
     </div>
 
@@ -1327,7 +1279,7 @@ onMounted(() => {
         </div>
         <p class="jv-muted jv-note-xs jv-mt8">
           Captures live in the <code class="jv-mono">captures</code> folder of your data folder (Settings → Storage). See the
-          <a href="#captures">Captures tab</a> for the live recording list + 6-gate readiness checklist.
+          <a href="#captures">Captures tab</a> for the live recording list + its two readiness checks (the recogniser and the cleanup model).
         </p>
       </div>
     </div>

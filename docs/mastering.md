@@ -86,9 +86,14 @@ is the opposite and deliberately so: it stops on the first chapter that isn't
 ready, because an audiobook quietly missing lines is worse than one that
 refused to build.
 
-## Custom presets
+## Changing a target's numbers
 
-Build your own under Settings → Mastering → Custom. Knobs: target LUFS, true peak, noise floor, head silence, tail silence, normalization mode (peak / LUFS / hybrid). Saved presets appear in every project's preset picker.
+**Settings → Mastering** shows the four targets — **ACX**, **iAudio**, **Podcast**,
+**YouTube**. Pick one to change what it masters to: **Loudness target (LUFS)**,
+**True peak ceiling (dBFS)**, **Loudness range (LU)**, **Head silence (s)** and
+**Tail silence (s)**. A change is saved when you leave the field, and applies to
+every book on that target from its next render. There is no custom target: a
+book picks one of the four (or none) on its Overview, under **Master**.
 
 ## What it doesn't do
 

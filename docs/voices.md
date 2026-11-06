@@ -1,8 +1,8 @@
 # Voices
 
-A **voice** is what an engine speaks with. Every voice has a type, an engine
-it belongs to, gender / age / accent / tone descriptors, an optional effects
-chain, and an audio-output-channel routing.
+A **voice** is what an engine speaks with. Every voice has a type, the model
+it belongs to, a language and a gender, and — by its type — a clip, a
+description or a blend recipe.
 
 A voice belongs to the **model** that made it and cannot move to another one.
 That is not a limitation we chose: a voice is coordinates inside one model's
@@ -81,9 +81,10 @@ No voice type gives you a specific person's voice *and* line-by-line written
 direction. Voice training (a LoRA fine-tune) was the way to get both; it was
 removed on 2026-10-02.
 
-Chatterbox takes no written direction at any time; it steers through its
-**Exaggeration** and **CFG weight** controls instead. No engine accepts
-bracketed `[tag]` markup today — type one and it is removed before the model
+Chatterbox takes no written direction at any time: Multilingual steers through
+its **Exaggeration** and **CFG weight** controls, and Turbo and Nano through
+their inline tags (`[laugh]`, `[whispering]` …). Only a tag model reads
+bracketed `[tag]` markup — on any other model it is removed before the model
 sees it, rather than read aloud.
 
 ### Finding a voice in the library
@@ -96,10 +97,10 @@ takes in American and British voices alike, *Chinese* — never a code; the
 
 Each filter lists only what the others leave, with counts that match the list,
 so no choice empties it by surprise; a choice that nothing fits any more stays
-in its list with **(0)**, so you can see it and change it (since 2026-10-05). Under **Written direction**, for example, Engine
-offers only the engines whose voices take it, and the type chips count only
-those voices. An engine you chose earlier that has no voices now comes back
-as *engine (0)* instead of an empty list.
+in its list with **(0)**, so you can see it and change it (since 2026-10-05). Under **Written direction**, for example, the
+Model filter offers only the models whose voices take it, and the type chips count only
+those voices. A model you chose earlier that has no voices now comes back
+as *model (0)* instead of an empty list.
 
 In a phone-width window the filters fold behind one **Filters** button, so the
 list keeps the room; press it to show them, press it again to hide them. While
@@ -110,7 +111,7 @@ never looks like the whole library (since 2026-10-16).
 |---|---|
 | Name | ▶ plays the voice saying the test line, then the voice's name |
 | Gender | **F**, **M**, **N** or **?** — click it to set your own |
-| Type | preset, cloned, designed, imported or blended |
+| Type | Built-in, Cloned, Designed or Blended |
 | Model | The model that speaks it — *Kokoro*, *Qwen3-TTS CustomVoice*, *Chatterbox Multilingual* — with **LOCAL**, **ONLINE · METERED** or **needs the speech runtime** |
 | Voice's language | The voice's own language. **+9** beside it means its model can also speak it in nine more; hover for the list. A persona built on it can speak any of them ([Personas → Voice](personas.md#voice)) |
 | Can be directed | **✓ written direction**, **✓ 19 tags**, **sliders only** or **Can't be directed yet** — what a persona on this voice can be told (the same words as the Personas page) |
@@ -222,7 +223,7 @@ cross-engine knobs and the engine-private ones alike.
 Common knobs (Chatterbox Multilingual), with the defaults JustVoice actually
 sends:
 
-- `exaggeration` — 0.25–2.0, default **0.5**. Below 0.4 reads flat; above 1.0 is dramatic.
+- `exaggeration` — 0–2.0, default **0.5**. Below 0.4 reads flat; above 1.0 is dramatic.
 - `cfg_weight` — 0.0–1.0, default **0.5**. Lower loosens pacing, higher holds to the text. Set it to 0 when speaking a language other than the reference clip's.
 - `temperature` — default **0.8**. Lower is consistent, higher gives richer prosody.
 
@@ -233,4 +234,5 @@ See [engines.md](engines.md) for which params each engine supports.
 
 ## Effects
 
-Each voice can carry a default **effects chain** (pedalboard — see [effects.md](effects.md)). It rides along on every render through this voice.
+A voice carries no effects. The **effects chain** belongs to the persona that speaks with it
+([effects.md](effects.md)), and rides along on every line that persona renders.

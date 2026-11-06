@@ -216,7 +216,7 @@ out an IPA-only entry when the voice's model can't take IPA.
 
 ## Import + export
 
-Lexicons round-trip as `.justlex.json` files. Import a JustWrite character lexicon, an Audacity word-list, or a CSV via the lexicon editor's import button.
+Lexicons round-trip as `.justlex.json` files, the only format they import. **⬆ Export** in the editor saves one; **⬇ Import .justlex.json** above the list opens one as a new lexicon, and **⬇ Merge file** in the editor adds a file's entries to the one open.
 
 ## Pronunciation engines + lexicons
 

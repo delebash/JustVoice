@@ -3,7 +3,7 @@
 The cross-cutting problems. Per-feature pages keep their own troubleshooting
 tails for anything specific to that surface.
 
-**An AI feature answers 501 "LLM not configured".** The LLM features (speaker
+**An AI feature answers 501 "No model is set".** The LLM features (speaker
 attribution, smart assign, show notes, …) need a provider — set one up under
 AI Settings (the sidebar page). TTS itself never needs an LLM.
 
@@ -155,9 +155,11 @@ A **404** means the client's session is gone (the server restarted) — it
 should start a new one; most clients do that on their own. See
 [MCP server](mcp-server.md).
 
-**Dictation won't start.** The Captures tab shows six readiness gates
-(microphone permission, engine loaded, hotkey registered, …) — the failing one
-is named. Recordings under half a second are discarded by design.
+**Dictation won't start.** When a check fails, the Captures tab shows a
+**Dictation readiness** banner with two checks — the speech recogniser and the
+cleanup model — and names the one that isn't ready. A refused or missing
+microphone says *Microphone unavailable* when you press **● Record**. See
+[Dictation](dictation.md#before-the-first-dictation).
 
 **A render sounds different from last week.** Check the persona that plays
 the speaker (an edit to its pace, pitch, gain or effects changes every line it

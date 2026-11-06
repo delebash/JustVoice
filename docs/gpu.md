@@ -293,4 +293,4 @@ budget do the freeing.
 
 ## What's detected — under the hood
 
-Settings → GPU calls `/v1/system`, which returns the runtimes the machine reports and the `gpus` list — the same data you'd get from `nvidia-smi` (or the platform's equivalent). The speech runtime's own state is `GET /v1/ai/runtimes/audiocpp/engine/status`: the build pinned and installed, whether a newer tested build is offered (`updateTo`), its settings and how the tab shows each on this machine (`settingsUi` — the builds this machine can run, its cards, its physical cores), its add-ons, and what each kind holds (`loaded`).
+Settings → GPU calls `/v1/system/info`, which returns the runtimes the machine reports and the `gpus` list — the same data you'd get from `nvidia-smi` (or the platform's equivalent). The speech runtime's own state is `GET /v1/ai/runtimes/audiocpp/engine/status`: the build pinned and installed, whether a newer tested build is offered (`updateTo`), its settings and how the tab shows each on this machine (`settingsUi` — the builds this machine can run, its cards, its physical cores), its add-ons, and what each kind holds (`loaded`).

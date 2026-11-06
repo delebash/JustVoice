@@ -1,6 +1,6 @@
 # Effects chain
 
-JustVoice has an effects chain: 10 effect types, 4 built-in presets, custom presets per project.
+JustVoice has an effects chain: 10 effect types, 4 built-in presets, and your own presets in one library.
 
 ## Effect types
 
@@ -9,11 +9,11 @@ JustVoice has an effects chain: 10 effect types, 4 built-in presets, custom pres
 | **Pitch shift** | ± 12 semitones. Subtle (1-2 st) to tell two personas apart; extreme (±6+) for monsters / kids / etc. |
 | **High-pass filter** | Cut low frequencies. 180 Hz removes rumble; 80 Hz removes only sub-bass. |
 | **Low-pass filter** | Cut high frequencies. 4500 Hz for radio voice; 8000 Hz for telephone. |
-| **Reverb** | Adds space. Room / hall / chamber / plate variants. Wet/dry mix knob. |
+| **Reverb** | Adds space. **Room size**, **Damping**, **Wet**, **Dry** and **Width**. |
 | **Delay** | Echo. Adjustable delay time + feedback. |
 | **Chorus** | Doubling effect. Two slightly-detuned copies layered for thickness. **Rate (Hz)** is how many times a second the copy wavers, **Depth** how far (0–1), **Centre delay (ms)** how far behind the voice it sits, **Feedback** how much of the copy runs back into it — a metallic ring as it rises (0–0.95) — and **Mix** how much of it you hear (0–1). |
 | **Compressor** | Evens out level. 3:1 ratio at -18 dB threshold is a good starting point. |
-| **Gain** | Final level adjustment. ±12 dB. |
+| **Gain** | Final level adjustment. ±24 dB. |
 | **Distortion** | Soft clipping (tanh waveshaper). Drive in dB — grit and breakup. |
 | **EQ (3-band)** | Low shelf · peaking mid · high shelf. Each takes a frequency, gain in dB and a Q. |
 
@@ -90,8 +90,9 @@ rest of the chapter alone. Mastering is a separate, later pass — see
 
 ## Custom presets
 
-Build a chain in the Effects tab → Save as preset → name it. The preset appears in the project's preset picker and any voice's chain dropdown. Edit / rename / delete from Settings → Effects.
-
-## Engine ignores unknown params
-
-If you apply a Chatterbox-tuned effect chain through OpenAI's external TTS, OpenAI silently ignores params it doesn't understand (rather than erroring). Same for the reverse — applying an OpenAI-only param via Kokoro is a no-op.
+In the chain editor, type a name and press **Save chain to Effects library**.
+**Load from preset…** puts a saved chain — yours or a built-in — in the editor in
+place of the one there. Presets are one library for every persona: there are no
+per-project presets, and a voice carries no chain. The **Effects** page lists
+them, with **+ New chain preset**, **Edit** and **Delete** (a built-in can't be
+deleted); Settings has no Effects section.

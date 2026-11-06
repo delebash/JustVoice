@@ -36,7 +36,7 @@ does three things:
   different voice never loses what Discover and Script know about them.
 
 A book's lines, its speakers' personas and the corrections Script remembers all point at
-**speakers**. Generations, lexicons, audio channels and MCP bindings stay on
+**speakers**. Generations, lexicons and MCP bindings stay on
 the **persona**, because they belong to the voice.
 
 ## The list
@@ -349,9 +349,9 @@ where only the room is heard. A warning is advice — you can still keep the
 clip.
 
 **The model** is one of the cloning models that match *How it can be
-directed*: under **Written direction**, VoxCPM2; under **Tags**, Chatterbox
+directed* — among them, under **Written direction**, VoxCPM2; under **Tags**, Chatterbox
 Turbo and Nano; under **Sliders only**, Chatterbox Multilingual, Qwen3 Base and
-Pocket TTS. The line under it says what a voice on that model keeps — for
+Pocket TTS — and audio.cpp's other models that copy a voice. The line under it says what a voice on that model keeps — for
 example *Takes written direction, on a clone too* (VoxCPM2) or *Written
 direction is dropped: the clip is the whole voice* (Qwen3 Base). A model that
 isn't loaded loads on the first preview, about a minute. Pocket TTS clones on
@@ -378,7 +378,7 @@ harbour-master in his seventies, unhurried"*. **↧ Start from the note** copies
 this persona's note in, to edit; it never happens on its own. The model is
 **Qwen3 VoiceDesign** (a separate 2.8 GB download from Qwen3's CustomVoice and
 Base, 1.7B only) or **VoxCPM2** — or, since 2026-10-15, one of audio.cpp's other
-models that make a voice from words: Breeze TTS 2, FireRedTTS3, FireRedAudio,
+models that make a voice from words: BreezeTTS 2, FireRedTTS3, FireRedAudio,
 Irodori-TTS or MOSS-VoiceGenerator
 ([Engines](engines.md#copying-a-voice-and-making-one-from-words)). A design model invents a voice afresh on
 every call — ask twice for the same description and you get two different
@@ -391,7 +391,7 @@ persona; pick the one you like. Then keep it one of two ways:
 | Keep | What the voice is | On every line |
 |---|---|---|
 | **💾 Keep as a description** | the words themselves | spoken from them again, so it can shift a little between lines; takes written direction on top |
-| **📌 Keep take N**, on the **Model** you pick | that take, as its clip, on the model you pick (VoxCPM2, Chatterbox Turbo or Nano, Multilingual, Qwen3 Base, Pocket TTS) | the same voice every time; it takes what that model takes — written direction on VoxCPM2, tags on Turbo and Nano, none on the rest |
+| **📌 Keep take N**, on the **Model** you pick | that take, as its clip, on the model you pick (any model that clones — VoxCPM2, BreezeTTS 2, Chatterbox Turbo or Nano, Multilingual, Qwen3 Base, Pocket TTS and the rest) | the same voice every time; it takes what that model takes — written direction on VoxCPM2 and BreezeTTS 2, tags on Turbo and Nano, none on Multilingual, Qwen3 Base or Pocket TTS |
 
 Either way the voice stays a design and keeps its description. Under
 **Tags** or **Sliders only** the description can't be kept as it is — both
@@ -561,8 +561,8 @@ type, with everything on the page, and opens it; the persona you started from
 stays as it was saved: *Saved as a new persona. June is untouched.*
 
 (The **🔀 Blend** button that sat here went on 2026-10-04, and **🧪 Train a LoRA**
-on 2026-10-05: a blend, and a trained voice once training is rebuilt, are types
-of voice under *Type*.)
+on 2026-10-05: a blend is a type of voice under *Type*, and voice training was
+removed.)
 
 Clearing a field and saving clears it (until 2026-10-03, emptying the delivery,
 the note or the lexicon kept the old value while the page said it was saved).
@@ -571,7 +571,7 @@ the note or the lexicon kept the old value while the page said it was saved).
 
 **This model** shows what the voice's model can do: how it can be directed, in
 the words Voices' *Can be directed* column uses — **✓ written direction**,
-**✓ 7 tags** or **sliders only** — the tags by kind (Emotion, Register,
+**✓ 19 tags** or **sliders only** — the tags by kind (Emotion, Register,
 Non-verbal), the languages it
 speaks, ✓/✗ cloning and ✓/✗ seed. **Compare models →** opens AI Settings →
 Speech.
@@ -614,7 +614,7 @@ voices and has no instruction input.
 
 The page tells you which case you're in: on a model that can't take it the box
 is off and says why. Cast shows the same verdict as a tag on each persona row
-(**✓ written**, **tags** or **✗ none**).
+(**✓ written direction**, **✓ 19 tags**, **sliders only** or **Can't be directed yet**).
 
 There is no checkbox or extra step. Write Style Instructions, render a
 chapter, and a model that takes direction picks it up.
