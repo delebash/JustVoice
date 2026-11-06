@@ -31,7 +31,9 @@ import { writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_AUDIOCPP_BUILD } from "@delebash/core/runner/config";
-import { _entryOid, _entrySize, _revisionSha, _tree } from "@delebash/core/runner/models";
+import { readGgufValue } from "@delebash/core/runner/gguf";
+import { _rangeRead } from "@delebash/core/runner/gguf_remote";
+import { _entryOid, _entrySize, _HF_BASE, _revisionSha, _tree, encodeRepo } from "@delebash/core/runner/models";
 import { marked } from "marked";
 
 // The model files: audio.cpp's own GGUF packages. Commit pinned 2026-10-29: 661a224e (2026-10-18,
@@ -129,11 +131,35 @@ async function pinnedSource(pkg, defaults, trees) {
   if (!trees.has(key)) trees.set(key, await _tree(repo, revision));
   const byPath = new Map(trees.get(key).map((e) => [e.path, e]));
   // Package files are repo paths (ours carry their folder, "IndexTTS2-GGUF/…").
-  const files = (pkg.files || []).map((path) => {
+  const files = [];
+  for (const path of pkg.files || []) {
     const hit = byPath.get(path);
-    return hit ? { path, size_bytes: _entrySize(hit), sha256: _entryOid(hit) || null } : { path, missing: true };
-  });
+    if (!hit) {
+      files.push({ path, missing: true });
+      continue;
+    }
+    const file = { path, size_bytes: _entrySize(hit), sha256: _entryOid(hit) || null };
+    if (repo === MODEL_REPO && path.endsWith(".gguf")) file.embedded_family = await embeddedFamily(repo, revision, path);
+    files.push(file);
+  }
   return { repo, revision, kind: dl.kind || "huggingface_snapshot", gated: Boolean(dl.gated), files };
+}
+
+/** The family the GGUF's embedded model spec names, read from its first 64 KB. audio.cpp resolves
+ * a package by that spec before its built-in one and refuses a file whose spec names another family
+ * ("GGUF embeds model spec for family 'parakeet_tdt', not 'phonon2_asr'" — Phonon-2 at 661a224e,
+ * RESEARCH §1.2), so the app offers only a file that names its own. Null when it names none — also
+ * when the header runs past the prefix first: audio.cpp writes the spec's keys at the front (byte
+ * 327 in Phonon-2's), so a file without them is one that embeds none (Moonshine's). */
+async function embeddedFamily(repo, revision, path) {
+  const url = `${_HF_BASE}/${encodeRepo(repo)}/resolve/${encodeURIComponent(revision)}/${encodeRepo(path)}`;
+  const head = await _rangeRead(url, 64 * 1024);
+  try {
+    return readGgufValue(head, "audiocpp.model_spec.family") ?? null;
+  } catch (e) {
+    if (/truncated/.test(e.message)) return null;
+    throw new Error(`${path}: its embedded model spec couldn't be read (${e.message})`);
+  }
 }
 
 // ── audio.cpp's own web UI rule, ported whole (webui/native/src/lib/catalog.ts) ──────────────
@@ -490,6 +516,10 @@ async function main() {
   console.log(`${fams.reduce((n, f) => n + f.packages.length, 0)} packages; ${new Set(offered).size} offered by audio.cpp's web UI`);
   console.log(`${fams.filter((f) => !f.licence).length} without a licence row: ${fams.filter((f) => !f.licence).map((f) => f.family).join(" ") || "none"}`);
   console.log(`${missing.length} package files not in their pinned repo${missing.length ? `:\n  ${missing.join("\n  ")}` : ""}`);
+  const otherFamily = fams.flatMap((f) =>
+    f.packages.flatMap((p) => p.source.files.filter((x) => x.embedded_family && x.embedded_family !== f.family).map((x) => `${f.family}: ${x.path} names ${x.embedded_family}`)),
+  );
+  console.log(`${otherFamily.length} package files whose embedded spec names another family${otherFamily.length ? `:\n  ${otherFamily.join("\n  ")}` : ""}`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

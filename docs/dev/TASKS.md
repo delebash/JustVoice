@@ -110,8 +110,21 @@ OPEN:   whether upstream is merged into `jv` before the release — your call. T
         (`build/jv-test`, MSVC 14.51, its own toolset): 97 of 99 — `lfm2_audio_assets_test` needs a model
         package folder (round E's known case), `lfm3_audio_assets_test` (upstream's, new in this merge)
         can't open its synthetic GGUF for writing, in any folder tried — its harness on Windows, not
-        investigated further. OPEN: the app under `npm run dev` on what the update adds (AGENTS.md: an
-        update is tested on what it adds), then push `jv` — waiting for the card (the shared-card queue).
+        investigated further. TESTED 2026-11-05 under `npm run dev` on the user's data (the Speech tab:
+        `Installed — build dev · 281de44a`): Kokoro (af_heart), Qwen3 CustomVoice 1.7B (Aiden) and
+        BreezeTTS 2 (a cloned voice) each spoke "The rain kept on, and the old house creaked in the
+        wind." and Qwen3-ASR read each back word for word. FINDING: Phonon-2, new in the update, won't
+        load — "GGUF embeds model spec for family 'parakeet_tdt', not 'phonon2_asr'" (HTTP 500): its
+        files at the model revision 661a224e name Parakeet's family, the repo's newer ones (main
+        fd2fe4c3) its own, and a model's files go by that embedded spec first (RESEARCH §1.2 —
+        correcting §1.4's "a release build doesn't read" them). FIXED the same day, decided under the
+        finish run's go, attacked (a hand-kept exclusion would have to be remembered at the release;
+        moving the model revision breaks the 2026-10-29 decision): the catalog script reads each
+        pinned file's family from its first 64 KB (the kit's new `readGgufValue`) and the app offers
+        no package whose file names another family — at 661a224e only Phonon-2's two; it comes back
+        by itself when the revision moves. Nemotron 3.5 Transcribe (15.6–23.3 GB) was not run.
+        PUSHED: `jv` at 281de44a (2026-11-05). Left for the release: the tag, the kit's pin and rows,
+        the model revision (Phonon-2, PocketTTS Small, Underdog Bark 3 and the rest come with it).
 GO:     given for the release's timing; the merge given 2026-11-05.
 
 ### The test kit and round 4, then the one-click slices — "do it all" (decided 2026-10-16)

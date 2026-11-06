@@ -641,7 +641,9 @@ the same way when it isn't a *Yes* there. Every model listed today has
 JustVoice's own reading (since 2026-10-15; the seven audio.cpp added in its
 2026-10-29 update — Gradium Phonon, LFM3-Audio, Ming 3.0 TTS, Ming 3.0 Audio
 Tiny, Plapre 3, Whistle ASR and XTTS v2 — were read the same day, and the two its
-2026-11-05 update offers, Nemotron 3.5 Transcribe and Phonon-2, on that day).
+2026-11-05 update adds, Nemotron 3.5 Transcribe and Phonon-2, on that day; Phonon-2
+isn't offered until JustVoice's model downloads move to its newer files, the ones
+audio.cpp loads).
 
 ### Tested by JustVoice
 

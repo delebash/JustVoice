@@ -39,14 +39,16 @@
   many chapters were scanned since. The AI feature *Merge found names* is now **Find same people**
   ([Studio → Same people: the AI suggests, you link](studio.md#same-people-the-ai-suggests-you-link),
   [AI features → The one-click audiobook's speaker steps](ai-features.md#the-one-click-audiobooks-speaker-steps))
-- **audio.cpp's update of 2026-11-05: two more speech recognisers** — the speech engines list now
+- **audio.cpp's update of 2026-11-05: one more speech recogniser** — the speech engines list now
   has NVIDIA's Nemotron 3.5 Transcribe (40 languages; 34 billion parameters, more than an 8 GB card
-  holds — audio.cpp keeps part of it on the CPU) and FermionResearch's Phonon-2 (English, built on
-  Parakeet), each with JustVoice's reading of its licence
-  ([Engines → Commercial use, in plain words](engines.md#commercial-use-in-plain-words)). Its new
-  voices — PocketTTS Small, Underdog Bark 3 and others — aren't offered yet: their files are newer
-  than the model downloads JustVoice is pinned to. The two load with `npm run dev` now, and in
-  the installed app once that release ships
+  holds — audio.cpp keeps part of it on the CPU), with JustVoice's reading of its licence
+  ([Engines → Commercial use, in plain words](engines.md#commercial-use-in-plain-words)). It's
+  offered with `npm run dev` now, and in the installed app once that release ships; JustVoice
+  hasn't run it yet (its smallest download is 15.6 GB). The rest of the update
+  isn't offered yet: its new voices (PocketTTS Small, Underdog Bark 3 and others) have files newer
+  than the model downloads JustVoice is pinned to, and FermionResearch's Phonon-2 (English, built on
+  Parakeet) has files there that audio.cpp refuses to load — the newer ones load. They come with
+  the release that moves that pin
 - **A reset stops the work in progress first (2026-11-05)** — Settings → Backups → **Reset…** now
   stops a book being made into an audiobook, a chapter rendering and an export, and waits for each,
   before it deletes the folders they write into, the way a restore already did

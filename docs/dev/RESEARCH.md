@@ -197,6 +197,20 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   each family's code still reads the old name, but no spec has an alias field (a few say so in
   a description). So a setting saved under an old name needs our own map once `catalog.json`
   (`seed_audiocpp_catalog.json` since JustVoice `a3686de1`) is built from v0.9.2's specs. — *code, 2026-10-15* · the v0.9.2 merge's spec diff.
+- **That order is the options' only; which files a model loads goes by the GGUF's embedded spec
+  first** — "Package/resource resolution is deterministic: explicit --model-spec-override → package
+  spec embedded in the selected GGUF → compiled catalog (AUDIOCPP_DEPLOYMENT_BUILD=ON) → external
+  model_specs/<family>.json" (`docs/gguf.md`; `package.cpp` `default_package_spec_path`), in every
+  build, and a file whose embedded spec names another family is refused: "GGUF embeds model spec for
+  family 'parakeet_tdt', not 'phonon2_asr'" — Phonon-2's files at the model revision `661a224e`
+  (`audiocpp.model_spec.family` = `parakeet_tdt` in both; at `audio.cpp-gguf` main `fd2fe4c3`,
+  2026-11-04, `phonon2_asr`). audio.cpp writes the spec's keys at the front of the header (byte 327
+  in Phonon-2's; a header runs to 38 MB with embedded voices — Kokoro's), so the catalog script reads
+  each pinned file's family from its first 64 KB (the kit's `readGgufValue`) and the app offers no
+  package whose model file names another family. Of the 234 audio.cpp GGUFs at `661a224e`, 223 name
+  a family and only Phonon-2's two name another; the eleven that name none (Moonshine's and others)
+  use the runtime's own spec. — *code + HF range reads + the app, 2026-11-05* · the load under
+  `npm run dev` at fork `281de44a`; `scripts/audiocpp-catalog.js` `embeddedFamily`.
 - v0.9.2's specs drop numeric bounds the runtime doesn't enforce (ZipVoice shift / feat_scale /
   target_rms, GLM-TTS top_p, Echo TTS max_duration_sec's minimum, IndexTTS duration_scale), as
   `model_specs.md` says; `model_params.json` still names some options the old way (ZipVoice
@@ -578,7 +592,12 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   446 files at `f861648c` have other bytes (137 a few KB longer: "Refresh embedded GGUF specs for
   v0.9.2 (#19)", `6f45df32`, 2026-10-19), 28 of them downloaded here (27 versions: Kokoro, Qwen3 ×4,
   Chatterbox ×2, Pocket ×7, VoxCPM2 ×2, Qwen3-ASR and its aligner …), which a move to main would
-  download again for embedded specs a release build doesn't read (it reads its built-in copy, §1.2).
+  download again for their refreshed embedded specs. (Those specs are read: a model's files go by
+  its GGUF's embedded spec first, §1.2 — the files at `661a224e` load by the spec they were written
+  with, and Kokoro, Qwen3 CustomVoice, BreezeTTS 2 and Qwen3-ASR loaded and spoke or read exactly at
+  fork `281de44a`, 2026-11-05; Phonon-2's names another family and isn't offered. Was: "embedded
+  specs a release build doesn't read (it reads its built-in copy)" — that is the options' order
+  only — until 2026-11-05.)
   `661a224e` (2026-10-18, 452 files), the last before that refresh, adds Plapre 3, openWakeWord and
   Whistle and changes only MicroWakeWord's GGUF (not offered, not downloaded) and `.gitattributes`:
   all 168 audio.cpp-gguf files downloaded here keep their SHA-256 there, as do Pocket TTS's 99 preset

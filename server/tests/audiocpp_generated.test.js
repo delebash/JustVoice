@@ -51,6 +51,20 @@ test("the model revision 661a224e brings Plapre and Whistle, pinned there", () =
   }
 });
 
+test("a model whose file names another family isn't offered: Phonon-2 at 661a224e names parakeet_tdt", () => {
+  // audio.cpp resolves a package by the spec embedded in its GGUF and refuses one naming another
+  // family ("GGUF embeds model spec for family 'parakeet_tdt', not 'phonon2_asr'", 2026-11-05);
+  // the repo's next files (fd2fe4c3) name phonon2_asr, so it's offered when the revision moves.
+  const phonon = generated.CATALOG.families.phonon2_asr;
+  expect(phonon.packages.flatMap((p) => p.source.files.map((f) => f.embedded_family))).toEqual(["parakeet_tdt", "parakeet_tdt"]);
+  expect(engines.has("phonon2_asr")).toBe(false);
+  expect(generated.generatedRecognisers().some((m) => m.family === "phonon2_asr")).toBe(false);
+  // A file naming its own family stays offered.
+  const kokoro = generated.CATALOG.families.kokoro_tts.packages.flatMap((p) => p.source.files).filter((f) => f.path.endsWith(".gguf"));
+  for (const f of kokoro) expect(f.embedded_family, f.path).toBe("kokoro_tts");
+  expect(engines.has("kokoro")).toBe(true);
+});
+
 test("every generated model is one download per precision, a speech one with a capability row", () => {
   for (const [id, mod] of engines) {
     const ids = mod.VARIANTS.map((v) => v.id);

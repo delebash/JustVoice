@@ -335,8 +335,10 @@ export const listsOptions = (family) => requestOptionsOf(family).size > 0;
 
 const clones = (fam) => (fam.capabilities?.clone || []).includes("speaker_reference") || (fam.capabilities?.tts || []).includes("speaker_reference");
 
-/** A package the app can download and register: GGUF, every file at the pinned revision. Returns
- * the package with its model file (the entry's own file where it names one), or null. */
+/** A package the app can download and register: GGUF, every file at the pinned revision, its model
+ * file's embedded spec (where it has one) naming this family — audio.cpp refuses one that names
+ * another (Phonon-2 at the model revision 661a224e names parakeet_tdt; RESEARCH §1.2). Returns the
+ * package with its model file (the entry's own file where it names one), or null. */
 function usablePackage(fam, pkgId, entryPath) {
   const pkg = fam.packages.find((p) => p.id === pkgId);
   if (!pkg || pkg.format !== "gguf") return null;
@@ -346,6 +348,7 @@ function usablePackage(fam, pkgId, entryPath) {
   if (!ggufs.length) return null;
   const want = entryPath ? path.posix.basename(String(entryPath).replaceAll("\\", "/")) : null;
   const main = ggufs.find((f) => path.posix.basename(f.path) === want) ?? ggufs[0];
+  if (main.embedded_family && main.embedded_family !== fam.family) return null;
   return { pkg, main: main.path };
 }
 
