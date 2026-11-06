@@ -102,11 +102,17 @@ BUILT:  B1 da7d1b05 · B2 c8a7d653 · B7 860a18b8 · B3 abae21a1 (re-run words "
         — the voice engine setup wizard does that job —, the Knave as a 0-line speaker). B9 so far: every package
         at its latest within its range (root, server, Capacitor, e2e), the MCP SDK 1.32.2; left `npm audit`'s 5
         moderate in `@vue/test-utils`' js-beautify (glob, minimatch — tests only, never shipped; its fix is a
-        breaking downgrade).
+        breaking downgrade); sass-embedded pinned to 1.107.1 (`overrides`: 1.108.0's Windows package has no
+        `sass.snapshot`, which its own loader needs — every Quasar build failed); Playwright's 1.65 browser.
+        B6: the silence runaway is gone at fork 281de44a (RESEARCH §9; the guard stays; the FINDING closed).
+        B10: the model revision fd2fe4c3, 14 families re-tested (RESEARCH §1.4). B11: the three docs audits'
+        ~65 corrections; Settings → Mastering rebuilt on the server's real targets (it saved nothing); the
+        run card's Stop tooltip ("Stops at once …").
 OPEN:   B4 (Discover and the one-click mock beside the real pages; the character-voice card's words; the kit's
-        three folds; Storage's Change folder in the installed app), B5, B6 (the card: web-4c's for ~25 min from
-        13:55), B9's majors and pins with the family (Electron 45, jsdom 31, Biome, electron-builder), B10 (the
-        kit's 2026-10-20 changes 1, 3, 11 and the start checks are tested by the release run), B11; then D1–D3 (the
+        three folds; Storage's Change folder in the installed app; Settings → Mastering saving), B5, B9's majors
+        and pins with the family (Electron 45, jsdom 31, Biome, electron-builder), B10's rest (the kit's pin —
+        with the tag; the kit's 2026-10-20 changes 1, 3, 11 and the start checks are tested by the release
+        run), B11's full suites; then D1–D3 (the
         user's). After the release: re-add the five "later" ideas and the global hotkey and paste
         (`git show 69e00a8d:docs/dev/IDEAS.md`; the hotkey's ruling, a C++ addon: docs/plans/2026-10-05-electron-node-study.md §9).
 GO:     given 2026-11-06 ("your recs think adversierliy on it again … go").
@@ -161,6 +167,9 @@ OPEN:   whether upstream is merged into `jv` before the release — your call. T
         by itself when the revision moves. Nemotron 3.5 Transcribe (15.6–23.3 GB) was not run.
         PUSHED: `jv` at 281de44a (2026-11-05). Left for the release: the tag, the kit's pin and rows,
         the model revision (Phonon-2, PocketTTS Small, Underdog Bark 3 and the rest come with it).
+        2026-11-06 (the close-out's B10): the model revision moved to fd2fe4c3 and the catalog rebuilt at
+        281de44a — 0 files naming another family, so Phonon-2 is offered; the 14 families whose files changed
+        re-tested through the app (RESEARCH §1.4). Left for the release: the tag and the kit's pin and rows.
 GO:     given for the release's timing; the merge given 2026-11-05.
 
 ### The character voices: BreezeTTS 2, with its licence on the run's card (decided 2026-10-16)
@@ -339,49 +348,6 @@ GO:     given 2026-10-16 ("your rec go") for the mock; the server and the real p
         of 2026-11-05 ("just keep going fix all the things you think yo can … dont stop and ask me unless
         you absolutley need to"), the user's look skipped as not absolutely needed — the design was argued
         twice and approved, the mock drawn.
-
-### FINDING — Digital silence in a clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue
-STATE:  FINDING — measured 2026-10-10 (plan 2026-10-09 voice-training findings, "Found on the way";
-        RESEARCH §9). First read as a length problem, which the 20 s cap (the item above, 3) was
-        decided on; probes the same day showed the length is not the trigger — the cap is NOT
-        built; the guard below replaced it (decided and built 2026-10-11).
-BUILT:  nothing. Probes, one sentence on Qwen3-TTS Base: 26.6 s, 52.9 s and a 22.05 kHz reference all
-        fine, in ICL and x-vector mode; the 26.6 s one with three 0.25 s gaps of exact digital
-        silence → still running after 240 s; the same gaps filled with ±2 LSB of noise → fine. While
-        it runs every other speech request waits, and a cancelled request does not stop the
-        runtime's work. Exact silence comes from joined clips and edited or gated recordings.
-DECIDED: 2026-10-11 — asked: "My recommendation: before a Qwen3-TTS Base clip reaches the runtime,
-        the app quietly fills any stretch of pure digital silence with that inaudible noise. You keep
-        your full clip, nothing changes on the clone screen, and the runaway can't happen. The
-        underlying bug in our audio.cpp copy can wait; the guard makes it harmless. Go?" The user:
-        "go". This replaces the 20 s cap (the item above, 3).
-BUILT:  2026-10-11 — the guard: `slot.guardedReference` (engines/audiocpp/slot.js), on the Qwen3 Base
-        path of `toSpeechRequest`, fills every run of exact-zero frames of 10 ms or more with ±2 LSB
-        from a fixed-seed generator and hands the runtime that copy — written once to
-        `<data>/cache/qwen3-references`, named by the clip's bytes, the newest 200 kept (the Kokoro
-        blend packs' pattern); a clean or unreadable clip goes as it is; other engines are untouched.
-        Checked: 5 tests (server/tests/qwen3_reference_silence.test.js), server 1,081/1,081; through
-        the app, the 27 s reference with three silent gaps that ran past 240 s now speaks a sentence
-        in 2.7 s (ICL) and 3.0 s (x-vector only).
-        Found on the way: the speech admission prices a model at its LARGEST measured peak
-        (`manager._priceMb`), so the runaway probes' two peaks (6,235 and 6,255 MB) had left
-        Qwen3-TTS Base unloadable on the 8 GB card; those two rows were removed 2026-10-11 (the two
-        real peaks, ~2.8 GB, stay). One bad run can set a model's price for good.
-DECIDED: 2026-10-11 — asked: "One bad run can set a model's memory budget permanently, which is how
-        my test runs blocked Qwen3. Worth fixing so a single odd reading can't do that again. Say if
-        you want it looked at." The user: "your re go, double check your work make sure you did the
-        correct fixes on the previous stuff".
-BUILT:  2026-10-11 — a line whose audio runs longer than 0.5 s a character of its text and 30 s
-        (`manager.RUNAWAY_S_PER_CHAR`, `RUNAWAY_MIN_S` — since 2026-10-13 the settings
-        `speech_runtime.runaway_s_per_char` and `runaway_min_s`, the narrowings review M2; slow
-        narration is about 0.1 s a character)
-        marks its speech process (`_noteRunaway`, by pid — the process outlives an unload): its
-        readings still raise the live booking, but none is saved as a model's price again, after a
-        line or at a load (`_prices`); a new process prices again. A warning names the line's
-        length and the process. Checked: 1 test (engine_vram_wiring "a_runaway_line_no_longer_prices
-        _the_model_from_its_process"; it fails with the mark switched off), server 1,082/1,082.
-OPEN:   the cause in our audio.cpp copy (the user's word).
-GO:     given 2026-10-11 ("go"; the price fix "your re go").
 
 ## Known deviations, recorded so they aren't re-litigated
 

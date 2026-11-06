@@ -614,6 +614,19 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   Kitten TTS 2 keeps its `dignome/kitten_tts2` downloads), Irodori v4.1 Small MeanFlow ×2, VoxCPM2
   VocalRender Pro. (was: `f861648c` — until JustVoice `ea2f01fc`'s follow-up, 2026-10-29.) — *git +
   HF API + the downloaded manifests + tests, 2026-10-29*.
+- **`MODEL_REVISION` `fd2fe4c3` (2026-11-04), moved 2026-11-06 for the release** (the close-out's B10, with
+  fork `281de44a`): the catalog rebuilt there — 140 families (58 speech), 451 packages, 373 offered by
+  audio.cpp's web UI, 13 package files not in their pinned repo, **0 whose embedded spec names another
+  family** (Phonon-2's mismatch at `661a224e` gone). Against `661a224e`: 142 files with other bytes, 27 of
+  them on this PC (60.4 GB, 14 families); Pocket TTS's 99 preset voice files keep their SHA-256, and
+  `fd2fe4c3` adds 31 preset voices `VOICES` doesn't offer. The kit keys a blob by SHA-256, so each changed
+  file downloads again on its model's next load (its old blob stays until cleared). Re-tested through the
+  app on the merged fork's dev build, one q8 model a family, each downloaded, loaded on the card, speaking
+  "The rain kept on, and the old house creaked in the wind." read back by Qwen3-ASR (its own file new):
+  Kokoro (Heart), KittenTTS Mini 0.8 (Bella), Pocket TTS English (Alba), Qwen3 CustomVoice 1.7B (Aiden),
+  Qwen3 Base 1.7B, BreezeTTS 2, VoxCPM2, Chatterbox Multilingual, CosyVoice3, Fish Audio S2 Pro, Higgs
+  Audio v3, IndexTTS2.5 and dots.tts (the cloners on a copy of the Hatter) — 12/12 words each; Qwen3
+  VoiceDesign 1.7B loaded; the forced aligner timed all 12 words (0.32–3.04 s) — *measured, 2026-11-06*.
 
 ### 1.5 audio.cpp's own web UI
 
@@ -2449,6 +2462,11 @@ its page: plan 2026-10-09 voice-training findings, "The measurement — results"
   reference makes the model run away" until 2026-10-10.) The app now fills such stretches before a
   Qwen3-TTS Base reference reaches the runtime (`slot.guardedReference`, 2026-10-11): the gapped
   27 s reference speaks a sentence in 2.7 s (ICL) and 3.0 s (x-vector only). — *measured*.
+  **Gone at our fork `281de44a`** (upstream v0.9.3/v0.9.4 merged; 2026-11-06): the Hatter's 8.9 s
+  reference with three 0.25 s gaps of exact zeros, sent straight to the app's own speech server past
+  the guard (`POST /v1/audio/speech`, Qwen3-TTS Base 1.7B q8 on the card, the model files at `fd2fe4c3`)
+  → 1.9 s x-vector only, 3.2 s ICL with its words; the guard stays (it costs a cached copy of a clip
+  with silence) — *measured*.
 - A runaway line records a speech "peak" measurement of its own — 6,235 and 6,255 MB for Qwen3-TTS
   Base, against ~2.8 GB normally — and the admission prices a model at its largest peak
   (`engines/manager.js` `_priceMb`), which then left the model unloadable on the 8 GB card. — *measured*.

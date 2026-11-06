@@ -46,7 +46,7 @@ import { marked } from "marked";
 // from 7bf52723 no file changed but README.md and .gitattributes, 81 added — until 2026-10-29;
 // kept in engines/audiocpp/release.js until round E.)
 export const MODEL_REPO = "audio-cpp/audio.cpp-gguf";
-export const MODEL_REVISION = "661a224e9d9adbd49c01626f85e426f5f425d771";
+export const MODEL_REVISION = "fd2fe4c3195bc410f8b817bf7c7519fd822686fb";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const CHECKOUT = resolve(ROOT, "..", "audio.cpp");

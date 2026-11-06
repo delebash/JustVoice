@@ -1,9 +1,9 @@
 {
   "generated_from": {
-    "audiocpp_ref": "jv",
+    "audiocpp_ref": "281de44a",
     "audiocpp_commit": "281de44a47f05e9103febf612fac033bd44c7350",
     "model_repo": "audio-cpp/audio.cpp-gguf",
-    "model_revision": "661a224e9d9adbd49c01626f85e426f5f425d771"
+    "model_revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb"
   },
   "families": {
     "ace_step": {
@@ -617,14 +617,14 @@
           "strip_prefix": "ACE-Step1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "ACE-Step1.5-GGUF/turbo/ace-step-1.5-turbo-q8_0.gguf",
-                "size_bytes": 6185460032,
-                "sha256": "cd7bf272588f548d4a253f57483132ef0f8f54a549f26471b09caa72c654270b",
+                "size_bytes": 6185468096,
+                "sha256": "1f0015f81c10a1182531e6207c7aeaa060b8cad3470a2f88daa3cb74ed636e63",
                 "embedded_family": "ace_step"
               }
             ]
@@ -640,14 +640,14 @@
           "strip_prefix": "ACE-Step1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "ACE-Step1.5-GGUF/turbo/ace-step-1.5-turbo-bf16.gguf",
-                "size_bytes": 10090398272,
-                "sha256": "93974239a29a1a821b3cc1b1ca7e1c6229b1a900a0e44a1a9770bb2271d2be5f",
+                "size_bytes": 10090406336,
+                "sha256": "7aa8cc911bb7e47647bba619cf25afc22a42e35c568a102cd9a3b28a54b94013",
                 "embedded_family": "ace_step"
               }
             ]
@@ -662,14 +662,14 @@
           "strip_prefix": "ACE-Step1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "ACE-Step1.5-GGUF/base/ace-step-1.5-base-q8_0.gguf",
-                "size_bytes": 6185458880,
-                "sha256": "76133710055859477303c21b34f8462d8f9995ee8959e7eca96b09a4db84d5ba",
+                "size_bytes": 6185466944,
+                "sha256": "2fb7bc3627c79bc99486510619d4264da22d40814edff0415dd3337164336e4a",
                 "embedded_family": "ace_step"
               }
             ]
@@ -684,14 +684,14 @@
           "strip_prefix": "ACE-Step1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "ACE-Step1.5-GGUF/base/ace-step-1.5-base-bf16.gguf",
-                "size_bytes": 10090397120,
-                "sha256": "aa4b0f27122bb93a8da18f82515674ed18c59f985316355b208e48a335b77cf4",
+                "size_bytes": 10090405184,
+                "sha256": "d5bb61554bd8669ba5498054422e7a771414257d77acc47b3953e5da8c98836f",
                 "embedded_family": "ace_step"
               }
             ]
@@ -1013,7 +1013,7 @@
           "strip_prefix": "Apollo-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -1199,7 +1199,7 @@
           "strip_prefix": "AST-AudioSet-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -1380,7 +1380,7 @@
           "strip_prefix": "Audio8-ASR-0.1B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -1400,7 +1400,7 @@
           "strip_prefix": "Audio8-ASR-0.1B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -2434,7 +2434,7 @@
           "strip_prefix": "AudioSR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -3728,14 +3728,14 @@
           "strip_prefix": "Breeze-TTS-2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Breeze-TTS-2-GGUF/breeze-tts-2-q4_0.gguf",
-                "size_bytes": 3794799296,
-                "sha256": "b1c2467ac542d9ba05ad0e7bd331b09137f3752f1be2d3c491bd1b2045df6767",
+                "size_bytes": 3794800192,
+                "sha256": "56b3cc598b1f9220b6fb23dc9eaa098a9a1d0cc6604298a76faac79eef4824b8",
                 "embedded_family": "breeze_tts"
               }
             ]
@@ -3751,14 +3751,14 @@
           "strip_prefix": "Breeze-TTS-2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Breeze-TTS-2-GGUF/breeze-tts-2-q8_0.gguf",
-                "size_bytes": 5079668352,
-                "sha256": "0de52d61560f9f6b2dfeca79f9100f8fce0c2b17c52ec30622e23e150df1ad88",
+                "size_bytes": 5079670336,
+                "sha256": "b17b89b1c21107c44e8d556ab0a856d7acd06bdd0c914e68e0e57f6e33f555a3",
                 "embedded_family": "breeze_tts"
               }
             ]
@@ -3774,14 +3774,14 @@
           "strip_prefix": "Breeze-TTS-2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Breeze-TTS-2-GGUF/breeze-tts-2-bf16.gguf",
-                "size_bytes": 7342916800,
-                "sha256": "a00c9f678b4c5ae03d1dcd228f636b329352cda200823faef4e01d3bd97c0a89",
+                "size_bytes": 7342918784,
+                "sha256": "5620623371e2011e9bb22389f12252d3969061adad139b3cdda6b1473a82a0d5",
                 "embedded_family": "breeze_tts"
               }
             ]
@@ -4029,14 +4029,14 @@
           "strip_prefix": "BS-RoFormer-ep368-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "BS-RoFormer-ep368-GGUF/bs-roformer-ep368-q8_0.gguf",
-                "size_bytes": 172532256,
-                "sha256": "9a55a8cad369d00f6e0fb208bb0cd87e30e25430772b8491e20a4eace6423ad2",
+                "size_bytes": 172533760,
+                "sha256": "c3d3fc0ebf20a21f6dec38df66f919c892efed680dd006de367ec462611200bc",
                 "embedded_family": "bs_roformer"
               }
             ]
@@ -4476,14 +4476,14 @@
           "strip_prefix": "Canary-180M-Flash-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Canary-180M-Flash-GGUF/canary-180m-flash-f32.gguf",
-                "size_bytes": 757871168,
-                "sha256": "03ca359d7db1de31e71a344307aa6c649a8c071717503cae818e4f3e3ce21dde",
+                "size_bytes": 757871968,
+                "sha256": "ab14b923714968161aa3bc317e9216ac168a8d493ec1f19137c52a690ea67593",
                 "embedded_family": "canary_asr"
               }
             ]
@@ -4498,14 +4498,14 @@
           "strip_prefix": "Canary-180M-Flash-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Canary-180M-Flash-GGUF/canary-180m-flash-q8_0.gguf",
-                "size_bytes": 249496128,
-                "sha256": "8a6d06be2b6c8e44b7810e5ad1277db571d3152a7eea8b699974516907a6ef57",
+                "size_bytes": 249496928,
+                "sha256": "fa751a543aa0db02ce6f0487ed836f95255f09a34db021cd4c280ed301089517",
                 "embedded_family": "canary_asr"
               }
             ]
@@ -4678,7 +4678,7 @@
           "strip_prefix": "CED-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -4700,7 +4700,7 @@
           "strip_prefix": "CED-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -4722,7 +4722,7 @@
           "strip_prefix": "CED-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -4744,7 +4744,7 @@
           "strip_prefix": "CED-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -5188,14 +5188,14 @@
           "strip_prefix": "Chatterbox-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Chatterbox-GGUF/chatterbox-q8_0.gguf",
-                "size_bytes": 2088393668,
-                "sha256": "d586dd1aa59613cab8046176fb7ca5ba191c02a9b10ffa5b0d892ed22b470656",
+                "size_bytes": 2088399204,
+                "sha256": "45d71d8d248ba831014813bbbbba74c7d786dd9447c02090fe05c44344f69453",
                 "embedded_family": "chatterbox"
               }
             ]
@@ -5210,14 +5210,14 @@
           "strip_prefix": "Chatterbox-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Chatterbox-GGUF/chatterbox-f16.gguf",
-                "size_bytes": 3744360386,
-                "sha256": "b872f908605f5ccbdd8eaa9e9c92a521c602b70cbec635d46e86eb70a3f8e713",
+                "size_bytes": 3744365922,
+                "sha256": "615371181a0bffe8239cf6f724d57f2b153618c52c31d526c8f20eacc763c6e1",
                 "embedded_family": "chatterbox"
               }
             ]
@@ -5555,14 +5555,14 @@
           "strip_prefix": "Chatterbox-Turbo-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Chatterbox-Turbo-GGUF/chatterbox-turbo-q8_0.gguf",
-                "size_bytes": 699101408,
-                "sha256": "6eed51ff0b2993fec67db6211dca92de5819d83ac50513ba7c065c467eb75910",
+                "size_bytes": 699102368,
+                "sha256": "acf02bed2b9ac94e271a01f556526818161a28009120f2337b9e8e10035c42b6",
                 "embedded_family": "chatterbox_turbo"
               }
             ]
@@ -5577,7 +5577,7 @@
           "strip_prefix": "Chatterbox-Turbo-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -5861,14 +5861,14 @@
           "strip_prefix": "Citrinet-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Citrinet-ASR-GGUF/citrinet-asr-q8_0.gguf",
-                "size_bytes": 40574432,
-                "sha256": "e1b9187ecc1c5770f5785f1d1e797ff2bf1f3692c78a5328684275aa729c6368",
+                "size_bytes": 40575520,
+                "sha256": "a32cd178dcc6c52a999d56d33db9dd54f1b932ee0b3d4ac1d2a2d2623bcc36ff",
                 "embedded_family": "citrinet_asr"
               }
             ]
@@ -6082,14 +6082,14 @@
           "strip_prefix": "Cohere-Transcribe-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Cohere-Transcribe-GGUF/cohere-transcribe-03-2026-bf16.gguf",
-                "size_bytes": 4134852224,
-                "sha256": "088f97ab2aa1dbd40230c2eaf9dc7956e574a1266206938fbbaf4ecab55aff04",
+                "size_bytes": 4134853376,
+                "sha256": "974a1d735e40fd63192c64dc79ba38ba4b65215f3bdc361820f0e19c4d931e07",
                 "embedded_family": "cohere_asr"
               }
             ]
@@ -6104,14 +6104,14 @@
           "strip_prefix": "Cohere-Transcribe-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Cohere-Transcribe-GGUF/cohere-transcribe-03-2026-q8_0.gguf",
-                "size_bytes": 2438863008,
-                "sha256": "f3da2899fe5d918b3aefb0d3c0d4c963ca7171c42cb98439000d1228b224d51c",
+                "size_bytes": 2438863616,
+                "sha256": "b892857b820f0f937500ebd0bc4dc73f57e69a7ca548b63132e688b316193813",
                 "embedded_family": "cohere_asr"
               }
             ]
@@ -6126,14 +6126,14 @@
           "strip_prefix": "Cohere-Transcribe-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Cohere-Transcribe-GGUF/cohere-transcribe-03-2026-q4_0.gguf",
-                "size_bytes": 1534335392,
-                "sha256": "a39d6237bf20030c1422d2046dee0d2c7ebf6de729aab9ddd69672bf9afce29e",
+                "size_bytes": 1534335744,
+                "sha256": "dcceb99cae7f0eb7a9bc742fed1b4fecfbd8a333fa2bcf7a4d7e1541422b03b4",
                 "embedded_family": "cohere_asr"
               }
             ]
@@ -6550,7 +6550,7 @@
           "target_directory": "Confucius4-R2T2",
           "source": {
             "repo": "netease-youdao/Confucius4-R2T2",
-            "revision": "185ce639118ad1362d049ca0d8ed04b6ec5cd6c9",
+            "revision": "d07b4a593610c16074cfc941fba052a7a12eeda3",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -7034,7 +7034,7 @@
           "strip_prefix": "Confucius4-TTS-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -7256,14 +7256,14 @@
           "strip_prefix": "ControlFoley-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "ControlFoley-GGUF/controlfoley-large-44k-f32.gguf",
-                "size_bytes": 19972036064,
-                "sha256": "85add0bfb83147bf3ced16fffde4fca8a369b13429e33af7ebbe1f1c96f2a25f",
+                "size_bytes": 19972035744,
+                "sha256": "965e4f83ac35e47afc1cfa10415418e9dda4000e88036c1e4b64fc7e87fe8bad",
                 "embedded_family": "controlfoley"
               }
             ]
@@ -7279,14 +7279,14 @@
           "strip_prefix": "ControlFoley-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "ControlFoley-GGUF/controlfoley-large-44k-q8_0.gguf",
-                "size_bytes": 12556682464,
-                "sha256": "20474b4413b5eb40655d7b6b4c814b6da71b23a7c2485e00583de925be4ec446",
+                "size_bytes": 12556682144,
+                "sha256": "45fdcf4f50a338f87c12943a45d05c35985e436e65653f87fb5d39d6b0ff0c72",
                 "embedded_family": "controlfoley"
               }
             ]
@@ -7676,14 +7676,14 @@
           "strip_prefix": "CosyVoice3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "CosyVoice3-GGUF/cosyvoice3-q8_0.gguf",
-                "size_bytes": 2257658080,
-                "sha256": "ff31bb29ba5723809ec817c9fcc09a5f88d5d8ef6cfbc623edb5a7d7be8a6fca",
+                "size_bytes": 2257658336,
+                "sha256": "d13bd731ead92d6d514d5749d9b59ea1b3ae735569fa46978250caaf5c983133",
                 "embedded_family": "cosyvoice3"
               }
             ]
@@ -7699,14 +7699,14 @@
           "strip_prefix": "CosyVoice3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "CosyVoice3-GGUF/cosyvoice3-f32.gguf",
-                "size_bytes": 6995036608,
-                "sha256": "58f7f6c782268315c1d1f0783b6e652162d894dd4b94bde2153173218ab9bfe0",
+                "size_bytes": 6995036864,
+                "sha256": "68f8242bab325e8de1c80e179444b1f758248951d4283d8124e03fe182e74f34",
                 "embedded_family": "cosyvoice3"
               }
             ]
@@ -8166,7 +8166,7 @@
           "strip_prefix": "CrisperWhisper2.0-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8189,7 +8189,7 @@
           "strip_prefix": "CrisperWhisper2.0-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8211,7 +8211,7 @@
           "strip_prefix": "CrisperWhisper2.0-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8722,14 +8722,14 @@
           "strip_prefix": "DotTTS-SOAR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "DotTTS-SOAR-GGUF/dots-tts-soar-q8_0.gguf",
-                "size_bytes": 2962749632,
-                "sha256": "0633a6b4b705accee3858ffb129f403dc5aa64e634a80f713f4bde6f002fc2f0",
+                "size_bytes": 2962751232,
+                "sha256": "2ac144eacc02ff47b37988a924a0480ed2fe3756790c51c1943348eba34dae27",
                 "embedded_family": "dots_tts"
               }
             ]
@@ -8745,14 +8745,14 @@
           "strip_prefix": "DotTTS-SOAR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "DotTTS-SOAR-GGUF/dots-tts-soar-bf16.gguf",
-                "size_bytes": 4788730464,
-                "sha256": "a77cc9e0881d50064990dba19b01e7faec8610b5ba2fdf563a86699006fb7a51",
+                "size_bytes": 4788732064,
+                "sha256": "b4e028cf4b536b6a249799421738ed3b4c78794a9e9293c2f9da0448076bc0a1",
                 "embedded_family": "dots_tts"
               }
             ]
@@ -8768,14 +8768,14 @@
           "strip_prefix": "DotTTS-MF-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "DotTTS-MF-GGUF/dots-tts-mf-q8_0.gguf",
-                "size_bytes": 2965375840,
-                "sha256": "062c5e040e0ec9a2d31dc1209d70233ed2bb132e9ead5cea84af420644079053",
+                "size_bytes": 2965377472,
+                "sha256": "abc4c27db2a6750119d70f5e66e9c268c80c47ff4659867bbba124717f05ae7a",
                 "embedded_family": "dots_tts"
               }
             ]
@@ -8791,14 +8791,14 @@
           "strip_prefix": "DotTTS-MF-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "DotTTS-MF-GGUF/dots-tts-mf-bf16.gguf",
-                "size_bytes": 4791356672,
-                "sha256": "aedfa0415229fbb5d0b59ab4fe0327513720bacfc3f7705cca3c2d6315f911af",
+                "size_bytes": 4791358304,
+                "sha256": "4738dd818d4a5be1ad0162c2828711da99182ab044b7d72a7833facd6cc0b7f8",
                 "embedded_family": "dots_tts"
               }
             ]
@@ -8814,7 +8814,7 @@
           "strip_prefix": "DotTTS-Edit-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -8837,7 +8837,7 @@
           "strip_prefix": "DotTTS-Edit-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -9260,7 +9260,7 @@
           "strip_prefix": "DramaBox-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -10644,14 +10644,14 @@
           "strip_prefix": "FireRedAudio-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "FireRedAudio-GGUF/firered-audio-orig.gguf",
-                "size_bytes": 25023729952,
-                "sha256": "bf070bf21f7e347daac6fa48f21c7c91b2a8b834e5d7e96adc064dcc8b77f869",
+                "size_bytes": 25023730464,
+                "sha256": "65e06f42df890d2b4ac6a97c21eea33cfd570a4bca4a6e32912e6e55f94d89c6",
                 "embedded_family": "firered_audio"
               }
             ]
@@ -10667,14 +10667,14 @@
           "strip_prefix": "FireRedAudio-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "FireRedAudio-GGUF/firered-audio-q8_0.gguf",
-                "size_bytes": 13974618784,
-                "sha256": "b5f164decac5bbc0308aa6712d138bb6871b615556a088a3ad082088d44de215",
+                "size_bytes": 13974619296,
+                "sha256": "739171502a52fd1f1eb1ada1c0736ce453d82767190f9ebfe90cb8ecab2e028e",
                 "embedded_family": "firered_audio"
               }
             ]
@@ -11326,14 +11326,14 @@
           "strip_prefix": "FireRedVAD-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "FireRedVAD-GGUF/firered-vad-f32.gguf",
-                "size_bytes": 2368032,
-                "sha256": "ef8d509e831f0d2d8dceff7ca3ed60c0eb479809e1cad23018ecce559b3ae91d",
+                "size_bytes": 2368640,
+                "sha256": "f3019a3b9f8343aa998110bf31d04f086ee75da00f60768c396d1583e3993968",
                 "embedded_family": "firered_vad"
               }
             ]
@@ -11348,14 +11348,14 @@
           "strip_prefix": "FireRedVAD-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "FireRedVAD-GGUF/firered-stream-vad-f32.gguf",
-                "size_bytes": 2284288,
-                "sha256": "d90306564a4de650f5d58f7bf18e49d90a2e4103bd721d132dfb0434ce7c0ec8",
+                "size_bytes": 2285056,
+                "sha256": "c77073c4bebd112a794ec10e71a70e0f74c78ffbe928f4dd79ce17bc19cf8e6a",
                 "embedded_family": "firered_vad"
               }
             ]
@@ -11682,14 +11682,14 @@
           "strip_prefix": "FireRedTTS3-Instruct-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "FireRedTTS3-Instruct-GGUF/fireredtts3-instruct-orig.gguf",
-                "size_bytes": 12264720864,
-                "sha256": "53a3f4aa69284621df7f9b48bcc8a1234164ec0c5645d1b6019b3549f4d39c17",
+                "size_bytes": 12264722272,
+                "sha256": "29b1100f818f7aed695842285ad67aa018fa0197d738a3ced0dba285c93820c0",
                 "embedded_family": "fireredtts3"
               }
             ]
@@ -11705,14 +11705,14 @@
           "strip_prefix": "FireRedTTS3-Instruct-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "FireRedTTS3-Instruct-GGUF/fireredtts3-instruct-q8_0.gguf",
-                "size_bytes": 4149192928,
-                "sha256": "04cd0ff6624bbfdc6b39e2dd1a0068f9e9769d1c217bf7343e28f3415eb2859e",
+                "size_bytes": 4149194336,
+                "sha256": "07874b41bd590772655733f90fad18f800f7dbe7a8aa6089b8a29d1dd0ab3d69",
                 "embedded_family": "fireredtts3"
               }
             ]
@@ -11727,14 +11727,14 @@
           "strip_prefix": "FireRedTTS3-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "FireRedTTS3-Base-GGUF/fireredtts3-base-orig.gguf",
-                "size_bytes": 12301253120,
-                "sha256": "1af06f341044121ddebb389c1e6e5181a43f65e2591f77c7eda2ca5810e484c8",
+                "size_bytes": 12301254464,
+                "sha256": "6702457ded13b49ae7c5bfe1e783bb2f88cc06872d4bb11dd4860cc25d04167b",
                 "embedded_family": "fireredtts3"
               }
             ]
@@ -11749,14 +11749,14 @@
           "strip_prefix": "FireRedTTS3-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "FireRedTTS3-Base-GGUF/fireredtts3-base-q8_0.gguf",
-                "size_bytes": 4180334848,
-                "sha256": "68acd5bce0d87a53bb5b88255c65e19df4cbc6017b4bab0824e96f1e2351c3a7",
+                "size_bytes": 4180336192,
+                "sha256": "936b7c8f717e734d2f4333060c3ff905c0eee03d83d80b0038548a461251aafa",
                 "embedded_family": "fireredtts3"
               }
             ]
@@ -12400,14 +12400,14 @@
           "strip_prefix": "Fish-Audio-S2-Pro-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Fish-Audio-S2-Pro-GGUF/fish-audio-s2-pro-q8_0.gguf",
-                "size_bytes": 6317911232,
-                "sha256": "4ffc169447b7a26df8bf49e8637adb4000bfa763a22c018b6c03968564259d0b",
+                "size_bytes": 6317915552,
+                "sha256": "4f051347079cfb61f9ef2996f67057229e486fefce31374721b5690940dfc34a",
                 "embedded_family": "fish_audio"
               }
             ]
@@ -12422,14 +12422,14 @@
           "strip_prefix": "Fish-Audio-S2-Pro-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Fish-Audio-S2-Pro-GGUF/fish-audio-s2-pro-bf16.gguf",
-                "size_bytes": 10229278080,
-                "sha256": "781fdece3ff837838c48f7d5a7b37e37c4d661a6416416ad57fe92fed47d96ff",
+                "size_bytes": 10229282400,
+                "sha256": "b938ecf9968fc0a432c04d2b05cc6f729663017d1b1c0a079c90e3c504750447",
                 "embedded_family": "fish_audio"
               }
             ]
@@ -13569,7 +13569,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13591,7 +13591,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13613,7 +13613,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13635,7 +13635,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13657,7 +13657,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13679,7 +13679,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13701,7 +13701,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -13723,7 +13723,7 @@
           "strip_prefix": "GigaAM-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -14730,7 +14730,7 @@
           "strip_prefix": "Granite-Speech-5.0-470M-TurboCTC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15123,13 +15123,15 @@
           "default": true,
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Haas-ja-v1.0-GGUF/haas-ja-v1.0-q8_0.gguf",
-                "missing": true
+                "size_bytes": 880730576,
+                "sha256": "a9112e512a93067161440e4f096066a739f885f13b9b271ebdafb70438a17ef0",
+                "embedded_family": "haas_asr"
               }
             ]
           }
@@ -15144,13 +15146,15 @@
           "default": false,
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Haas-ja-v1.0-GGUF/haas-ja-v1.0-f16.gguf",
-                "missing": true
+                "size_bytes": 1232193568,
+                "sha256": "b283c8ca3fcf50d06026f7caa309f5f7cddd0e6fc9fbc5889eb1b66f8a310edc",
+                "embedded_family": "haas_asr"
               }
             ]
           }
@@ -15567,7 +15571,7 @@
           "strip_prefix": "HeartMuLa-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15589,7 +15593,7 @@
           "strip_prefix": "HeartMuLa-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15889,7 +15893,7 @@
           "strip_prefix": "Higgs-Audio-v3-STT-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -15911,7 +15915,7 @@
           "strip_prefix": "Higgs-Audio-v3-STT-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -16260,14 +16264,14 @@
           "strip_prefix": "Higgs-Audio-v3-TTS-4B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Higgs-Audio-v3-TTS-4B-GGUF/higgs-audio-v3-tts-4b-q8_0.gguf",
-                "size_bytes": 5095354048,
-                "sha256": "79746822045b5bf8f9ab2bda87b16cd3f8ea3d9e319cbcf887a87aa1b537a74a",
+                "size_bytes": 5095359136,
+                "sha256": "cfa5cc01adcd199dfcf1baf0f610aa474cda83418fd1802aa6defa82d956a0e4",
                 "embedded_family": "higgs_audio_tts"
               }
             ]
@@ -16282,14 +16286,14 @@
           "strip_prefix": "Higgs-Audio-v3-TTS-4B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Higgs-Audio-v3-TTS-4B-GGUF/higgs-audio-v3-tts-4b-bf16.gguf",
-                "size_bytes": 8501587648,
-                "sha256": "2c04410d9ae6af9a48ce989c1b6d7dfaa0320c8e09ff7da8d3e04b8d9b0669dc",
+                "size_bytes": 8501592736,
+                "sha256": "d9fc55bee3e0d1e84eb9ffec779355c870190487bdaa4a2d26b99c1b1f40c12b",
                 "embedded_family": "higgs_audio_tts"
               }
             ]
@@ -16418,7 +16422,7 @@
           "strip_prefix": "HTDemucs-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -16440,7 +16444,7 @@
           "strip_prefix": "HTDemucs-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -16576,7 +16580,7 @@
           "strip_prefix": "HTDemucs-6stems-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -16598,7 +16602,7 @@
           "strip_prefix": "HTDemucs-6stems-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -17150,14 +17154,14 @@
           "strip_prefix": "Hviske-v6-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Hviske-v6-GGUF/hviske-v6-bf16.gguf",
-                "size_bytes": 2803839616,
-                "sha256": "ca5849b9a94a5bf37685176cf672bf866d074bc51f3f74d8b453c45e5e179b64",
+                "size_bytes": 2803839744,
+                "sha256": "274dfea66bbe213da4ce348031a6602aaa85a61b9f27b5cdcc1c50829a906f42",
                 "embedded_family": "hviske_asr_v6"
               }
             ]
@@ -17172,14 +17176,14 @@
           "strip_prefix": "Hviske-v6-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Hviske-v6-GGUF/hviske-v6-q8_0.gguf",
-                "size_bytes": 1650365056,
-                "sha256": "a02e4ccd60caacdf2f9a2b8d0be1c2d75b8b1a003e48c73d59504a785ee2bcc8",
+                "size_bytes": 1650365184,
+                "sha256": "eadae78112a82cefb62daa23242f01216a6df1086487d211bbc86bf1a8d660ce",
                 "embedded_family": "hviske_asr_v6"
               }
             ]
@@ -18050,14 +18054,14 @@
           "strip_prefix": "IndexTTS2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "IndexTTS2-GGUF/index-tts2-q8_0.gguf",
-                "size_bytes": 3633888608,
-                "sha256": "f9be73ac5b6cbdc5f603f04dcb6c9fe37b3a301a365a1ea8d580d3ef7ba22e8e",
+                "size_bytes": 3633895968,
+                "sha256": "a56e09f49fd39a894dfe1b065ab94884e9ed3515a92f75aff06fb6e6714b6b2c",
                 "embedded_family": "index_tts2"
               }
             ]
@@ -18072,14 +18076,14 @@
           "strip_prefix": "IndexTTS2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "IndexTTS2-GGUF/index-tts2-f16.gguf",
-                "size_bytes": 4646898304,
-                "sha256": "0f7b95d3d32e18bf9352912a7b21a0bd4a8406853a0aaa2c9180f77389c21523",
+                "size_bytes": 4646905664,
+                "sha256": "4bed1d526a81a7a7bfd5ebd72006bf7168ef061261b9d85b6dce30cfc882fda8",
                 "embedded_family": "index_tts2"
               }
             ]
@@ -18094,14 +18098,14 @@
           "strip_prefix": "IndexTTS2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "IndexTTS2-GGUF/index-tts2-orig.gguf",
-                "size_bytes": 8084552000,
-                "sha256": "c96cb948339b7169b7240f43dbd42ad6354ae3d0a22465e292ec8e090c338e16",
+                "size_bytes": 8084559360,
+                "sha256": "3affa94a9b02040fa06774c6047806bbc0f0a90d57ab4de7e50d31d1b19f0350",
                 "embedded_family": "index_tts2"
               }
             ]
@@ -18236,14 +18240,14 @@
           "strip_prefix": "IndexTTS2.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "IndexTTS2.5-GGUF/index-tts2_5-q8_0.gguf",
-                "size_bytes": 3502955328,
-                "sha256": "5e827b2072042e4a1b21ccf24a5cb4f71cb1011403067a0a9b039311d8b38628",
+                "size_bytes": 3502960096,
+                "sha256": "d1ab7b5c3f5ecf2bcd285753be76c7290b0a54939a76b7c39e8f886f80cf6b5c",
                 "embedded_family": "index_tts2"
               }
             ]
@@ -18258,14 +18262,14 @@
           "strip_prefix": "IndexTTS2.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "IndexTTS2.5-GGUF/index-tts2_5-f16.gguf",
-                "size_bytes": 4547355072,
-                "sha256": "87bed9b82fc8f22119a1a1042332091016c28e37f29b0e93343ccdbfa76ef66a",
+                "size_bytes": 4547359840,
+                "sha256": "505f896d83aa5d309a3180e5e72f95a9b192c95930d6d9d534b93c0ca8b42e73",
                 "embedded_family": "index_tts2"
               }
             ]
@@ -18280,14 +18284,14 @@
           "strip_prefix": "IndexTTS2.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "IndexTTS2.5-GGUF/index-tts2_5-orig.gguf",
-                "size_bytes": 7885093440,
-                "sha256": "2c736df55a306155df4e607f49fe963cf2192fc2193ad449a4bdffb15e52b93a",
+                "size_bytes": 7885098208,
+                "sha256": "cfbf964b7692395a9cc93f57ba62ed4b069e367478254fec8180282f205c5d75",
                 "embedded_family": "index_tts2"
               }
             ]
@@ -18543,14 +18547,14 @@
           "strip_prefix": "Inflect-Micro-v2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Inflect-Micro-v2-GGUF/inflect-micro-v2-orig.gguf",
-                "size_bytes": 72082176,
-                "sha256": "d4af1cb6a92cdd8be550e8e7c25805ece222ec0f8e75daf26fc00b4e04ef4b03",
+                "size_bytes": 72082592,
+                "sha256": "9d01cfe6a94592f544f8dde273d89c9ec5cd0fd4720c2a46becbf517bba06b1c",
                 "embedded_family": "inflect_v2"
               }
             ]
@@ -19019,14 +19023,14 @@
           "strip_prefix": "Irodori-TTS-v4-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Irodori-TTS-v4-Small-GGUF/irodori-tts-v4-small-q8_0.gguf",
-                "size_bytes": 1368991360,
-                "sha256": "0f1b96a1608f0a15ef2289e4d23f37c121cb8db3da702d1d5c4c2455b2437190",
+                "size_bytes": 1368994144,
+                "sha256": "9be716e8ab66c887417acf446d198e5dc53f1669bb90136a410706232f1a0d38",
                 "embedded_family": "irodori_tts"
               }
             ]
@@ -19041,14 +19045,14 @@
           "strip_prefix": "Irodori-TTS-v4-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Irodori-TTS-v4-Small-GGUF/irodori-tts-v4.1-anime-q8_0.gguf",
-                "size_bytes": 1112547264,
-                "sha256": "cef628aa1ce784993025789c24d05b4b9e60fa039d40453bc8bdea32f4cb99e7",
+                "size_bytes": 1112550112,
+                "sha256": "858daf47b0439f3750c88e70658b3bbba5457ca38f1bd79b67be950be7a33d00",
                 "embedded_family": "irodori_tts"
               }
             ]
@@ -19063,14 +19067,14 @@
           "strip_prefix": "Irodori-TTS-v4-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Irodori-TTS-v4-Small-GGUF/irodori-tts-v4-small-f16.gguf",
-                "size_bytes": 1762148352,
-                "sha256": "4c30f25aaeb7c273194ee11e25c2ca3e7abde4c09dba8d86b1727528a57bfdd8",
+                "size_bytes": 1762151136,
+                "sha256": "9bf7e431597f21d1ee4fd48fd4f0bbdc83c83ba6f47c6e4ea0557cbf69aaeda5",
                 "embedded_family": "irodori_tts"
               }
             ]
@@ -19085,14 +19089,14 @@
           "strip_prefix": "Irodori-TTS-600M-v3-VoiceDesign-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Irodori-TTS-600M-v3-VoiceDesign-GGUF/irodori-tts-600m-v3-voicedesign-q8_0.gguf",
-                "size_bytes": 1272140064,
-                "sha256": "9f8c305fcf9a79d9afc1bdd9b030934822f6d66e58e93ad92553e712ceb057b5",
+                "size_bytes": 1272143168,
+                "sha256": "e7bb696b9fa59b59fb51935a3db08c0552c383cc1f2ad8927544864f672e4527",
                 "embedded_family": "irodori_tts"
               }
             ]
@@ -19107,14 +19111,14 @@
           "strip_prefix": "Irodori-TTS-600M-v3-VoiceDesign-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Irodori-TTS-600M-v3-VoiceDesign-GGUF/irodori-tts-600m-v3-voicedesign-f16.gguf",
-                "size_bytes": 1463787680,
-                "sha256": "0c40eb114abd94a26270c43f0498c2295df510beab366bc4a5345f1b50820b8c",
+                "size_bytes": 1463790784,
+                "sha256": "006ec83aff079162a7a3aa038de9a57fa3d81ad47ed845c4a435e39ad206e6f1",
                 "embedded_family": "irodori_tts"
               }
             ]
@@ -19129,14 +19133,14 @@
           "strip_prefix": "Irodori-TTS-500M-v3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Irodori-TTS-500M-v3-GGUF/irodori-tts-500m-v3-q8_0.gguf",
-                "size_bytes": 1093739584,
-                "sha256": "4849d69925732232c3f72dedb5d5ae18808b1ca93f5709575829bfbca32a036f",
+                "size_bytes": 1093742688,
+                "sha256": "2442786d5e4c102759bac44b87b8ed987ba66fd6af640f6dc1b98598af1485a3",
                 "embedded_family": "irodori_tts"
               }
             ]
@@ -19151,13 +19155,15 @@
           "strip_prefix": "Irodori-TTS-v4-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Irodori-TTS-v4-Small-GGUF/irodori-tts-v4.1-small-mf-q8_0.gguf",
-                "missing": true
+                "size_bytes": 1368276320,
+                "sha256": "a450c277a29b771bde3ceb21fd753bfb9a61c93aef952e0a3b20ad8d3facbbcd",
+                "embedded_family": "irodori_tts"
               }
             ]
           }
@@ -19171,13 +19177,15 @@
           "strip_prefix": "Irodori-TTS-v4-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Irodori-TTS-v4-Small-GGUF/irodori-tts-v4.1-small-mf-f16.gguf",
-                "missing": true
+                "size_bytes": 1768191712,
+                "sha256": "fd3391b40eea2e8061ac507dfa2402980a382f245713218d553fd7904fe223d1",
+                "embedded_family": "irodori_tts"
               }
             ]
           }
@@ -19191,14 +19199,14 @@
           "strip_prefix": "Irodori-TTS-500M-v3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Irodori-TTS-500M-v3-GGUF/irodori-tts-500m-v3-f16.gguf",
-                "size_bytes": 1254813120,
-                "sha256": "24c5d7224c056dd9464c30214067369b0b6e8cb28646e6eda3f41bd8bad332b7",
+                "size_bytes": 1254816224,
+                "sha256": "d8cb39d6dd6929eb4de1c3e8f508d4322402d3424b553cf52006d5ef2d37546b",
                 "embedded_family": "irodori_tts"
               }
             ]
@@ -19647,14 +19655,14 @@
           "strip_prefix": "KittenTTS-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "KittenTTS-GGUF/kitten-tts-mini-0.8-orig.gguf",
-                "size_bytes": 302167104,
-                "sha256": "8f015d32f30cab7b9eebdebb244b0124cfd855ffe543daa3c6967e496fd24336",
+                "size_bytes": 302167648,
+                "sha256": "485a50101b6c16e98c842f231780789d54136ffb07a6cacb33dc0735103274d7",
                 "embedded_family": "kitten_tts"
               }
             ]
@@ -20279,13 +20287,15 @@
           "strip_prefix": "KittenTTS2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "KittenTTS2-GGUF/kitten-tts2-20261021-q8_0.gguf",
-                "missing": true
+                "size_bytes": 3343404128,
+                "sha256": "cd67d70466344b41e5e6c7fa317d09e88f499d2973e030d35c969dc8c7c84ff5",
+                "embedded_family": "kitten_tts2"
               }
             ]
           }
@@ -20300,13 +20310,15 @@
           "strip_prefix": "KittenTTS2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "KittenTTS2-GGUF/kitten-tts2-20261021-q4_0.gguf",
-                "missing": true
+                "size_bytes": 2638763488,
+                "sha256": "bbbef13230061a886adb0c38eecc84a4297ed8d965d3f014ac08f22f1c0f8658",
+                "embedded_family": "kitten_tts2"
               }
             ]
           }
@@ -20894,14 +20906,14 @@
           "strip_prefix": "Kokoro-82M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Kokoro-82M-GGUF/kokoro-82m-q8_0.gguf",
-                "size_bytes": 189549408,
-                "sha256": "5d800fd204029302c10313daeafdb31c875c7c29ae31974d0d156cc7f512d1d0",
+                "size_bytes": 189550976,
+                "sha256": "9a4ca6176460cdc8c7845b804c0bbe85a4791ee3ffff568a3fdadbb708c63f47",
                 "embedded_family": "kokoro_tts"
               }
             ]
@@ -20916,14 +20928,14 @@
           "strip_prefix": "Kokoro-82M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Kokoro-82M-GGUF/kokoro-82m-bf16.gguf",
-                "size_bytes": 211954816,
-                "sha256": "51d10c63557d21f70ef5d607e91c11023cf408dbc3af24c283b18106778e1e67",
+                "size_bytes": 211956384,
+                "sha256": "0d2c2afac39b0ff01fb20b5633a6a5543735e612942b3af571424502b9c2dfaa",
                 "embedded_family": "kokoro_tts"
               }
             ]
@@ -21209,7 +21221,7 @@
           "strip_prefix": "Kroko-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -21524,7 +21536,7 @@
           "strip_prefix": "KugelAudio-0-Open-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -21547,7 +21559,7 @@
           "strip_prefix": "KugelAudio-0-Open-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -21570,7 +21582,7 @@
           "strip_prefix": "KugelAudio-0-Open-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -25460,7 +25472,7 @@
           "strip_prefix": "MagpieTTS-Multilingual-357M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -25483,7 +25495,7 @@
           "strip_prefix": "MagpieTTS-Multilingual-357M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -25781,7 +25793,7 @@
           "strip_prefix": "Maya1-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -25804,7 +25816,7 @@
           "strip_prefix": "Maya1-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -25979,7 +25991,7 @@
           "strip_prefix": "MeanVC2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -26002,7 +26014,7 @@
           "strip_prefix": "MeanVC2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -26154,7 +26166,7 @@
           "strip_prefix": "Mel-Band-RoFormer-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -26176,7 +26188,7 @@
           "strip_prefix": "Mel-Band-RoFormer-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -26366,7 +26378,7 @@
           "strip_prefix": "MicroWakeWord-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -26572,7 +26584,7 @@
           "strip_prefix": "MiDashengLM-Gen-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -26595,7 +26607,7 @@
           "strip_prefix": "MiDashengLM-Gen-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -31548,7 +31560,7 @@
           "strip_prefix": "MiniMax-H3-Q4-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -31629,7 +31641,7 @@
           "strip_prefix": "MiniMax-H3-Q4-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -32454,14 +32466,14 @@
           "strip_prefix": "MioCodec-25Hz-44.1kHz-v2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MioCodec-25Hz-44.1kHz-v2-GGUF/miocodec-25hz-44khz-v2-q8_0.gguf",
-                "size_bytes": 299066464,
-                "sha256": "4c76a36313496acd5c9d39bb54f8bb239050eb8891829414ac195161db44b3bb",
+                "size_bytes": 299068928,
+                "sha256": "f785604da457327caf26e4f0fc14bd4b8aac20116d6612e9076a386071f3a05b",
                 "embedded_family": "miocodec"
               }
             ]
@@ -32476,14 +32488,14 @@
           "strip_prefix": "MioCodec-25Hz-44.1kHz-v2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MioCodec-25Hz-44.1kHz-v2-GGUF/miocodec-25hz-44khz-v2-f16.gguf",
-                "size_bytes": 452910080,
-                "sha256": "9f8eb1e69948968747b22012309831152bd38634ed0c4ef02ed04080d505d500",
+                "size_bytes": 452912544,
+                "sha256": "6b921c62f66839ca6849e53252987a76b44950f1f3e2e0c03bcd34526a4558f4",
                 "embedded_family": "miocodec"
               }
             ]
@@ -32498,14 +32510,14 @@
           "strip_prefix": "MioCodec-25Hz-44.1kHz-v2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MioCodec-25Hz-44.1kHz-v2-GGUF/miocodec-25hz-44khz-v2-orig.gguf",
-                "size_bytes": 905706656,
-                "sha256": "966ff5516355f1c1677e2443bb94bb81ec6608590747883574fe8958e2d6dabc",
+                "size_bytes": 905709120,
+                "sha256": "997190af1b7a302bf037942a5aa78434d261d8c4fe54bf03f52a380aa8656868",
                 "embedded_family": "miocodec"
               }
             ]
@@ -32893,14 +32905,14 @@
           "strip_prefix": "MioTTS-1.7B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MioTTS-1.7B-GGUF/miotts-1.7b-q8_0.gguf",
-                "size_bytes": 2197326752,
-                "sha256": "3496847df8bd2ffd297fa327b746c8fc7a2e854f5a27ca4c0ee04dfc2dc93cd8",
+                "size_bytes": 2197332000,
+                "sha256": "14ec51c59de3c451a0955eed04ba42eab20c8261ae2259674db0934931e66d0a",
                 "embedded_family": "miotts"
               }
             ]
@@ -32915,14 +32927,14 @@
           "strip_prefix": "MioTTS-1.7B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MioTTS-1.7B-GGUF/miotts-1.7b-bf16.gguf",
-                "size_bytes": 3518532512,
-                "sha256": "0f035aa8487351020bfd56516f79ddbe97664955348725a764ab3e3a3aab2835",
+                "size_bytes": 3518537760,
+                "sha256": "fa1accea1be2e697d5856e3f06e94b1d849f61f90b5f359507934295acf8fca7",
                 "embedded_family": "miotts"
               }
             ]
@@ -32937,14 +32949,14 @@
           "strip_prefix": "MioTTS-1.7B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MioTTS-1.7B-GGUF/miotts-1.7b-orig.gguf",
-                "size_bytes": 3518532512,
-                "sha256": "29f5dcfbf5a94e6ae6e2574c59cd6730e3b4c868436d5d455e4d943e121e46ed",
+                "size_bytes": 3518537760,
+                "sha256": "0f06a3ac49471027faee2c12987da8f074ab29643f0f6a68cdb7fd065b7655df",
                 "embedded_family": "miotts"
               }
             ]
@@ -33392,7 +33404,7 @@
           "strip_prefix": "MMS-Forced-Aligner-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -33454,7 +33466,7 @@
           "strip_prefix": "MMS-Forced-Aligner-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -33663,15 +33675,15 @@
           "strip_prefix": "Moonshine-Streaming-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Moonshine-Streaming-GGUF/moonshine-streaming-tiny-q8_0.gguf",
-                "size_bytes": 60408448,
-                "sha256": "b1409ca065d9d8472773b2801ce8bab772720d8f850779180f687871e63b7ba2",
-                "embedded_family": null
+                "size_bytes": 60409088,
+                "sha256": "0f795f14924dbfe40d2ee0e220382c9b23cd9e89064c6ffb97e236d81f1d7020",
+                "embedded_family": "moonshine_asr"
               }
             ]
           }
@@ -33685,15 +33697,15 @@
           "strip_prefix": "Moonshine-Streaming-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Moonshine-Streaming-GGUF/moonshine-streaming-small-q8_0.gguf",
-                "size_bytes": 300621792,
-                "sha256": "4d03fd9debad978240f522de238dba0b1a10fb0c9539e608701418682838a892",
-                "embedded_family": null
+                "size_bytes": 300622464,
+                "sha256": "98731a08788a6dacc5dc56f32f36153f3373629adc7163ac83498a2702f210a9",
+                "embedded_family": "moonshine_asr"
               }
             ]
           }
@@ -33707,15 +33719,15 @@
           "strip_prefix": "Moonshine-Streaming-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Moonshine-Streaming-GGUF/moonshine-streaming-medium-q8_0.gguf",
-                "size_bytes": 315584192,
-                "sha256": "3a2c57b0b16efb55fc30495d5f6d8350eddeabdb3c36fa3f7bbad89d2e7b5775",
-                "embedded_family": null
+                "size_bytes": 315584864,
+                "sha256": "65922c50b8e66eeb70423a989b282959340088777498e15d12ffcba821335e37",
+                "embedded_family": "moonshine_asr"
               }
             ]
           }
@@ -33988,7 +34000,7 @@
           "strip_prefix": "MOSS-Transcribe-Diarize-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -34010,7 +34022,7 @@
           "strip_prefix": "MOSS-Transcribe-Diarize-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -34032,7 +34044,7 @@
           "strip_prefix": "MOSS-Transcribe-Diarize-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -34363,14 +34375,14 @@
           "strip_prefix": "MOSS-TTS-Local-v1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MOSS-TTS-Local-v1.5-GGUF/moss-tts-local-v1.5-q8_0.gguf",
-                "size_bytes": 7512220768,
-                "sha256": "ce2d34f73274dcb1e314e884edf6644b74618b99a2ae3256cc4f7b42f59308ea",
+                "size_bytes": 7512224256,
+                "sha256": "d465210814e60cc09224b33bf272bde519c871dda76997a8c17aed4878d1ba9a",
                 "embedded_family": "moss_tts_local"
               }
             ]
@@ -34385,14 +34397,14 @@
           "strip_prefix": "MOSS-TTS-Local-v1.5-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MOSS-TTS-Local-v1.5-GGUF/moss-tts-local-v1.5-bf16.gguf",
-                "size_bytes": 13367797280,
-                "sha256": "9ff6c86f3d4cfbd227cc1b7618e3e016aaa129686f9939fe422a49e0e7369415",
+                "size_bytes": 13367800768,
+                "sha256": "293d590dcf8c01686762af605cdc11b7aade5e328ea2b091150e09839794d57f",
                 "embedded_family": "moss_tts_local"
               }
             ]
@@ -34802,14 +34814,14 @@
           "strip_prefix": "MOSS-TTS-Nano-100M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MOSS-TTS-Nano-100M-GGUF/moss-tts-nano-100m-q8_0.gguf",
-                "size_bytes": 193337984,
-                "sha256": "3b9c138ce4093514b6493b77abaf3e62f4d2ac58412616d2f7ee89cca28be388",
+                "size_bytes": 193343328,
+                "sha256": "823b0de64f01f1ee9a168356c1199be500d71ec2f769f0183b416c9e6dbc0abc",
                 "embedded_family": "moss_tts_nano"
               }
             ]
@@ -34824,14 +34836,14 @@
           "strip_prefix": "MOSS-TTS-Nano-100M-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MOSS-TTS-Nano-100M-GGUF/moss-tts-nano-100m-bf16.gguf",
-                "size_bytes": 332423040,
-                "sha256": "249a7eb9a8ae2e919946971e8270960f6657c0fbc06c5c7c4929b94af83ade0b",
+                "size_bytes": 332428384,
+                "sha256": "ea44b602f3fbd6e18d505c48533035bf2db604e929117abcd05d2d77b8f786c8",
                 "embedded_family": "moss_tts_nano"
               }
             ]
@@ -35729,14 +35741,14 @@
           "strip_prefix": "MOSS-VoiceGenerator-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MOSS-VoiceGenerator-GGUF/moss_voicegen_bf16_codec_f16_decode.gguf",
-                "size_bytes": 6022979936,
-                "sha256": "5ae9477178606dfc283bb7dcbed1cea0f6a1005d9d35c654f88194100ef7f0fd",
+                "size_bytes": 6022982624,
+                "sha256": "6c69ba22816917ed16ef6991a7c0c848d86cde7071e9f6554ad867b47b268769",
                 "embedded_family": "moss_voicegen"
               }
             ]
@@ -35887,14 +35899,14 @@
           "strip_prefix": "MossFormer2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MossFormer2-GGUF/mossformer2-ss-16k-f32.gguf",
-                "size_bytes": 223122916,
-                "sha256": "b2781132b6abfe9659561ceb4817e3aac9971472086f0913ef3d91fc9c8d6282",
+                "size_bytes": 223123620,
+                "sha256": "a8cd233d4763834202506dea277760add06e4d057dd98de637286c0e01d91c54",
                 "embedded_family": "mossformer2"
               }
             ]
@@ -35910,14 +35922,14 @@
           "strip_prefix": "MossFormer2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MossFormer2-GGUF/mossformer2-ss-16k-f16.gguf",
-                "size_bytes": 112087076,
-                "sha256": "fc5a867872d221dca070ef9c5e518a267744d4ac39acc52f1bf3454c5e162789",
+                "size_bytes": 112087204,
+                "sha256": "44f36996d5d86583d13670b0d7284d069df48e432f7f2262275a6676d815feb5",
                 "embedded_family": "mossformer2"
               }
             ]
@@ -36191,7 +36203,7 @@
           "strip_prefix": "MuScriptor-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -36213,13 +36225,15 @@
           "strip_prefix": "MuScriptor-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MuScriptor-Small-GGUF/muscriptor-medium-f32.gguf",
-                "missing": true
+                "size_bytes": 1228154944,
+                "sha256": "24302a7d9c6a78c1db2ca0d29c6e48c9fddbf35ff937f56358b0b125d2250ce9",
+                "embedded_family": "muscriptor"
               }
             ]
           }
@@ -36233,13 +36247,15 @@
           "strip_prefix": "MuScriptor-Small-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "MuScriptor-Small-GGUF/muscriptor-large-f32.gguf",
-                "missing": true
+                "size_bytes": 5465656576,
+                "sha256": "570e1048c5d9c01c6a8f698d5c0bfd9d4d5927a20bfbf2bb0c2b99f17bb9c971",
+                "embedded_family": "muscriptor"
               }
             ]
           }
@@ -36879,7 +36895,7 @@
           "strip_prefix": "Nemotron-3.5-ASR-Streaming-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -36901,7 +36917,7 @@
           "strip_prefix": "Nemotron-3.5-ASR-Streaming-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -37883,7 +37899,7 @@
           "strip_prefix": "NeuTTS-2E-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38071,7 +38087,7 @@
           "strip_prefix": "Niagara-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38093,7 +38109,7 @@
           "strip_prefix": "Niagara-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -38547,14 +38563,14 @@
           "strip_prefix": "OmniVoice-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OmniVoice-GGUF/omnivoice-q8_0.gguf",
-                "size_bytes": 1350288416,
-                "sha256": "2f4be637278043c6842de5b85d681532030e9eb6ffe0f8b0e320f68238e3da8b",
+                "size_bytes": 1350296096,
+                "sha256": "0e5a721edd1b08d9067ef66f40ded609a6b14f5a8445c703f9869736cabd350a",
                 "embedded_family": "omnivoice"
               }
             ]
@@ -38569,14 +38585,14 @@
           "strip_prefix": "OmniVoice-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OmniVoice-GGUF/omnivoice-bf16.gguf",
-                "size_bytes": 1639548640,
-                "sha256": "7301a41a0a5a2cb04430c1831a705e3906bfca51562c5cdb2f30a90d505a819c",
+                "size_bytes": 1639556288,
+                "sha256": "a5e0b148274f1bd719dd9e30b2d400671e587b0457a9c7e8840cfe7be94c5b62",
                 "embedded_family": "omnivoice"
               }
             ]
@@ -38591,14 +38607,14 @@
           "strip_prefix": "OmniVoice-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OmniVoice-GGUF/omnivoice-f16.gguf",
-                "size_bytes": 1639548768,
-                "sha256": "7421b6c387351d2cdce7eb8b931fa279739d628ef25acd4ff2062a70e6e1ab63",
+                "size_bytes": 1639556448,
+                "sha256": "cec92925cddef7d8ef33a462155b268a662a15a9ebd40cb5a284ccc1179d6a08",
                 "embedded_family": "omnivoice"
               }
             ]
@@ -38906,7 +38922,7 @@
           "strip_prefix": "OpenWakeWord-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -39654,14 +39670,14 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OWSM-GGUF/owsm-v4-base-102m-f32.gguf",
                 "size_bytes": 331785024,
-                "sha256": "70a3a977a380084b67e7a9804efa504bb5f0f3aa07f873a7ae046dc96e352d84",
+                "sha256": "fe2dc9a01b7b39f13f6b2e9f2acb30cb1be890525178760d66e1afb9172bd69d",
                 "embedded_family": "owsm"
               }
             ]
@@ -39677,14 +39693,14 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OWSM-GGUF/owsm-v4-base-102m-q8_0.gguf",
                 "size_bytes": 118204672,
-                "sha256": "7d4efb7188ca85f3bc85c8411cd97d1d667adb22fbb8084142eeb812e83461bc",
+                "sha256": "6596d9705936f7792b2fd9e1b518368adf0dca547334d5c5536899c989883bb8",
                 "embedded_family": "owsm"
               }
             ]
@@ -39700,14 +39716,14 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OWSM-GGUF/owsm-v4-small-370m-f32.gguf",
                 "size_bytes": 1325740192,
-                "sha256": "e62c2281e3b3607083d524d792c33ce3937c4bb9c5a33e705e1a818b2208e89a",
+                "sha256": "f749dca99c1499cb012b8c9759eaf84aee0501b1df776ad1a7ad36ac45e89e4d",
                 "embedded_family": "owsm"
               }
             ]
@@ -39723,14 +39739,14 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OWSM-GGUF/owsm-v4-small-370m-q8_0.gguf",
                 "size_bytes": 432323584,
-                "sha256": "08f76076a89c2dfa4a3c49bac5c86ad9ddbe2aac1bdbde08286636620df48eed",
+                "sha256": "d8a168dff3f5dd867bb2c935734cd38d1eed4833679e07033fa4dea1e1f3e69f",
                 "embedded_family": "owsm"
               }
             ]
@@ -39746,14 +39762,14 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OWSM-GGUF/owsm-v4-small-370m-q4_k.gguf",
                 "size_bytes": 296337664,
-                "sha256": "f16181a97466266a46f81516282a7cba3ae65ded00c53f2392e2aed2fdc401b0",
+                "sha256": "d47d37b073354aea5d9fcc69f79d170f4e8ece6d5553a090aacfc502e49c41c4",
                 "embedded_family": "owsm"
               }
             ]
@@ -39769,14 +39785,14 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OWSM-GGUF/owsm-v4-medium-1b-f32.gguf",
                 "size_bytes": 3884745440,
-                "sha256": "1e9ab4491072ceda1f959543acc63465f510907bf585d1160f968c826f3fa3dd",
+                "sha256": "f6a6dd06052cca5a11de3a7d537f77538e47be13345bc3fb795a8ac836a4ee27",
                 "embedded_family": "owsm"
               }
             ]
@@ -39792,14 +39808,14 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OWSM-GGUF/owsm-v4-medium-1b-q8_0.gguf",
                 "size_bytes": 1160963936,
-                "sha256": "cd1afc17d28a91cc7d1c74f9088166b7675ee21c388433ea79da6d4b5dd85684",
+                "sha256": "5e421901cd07ea9c76e3e8c05aa3298f8256e661b31684243030a1154485c042",
                 "embedded_family": "owsm"
               }
             ]
@@ -39815,14 +39831,14 @@
           "strip_prefix": "OWSM-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "OWSM-GGUF/owsm-v4-medium-1b-q4_k.gguf",
                 "size_bytes": 720126816,
-                "sha256": "ae1bc39e7e3674dbb842256bc6e29589d81e75670542b08ca626baa3259b90a5",
+                "sha256": "f35cc795f6c00e8ff1d428dad84cdf28f9665ec99b8188db4001c65b8da6e5a4",
                 "embedded_family": "owsm"
               }
             ]
@@ -40238,7 +40254,7 @@
           "strip_prefix": "OWSM-CTC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40261,7 +40277,7 @@
           "strip_prefix": "OWSM-CTC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40591,14 +40607,14 @@
           "strip_prefix": "Parakeet-TDT-0.6B-v3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Parakeet-TDT-0.6B-v3-GGUF/parakeet-tdt-0.6b-v3-q8_0.gguf",
-                "size_bytes": 915733744,
-                "sha256": "074e61ac1abd3d3efcfc10798d17bf9a975b31768b466fc2578364d206dde64c",
+                "size_bytes": 915735760,
+                "sha256": "6fa498f10f8cb606f041aa9512733cfee842a932359b00b0c45b9b723c4f4f4b",
                 "embedded_family": "parakeet_tdt"
               }
             ]
@@ -40613,14 +40629,14 @@
           "strip_prefix": "Parakeet-TDT-0.6B-v3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Parakeet-TDT-0.6B-v3-GGUF/parakeet-tdt-0.6b-v3-f16.gguf",
-                "size_bytes": 1255384320,
-                "sha256": "83622c44275694039e543e135ac91b40d94f48fc80a1bf187b5a1cbcd5dd8649",
+                "size_bytes": 1255386336,
+                "sha256": "1720770887bbb6ae633b3375c6ce4b76b3eaff9cd4efd7b890db734cc0adfe80",
                 "embedded_family": "parakeet_tdt"
               }
             ]
@@ -40635,7 +40651,7 @@
           "strip_prefix": "Orukeet-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -40655,7 +40671,7 @@
           "strip_prefix": "Orukeet-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41041,7 +41057,7 @@
           "strip_prefix": "PersonaPlex-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41064,7 +41080,7 @@
           "strip_prefix": "PersonaPlex-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -41554,15 +41570,15 @@
           "default": true,
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Phonon-2-GGUF/phonon-2-mixed-q8.gguf",
-                "size_bytes": 1183640128,
-                "sha256": "41cd529fc936830f4b6fb45b10978cb99ca1f9d5944d34add13ec87dedfc7fbd",
-                "embedded_family": "parakeet_tdt"
+                "size_bytes": 1183640960,
+                "sha256": "8245772967def6edbb7ac54d2c453ecc13040687a5709c83d4200af339b51ff2",
+                "embedded_family": "phonon2_asr"
               }
             ]
           }
@@ -41576,15 +41592,15 @@
           "strip_prefix": "Phonon-2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Phonon-2-GGUF/phonon-2-mixed-f16.gguf",
-                "size_bytes": 1301736864,
-                "sha256": "d1d93f030d3904389220d2b789cd6787742c3130ad52b503b16a47720570108f",
-                "embedded_family": "parakeet_tdt"
+                "size_bytes": 1301737856,
+                "sha256": "de6e2e26ce1e924f1bf4b0c9c0f3e9414f8e7ce5597df4554158c4a211e8aacb",
+                "embedded_family": "phonon2_asr"
               }
             ]
           }
@@ -41829,14 +41845,14 @@
           "strip_prefix": "Piper-TTS-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Piper-TTS-GGUF/piper-en-us-lessac-medium-orig.gguf",
-                "size_bytes": 62661248,
-                "sha256": "c579c0010e67cb4941179405ae4587923b0372638df7b2987e758d7c97fe2e6f",
+                "size_bytes": 62662016,
+                "sha256": "12432fab389024e7f839fbc0d989afba46e74bf0d2fa75495642b3ae44a4b093",
                 "embedded_family": "piper_tts"
               }
             ]
@@ -42170,7 +42186,7 @@
           "strip_prefix": "Plapre-3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42193,7 +42209,7 @@
           "strip_prefix": "Plapre-3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -42646,14 +42662,14 @@
           "strip_prefix": "PocketTTS-GGUF/english",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/english/pocket-tts-english-q8_0.gguf",
-                "size_bytes": 127856704,
-                "sha256": "0315406421d515d9ffbde49ed998832ff2962562ef8abde440c85fa0a27d8b2a",
+                "size_bytes": 127867968,
+                "sha256": "3f71cf6a51f93c2f2e554e98970a3f49fb9a98d0c64bed5a815e65be3d2ff588",
                 "embedded_family": "pocket_tts"
               },
               {
@@ -42673,14 +42689,14 @@
           "strip_prefix": "PocketTTS-GGUF/english",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/english/pocket-tts-english-bf16.gguf",
-                "size_bytes": 219096064,
-                "sha256": "267e774a671138c4ebbc1d6d9d73af92f4a8e83a64b45b84f3457ac700ad0cc9",
+                "size_bytes": 219107328,
+                "sha256": "24ab011c231ea33e7e8b88453c8faec02cdeb37c9b62dbb946ec5c806ec35902",
                 "embedded_family": "pocket_tts"
               },
               {
@@ -42700,14 +42716,14 @@
           "strip_prefix": "PocketTTS-GGUF/french",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/french/pocket-tts-french-q8_0.gguf",
-                "size_bytes": 128112608,
-                "sha256": "b01fff24f25f7f226820d5c63e1493b8b9fba10322464aa0182b2aba2234458d",
+                "size_bytes": 128117408,
+                "sha256": "ae7e6d536c20245d216a7ec9404124cf67f913380bf41a6380c55d6ca9dbaef5",
                 "embedded_family": "pocket_tts"
               },
               {
@@ -42727,14 +42743,14 @@
           "strip_prefix": "PocketTTS-GGUF/french",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/french/pocket-tts-french-bf16.gguf",
-                "size_bytes": 219351968,
-                "sha256": "8ee943308daad80bc402dbfd197287a94919b3bd176ef8c15bcba2af00e1b215",
+                "size_bytes": 219356768,
+                "sha256": "f7b197184e36d9f744fbc3e224e685de8fc977ab748e3612732a8706e9096541",
                 "embedded_family": "pocket_tts"
               },
               {
@@ -42754,14 +42770,14 @@
           "strip_prefix": "PocketTTS-GGUF/german",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/german/pocket-tts-german-q8_0.gguf",
-                "size_bytes": 127857184,
-                "sha256": "aec1d5037cf9ecb9a81937075b9046ba89f2be4ff1741dbf26e0a65a0348831d",
+                "size_bytes": 127868448,
+                "sha256": "d99a966c42026dbe119863ad8a8c96ddd3c8d2e800dfe2ab75a0caa579293268",
                 "embedded_family": "pocket_tts"
               }
             ]
@@ -42776,14 +42792,14 @@
           "strip_prefix": "PocketTTS-GGUF/german",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/german/pocket-tts-german-bf16.gguf",
-                "size_bytes": 219096544,
-                "sha256": "56a8629fd63dac650c0b19873ee49bde92a8151c044ab8600548ae21dee6f7af",
+                "size_bytes": 219107808,
+                "sha256": "e8b47c42f9c377eed09ad6d3e4e35031ca35dbc69ef55992c2cabafbc24885c6",
                 "embedded_family": "pocket_tts"
               }
             ]
@@ -42798,14 +42814,14 @@
           "strip_prefix": "PocketTTS-GGUF/italian",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/italian/pocket-tts-italian-q8_0.gguf",
-                "size_bytes": 127857440,
-                "sha256": "67945665b5c303e53d8de17b3589b2f24e8c14314aa215b9748da3a3d0b4d35c",
+                "size_bytes": 127868704,
+                "sha256": "aa25eb6c0d73fa90a26c07ed5453f44c321ff483b33e96e5c3693b6f76ef9149",
                 "embedded_family": "pocket_tts"
               }
             ]
@@ -42820,14 +42836,14 @@
           "strip_prefix": "PocketTTS-GGUF/italian",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/italian/pocket-tts-italian-bf16.gguf",
-                "size_bytes": 219096800,
-                "sha256": "fd8b0fe5406d378548f0dc259f7ae7ff632a524d6e9bfa50d841bdc01819a1ee",
+                "size_bytes": 219108064,
+                "sha256": "853805d9b7fe25d33ecdc609dc62686d2df88f2ac1041a8009c4ca1bdfb4d51d",
                 "embedded_family": "pocket_tts"
               }
             ]
@@ -42842,14 +42858,14 @@
           "strip_prefix": "PocketTTS-GGUF/portuguese",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/portuguese/pocket-tts-portuguese-q8_0.gguf",
-                "size_bytes": 127858368,
-                "sha256": "5714e9b9886176d2df510ba0f138ca10c98a24511b5a1e7178b980ace20fd83d",
+                "size_bytes": 127869632,
+                "sha256": "e6e76fde1770586b11fab5a7d4fa07006d911098718991e242ca6006bd0513cd",
                 "embedded_family": "pocket_tts"
               }
             ]
@@ -42864,14 +42880,14 @@
           "strip_prefix": "PocketTTS-GGUF/portuguese",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/portuguese/pocket-tts-portuguese-bf16.gguf",
-                "size_bytes": 219097728,
-                "sha256": "ce0e6c26400f22c4419a89cce4bd0ab1b5f188dc21e7519966958749a5e03889",
+                "size_bytes": 219108992,
+                "sha256": "0ba1e195f8225299218ee8a731457e3121fa171b0f6135bcc8afc43ff96faa46",
                 "embedded_family": "pocket_tts"
               }
             ]
@@ -42886,14 +42902,14 @@
           "strip_prefix": "PocketTTS-GGUF/spanish",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/spanish/pocket-tts-spanish-q8_0.gguf",
-                "size_bytes": 127858240,
-                "sha256": "73f0e8fd85472057289b0ae6098be473a5d112cc01b0ecb17f423198bcf445e1",
+                "size_bytes": 127869504,
+                "sha256": "d2645064c191d0b9b8daf6d24d2b8a310d89f694c9b3523c1258bc9455adcaff",
                 "embedded_family": "pocket_tts"
               }
             ]
@@ -42908,14 +42924,14 @@
           "strip_prefix": "PocketTTS-GGUF/spanish",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-GGUF/spanish/pocket-tts-spanish-bf16.gguf",
-                "size_bytes": 219097600,
-                "sha256": "cef113cfc7719e1d63b6987c9049b4af5cd2a3dbad406482a819156d005b3466",
+                "size_bytes": 219108864,
+                "sha256": "aefafb0186b16847aa184c28d2bf0310ccb5999f1fde98c416786b268fa8d232",
                 "embedded_family": "pocket_tts"
               }
             ]
@@ -43596,17 +43612,20 @@
           "strip_prefix": "PocketTTS-Small-GGUF/english-18m-refl",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-Small-GGUF/english-18m-refl/english-18m-refl-f32.gguf",
-                "missing": true
+                "size_bytes": 111809536,
+                "sha256": "f19bbf172c443ce63aaf22ce2d2fbabf45726cc48694c3c4904e8ec4a8661a3c",
+                "embedded_family": "pocket_tts_small"
               },
               {
                 "path": "PocketTTS-Small-GGUF/english-18m-refl/embeddings/alba.safetensors",
-                "missing": true
+                "size_bytes": 4163992,
+                "sha256": "e1aa12e17245952e044853867deef5e77ec4474df119cbeefa4ed2a3d878a7b1"
               }
             ]
           }
@@ -43620,17 +43639,20 @@
           "strip_prefix": "PocketTTS-Small-GGUF/english-18m",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-Small-GGUF/english-18m/english-18m-f32.gguf",
-                "missing": true
+                "size_bytes": 111809536,
+                "sha256": "d66ba8fa4cce2c12901a46a93ead2785ea5e6ac689e6127ffec14c41c17b8031",
+                "embedded_family": "pocket_tts_small"
               },
               {
                 "path": "PocketTTS-Small-GGUF/english-18m/embeddings/alba.safetensors",
-                "missing": true
+                "size_bytes": 4163992,
+                "sha256": "11554cbe9f3d3a3e10722932df9952bb44928e534f7af3200524659166b5627a"
               }
             ]
           }
@@ -43644,17 +43666,20 @@
           "strip_prefix": "PocketTTS-Small-GGUF/english-7m-refl",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-Small-GGUF/english-7m-refl/english-7m-refl-f32.gguf",
-                "missing": true
+                "size_bytes": 66564096,
+                "sha256": "43aabac6b8778d7ae2d41cf5a22068119cdf05e80710815510a2b188ead82913",
+                "embedded_family": "pocket_tts_small"
               },
               {
                 "path": "PocketTTS-Small-GGUF/english-7m-refl/embeddings/alba.safetensors",
-                "missing": true
+                "size_bytes": 1042832,
+                "sha256": "2132e156c08f57779a694bb4b57174b1dd8dd1ccb414e8d8df090a648fac13cd"
               }
             ]
           }
@@ -43668,17 +43693,20 @@
           "strip_prefix": "PocketTTS-Small-GGUF/english-7m",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-Small-GGUF/english-7m/english-7m-f32.gguf",
-                "missing": true
+                "size_bytes": 66564096,
+                "sha256": "e58b4a0643b5b9b61b6bd1c9caf1bfb1fb0f457c46534d32cd5ff798296cb2e1",
+                "embedded_family": "pocket_tts_small"
               },
               {
                 "path": "PocketTTS-Small-GGUF/english-7m/embeddings/alba.safetensors",
-                "missing": true
+                "size_bytes": 1042832,
+                "sha256": "fef27ae7a34132e88c81090316145671362da386ab4e5c6b048e5d16800d746b"
               }
             ]
           }
@@ -43692,17 +43720,20 @@
           "strip_prefix": "PocketTTS-Small-GGUF/english-2m-refl",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-Small-GGUF/english-2m-refl/english-2m-refl-f32.gguf",
-                "missing": true
+                "size_bytes": 46792352,
+                "sha256": "aaa47812c03c0de62811fe4abbaaa43718741e911e7dd20bf25f190a0065a5e5",
+                "embedded_family": "pocket_tts_small"
               },
               {
                 "path": "PocketTTS-Small-GGUF/english-2m-refl/embeddings/alba.safetensors",
-                "missing": true
+                "size_bytes": 522632,
+                "sha256": "ac4d7735dc6b5d0591400660a23e9eace974aa1f4085a5be4a8ea2ddfc4ecce8"
               }
             ]
           }
@@ -43716,17 +43747,20 @@
           "strip_prefix": "PocketTTS-Small-GGUF/english-2m",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "PocketTTS-Small-GGUF/english-2m/english-2m-f32.gguf",
-                "missing": true
+                "size_bytes": 46792352,
+                "sha256": "107e012237171ca2aa4c940818da7db34fc25657eeec95cf5e2db5830a426614",
+                "embedded_family": "pocket_tts_small"
               },
               {
                 "path": "PocketTTS-Small-GGUF/english-2m/embeddings/alba.safetensors",
-                "missing": true
+                "size_bytes": 522632,
+                "sha256": "3f561ebfdb6670e89b441bcdf35b3e86e25a620dfaa4eaf5637a63833d367b7c"
               }
             ]
           }
@@ -43949,7 +43983,7 @@
           "strip_prefix": "PulseVAD-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -43971,7 +44005,7 @@
           "strip_prefix": "PulseVAD-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -44364,14 +44398,14 @@
           "strip_prefix": "Qwen3-ASR-1.7B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-q8_0.gguf",
-                "size_bytes": 2473010048,
-                "sha256": "da4fc2ac7f24dee784d1684eb1f35836cdbf559519452ae11777670734c0a4f8",
+                "size_bytes": 2473017600,
+                "sha256": "3bc2462eca3a3a8f56abcd860d0943ffdc0546547dde55a9d08589607d6f3936",
                 "embedded_family": "qwen3_asr"
               }
             ]
@@ -44386,14 +44420,14 @@
           "strip_prefix": "Qwen3-ASR-1.7B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-f16.gguf",
-                "size_bytes": 4087653248,
-                "sha256": "f12537d4ea56df4e1dcca64a902e0b37fb1111f8ef7fc8e554fd00110be047d0",
+                "size_bytes": 4087660800,
+                "sha256": "59baf62f2454a1b4d1d9ffed730dbf1d0bce28ed6fec30897de17f9d6d452fc3",
                 "embedded_family": "qwen3_asr"
               }
             ]
@@ -44408,14 +44442,14 @@
           "strip_prefix": "Qwen3-ASR-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-ASR-0.6B-GGUF/qwen3-asr-0.6b-q8_0.gguf",
-                "size_bytes": 1151272416,
-                "sha256": "6c44ec2fb4cee513892d7863c1fcc3ea6b699ffa4d899b0ef4ab19956d9544f7",
+                "size_bytes": 1151279968,
+                "sha256": "5c53bbb9a6b2ade85c16c290c560658ca18b78a23c323378528f1f945683fcbe",
                 "embedded_family": "qwen3_asr"
               }
             ]
@@ -44430,14 +44464,14 @@
           "strip_prefix": "Qwen3-ASR-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-ASR-0.6B-GGUF/qwen3-asr-0.6b-f16.gguf",
-                "size_bytes": 1880642016,
-                "sha256": "5472337d26df8e58fdfabc3ae58a149fbb200578c576b4c660f2985c07da1736",
+                "size_bytes": 1880649568,
+                "sha256": "490fefbe91b33e1a0aeb988b97b983d3b95ecd225195e3ca5025ed00923e94d2",
                 "embedded_family": "qwen3_asr"
               }
             ]
@@ -44903,14 +44937,14 @@
           "strip_prefix": "Qwen3-ForcedAligner-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf",
-                "size_bytes": 1129966496,
-                "sha256": "75209490b11cec2b0db749ca5f4ff92266f58efd30f7fd04d9eb2a3ac9cc929f",
+                "size_bytes": 1129969856,
+                "sha256": "bf4fec616f77a20d89a649cd1c97bda269644eeb3cf906d1f7488a52d71f7cb2",
                 "embedded_family": "qwen3_forced_aligner"
               }
             ]
@@ -44925,14 +44959,14 @@
           "strip_prefix": "Qwen3-ForcedAligner-0.6B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-f16.gguf",
-                "size_bytes": 1840097696,
-                "sha256": "d0a96fb96de17686766688b622394877ee5e89b193be7f53de8715d99151a000",
+                "size_bytes": 1840101056,
+                "sha256": "38c413223c5e20d20bf43e0aee488fbd7df54a153b2f40d9dea5be5be73bbb8f",
                 "embedded_family": "qwen3_forced_aligner"
               }
             ]
@@ -45603,14 +45637,14 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-TTS-12Hz-1.7B-Base-GGUF/qwen3-tts-12hz-1.7b-base-q8_0_v2.gguf",
-                "size_bytes": 2695175104,
-                "sha256": "b55e06c7890d43c208d15aed8b4ed3f18215f295e47d5960e061b15bff338ab0",
+                "size_bytes": 2695186240,
+                "sha256": "92641a8022d521efd79a5db45e952589b3f2b781680f9abfcf26f075d37b86c6",
                 "embedded_family": "qwen3_tts"
               }
             ]
@@ -45625,14 +45659,14 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-TTS-12Hz-1.7B-Base-GGUF/qwen3-tts-12hz-1.7b-base-bf16.gguf",
-                "size_bytes": 4203158464,
-                "sha256": "f5cf4c37b969335e0ffb657119e52025e26192553119590d59fa17b8d36e8b29",
+                "size_bytes": 4203169600,
+                "sha256": "db237375e0f04d10fd0ac0afc2855e6844fdcb04a7d471e8a4b6c36bdb6030d7",
                 "embedded_family": "qwen3_tts"
               }
             ]
@@ -45647,14 +45681,14 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-TTS-12Hz-1.7B-Base-GGUF/qwen3-tts-12hz-1.7b-base-orig.gguf",
-                "size_bytes": 4544273280,
-                "sha256": "7ab774d56ab9ed9ee7d0ae50917798cda23c7bcc11eaa6c3a4ae32068718b1c1",
+                "size_bytes": 4544284416,
+                "sha256": "8b7248c563cef53e269a4f168ce6e23a7d6117e77ae2aa1d51b1d64084a1550f",
                 "embedded_family": "qwen3_tts"
               }
             ]
@@ -45669,14 +45703,14 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF/qwen3-tts-12hz-1.7b-customvoice-q8_0.gguf",
-                "size_bytes": 2817044064,
-                "sha256": "3cfaac8e9f13554f6daea3c5e0c53fede71ef5500cbaae7445e5fc3a5bb12e72",
+                "size_bytes": 2817055200,
+                "sha256": "c8ac3f94b6e73f137c0e7ecc9270bc8faec7a476ff799b87e48844d1d0987ac3",
                 "embedded_family": "qwen3_tts"
               }
             ]
@@ -45691,14 +45725,14 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF/qwen3-tts-12hz-1.7b-customvoice-bf16.gguf",
-                "size_bytes": 4179144352,
-                "sha256": "ef55652c7aa919dc5eeb7967c782a17a6f5d9a8b775337376a4678d37e71a11c",
+                "size_bytes": 4179155488,
+                "sha256": "5be0742e196ea9cd9ce0d7d8b69b0fc4fa8181b06cb0bd0591fb1dcdfce6c5a5",
                 "embedded_family": "qwen3_tts"
               }
             ]
@@ -45713,14 +45747,14 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF/qwen3-tts-12hz-1.7b-voicedesign-q8_0.gguf",
-                "size_bytes": 2816988960,
-                "sha256": "1bcef9a8c021072fca40e00498e00af9091fbe6d3ae4f87567cfee885d6c7554",
+                "size_bytes": 2817000064,
+                "sha256": "b86e03d1d2077bbaed157ab7a7fc646c3e309e69afa52c5e1c86b622b4715057",
                 "embedded_family": "qwen3_tts"
               }
             ]
@@ -45735,14 +45769,14 @@
           "strip_prefix": "Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF/qwen3-tts-12hz-1.7b-voicedesign-bf16.gguf",
-                "size_bytes": 4179089248,
-                "sha256": "f4cebcd68023a2db7c3fc8d52d1d28eafb22d4e3b7a64e12c4f946a300536f86",
+                "size_bytes": 4179100352,
+                "sha256": "f12c79e8c492f006b04f5ba823bebe512c9d46e13a7837081f1d34803b4bac0e",
                 "embedded_family": "qwen3_tts"
               }
             ]
@@ -45757,14 +45791,14 @@
           "strip_prefix": "Qwen3-TTS-12Hz-0.6B-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-TTS-12Hz-0.6B-Base-GGUF/qwen3-tts-12hz-0.6b-base-q8_0.gguf",
-                "size_bytes": 1991211136,
-                "sha256": "771420bd20ff5f35407b4fa9cf9c5461e153800d3d772ef51c9febc0a520855d",
+                "size_bytes": 1991217728,
+                "sha256": "c7d0e6c9485a25ae1f6a4c0796f0023230a0051c44cbd2bd05d73770f2cce637",
                 "embedded_family": "qwen3_tts"
               }
             ]
@@ -45779,14 +45813,14 @@
           "strip_prefix": "Qwen3-TTS-12Hz-0.6B-Base-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Qwen3-TTS-12Hz-0.6B-Base-GGUF/qwen3-tts-12hz-0.6b-base-bf16.gguf",
-                "size_bytes": 2516154496,
-                "sha256": "97d418048b07b5b267628da955b27db4c57b353ded8089de01a469b474255b8d",
+                "size_bytes": 2516161088,
+                "sha256": "b730cd6dfe549d7afd2b4735f57558744d5118db11ba0f7b8d2d42278cc431c7",
                 "embedded_family": "qwen3_tts"
               }
             ]
@@ -46913,14 +46947,14 @@
           "strip_prefix": "RVC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "RVC-GGUF/rvc-f16.gguf",
-                "size_bytes": 1260188416,
-                "sha256": "5ddfc32ab63199bcca4bcd95a007a8add35ccff7e2c20e1272f19b9617410b57",
+                "size_bytes": 1260187648,
+                "sha256": "09bd8f233e7ae82697826513c94d754c3904e58e30ad503b83437defccf99a72",
                 "embedded_family": "rvc"
               }
             ]
@@ -47619,7 +47653,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -47641,7 +47675,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -47663,7 +47697,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -47685,7 +47719,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -47707,7 +47741,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -47729,7 +47763,7 @@
           "strip_prefix": "Samsone-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -48922,14 +48956,14 @@
           "strip_prefix": "SeedVC-MLX-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "SeedVC-MLX-GGUF/seed-vc-mlx-q8_0.gguf",
-                "size_bytes": 3120809248,
-                "sha256": "d4a1ecf951cb7c2ebb55347a174a286a3b23825d58f8835707d21d754762ca7f",
+                "size_bytes": 3120809440,
+                "sha256": "17aaccb16e230a5b105187b7bccf3a67ec9899047cddac255c335c73091a88c8",
                 "embedded_family": "seed_vc"
               }
             ]
@@ -48944,14 +48978,14 @@
           "strip_prefix": "SeedVC-MLX-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "SeedVC-MLX-GGUF/seed-vc-mlx-f16.gguf",
-                "size_bytes": 3629186560,
-                "sha256": "03740be5b4b55ae677c34d63514ff879aaedd6a77fd31773938166fb84debf93",
+                "size_bytes": 3629186752,
+                "sha256": "39b79042fd5560a1c642ac96cef451dbc81c08880f85e9c4b92b685add60f500",
                 "embedded_family": "seed_vc"
               }
             ]
@@ -48966,14 +49000,14 @@
           "strip_prefix": "SeedVC-MLX-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "SeedVC-MLX-GGUF/seed-vc-mlx-orig.gguf",
-                "size_bytes": 7003311936,
-                "sha256": "7b2fd208f94c9b7e74890bdd34eec29b78cfea39c5f1b233611a6a2ff32d40b3",
+                "size_bytes": 7003312128,
+                "sha256": "8d7e3e03b91472502653515366a0223070e6b44987cc9e3b7cc72e4719f703d4",
                 "embedded_family": "seed_vc"
               }
             ]
@@ -49777,7 +49811,7 @@
           "strip_prefix": "Sherpa-KWS-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -49888,7 +49922,7 @@
           "strip_prefix": "Sidon-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -50019,7 +50053,7 @@
           "strip_prefix": "Smart-Turn-v3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -50866,7 +50900,7 @@
           "strip_prefix": "Sortformer-Diar-4spk-v1-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -50888,7 +50922,7 @@
           "strip_prefix": "Sortformer-Diar-4spk-v1-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -51146,7 +51180,7 @@
           "strip_prefix": "Sortformer-Diar-v2.1-local",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -51175,7 +51209,7 @@
           "strip_prefix": "Sortformer-Diar-v2.1-local",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -51195,7 +51229,7 @@
           "strip_prefix": "Sortformer-Diar-v2.1-local",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "unsupported",
             "gated": false,
             "files": [
@@ -51739,14 +51773,14 @@
           "strip_prefix": "Stable-Audio-3-Medium-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Stable-Audio-3-Medium-GGUF/stable-audio-3-medium-q8_0.gguf",
-                "size_bytes": 3582595584,
-                "sha256": "262c8259cfeac055258d28bfc126bcafb5c776fac44165222b186270f99b07ca",
+                "size_bytes": 3582601408,
+                "sha256": "d239eba564bd049b6fc0b103ee51cf179dc1a836ac7904c0d50088c6d45018a3",
                 "embedded_family": "stable_audio"
               }
             ]
@@ -51761,14 +51795,14 @@
           "strip_prefix": "Stable-Audio-3-Medium-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Stable-Audio-3-Medium-GGUF/stable-audio-3-medium-f16.gguf",
-                "size_bytes": 5834360000,
-                "sha256": "d701796858eb54347ade9e80240a58d4eccf1890a9ccff3ed3b0640be5273a23",
+                "size_bytes": 5834365856,
+                "sha256": "539df1f5794242c01152894f00e3454182f8974e07952f72417786c08ff33dcc",
                 "embedded_family": "stable_audio"
               }
             ]
@@ -51783,14 +51817,14 @@
           "strip_prefix": "Stable-Audio-3-Small-Music-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Stable-Audio-3-Small-Music-GGUF/stable-audio-3-small-music-q8_0.gguf",
-                "size_bytes": 1683570752,
-                "sha256": "89bb22db5fa68ab8f1d90af0a9f88121977c945bdb99a57c96b1e88fa34bf1c8",
+                "size_bytes": 1683576608,
+                "sha256": "a6d9176e11b857409b28cf5a69f4fefd8f3e61907b3b10d867f1f4c0a7eb9418",
                 "embedded_family": "stable_audio"
               }
             ]
@@ -51805,14 +51839,14 @@
           "strip_prefix": "Stable-Audio-3-Small-Music-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Stable-Audio-3-Small-Music-GGUF/stable-audio-3-small-music-f16.gguf",
-                "size_bytes": 2358467232,
-                "sha256": "66f36741c19f9ca08e7239f89253141fe08a1f88de92f4459385ad80fc1c0e23",
+                "size_bytes": 2358473088,
+                "sha256": "560ea1505deadf6c37689b672bda13be6cfbc6e996eaf574cac7f546347e3754",
                 "embedded_family": "stable_audio"
               }
             ]
@@ -51827,14 +51861,14 @@
           "strip_prefix": "Stable-Audio-3-Small-SFX-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Stable-Audio-3-Small-SFX-GGUF/stable-audio-3-small-sfx-q8_0.gguf",
-                "size_bytes": 1683570688,
-                "sha256": "5bb1ec653134e63dac46264e336ae198a2590195fc996fcd0605021215e9b26f",
+                "size_bytes": 1683576512,
+                "sha256": "bfe435d2c5841868a7025433929ee250e51e491be369a279f341221539c71841",
                 "embedded_family": "stable_audio"
               }
             ]
@@ -51849,14 +51883,14 @@
           "strip_prefix": "Stable-Audio-3-Small-SFX-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Stable-Audio-3-Small-SFX-GGUF/stable-audio-3-small-sfx-f16.gguf",
-                "size_bytes": 2358467168,
-                "sha256": "0d8948b947f137c163983f060973d80e9bb699ea11c303327cd7005402f93918",
+                "size_bytes": 2358472992,
+                "sha256": "0ecda5dbf3b4107eb63678535b387e6e53289b622db2164f17ff13f9d0eb19a9",
                 "embedded_family": "stable_audio"
               }
             ]
@@ -52297,14 +52331,14 @@
           "strip_prefix": "Supertonic-3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Supertonic-3-GGUF/supertonic-3-q8_0.gguf",
-                "size_bytes": 454072836,
-                "sha256": "af814486a0bc9513fb36afabd9b1155ad14fb2c36a107ac6ffe62ea9adafb662",
+                "size_bytes": 454076228,
+                "sha256": "9edd05cf92feab49c6b29721d14c86566459dca7f4a6eeb99306372cdce03697",
                 "embedded_family": "supertonic"
               }
             ]
@@ -52319,14 +52353,14 @@
           "strip_prefix": "Supertonic-3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Supertonic-3-GGUF/supertonic-3-f16.gguf",
-                "size_bytes": 312784196,
-                "sha256": "b312b57797d40ac5c09d915893dbdbaf6405b7dc043f544776c5c95712dff88c",
+                "size_bytes": 312785732,
+                "sha256": "7a44c47d1f387e4fb163e2eed9615b58470c77e26ac8b2b1a6be49dfb8670899",
                 "embedded_family": "supertonic"
               }
             ]
@@ -52342,14 +52376,14 @@
           "strip_prefix": "Supertonic-3-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Supertonic-3-GGUF/supertonic-3-orig.gguf",
-                "size_bytes": 454072836,
-                "sha256": "af814486a0bc9513fb36afabd9b1155ad14fb2c36a107ac6ffe62ea9adafb662",
+                "size_bytes": 454076228,
+                "sha256": "ceede06706a11590dd055220152b44c37a5fb8ac33bb61e19a334e5258901b09",
                 "embedded_family": "supertonic"
               }
             ]
@@ -52665,7 +52699,7 @@
           "strip_prefix": "TF-GridNet-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -52811,7 +52845,7 @@
           "strip_prefix": "Tone-Color-VC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -52834,7 +52868,7 @@
           "strip_prefix": "Tone-Color-VC-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53235,13 +53269,15 @@
           "default": true,
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Underdog-Bark-3.0-GGUF/underdog-bark-3.0-mixed-f16.gguf",
-                "missing": true
+                "size_bytes": 1301642208,
+                "sha256": "9bd42328378d0ff25d8ef3ac22a2d7e83deffe6a2481afc1a240218d046671d1",
+                "embedded_family": "underdog_bark3"
               }
             ]
           }
@@ -53470,7 +53506,7 @@
           "strip_prefix": "UniverSR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53492,7 +53528,7 @@
           "strip_prefix": "UniverSR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -53956,14 +53992,14 @@
           "strip_prefix": "Vevo2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Vevo2-GGUF/vevo2-q8_0.gguf",
-                "size_bytes": 3242124800,
-                "sha256": "f80a70facaaecfcf1aa417ef16ef091318c5e789b24c16a741233c64a72fcee8",
+                "size_bytes": 3242129792,
+                "sha256": "881434e73b98e2d3ac94951f26488b5dc5d60f365d9980324a70055dfbffd1ef",
                 "embedded_family": "vevo2"
               }
             ]
@@ -53978,14 +54014,14 @@
           "strip_prefix": "Vevo2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Vevo2-GGUF/vevo2-f16.gguf",
-                "size_bytes": 5021112128,
-                "sha256": "4ae1026b9324882c79deeab683fb5ae6f307b33b82a08623f3b6f3ee014796db",
+                "size_bytes": 5021117120,
+                "sha256": "6cb7111e4ad1ae04b4272c458b6413a6938706b21bbad4804e1caf4cfb56bd87",
                 "embedded_family": "vevo2"
               }
             ]
@@ -54000,14 +54036,14 @@
           "strip_prefix": "Vevo2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Vevo2-GGUF/vevo2-orig.gguf",
-                "size_bytes": 7449615488,
-                "sha256": "8f4d678b08faba711251905c032379a9f763fff942454739f407b3dc07ddc606",
+                "size_bytes": 7449620480,
+                "sha256": "d8d298527b99fdde952f46974cf06c346a8bc7a0e48f2499add6efd9bbb0c31f",
                 "embedded_family": "vevo2"
               }
             ]
@@ -54684,14 +54720,14 @@
           "strip_prefix": "VibeVoice-1.5B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "VibeVoice-1.5B-GGUF/vibevoice-1.5b-q8_0.gguf",
-                "size_bytes": 3224701538,
-                "sha256": "b6b7cce33bcf656daee03dab8bf94c29eba6f58ffa4481e61e86325466f711f3",
+                "size_bytes": 3224706114,
+                "sha256": "e9ca80a31ffe7e4726fcad9798ba10ba1e514d89174fd48ea548d21022e0e6f8",
                 "embedded_family": "vibevoice"
               }
             ]
@@ -54706,14 +54742,14 @@
           "strip_prefix": "VibeVoice-1.5B-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "VibeVoice-1.5B-GGUF/vibevoice-1.5b-bf16.gguf",
-                "size_bytes": 5420021858,
-                "sha256": "9f4837d2153e73b4d3154ecab75eb451d5e05d847f56a334db0e1f2774811fff",
+                "size_bytes": 5420026434,
+                "sha256": "d851e2e972ff7def0729cc02da7b417bbe68ac6769594507ae78b4d3f414e1ac",
                 "embedded_family": "vibevoice"
               }
             ]
@@ -55119,14 +55155,14 @@
           "strip_prefix": "VibeVoice-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "VibeVoice-ASR-GGUF/vibevoice-asr-q8_0.gguf",
-                "size_bytes": 9858644224,
-                "sha256": "71a821bcfe36370b906feae84b413572599d30c766f114a9505fd2716efe12af",
+                "size_bytes": 9858648480,
+                "sha256": "6cefa920277f13d102c0014397044c52b63aa02e1a54f519e1732e04217859f8",
                 "embedded_family": "vibevoice_asr"
               }
             ]
@@ -55141,14 +55177,14 @@
           "strip_prefix": "VibeVoice-ASR-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "VibeVoice-ASR-GGUF/vibevoice-asr-f16.gguf",
-                "size_bytes": 17361090304,
-                "sha256": "4a1f7da42b495e0be5b85c7a51ca843e1b5d1811f4c9e930d71811fcec386019",
+                "size_bytes": 17361094560,
+                "sha256": "7858c8551dd623158e6e03b84ebc9fbf7021f67069c4d26e95c0dca6a713e67c",
                 "embedded_family": "vibevoice_asr"
               }
             ]
@@ -56423,14 +56459,14 @@
           "strip_prefix": "VoxCPM1-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "VoxCPM1-GGUF/voxcpm-0.5b-q8_0-audiovae-f16.gguf",
-                "size_bytes": 847888032,
-                "sha256": "01210319c5ce617613c9d1c38e34649f7479e98a60d51b719f7df82970658241",
+                "size_bytes": 847888768,
+                "sha256": "c5cd54e0b011a1f5c43cce41f7deb24d2dfbd74b635fcc6b5229b57a4ec37d11",
                 "embedded_family": "voxcpm1"
               }
             ]
@@ -56973,14 +57009,14 @@
           "strip_prefix": "VoxCPM2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "VoxCPM2-GGUF/voxcpm2-q8_0.gguf",
-                "size_bytes": 2955000480,
-                "sha256": "c8e01ab4416011e12a28f24ede298a1aa5ce64b43f8e8aaad53b1e2fe7c96432",
+                "size_bytes": 2955007488,
+                "sha256": "8df1faf274e1bdeedef1fd9ddd6aba6632536f66f2e080991d2352af35ceef72",
                 "embedded_family": "voxcpm2"
               }
             ]
@@ -56995,14 +57031,14 @@
           "strip_prefix": "VoxCPM2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "VoxCPM2-GGUF/voxcpm2-bf16.gguf",
-                "size_bytes": 4772288288,
-                "sha256": "0c0cd2515c7a1145c0ddba06c871724656c36cb53ee3b0118116b34cb4153699",
+                "size_bytes": 4772295296,
+                "sha256": "dc48028ebf08b9fd2456cbf5fa1ab52568d16660e34d0fa418c35e251ca1ecab",
                 "embedded_family": "voxcpm2"
               }
             ]
@@ -57017,14 +57053,14 @@
           "strip_prefix": "VoxCPM2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "VoxCPM2-GGUF/voxcpm2-orig.gguf",
-                "size_bytes": 4960716192,
-                "sha256": "13181e01e15d555c9eae7779626eb395c69334f15e948c9ea265ddf37ab50b16",
+                "size_bytes": 4960723200,
+                "sha256": "30dfeb1f74a8d7efb893ae625f3c4ec9651b2dd8c22d5e40dc08ced2aa9cac89",
                 "embedded_family": "voxcpm2"
               }
             ]
@@ -57039,13 +57075,15 @@
           "strip_prefix": "VoxCPM2-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "VoxCPM2-GGUF/finetune/vocalrender-pro-orig.gguf",
-                "missing": true
+                "size_bytes": 9544158368,
+                "sha256": "1c9148d67d3df67a0b04a8dbf9201d61bb7cac346bbfc9650b42f9d387a3df05",
+                "embedded_family": "voxcpm2"
               }
             ]
           }
@@ -57435,14 +57473,14 @@
           "strip_prefix": "Voxtral-Mini-4B-Realtime-2602-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Voxtral-Mini-4B-Realtime-2602-GGUF/voxtral-mini-4b-realtime-2602-q8_0.gguf",
-                "size_bytes": 5104567264,
-                "sha256": "0312a5ceafc6ee4a19a32da458cab6485e3b86b1b563c7bb7150aeae295c1769",
+                "size_bytes": 5104571904,
+                "sha256": "d246cf359a34e365440e7af5064ff01fa54d8a9848d2127907d1864d1131fef3",
                 "embedded_family": "voxtral_realtime"
               }
             ]
@@ -57457,14 +57495,14 @@
           "strip_prefix": "Voxtral-Mini-4B-Realtime-2602-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Voxtral-Mini-4B-Realtime-2602-GGUF/voxtral-mini-4b-realtime-2602-q4_k.gguf",
-                "size_bytes": 3097662432,
-                "sha256": "8cafef18ea3e4cad81da8ffc4e72b69d2eab2c159c2e68428e2e088accbfc7f8",
+                "size_bytes": 3097667072,
+                "sha256": "a517af0bc95ff382ecf8b97501c726ebf8ff3db44549ca01854d23c00dc80c30",
                 "embedded_family": "voxtral_realtime"
               }
             ]
@@ -57479,14 +57517,14 @@
           "strip_prefix": "Voxtral-Mini-4B-Realtime-2602-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
               {
                 "path": "Voxtral-Mini-4B-Realtime-2602-GGUF/voxtral-mini-4b-realtime-2602-bf16.gguf",
-                "size_bytes": 8874402784,
-                "sha256": "0e98f67a3f2cad98a5488f139a23551b7743e582f84f82a0767257dd52a0f3ab",
+                "size_bytes": 8874407424,
+                "sha256": "8970c7c1ce0c1db94da79a44f7c65e098d228bdb293d6ff31ede446d58a89e20",
                 "embedded_family": "voxtral_realtime"
               }
             ]
@@ -57804,7 +57842,7 @@
           "strip_prefix": "Voxtral-4B-TTS-2603-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -57827,7 +57865,7 @@
           "strip_prefix": "Voxtral-4B-TTS-2603-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
@@ -57985,7 +58023,7 @@
           "strip_prefix": "Whistle-GGUF",
           "source": {
             "repo": "audio-cpp/audio.cpp-gguf",
-            "revision": "661a224e9d9adbd49c01626f85e426f5f425d771",
+            "revision": "fd2fe4c3195bc410f8b817bf7c7519fd822686fb",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [
