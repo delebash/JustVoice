@@ -2,6 +2,9 @@
 
 ## v0.1.0
 
+- **No extra take from an old paused job (2026-11-06)** — resuming a paused new-take job (the take
+  check's, or ↻ New take's) skips a line that got a newer take meanwhile, where it made one more and
+  put it in use unchecked ([Make the audiobook](studio.md))
 - **Direction on a cloud model reads a long book to the end (2026-11-06)** — when a book's earlier
   chapters no longer fit the model, the Frontier card leaves out the oldest of them and asks again,
   where its last chapters failed with "A paragraph of this chapter is too long"

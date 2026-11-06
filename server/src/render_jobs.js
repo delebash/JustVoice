@@ -494,10 +494,18 @@ export async function _runJob(jobId) {
         [jobId],
         RenderJobBlock,
       );
+      // A new-take job resumed after its line got a newer take in use (the take check's next run made
+      // it, or ↻ New take): that line's new take is made — the job keeps it rather than making another.
+      const newer = newTake ? lineTakes.liveTakes(h, workRows.map((jb) => jb.block_id)) : new Map();
       for (const jb of workRows) {
         const block = h.get(Block, jb.block_id);
         if (block === null) {
           _setFields(h, RenderJobBlock, jb.id, { status: "failed" });
+          continue;
+        }
+        const live = newer.get(block.id);
+        if (live !== undefined && job.created_at != null && String(live[0].created_at) > String(job.created_at)) {
+          _setFields(h, RenderJobBlock, jb.id, { status: "completed", generation_id: live[1].id });
           continue;
         }
         const persona = personaForBlock(h, block);

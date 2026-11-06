@@ -165,6 +165,34 @@ test("a_new_take_job_gives_each_line_a_seed_of_its_own", async () => {
   expect((await renderJobs.finished(job.id)).status).toBe("completed");
 });
 
+test("a_resumed_new_take_job_skips_a_line_that_got_a_newer_take_meanwhile", async () => {
+  // The take check's re-render job paused by a restart; the next check made the line's new take
+  // itself. Resuming the old job must not make a third take and put it in use unchecked.
+  const [projectId, , blockIds] = seedProject(["Line one.", "Line two."]);
+  let renders = 0;
+  fakeRender(async (st, p, b, kw) => {
+    renders += 1;
+    return line(kw.seed);
+  });
+  const old = renderJobs.createJob(projectId, "blocks", blockIds, { newTake: true });
+  h.tx(() => h.update(RenderJob, { status: "paused" }, { id: old.id })); // never ran: a restart came first
+  await sleep(2);
+  const next = renderJobs.createJob(projectId, "blocks", [blockIds[0]], { newTake: true });
+  renderJobs.startJob(next.id);
+  await renderJobs.finished(next.id);
+  expect(renders).toBe(1);
+  const newer = h.all(`select * from ${Take} where block_id = ? and is_default = 1`, [blockIds[0]], Take)[0];
+
+  renderJobs.resumeJob(old.id);
+  const done = await renderJobs.finished(old.id);
+  expect(done.status).toBe("completed");
+  // Line one keeps the newer take; only line two is rendered.
+  expect(renders).toBe(2);
+  expect(h.all(`select * from ${Take} where block_id = ?`, [blockIds[0]], Take).length).toBe(1);
+  const one = done.blocks.find((b) => b.block_id === blockIds[0]);
+  expect([one.status, one.generation_id]).toEqual(["completed", newer.generation_id]);
+});
+
 test("failed_block_is_isolated", async () => {
   const [projectId, , blockIds] = seedProject(["Fine.", "BOOM"]);
   fakeRender(async (st, persona, block) => {

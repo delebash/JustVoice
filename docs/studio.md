@@ -200,8 +200,9 @@ directed — by an earlier run or by you on Script — is kept, and its step say
 you made are never replaced, and a speaker you cast is never recast; Analyze on
 a chapter that has takes stays refused, and the run lists that chapter under
 what to check. So **↻ Run again** after you add a chapter does only the new
-one. A name you removed as a speaker comes back if the scans still find it —
-**Ignore** it on Discover to keep it out.
+one. A speaker you remove doesn't come back: removing one puts the names the
+scans gave them on the ignore list (*… won't be suggested again*), which
+Discover lists, with **Undo**.
 
 **When it's done** the card says how long it took and what it used — *Made in
 42:38 · 67,512 tokens in, 9,236 out* (and its cost on a cloud model) — and
@@ -213,7 +214,9 @@ with a link to where you fix it:
   ([The marks](#the-marks-where-to-read-closely)), the lines given to one of a
   group among them — **Open in Script ➜** lands on the first;
 - each line whose take the take check **flagged** — *its take misses words, after
-  one new take* — **Open in Render ➜**;
+  one new take* — **Open in Render ➜**. A check stopped while its new takes render
+  leaves that job paused in Render; the next run makes the takes still owed, and
+  resuming the old job later makes none again for a line that already got one;
 - the **voices made from the book** — listen to each on Cast;
 - a speaker with lines and **no persona**;
 - a chapter a step **left as it was**, and why.
