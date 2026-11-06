@@ -159,6 +159,10 @@ GO:     given 2026-11-05.
 STATE:  DECIDED 2026-10-29 — "do a release once all apps bugs are finished i already stated that, once all apps
         bugs fixes features are done all apps get a release including anything we forked". (The family rule:
         just-core TASKS "The family releases together".)
+        2026-11-06 — the user, here: "i want it to do a a releaswe for the family apps jw, housepaint, docs gen …
+        have the new session do this it is called family release"; then "have it do all your recs for the apps
+        that you listed". So JustWrite, house-paint and docgen release now (the kit's TASKS, "The family release");
+        JustVoice — and with it this fork's tag — later, once its own TASKS is done.
 WHY:    the packaged app and `npm run server` run the pinned `v0.9.2-jv.6`, which has no Fish Audio Drama 3; only
         `npm run dev` runs the fork's `jv` branch.
 BUILT:  nothing. FINDING 2026-10-29: `jv` (1de98891, 2026-10-19) is 150 commits behind upstream main (5951ca47,
