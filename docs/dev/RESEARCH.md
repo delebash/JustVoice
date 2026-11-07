@@ -4387,10 +4387,17 @@ time and the tokens written down, a restart resumed) ran with every model faked
 - **The run is a persistent job in render jobs' shape** — `server/src/book_run.js`
   (`createRun`, `startRun` on the kit's `background()`, `cancelRun`, `resumeRun`, `finished`,
   `sweepStaleRuns` from `app.js`'s boot beside render jobs'), its row in `book_runs`
-  (`models_schema.js`): project, scope (`project` only), status (queued · running · paused ·
-  cancelled · failed · completed), the step and chapter it is on, `steps_json` (per step: status,
+  (`models_schema.js`): project, scope (`project` only), status (queued · running · waiting ·
+  paused · cancelled · failed · completed), the step and chapter it is on, `steps_json` (per step: status,
   done/total/kept, model, recipe, tokens in and out, calls, seconds, the chapters it did, and the
-  refusals it recorded) and `options_json` (redo, the price accepted, the estimate shown). Not in
+  refusals it recorded) and `options_json` (redo, the price accepted, the estimate shown, and
+  `cast_stop` once the run has stopped for the cast). **The stop when the cast is ready** (decided
+  2026-11-07, `castStop`): before Render every line, once a run, when `book_run.stop_for_cast` is on
+  and there are lines to render, the run goes `waiting` at `render`; Resume goes on. Why there, *measured*
+  on the user's data (`book_runs.steps_json`, the 2026-11-06 release-listen runs): Alice VIII 242 s to
+  the cast (discover 50, merge 2, analyze 75, group lines 7, describe 16, design 34, match 26,
+  direction 32) against 856 s after it (render 657, check 176, export 23) — 22 % and 78 % of the
+  run; Alice VII (no voice designed) 192 s and 725 s. Not in
   `SYNC_TABLES`, so it stays on the device; what it writes syncs as before, stamped by
   `flushSync()` after each chapter and step (a background task has no request whose answer
   stamps it, `app.js:286`).

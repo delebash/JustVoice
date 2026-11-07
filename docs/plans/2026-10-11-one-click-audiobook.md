@@ -27,6 +27,9 @@ the lines — unattended — and leaves every decision where you can hear it and
 - It never stops to ask. Where it isn't sure it **flags** — the same flags Script already shows
   ("To check") — and carries on. You review afterwards on the screens that exist: Script (who
   speaks), Cast (who plays whom), Render (each line, its direction, its takes).
+  **Changed 2026-11-07** (TASKS "One-click stops once when the cast is ready"): it stops once, after
+  Direction and before the render, so the voices are heard on Cast first; Continue renders the rest,
+  and the setting `book_run.stop_for_cast` turns the stop off.
 - **Two kinds of brain, the same run.** By default the built-in local model does every AI step:
   free, offline, for everyone. Anyone with an API key can route the same steps to a frontier
   model (Claude, GPT, Gemini — the kit's providers) and get a better pass for a few dollars a

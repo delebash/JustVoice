@@ -28,7 +28,7 @@ export const VIII = "CHAPTER VIII. The Queen’s Croquet-Ground";
 const CHAPTER_IDS = { [VII]: "sc_vii", [VIII]: "sc_viii" };
 
 /** The states the page draws (?state=); any of them on the cloud model with ?route=frontier. */
-export const STATES = ["new", "price", "blocked", "running", "paused", "stopped", "failed", "done", "rerun"];
+export const STATES = ["new", "price", "blocked", "running", "waiting", "paused", "stopped", "failed", "done", "rerun"];
 
 const STEPS = Object.keys(STEP_LABELS);
 
@@ -104,6 +104,7 @@ export function mockPlan({ frontier = false, blocked = false, noFfmpeg = false }
         unpriced: [],
       },
     ask_price: frontier && !blocked,
+    stop_for_cast: true,
     problems: blocked
       ? [
         { step: "discover", code: "no_model", detail: null },
@@ -207,6 +208,8 @@ export function mockRun(state, { frontier = false } = {}) {
   if (state === "running") {
     return runAt("running", "direction", { frontier, scene: VIII, over: { done: 1, total: 2, tokens_in: 4250, tokens_out: 2104, calls: 1, seconds: 0 } });
   }
+  // The cast is ready: every step before the render done, the run waiting at it.
+  if (state === "waiting") return runAt("waiting", "render", { frontier });
   if (state === "paused") return runAt("paused", "direction", { frontier, scene: VIII, over: { done: 1, total: 2, tokens_in: 4250, tokens_out: 2104, calls: 1, seconds: 50 } });
   if (state === "stopped") return runAt("cancelled", "render", { frontier, over: { done: 212, total: 454, seconds: 706, failed: 0, audio_seconds: 1067 } });
   if (state === "failed") {
@@ -249,7 +252,7 @@ export function mockOverviewState(state) {
       noSpeaker: 0, flagged: 0, castTotal: 0, castReady: 0, blocked: 176, cantRender: 176, rendered: 0, renderable: 0, ready: 0, stale: 0,
     };
   }
-  const rendered = { running: 0, paused: 0, stopped: 212, failed: 454, done: 454, rerun: 454 }[state];
+  const rendered = { running: 0, waiting: 0, paused: 0, stopped: 212, failed: 454, done: 454, rerun: 454 }[state];
   return {
     chapters: 2, scanned: 2, proposed: 0, analyzed: 2, fromImport: 0, running: 0, lines: 454, noNarrator: false,
     noSpeaker: 0, flagged: 10, castTotal: 13, castReady: 13, blocked: 0, cantRender: 0, rendered, renderable: 454, ready: 454 - rendered, stale: 0,

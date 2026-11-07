@@ -16,7 +16,8 @@ import { useRouter } from "vue-router";
 import { confirmDialog, openPath, pushToast, reportError, saveBlob, useAiTasksStore } from "@delebash/ui";
 import BookRunCard from "./BookRunCard.vue";
 import {
-  LIVE, bookRunFor, followBookRun, followLive, loadBookRun, priceQuestion, resumeBookRun, runFollowed, startBookRun, stopBookRun,
+  LIVE, bookRunFor, followBookRun, followLive, loadBookRun, priceQuestion, resumeBookRun, runFollowed, setStopForCast, startBookRun,
+  stopBookRun,
 } from "../services/bookRun.js";
 import { useCopy } from "../services/copy.js";
 import { openEngineTerms } from "../services/engineTerms.js";
@@ -107,6 +108,16 @@ async function resume() {
   }
 }
 
+// The stop when the cast is ready, on or off — a setting, saved at once; the plan reads it back.
+async function stopForCast(on) {
+  try {
+    await setStopForCast(api, on);
+  } catch (e) {
+    reportError(e, { title: "Couldn't save the setting" });
+  }
+  load();
+}
+
 // ⬇ Save the M4B: the run's export job hands its file over once (as Export's does).
 async function save() {
   const m4b = run.value?.m4b;
@@ -140,5 +151,5 @@ function routing(row) {
 
 <template>
   <BookRunCard :unit="unit" :plan="plan" :run="run" :busy="busy" :elapsed="run?.totals.seconds || 0"
-    @start="start" @stop="stop" @resume="resume" @save="save" @go="go" @routing="routing" />
+    @start="start" @stop="stop" @resume="resume" @save="save" @go="go" @routing="routing" @stop-for-cast="stopForCast" />
 </template>

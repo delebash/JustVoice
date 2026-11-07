@@ -8,8 +8,8 @@
   place of the server.
 
   States (?state=): new (the default) · price (the cloud route's question open) · blocked (no
-  language model, no Language, BreezeTTS 2's licence not accepted) · running (Direction, chapter VIII) · paused (the same, after a
-  restart) · stopped (Stop pressed during the render) · failed (no ffmpeg at the M4B) · done (what
+  language model, no Language, BreezeTTS 2's licence not accepted) · running (Direction, chapter VIII) · waiting (the cast is
+  ready: stopped before the render, Continue goes on) · paused (Direction, chapter VIII, after a restart) · stopped (Stop pressed during the render) · failed (no ffmpeg at the M4B) · done (what
   to check) · rerun (↻ Run again on a finished book: every chapter already done, the book-wide steps
   "none needed", its M4B saved since — Export makes it again). Each on this computer's model, or with ?route=frontier on a cloud model — its
   estimate and price before it starts, its cost after. Start, Stop, Resume, Save and Run again
@@ -39,7 +39,12 @@ const go = (s) => router.replace({ query: { ...route.query, state: s } });
 // The price question is the cloud route's.
 const frontier = computed(() => route.query.route === "frontier" || state.value === "price");
 // The failed state is this machine without ffmpeg.
-const plan = computed(() => mockPlan({ frontier: frontier.value, blocked: state.value === "blocked", noFfmpeg: state.value === "failed" }));
+// The stop when the cast is ready — the setting's checkbox, on as it ships.
+const stopForCast = ref(true);
+const plan = computed(() => ({
+  ...mockPlan({ frontier: frontier.value, blocked: state.value === "blocked", noFfmpeg: state.value === "failed" }),
+  stop_for_cast: stopForCast.value,
+}));
 const run = computed(() => mockRun(state.value, { frontier: frontier.value }));
 const busy = ref(false);
 
@@ -125,7 +130,8 @@ const opens = (what) => pushToast({ kind: "info", message: `Opens ${what}.` });
 
     <section class="studio-overview">
       <BookRunCard class="studio-overview__wide" :unit="UNIT" :plan="plan" :run="run" :busy="busy" :elapsed="elapsed"
-        @start="start" @stop="go('stopped')" @resume="go('running')" @save="save" @go="goStep" @routing="routing" />
+        @start="start" @stop="go('stopped')" @resume="go('running')" @save="save" @go="goStep" @routing="routing"
+        @stop-for-cast="stopForCast = $event" />
       <div class="studio-overview__main">
         <div class="jv-card">
           <div class="jv-card__header"><h3 class="jv-card__title">Where it stands</h3></div>

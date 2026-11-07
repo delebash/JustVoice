@@ -130,6 +130,24 @@ It does the language model's steps together, then the voices, then the
 render, so the AI model and the speech models change places on your graphics
 card only a few times a book.
 
+**It stops once, when the cast is ready** (since 2026-11-07) — after Direction,
+before **Render every line** — so you hear the voices before the whole book is
+rendered with them. Rendering is most of a run's time (on *Alice* chapter VIII:
+about 4 minutes to the cast, 14 to render, check and export), so a voice you'd
+change costs least here. The card says **Waiting for you** — *The cast is
+ready. Listen to each voice on Cast and change any you want, then Continue —
+it renders every line, checks the takes and makes the M4B.* — with **Open Cast
+➜**. On [Cast](#cast) play each speaker's persona, and give a speaker another
+one or change a voice ([Personas](personas.md)); then **▶ Continue** renders
+with the cast as it is now. Nothing is held while it waits: Script, Cast and
+the rest work as usual, and the run waits as long as you like — across a
+restart too. It stops once a run, and not at all when there is nothing to
+render. To have it run straight through instead — a book you leave overnight —
+clear **Stop when the cast is ready, to hear the voices before the render**
+under the steps before you press **▶ Make audiobook**; the box is a setting
+(`book_run.stop_for_cast`, [Settings reference](settings-reference.md)) and
+stays as you leave it for every book.
+
 **Before you press it**, the card names the model each step will run on — the
 chip opens that step's card in AI Settings → Routing by feature, where you can
 change it — and its recipe (**Local** or **Frontier**,
@@ -188,7 +206,7 @@ Analyze, Review, ✎ Edit text, Delete, ticking it — and its row on Script sho
 the step in place of its Analyzed date (*Render every line…*), so the run and
 you don't write the same chapter at once (since 2026-10-16).
 
-**It never stops to ask.** Where it isn't sure it marks the line, the way Script
+**Beyond the cast, it asks nothing.** Where it isn't sure it marks the line, the way Script
 and Render mark lines, and carries on. A step that can't go on — no language
 model, a model that fails, no FFmpeg — stops the run with its reason, in red,
 and the step's row says *Stopped here*. Fix it, then **▶ Resume**: it picks up

@@ -107,6 +107,8 @@ export const BookRunPlan = T.Object({
   steps: T.Array(BookRunPlanStep),
   estimate: opt(nullable(BookRunEstimate), null),
   ask_price: opt(T.Boolean(), false),
+  // The run stops once when the cast is ready, before the render (Settings `book_run.stop_for_cast`).
+  stop_for_cast: opt(T.Boolean(), true),
   problems: opt(T.Array(BookRunProblem), []),
   warnings: opt(T.Array(BookRunProblem), []),
 });
@@ -158,7 +160,8 @@ export const BookRunOut = T.Object({
   id: T.String(),
   project_id: T.String(),
   scope: T.String(),
-  // queued · running · paused (a restart) · cancelled (stopped) · failed · completed
+  // queued · running · waiting (the cast is ready — Resume goes on) · paused (a restart) ·
+  // cancelled (stopped) · failed · completed
   status: T.String(),
   step: opt(nullable(T.String()), null),
   scene_id: opt(nullable(T.String()), null),

@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **Make the audiobook stops once, when the cast is ready (2026-11-07)** — after Direction, before it
+  renders, the card says **Waiting for you**: listen to each voice on Cast, change any you want, then
+  **▶ Continue** renders every line, checks the takes and makes the M4B. Rendering is most of a run, so a
+  voice is cheapest to change here. Clear **Stop when the cast is ready, to hear the voices before the
+  render** to have it run straight through ([Studio → Make the audiobook](studio.md#make-the-audiobook))
 - **Your Claude or ChatGPT plan instead of an API key (2026-11-07)** — when Claude Code is installed on
   this computer and signed in, **AI Settings → LLM providers** offers it: **Connect** runs the AI steps on
   your own Claude plan, and the row shows how much of this week's plan is used; an **OpenAI** provider has

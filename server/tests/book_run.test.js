@@ -182,8 +182,10 @@ afterEach(async () => {
 });
 
 /** Alice's chapter VII imported as a book of its own, in English, with one persona in the library
- * for the speaker who isn't given a voice of their own (the March Hare: 16 lines, under 20). */
-async function aliceVII(dir = undefined, { acceptTerms = true } = {}) {
+ * for the speaker who isn't given a voice of their own (the March Hare: 16 lines, under 20).
+ * `stopForCast`: leave the run's stop when the cast is ready on (the default) — the tests that
+ * aren't about it turn it off and run through. */
+async function aliceVII(dir = undefined, { acceptTerms = true, stopForCast = false } = {}) {
   const { c, dir: d } = await appClient(dir, { seed: true });
   const epub = readFileSync(path.join(ALICE, KEY.book));
   const file = { file: ["book.epub", epub, "application/epub+zip"] };
@@ -195,6 +197,7 @@ async function aliceVII(dir = undefined, { acceptTerms = true } = {}) {
   const pid = imp.json().project_id;
   expect((await c.patch(`/v1/projects/${pid}`, { json: { language: "en" } })).status).toBe(200);
   expect((await c.patch("/v1/settings", { json: { book_voices: { min_lines: 20 } } })).status).toBe(200);
+  if (!stopForCast) expect((await c.patch("/v1/settings", { json: { book_run: { stop_for_cast: false } } })).status).toBe(200);
   // The character voices' model, BreezeTTS 2, has a licence to accept first, as on a real install.
   if (acceptTerms) expect((await c.post("/v1/engines/breeze_tts/terms")).status).toBe(200);
   const gentle = (await c.post("/v1/personas", { json: { name: "Gentle", voice_id: "af_heart", note: "soft and quick" } })).json().id;
@@ -215,7 +218,7 @@ async function settle(c, runId, { review = false } = {}) {
 const stepOf = (r, key) => r.steps.find((s) => s.key === key);
 
 test("alice_vii_from_one_press_to_an_m4b_with_the_time_and_tokens_written_down", { timeout: 120000 }, async () => {
-  const { c, pid, gentle } = await aliceVII();
+  const { c, pid, gentle } = await aliceVII(undefined, { stopForCast: true });
 
   // Before it starts: each step's model, nothing in the way, nothing to ask on this machine.
   const before = (await c.get(`/v1/projects/${pid}/book_run`)).json();
@@ -223,6 +226,7 @@ test("alice_vii_from_one_press_to_an_m4b_with_the_time_and_tokens_written_down",
   expect(before.plan.chapters).toBe(1);
   expect(before.plan.problems).toEqual([]);
   expect(before.plan.ask_price).toBe(false);
+  expect(before.plan.stop_for_cast).toBe(true); // the stop when the cast is ready, on by default
   expect(before.plan.steps.map((s) => s.key)).toEqual(bookRun.STEPS);
   expect(before.plan.steps.find((s) => s.key === "analyze")).toMatchObject({ kind: "ai", model: "gemma-test", cloud: false });
   expect(before.plan.steps.find((s) => s.key === "design").model).toBe("Qwen3-TTS VoiceDesign → BreezeTTS 2");
@@ -240,7 +244,7 @@ test("alice_vii_from_one_press_to_an_m4b_with_the_time_and_tokens_written_down",
     h()
       .all("select b.* from blocks b join scenes s on s.id = b.scene_id where s.project_id = ? order by b.position", [pid])
       .filter((b) => b.text);
-  const done = await (async () => {
+  const until = async () => {
     for (let i = 0; i < 1500; i++) {
       const hair = blocks().find((b) => b.text.includes("Your hair wants cutting"));
       if (hair && !deafTo) deafTo = hair.id;
@@ -249,7 +253,21 @@ test("alice_vii_from_one_press_to_an_m4b_with_the_time_and_tokens_written_down",
       await sleep(20);
     }
     throw new Error("the run didn't finish");
-  })();
+  };
+
+  // The cast is ready: the run waits at Render every line, every voice made and nothing rendered.
+  const waiting = await until();
+  expect(waiting.status, JSON.stringify(waiting.error)).toBe("waiting");
+  expect(waiting.step).toBe("render");
+  for (const key of bookRun.STEPS.slice(0, bookRun.STEPS.indexOf("render"))) expect(["done", "skipped"], key).toContain(stepOf(waiting, key).status);
+  for (const key of ["render", "check", "export"]) expect(stepOf(waiting, key).status, key).toBe("pending");
+  expect(stepOf(waiting, "design").made).toBe(4);
+  expect((await c.get(`/v1/projects/${pid}/render_state`)).json().totals.rendered).toBe(0);
+  // Not live: the book's buttons are free while you listen; Continue is the run's Resume.
+  expect((await c.get(`/v1/projects/${pid}/book_run`)).json().run.status).toBe("waiting");
+  const going = await c.post(`/v1/book_runs/${runId}/resume`);
+  expect(going.status, going.text).toBe(200);
+  const done = await until();
   expect(done.status, JSON.stringify(done.error)).toBe("completed");
   for (const s of done.steps) expect(["done", "skipped"], `${s.key}: ${s.error}`).toContain(s.status);
 

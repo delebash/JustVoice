@@ -534,9 +534,13 @@ export const AppSettings = T.Object({
  * run that sends the book to a cloud model starts, its tokens are estimated from the text each AI
  * step reads at `chars_per_token` characters a token — OpenAI's rule of thumb for English text,
  * about 4; Chinese or Japanese runs nearer 1 — and priced from AI Settings → Pricing.
+ * `stop_for_cast`: the run stops once when the cast is ready — after Direction, before Render every
+ * line — so you hear the voices before the book is rendered with them; Continue renders the rest
+ * (decided 2026-11-07; off, the run goes through unattended).
  */
 export const BookRunSettings = T.Object({
   chars_per_token: opt(T.Number({ exclusiveMinimum: 0 }), 4.0),
+  stop_for_cast: opt(T.Boolean(), true),
 });
 
 export const Settings = T.Object({

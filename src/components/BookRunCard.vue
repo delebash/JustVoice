@@ -19,10 +19,10 @@
 <script setup>
 import { computed } from "vue";
 import { useQuasar } from "quasar";
-import { LuFeatureChip, UiButton, UiProgress, UiTable, UiTag } from "@delebash/ui";
+import { LuFeatureChip, UiButton, UiCheckbox, UiProgress, UiTable, UiTag } from "@delebash/ui";
 import {
-  LIVE, PROBLEMS, RECIPE_WORDS, RUN_TAGS, RUN_TITLE, RUNS_ON_SERVER, STEP_LABELS, planLine, planWords, priceText, problemWords,
-  reviewItems, runBanner, runningLine, stepStatusText, stepsDone,
+  LIVE, PROBLEMS, RECIPE_WORDS, RUN_TAGS, RUN_TITLE, RUNS_ON_SERVER, STEP_LABELS, STOP_FOR_CAST, planLine, planWords, priceText,
+  problemWords, reviewItems, runBanner, runningLine, stepStatusText, stepsDone,
 } from "../services/bookRun.js";
 import { licClass, licTitle } from "../services/engineFacts.js";
 import { clock } from "../services/renderRun.js";
@@ -39,7 +39,8 @@ const props = defineProps({
   // Seconds the run has worked so far (its steps' time).
   elapsed: { type: Number, default: 0 },
 });
-const emit = defineEmits(["start", "stop", "resume", "save", "go", "routing"]);
+// stop-for-cast: the setting's checkbox was ticked or cleared (its new value).
+const emit = defineEmits(["start", "stop", "resume", "save", "go", "routing", "stop-for-cast"]);
 
 // Below 600 px (Quasar's `sm`, the app's phone width) what a step runs on goes under its name,
 // so the table keeps two columns.
@@ -55,8 +56,12 @@ const warnings = computed(() => (props.run ? [] : props.plan?.warnings ?? []));
 const blocked = computed(() => !props.plan || problems.value.length > 0);
 const showCost = computed(() => !!props.plan?.ask_price && !props.run);
 const review = computed(() => (props.run?.status === "completed" ? reviewItems(props.run.review) : []));
-// A run that stopped can be resumed; a finished one run again (it does only what is new).
-const resumable = computed(() => !!props.run && ["paused", "cancelled", "failed"].includes(props.run.status));
+// A run that stopped can be resumed — one waiting at the cast goes on (Continue); a finished one run
+// again (it does only what is new).
+const waiting = computed(() => props.run?.status === "waiting");
+const resumable = computed(() => !!props.run && ["waiting", "paused", "cancelled", "failed"].includes(props.run.status));
+// The stop when the cast is ready is set before a run reaches it — not while one runs or waits there.
+const showStopForCast = computed(() => !!props.plan && !live.value && !waiting.value);
 
 const runStep = (key) => props.run?.steps.find((s) => s.key === key) ?? null;
 const rows = computed(() => (props.plan?.steps ?? []).map((s) => ({ ...s, label: STEP_LABELS[s.key], step: runStep(s.key) })));
@@ -127,8 +132,8 @@ const numbers = computed(() => (props.run?.steps ?? [])
     <div class="jv-card__body">
       <p v-if="!run" class="jv-lede">
         One press finds the speakers, decides who says every line, gives the main ones voices made
-        from the book, directs the lines, renders and checks every take, and exports the M4B — without
-        stopping to ask. What it isn't sure of is marked for you to check afterwards.
+        from the book, directs the lines, renders and checks every take, and exports the M4B. What it
+        isn't sure of is marked for you to check afterwards.
       </p>
 
       <div v-for="p in problems" :key="p.code" class="jv-banner jv-banner--warn book-run__note">
@@ -143,7 +148,8 @@ const numbers = computed(() => (props.run?.steps ?? [])
       </div>
 
       <div v-if="banner" class="jv-banner book-run__note" :class="`jv-banner--${banner.intent}`">
-        <strong>{{ banner.title }}</strong> {{ banner.text }}
+        <strong>{{ banner.title }}</strong> {{ banner.text }}<UiButton v-if="banner.go" intent="ghost" size="small"
+          :label="banner.link" @click="emit('go', ...banner.go)" />
       </div>
 
       <div v-if="live" class="book-run__progress">
@@ -181,6 +187,11 @@ const numbers = computed(() => (props.run?.steps ?? [])
 
       <p v-if="!run && planLine(plan)" class="jv-hint book-run__cost">{{ planLine(plan) }}</p>
 
+      <div v-if="showStopForCast" class="book-run__option">
+        <UiCheckbox :model-value="plan.stop_for_cast !== false" :label="STOP_FOR_CAST"
+          @update:model-value="emit('stop-for-cast', $event)" />
+      </div>
+
       <div class="jv-inline-row book-run__actions">
         <template v-if="!run">
           <UiButton intent="primary" :label="showCost ? `▶ Make audiobook — ${priceText(plan.estimate)}` : '▶ Make audiobook'"
@@ -190,6 +201,11 @@ const numbers = computed(() => (props.run?.steps ?? [])
         <template v-else-if="live">
           <UiButton intent="secondary" label="Stop"
             title="Stops at once — a model call in progress is cut off; a render stops at its next line. What is done is kept; Resume picks up there." @click="emit('stop')" />
+          <span class="jv-hint">{{ RUNS_ON_SERVER }}</span>
+        </template>
+        <template v-else-if="waiting">
+          <UiButton intent="primary" label="▶ Continue" :loading="busy" :disabled="blocked"
+            title="Renders every line, checks the takes and makes the M4B." @click="emit('resume')" />
           <span class="jv-hint">{{ RUNS_ON_SERVER }}</span>
         </template>
         <template v-else-if="resumable">
@@ -237,6 +253,7 @@ const numbers = computed(() => (props.run?.steps ?? [])
 .book-run__runs-on--below { display: block; margin-top: 2px; overflow-wrap: anywhere; }
 .book-run__steps--narrow :deep(.ui-table) { table-layout: fixed; width: 100%; }
 .book-run__cost { margin-top: 8px; }
+.book-run__option { margin-top: 10px; }
 .book-run__actions { margin-top: 12px; gap: 10px; flex-wrap: wrap; align-items: center; }
 .book-run__subhead { font-size: 13px; font-weight: 600; color: var(--ink); margin: 16px 0 6px; }
 .book-run__numbers { margin-top: 12px; }

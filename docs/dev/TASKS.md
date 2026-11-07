@@ -61,6 +61,33 @@
 
 ## The next build
 
+### One-click stops once when the cast is ready, so you hear the voices before the render (decided 2026-11-07)
+STATE:  DECIDED 2026-11-07 — the user, on D1's two books: "so one click just does everythign automatically without
+        any decision from user, do you think that is good? maybe, i mean user can manually do it, what do you dthink ,
+        should oneclick be fully auto like it is now or partial auto?" Shown: "1. One-click becomes partial auto: it
+        stops once when the cast is ready, you listen on Cast, and Continue renders the rest. A setting, on by
+        default, turns the stop off. Rec: yes." "2. If you say yes, D1's fresh book becomes the test of it: one
+        chapter in an empty data folder, so every voice, the narrator included, is made with the defaults. You'd
+        hear the cast at the stop, then the finished book. Rec: yes." From the rec: "The stop would be one more
+        pause, placed after direction and before rendering, so the language model's steps still run back to back
+        with no extra model swaps. The card would point you to Cast to listen, and Continue would be the Resume
+        button that already exists." The user: "your rec all go".
+WHY:    a voice found wrong after the render throws away most of the run (Alice VIII's run: 4 min to the cast, 14 min
+        rendering, checking and exporting); ElevenLabs' Character Casting previews each voice before anything is
+        generated (RESEARCH.md "Commercial workflows", the one-click research).
+NOT:    fully unattended as the only way (the 2026-10-11 plan's "It never stops to ask" — changed here; the setting
+        keeps it); the stop right after the voices are made (it splits the language model's steps).
+BUILT:  2026-11-07 — `book_run.js` `castStop` (the run goes `waiting` at Render every line, once a run, when there
+        are lines to render; `options.cast_stop`), `book_run.stop_for_cast` (models.js, on); the card's
+        **Waiting for you**, its note with **Open Cast ➜**, **▶ Continue** (the run's Resume), and the box *Stop when
+        the cast is ready, to hear the voices before the render* (bookRun.js, BookRunCard.vue, StudioBookRun.vue);
+        the mock's `?state=waiting`; docs studio, settings-reference, ai-features, whats-new; RESEARCH (the timings).
+        The words on the card are mine, not yet the user's. Tests: book_run.test.js 9/9 (the run waits with
+        every voice made and nothing rendered, Continue finishes it, a re-run with nothing to render doesn't
+        stop); BookRunCard.test.js + bookRun.test.js 18/18.
+OPEN:   D1's fresh book (decision 2): one chapter in an empty data folder, the cast heard at the stop, then the M4B.
+GO:     given 2026-11-07 ("your rec all go").
+
 ### JustVoice closed out for its release — the list A–D (decided 2026-11-06)
 STATE:  DECIDED 2026-11-06 — the user: "i want to get jv in the same state where all items are closed out … only
         give me items that a human absolutely has to do". Shown ("JustVoice close-out"): "A. Already done; I just

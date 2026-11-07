@@ -18,6 +18,15 @@ vi.mock("@delebash/ui", () => ({
     setup: (p, { emit }) => () => h("button", { disabled: p.disabled, onClick: () => emit("click") }, p.label),
   },
   UiProgress: { props: ["value", "max"], setup: (p) => () => h("progress", { value: p.value, max: p.max }) },
+  UiCheckbox: {
+    props: ["modelValue", "label"],
+    emits: ["update:modelValue"],
+    setup: (p, { emit }) => () =>
+      h("label", { class: "checkbox" }, [
+        h("input", { type: "checkbox", checked: p.modelValue, onChange: (e) => emit("update:modelValue", e.target.checked) }),
+        p.label,
+      ]),
+  },
   UiTag: slot("span", "tag"),
   LuFeatureChip: {
     props: ["resolvedProviderName", "resolvedModel"],
@@ -51,7 +60,7 @@ async function mount(props) {
   app = createTestApp(BookRunCard, {
     unit: UNIT,
     ...props,
-    ...Object.fromEntries(["onStart", "onStop", "onResume", "onSave", "onGo", "onRouting"].map((k) => [k, (...a) => events.push([k, ...a])])),
+    ...Object.fromEntries(["onStart", "onStop", "onResume", "onSave", "onGo", "onRouting", "onStopForCast"].map((k) => [k, (...a) => events.push([k, ...a])])),
   });
   app.mount(el);
   for (let i = 0; i < 3; i++) await nextTick();
@@ -118,6 +127,31 @@ test("running: the step and chapter it is on, the time so far, Stop", async () =
   expect(buttons()).toEqual(["Stop"]);
   await new DOMWrapper(el.querySelector("button")).trigger("click");
   expect(events).toEqual([["onStop"]]);
+});
+
+test("before a run: the stop when the cast is ready is on, and clearing it says so", async () => {
+  const events = await mount({ plan: mockPlan(), run: null });
+  const box = el.querySelector(".book-run__option input");
+  expect(el.querySelector(".book-run__option").textContent).toBe("Stop when the cast is ready, to hear the voices before the render");
+  expect(box.checked).toBe(true);
+  box.checked = false;
+  await new DOMWrapper(box).trigger("change");
+  expect(events).toEqual([["onStopForCast", false]]);
+});
+
+test("the cast is ready: the run waits before the render, the note opens Cast, Continue goes on", async () => {
+  const events = await mount({ plan: mockPlan(), run: mockRun("waiting") });
+  expect(text(".tag")).toContain("Waiting for you");
+  expect(el.querySelector(".jv-banner--info").textContent).toContain(
+    "The cast is ready. Listen to each voice on Cast and change any you want, then Continue — it renders every line, checks the takes and makes the M4B.",
+  );
+  expect(cells(8)[2]).toBe("Done · 2 chapters");
+  for (const row of [9, 10, 11]) expect(cells(row)[2]).toBe("Waiting");
+  expect(el.querySelector(".book-run__option")).toBeNull(); // set before a run, not while one waits
+  expect(buttons()).toEqual(["Open Cast ➜", "▶ Continue"]);
+  await new DOMWrapper([...el.querySelectorAll("button")].find((b) => b.textContent === "Open Cast ➜")).trigger("click");
+  await new DOMWrapper([...el.querySelectorAll("button")].find((b) => b.textContent === "▶ Continue")).trigger("click");
+  expect(events).toEqual([["onGo", "cast"], ["onResume"]]);
 });
 
 test("no FFmpeg yet: the export step says so, and the note opens AI Settings → FFmpeg", async () => {

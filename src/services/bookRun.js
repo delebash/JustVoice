@@ -69,6 +69,8 @@ const count = (key, n, unit) => `${Number(n || 0).toLocaleString()} ${unitWord(k
 export const RUN_TAGS = {
   queued: { label: "Running", intent: "info" },
   running: { label: "Running", intent: "info" },
+  // The stop when the cast is ready (decided 2026-11-07).
+  waiting: { label: "Waiting for you", intent: "accent2" },
   paused: { label: "Paused", intent: "secondary" },
   cancelled: { label: "Stopped", intent: "secondary" },
   failed: { label: "Stopped on a problem", intent: "danger" },
@@ -76,7 +78,10 @@ export const RUN_TAGS = {
 };
 
 export const LIVE = new Set(["queued", "running"]);
-const ENDED = new Set(["paused", "cancelled", "failed", "completed"]);
+const ENDED = new Set(["waiting", "paused", "cancelled", "failed", "completed"]);
+
+/** The setting's words: the run stops once when the cast is ready (`book_run.stop_for_cast`). */
+export const STOP_FOR_CAST = "Stop when the cast is ready, to hear the voices before the render";
 
 /** What the take check found wrong with a take (take_check.js reasons), in Studio's words. */
 export const TAKE_REASONS = {
@@ -101,7 +106,7 @@ export function stepStatusText(step, unit, run) {
   }
   if (status === "failed") return "Stopped here";
   if (status === "skipped") return step.note ? `Skipped — ${step.note}` : "Skipped";
-  if (status === "pending") return run && ENDED.has(run.status) && run.status !== "completed" ? "Not reached" : "Waiting";
+  if (status === "pending") return run && ENDED.has(run.status) && !["completed", "waiting"].includes(run.status) ? "Not reached" : "Waiting";
   // done
   const kept = step.kept ? ` · ${Number(step.kept).toLocaleString()} already done` : "";
   // A book-wide step with nothing to do (a re-run after everything was made) — not "0 people".
@@ -205,12 +210,21 @@ export function problemWords(p) {
   return PROBLEMS[p.code];
 }
 
-/** The banner above the steps for a run that has stopped or ended — `{intent, title, text}`, or
- * null while it runs or before one. */
+/** The banner above the steps for a run that has stopped or ended — `{intent, title, text}` and,
+ * for the stop when the cast is ready, a link (`go`, `link`) — or null while it runs or before one. */
 export function runBanner(run) {
   if (!run) return null;
   const step = run.steps.find((s) => s.key === run.step);
   const where = step ? `${STEP_LABELS[step.key]}${run.scene_title ? `, ${run.scene_title}` : ""}` : "where it stopped";
+  if (run.status === "waiting") {
+    return {
+      intent: "info",
+      title: "The cast is ready.",
+      text: "Listen to each voice on Cast and change any you want, then Continue — it renders every line, checks the takes and makes the M4B.",
+      go: ["cast"],
+      link: "Open Cast ➜",
+    };
+  }
   if (run.status === "paused") {
     return { intent: "warn", title: "Paused", text: `The app closed while this ran. Resume picks up at ${where}; what is done is kept.` };
   }
@@ -310,6 +324,11 @@ export async function resumeBookRun(api, run) {
   return runs[run.project_id];
 }
 
+/** Turn the stop when the cast is ready on or off — the setting, for every book's run. */
+export async function setStopForCast(api, on) {
+  await api.request("/v1/settings", { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify({ book_run: { stop_for_cast: on } }) });
+}
+
 const wait = (ms, signal) => new Promise((resolve, reject) => {
   if (signal?.aborted) return reject(signal.reason);
   const t = setTimeout(resolve, ms);
@@ -372,6 +391,8 @@ export function followBookRun(api, { project, run, unit }) {
     }
     const end = await api.safeRequest(`/v1/book_runs/${run.id}?review=true`, r);
     runs[project.id] = end;
+    // The cast is ready: this part's work is done; Continue follows the rest as a task of its own.
+    if (end.status === "waiting") task.setProgress(stepsDone(end), end.steps.length, "The cast is ready — waiting for you", RUNS_ON_SERVER);
     if (end.status === "failed") throw new Error(end.error?.text || "the run stopped on a problem");
     if (end.status === "cancelled" || end.status === "paused") {
       // Stopped from the card, or by a restart: the task ends cancelled, not failed.

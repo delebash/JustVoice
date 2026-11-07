@@ -32,9 +32,14 @@
 // Idempotent: a chapter a step already did — before this run or in it — is kept, unless the run
 // was asked to redo that step (`redo`); a line you set is never overwritten (each step's own
 // rule); Analyze on a chapter with takes stays refused (its 409, recorded as the chapter's and the
-// run goes on). It never stops to ask: what it isn't sure of is flagged where Script and Render
-// show flags, and the run carries on. A step that cannot go on — no language model, a model that
-// fails, no ffmpeg — stops the run with its reason, and Resume picks up there.
+// run goes on). It asks nothing along the way: what it isn't sure of is flagged where Script and
+// Render show flags, and the run carries on. A step that cannot go on — no language model, a model
+// that fails, no ffmpeg — stops the run with its reason, and Resume picks up there.
+//
+// It stops once on purpose (decided 2026-11-07): when the cast is ready — after Direction, before
+// Render every line, so the language model's steps still run together — the run goes "waiting",
+// you hear the voices on Cast, and Continue (its Resume) renders the rest. `book_run.stop_for_cast`
+// turns the stop off; a run with nothing to render doesn't stop (`castStop`).
 //
 // A run that sends the book to a cloud model asks once, before it starts: its tokens are estimated
 // from the text each AI step reads (`estimateRun`) and priced from the kit's pricing table, and
@@ -448,6 +453,7 @@ export function planRun(h, projectId, { redo = [] } = {}) {
     steps,
     estimate: estimate ? { tokens_in: estimate.tokens_in, tokens_out: estimate.tokens_out, price: estimate.price, unpriced: estimate.unpriced, plans: estimate.plans } : null,
     ask_price: steps.some((s) => s.kind === "ai" && s.cloud),
+    stop_for_cast: settings.book_run.stop_for_cast,
     problems,
     warnings,
   };
@@ -584,8 +590,8 @@ export function cancelRun(runId) {
   return runStatus(runId);
 }
 
-/** Resume a paused, stopped or failed run where it stopped. Refused while another run of the book
- * is live; a finished run is left as it is. */
+/** Resume a paused, waiting (the cast stop), stopped or failed run where it stopped. Refused while
+ * another run of the book is live; a finished run is left as it is. */
 export function resumeRun(runId) {
   const h = _db();
   const row = h.get(BookRun, runId);
@@ -947,16 +953,9 @@ const STEP_FNS = {
 
   async render(ctx) {
     const st = ctx.steps.render;
-    const h = ctx.h;
     let job = st.job_id ? renderJobs.jobStatus(st.job_id) : null;
     if (job === null) {
-      const state = appState.getState();
-      const wanted = ctx.redo("render") ? ["ready", "rendered", "stale"] : ["ready"];
-      const ids = [];
-      for (const scene of bookChapters(h, ctx.projectId)) {
-        const page = await lineTakes.sceneLines(h, state, scene.id);
-        for (const line of page.lines) if (wanted.includes(line.state)) ids.push(line.block_id);
-      }
+      const ids = await linesToRender(ctx);
       job = renderJobs.jobStatus(renderJobs.createJob(ctx.projectId, "blocks", ids, { fresh: ctx.redo("render") }).id);
       st.job_id = job.id;
       st.total = job.total_blocks;
@@ -1036,6 +1035,32 @@ const STEP_FNS = {
   },
 };
 
+/** The lines Render every line would render: those with no take — every line, when the run redoes
+ * the render. */
+async function linesToRender(ctx) {
+  const state = appState.getState();
+  const wanted = ctx.redo("render") ? ["ready", "rendered", "stale"] : ["ready"];
+  const ids = [];
+  for (const scene of bookChapters(ctx.h, ctx.projectId)) {
+    const page = await lineTakes.sceneLines(ctx.h, state, scene.id);
+    for (const line of page.lines) if (wanted.includes(line.state)) ids.push(line.block_id);
+  }
+  return ids;
+}
+
+/** The stop when the cast is ready (decided 2026-11-07): once a run, before its render starts, when
+ * `book_run.stop_for_cast` is on and there are lines to render. The run goes "waiting" at Render
+ * every line; Continue (its Resume) renders. → whether it stopped. */
+async function castStop(ctx) {
+  if (ctx.options.cast_stop || ctx.steps.render.job_id || !ctx.settings.book_run.stop_for_cast) return false;
+  if (!(await linesToRender(ctx)).length) return false;
+  ctx.options.cast_stop = true;
+  ctx.at = { step: "render", scene_id: null };
+  ctx.save({ status: "waiting", options_json: pyJson(ctx.options) });
+  log.info(`book run ${ctx.runId}: the cast is ready — waiting to go on`);
+  return true;
+}
+
 /** The run's runner (async; started by `startRun`). */
 export async function _runBook(runId) {
   const ctl = _controllers.get(runId) ?? new AbortController();
@@ -1050,6 +1075,7 @@ export async function _runBook(runId) {
       const st = ctx.steps[key];
       if (st.status === "done" || st.status === "skipped") continue;
       ctx.throwIfStopped();
+      if (key === "render" && (await castStop(ctx))) return;
       ctx.at = { step: key, scene_id: null };
       st.status = "running";
       st.error = null;

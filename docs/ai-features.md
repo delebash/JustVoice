@@ -308,7 +308,8 @@ for the model. They have no control in the app yet; they are set through
 ## The one-click audiobook's speaker steps
 
 The one-click audiobook ([Studio → Make the audiobook](studio.md#make-the-audiobook), since
-2026-10-16) turns a book into an audiobook without stopping to ask. Two of its steps are AI
+2026-10-16) turns a book into an audiobook, stopping once when the cast is ready so you hear the
+voices before the render (since 2026-11-07; a setting turns that off). Two of its steps are AI
 features of their own: the run calls them, each is a route you can call too, and each has its
 card in **AI Settings → Routing by feature**, with its prompt, preset and Lab, like every
 feature.
