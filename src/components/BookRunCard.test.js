@@ -125,7 +125,7 @@ test("no FFmpeg yet: the export step says so, and the note opens AI Settings →
   expect(cells(11)).toEqual(["Master and export the M4B", "FFmpeg — not installed"]);
   expect(el.querySelector(".jv-banner--info").textContent)
     .toContain("FFmpeg isn't installed, so the run will stop before the M4B. Install it in AI Settings → FFmpeg, then Resume.");
-  el.querySelector(".jv-banner--info button").click();
+  await new DOMWrapper(el.querySelector(".jv-banner--info button")).trigger("click");
   expect(events).toEqual([["onGo", "ai", "runtime-ffmpeg"]]);
 });
 
