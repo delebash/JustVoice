@@ -131,6 +131,11 @@ BUILT:  B1 da7d1b05 · B2 c8a7d653 · B7 860a18b8 · B3 abae21a1 (re-run words "
         tags — the same length and tags as the 2026-11-06 M4B made with the PATH FFmpeg 8.1.1.
 CHECKED 2026-11-06, once at the end: lint; server 1298 (+1 skipped); unit 306; the guard; smoke every view,
         zero JS errors (17494, the dev build, the user's data); e2e 10/10 (WCAG 2.2 AA light and dark included).
+        Again 2026-11-07 after FFmpeg from the kit: lint; server 1299 (+1 skipped); unit 307; the guard (it caught
+        a bare `.click()` in the new card test — 58cc8864); smoke every view, zero JS errors (8741, the user's
+        data); AI Settings → FFmpeg seen at 1280 ("Installed — build 9.0.2", Reinstall, Remove, "Your own copy");
+        e2e 10/10. FOUND, not on the list: the kit's tab draws "Your own copy" as a short field (about 110 px)
+        for a full path — the kit's control.
 OPEN:   B9's majors and pins with the family (Electron 45, jsdom 31, Biome, electron-builder — the "family
         release" session sends them); B10's rest (the kit's pin — with the tag; the kit's 2026-10-20 changes 1, 3,
         11 and the start checks are tested by the release run); then D1–D3 (the
