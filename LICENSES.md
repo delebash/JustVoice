@@ -26,7 +26,7 @@ JustVoice is **MIT** (see `LICENSE`), and **nothing it distributes constrains th
 Two categories are inventoried here, and the difference between them is what decides whether a licence can propagate at all:
 
 - **Distributed** — what the installer carries (refreshed 2026-11-05, after the move to Electron and a Node server on 2026-10-08): the Electron shell, the renderer bundle, the server and the family kit's packages with their npm dependencies inside the app, and `audiocpp_dsp` beside the executable. These form a combined work with JustVoice, so a copyleft licence here relicenses the whole product. That is exactly what `pedalboard` did.
-- **Downloaded on demand** — what the app fetches onto the user's machine when the user installs or loads something: the audio.cpp speech runtime, eSpeak NG, the Japanese dictionary and the speech models. JustVoice never redistributes these, and the runtime runs as a separate process. eSpeak NG is `GPL-3.0` and does **not** propagate — see *Downloaded on demand* below for why.
+- **Downloaded on demand** — what the app fetches onto the user's machine when the user installs or loads something: the audio.cpp speech runtime, eSpeak NG, the Japanese dictionary, the speech models and FFmpeg. JustVoice never redistributes these, and the runtime and FFmpeg run as separate processes. eSpeak NG and FFmpeg are `GPL-3.0` and do **not** propagate — see *Downloaded on demand* below for why.
 
 The project was GPL-3.0-or-later between 2026-06-08 and 2026-07-29, forced by exactly one dependency: `pedalboard`, which is GPL-3.0 because it statically links JUCE. It was removed on 2026-07-29 and its twelve effects reimplemented first in Python on numpy + scipy and, since 2026-10-07, in C++ in JustVoice's copy of audio.cpp (`dsp/`, shipped as `audiocpp_dsp`), with pitch shifting by Signalsmith Stretch (MIT). See `NOTICE.md` for the full license history.
 
@@ -87,7 +87,8 @@ Under MIT everything listed above is clear: an MIT project can consume any permi
 ## Downloaded on demand — not distributed
 
 None of this is part of a release. Each item is fetched onto the user's machine, from its publisher,
-when the user installs the speech runtime (AI Settings → Speech) or downloads a model.
+when the user installs the speech runtime (AI Settings → Speech), downloads a model or installs
+FFmpeg (AI Settings → FFmpeg).
 
 | Component | When it is fetched | SPDX license | Distributed by JustVoice |
 |---|---|---|---|
@@ -97,6 +98,7 @@ when the user installs the speech runtime (AI Settings → Speech) or downloads 
 | **NVIDIA CUDA runtime libraries** (`cudart`, `cuBLAS`, `cuFFT` — inside the CUDA archive) and the **Microsoft Visual C++ runtime** (Windows archives) | Install speech runtime | NVIDIA's CUDA EULA (redistributable components) · Microsoft's redistributable terms | no |
 | **Japanese dictionary** — unidic-lite 1.0.8 (MIT) carrying UniDic 2.1.2 (offered under BSD, GPL or LGPL; taken under `BSD-3-Clause`), with its licence files | Install the dictionary add-on | `MIT` + `BSD-3-Clause` | no |
 | **eSpeak NG** (library + data, via the `espeakng-loader` wheel — loader `MIT`) | Install speech runtime | `GPL-3.0` | no |
+| **FFmpeg** 9.0.2 (mastering and the M4B — the kit's pinned builds, each checked by SHA-256: gyan.dev's essentials build on Windows, Martin Riedl's builds on macOS and Linux) | Install on AI Settings → FFmpeg | `GPL-3.0` (the builds carry libx264) | no |
 | **Speech models** — GGUF files, each under its original model's licence | Download / first load | Each model's own: the app shows JustVoice's reading of it on the model's row and in the opened engine (*Commercial use, in plain words*, `docs/engines.md`), and a model whose commercial use isn't a plain *Yes* asks you to accept its licence before its first download. Some are non-commercial. | no |
 
 Licences verified: audio.cpp, MeCab and cppjieba against the `LICENSE`, `libmecab.LICENSE.txt` and
@@ -107,6 +109,9 @@ UniDic Consortium, BSD-3-Clause); MeCab Copyright 2001-2008 Taku Kudo and 2004-2
 and Telephone Corporation, BSD-3-Clause. Each speech model's reading is checked at its source and
 dated in `server/src/engines/audiocpp/curated/<family>.js` (RESEARCH §10.13). The CUDA and Visual
 C++ terms are not re-read here: the archives are the fork's releases, made by its release workflow.
+FFmpeg's builds and their licence are the kit's reading (just-core `docs/dev/RESEARCH.md`, FFmpeg,
+2026-11-06); like eSpeak NG it is a separate program the user's own install fetches, and the server
+only starts it with arguments — nothing of it is linked into or shipped with JustVoice.
 
 **Why the GPL row does not relicense JustVoice.** GPL obligations attach to the *distribution* of a
 combined work, and JustVoice does not distribute eSpeak NG in any form. No JustVoice code links or

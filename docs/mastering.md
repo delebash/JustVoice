@@ -16,7 +16,7 @@ ACX is the strictest — Audible's QC requires every chapter between -23 LUFS an
 
 ## How it runs
 
-JustVoice shells out to **ffmpeg** for the mastering chain (`loudnorm` — EBU R128 loudness and
+JustVoice runs **FFmpeg** — [its own copy](#ffmpeg) — for the mastering chain (`loudnorm` — EBU R128 loudness and
 true peak — `dynaudnorm`, `highpass`, `aresample`); the [ACX check](#acx-qc-report) measures each
 chapter's RMS and peak with the app's own analyzer.
 Mastering has never used the effects DSP — the two are independent paths. The
@@ -40,6 +40,34 @@ There is **no noise gate** — earlier versions of this page listed one. Noise
 floor is a *measurement* the ACX report will grow, not something the chain
 applies.
 
+## FFmpeg
+
+Mastering, the chapter masters in **⬇ Chapter WAVs (zip)** and the **M4B** all
+run FFmpeg, and the app installs its own: open **AI Settings → FFmpeg** and
+click **Install**. It downloads a pinned FFmpeg 9.0.2 build for your computer —
+on Windows gyan.dev's *essentials* build (a 115 MB download, about 330 MB
+unpacked, ffprobe beside it), on macOS and Linux Martin Riedl's builds (28–34 MB)
+— checks it against its SHA-256, and keeps it in the app's models cache under
+`ffmpeg/9.0.2/`, where the speech runtime lives too. It is used from the moment
+it is there: nothing needs restarting. The same tab has **Update** when a newer
+tested build comes with the app, and **Remove**.
+
+**Your own FFmpeg.** Type its full path in the tab's **Your own copy** setting
+and the app runs that one instead. If the path stops being there, the app's own
+copy stands in. An FFmpeg on your system PATH is never picked up by itself
+(until 2026-11-07 it was the only one the app looked for).
+
+**Without one,** nothing fails silently: chapters render raw and the Render
+tab's pill says *FFmpeg missing — renders stay raw*; the ACX check measures the
+raw render and says so; the chapter zip holds `chapters/` only; the M4B export
+answers *FFmpeg isn't installed — required for M4B export. Install it in AI
+Settings → FFmpeg.*; and a one-click run says before it starts that it will
+stop before the M4B, with an **FFmpeg ➜** link to the tab.
+
+FFmpeg is `GPL-3.0` and is never part of JustVoice's installer — your install
+fetches it, the way it fetches the speech runtime (JustVoice's `LICENSES.md`, *Downloaded on
+demand*).
+
 ## Which preset a render uses
 
 JustVoice picks the target for you, most specific answer first:
@@ -61,7 +89,7 @@ removed on 2026-10-03.)
 A **chapter render** applies the processing and hands you a WAV — you are
 auditioning, and the .m4b export should encode once, at the end, not twice.
 The encoded deliverable in the preset's own format (ACX's MP3) comes from
-**Export**. Mastering needs **ffmpeg**: without it, chapters render raw and the
+**Export**. Mastering needs **FFmpeg** ([below](#ffmpeg)): without it, chapters render raw and the
 Render tab's pill says so rather than failing the render.
 
 ## ACX QC report
@@ -75,7 +103,7 @@ chapter shows the failing metric inline.
 QC measures the **mastered** chapter — the audio the export would ship — so a
 pass is a statement about the finished book. (It measured the raw render until
 2026-08-15, which meant an ACX verdict on audio nobody would ever receive.) On
-a machine without ffmpeg the numbers are the raw render's, and the report says
+a machine without FFmpeg the numbers are the raw render's, and the report says
 so instead of letting you read them as final.
 
 QC never refuses the whole book. A chapter that can't render yet — lines with

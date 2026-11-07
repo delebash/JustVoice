@@ -59,21 +59,6 @@
 > confirm `gh workflow list --all` still shows all three disabled.** The workflow
 > YAML is deliberately left untouched so turning CI back on is one command.
 
-## Waiting on your decision
-
-### FFmpeg from the kit — JustVoice moves onto it, when you say
-STATE:  DECIDED 2026-11-06 in web-4c's session (JustDirect's kit work), relayed here: the user, "5 your rec", on
-        "FFmpeg from the kit: gyan.dev's 9.0.2 essentials for Windows, Martin Riedl's 9.0.2 for macOS and Linux,
-        pinned by SHA-256; the addresses are data rows; a path the user sets falls back to their own FFmpeg;
-        JustVoice moves onto it in its own session." (kit TASKS, "JustDirect's six decisions", item 5; built on
-        just-core edd35715: `installLlm({ runtimes: [..., "ffmpeg"] })`, `@delebash/core/runner/ffmpeg`
-        `ffmpegExe()` / `ffmpegReadiness()`; ffprobe only in the Windows build).
-WHY:    JustVoice asks the user to install FFmpeg for mastering and the M4B; the kit's would install from the app.
-OPEN:   when — not on the close-out list A–D. The files that run FFmpeg today (web-4c's list): mastering.js,
-        export_audiobook.js, book_run.js, models.js, system_info.js, audio/wav.js, api/export_jobs_api.js,
-        api/render_chapter_api.js, api/book_runs_api.js, api/projects_api.js.
-GO:     needed for the timing (the decision itself is given).
-
 ## The next build
 
 ### JustVoice closed out for its release — the list A–D (decided 2026-11-06)
@@ -90,6 +75,14 @@ STATE:  DECIDED 2026-11-06 — the user: "i want to get jv in the same state whe
         The user: "just continue", then "that was not a go stop", then "your recs think adversierliy on it again
         make sure you dont keep changing your recs go" (and before: "of work is done clean up the docs"). Attacked
         again: no rec changed.
+        2026-11-07 — shown (the close-out report's "Decisions" and D4): "1. Should this release include the new
+        model files? They add Pocket TTS Small, Kitten TTS 2's refreshed voices, VoxCPM2 VocalRender Pro and
+        Phonon-2. Rec: ship on the current files, which are fully tested, and add the new models after the
+        release." "2. FFmpeg from the kit: you approved it in web-4c's session, and only the timing is open. Rec:
+        before the release, so the app installs FFmpeg itself instead of users installing it by hand for M4B
+        export and mastering." "A JustVoice website: my rec is none for this release, since the docs ship inside
+        the app's Help." The user: "you autocomatcted reread all info you need to dont trust auto compact and
+        your recs go". (D2 "enable release" and D3's release-day go are not recs — still the user's.)
 WHY:    the family releases each app with nothing open (just-core TASKS "The family release").
 NOT:    the cloud (Frontier) route's provider and its tests — another session's.
 BUILT:  B1 da7d1b05 · B2 c8a7d653 · B7 860a18b8 · B3 abae21a1 (re-run words "Done · none needed", the mock's
@@ -116,16 +109,34 @@ BUILT:  B1 da7d1b05 · B2 c8a7d653 · B7 860a18b8 · B3 abae21a1 (re-run words "
         fake microphone — "■ Stop · 0:09", a `mic` capture of 9 s, 19 of 19 words read back.
         D1's audiobooks, made 2026-11-06 on the merged fork's dev build (book_voices.narrator_model set to its
         default, breeze_tts — the dev database still held the old voxcpm2, as clone_model did on 2026-10-19):
-        `data/one-click/Alice VII (release listen).m4b` — 15:22, 273 lines, 2 flagged; its four speakers matched
+        `data/one-click/Alice VII (release listen).m4b` — 15:05 of audio (ffprobe 904.7 s), 273 lines, 2 flagged; its four speakers matched
         the library's personas of 2026-10-16 (VoxCPM2) and the narrator the persona "Narrator" (Kokoro am_echo);
-        `data/one-click/Alice VIII (release listen).m4b` — 18:22, 9 speakers, 7 voices designed (Qwen3-TTS
+        `data/one-click/Alice VIII (release listen).m4b` — 14:11 of audio (ffprobe 851.4 s; "15:22" and "18:22"
+        written here before were not the books' lengths), 9 speakers, 7 voices designed (Qwen3-TTS
         VoiceDesign → BreezeTTS 2), 181 lines, 2 flagged — the defaults' voices.
+        FFmpeg from the kit (decided 2026-11-06 in web-4c's session — the user's "5 your rec" on "FFmpeg from
+        the kit: gyan.dev's 9.0.2 essentials for Windows, Martin Riedl's 9.0.2 for macOS and Linux, pinned by
+        SHA-256; the addresses are data rows; a path the user sets falls back to their own FFmpeg; JustVoice
+        moves onto it in its own session"; its timing 2026-11-07, above): fa85a314 — `installLlm` runtimes
+        `["audiocpp", "ffmpeg"]` (AI Settings gets the kit's FFmpeg tab), mastering.js `ffmpegBin()` (the kit's
+        `ffmpegExe`) for mastering, the M4B, the run's check and system info, never PATH; the words "Install
+        ffmpeg and restart the server" now "Install it in AI Settings → FFmpeg." (no restart: read at each
+        use); the run card's note links "FFmpeg ➜"; docs mastering (§FFmpeg), studio, import-and-export,
+        troubleshooting, whats-new, LICENSES. CHECKED 2026-11-07 on the user's data (the server on 8741, the
+        dev data; `npm run server`): Install on the FFmpeg runtime fetched the 114,768,076-byte zip and
+        installed `ffmpeg-9.0.2-essentials_build\bin\ffmpeg.exe` in the family's shared cache
+        (`justwrite-app\data\ai-cache\ffmpeg\9.0.2\cpu\`); /v1/system/info reports it (`bundled: true`, "ffmpeg
+        version 9.0.2-essentials_build-www.gyan.dev"); Alice VIII's ACX check mastered through it (`mastered:
+        true`, all ok) and its M4B export job made the book — 851.4 s, AAC 44.1 kHz mono, its chapter mark and
+        tags — the same length and tags as the 2026-11-06 M4B made with the PATH FFmpeg 8.1.1.
 CHECKED 2026-11-06, once at the end: lint; server 1298 (+1 skipped); unit 306; the guard; smoke every view,
         zero JS errors (17494, the dev build, the user's data); e2e 10/10 (WCAG 2.2 AA light and dark included).
 OPEN:   B9's majors and pins with the family (Electron 45, jsdom 31, Biome, electron-builder — the "family
         release" session sends them); B10's rest (the kit's pin — with the tag; the kit's 2026-10-20 changes 1, 3,
         11 and the start checks are tested by the release run); then D1–D3 (the
-        user's). After the release: re-add the five "later" ideas and the global hotkey and paste
+        user's); D4: no website for this release (decided 2026-11-07). After the release: the model revision
+        past 661a224e with its new packages curated (Kitten TTS 2's 20261021 voices, Pocket TTS Small, VoxCPM2
+        VocalRender Pro, Phonon-2 — each its licence reading; decided 2026-11-07); re-add the five "later" ideas and the global hotkey and paste
         (`git show 69e00a8d:docs/dev/IDEAS.md`; the hotkey's ruling, a C++ addon: docs/plans/2026-10-05-electron-node-study.md §9).
 GO:     given 2026-11-06 ("your recs think adversierliy on it again … go").
 
@@ -183,7 +194,9 @@ OPEN:   whether upstream is merged into `jv` before the release — your call. T
         re-tested through the app, all well (RESEARCH §1.4) — and put back to 661a224e the same day: it offers
         packages JustVoice has never curated (Kitten TTS 2's 20261021 beside its first, which doubles its voice
         ids; Pocket TTS Small and VoxCPM2 VocalRender Pro with no licence reading; QwenCleo-ASR's package
-        changed), and 14 server tests fail with it. Whether to adopt them before the release: the user's call.
+        changed), and 14 server tests fail with it. DECIDED 2026-11-07 (the close-out item above, "your recs
+        go"): the release ships on 661a224e; the new packages come after it (the close-out item's "After the
+        release").
 GO:     given for the release's timing; the merge given 2026-11-05.
 
 ### The character voices: BreezeTTS 2, with its licence on the run's card (decided 2026-10-16)

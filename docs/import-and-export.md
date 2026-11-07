@@ -414,7 +414,8 @@ chapters.zip* with two folders: `chapters/` — each chapter joined from its lin
 — and `masters/` — the same chapters mastered to the book's target, the audio the M4B is made
 from. (Until 2026-10-07 this button saved the project package instead — the book's data and
 each line's take — which is what Overview's project export is for.) A chapter that can't
-render stops it and says why, as the M4B does. Mastering needs ffmpeg: without it the zip
+render stops it and says why, as the M4B does. Mastering needs FFmpeg
+([AI Settings → FFmpeg](mastering.md#ffmpeg)): without it the zip
 holds `chapters/` only, and once it is saved the app says *No masters — ffmpeg isn't
 installed, so the zip holds the chapter WAVs only.* (Until 2026-10-15 it refused the whole
 zip.)
@@ -442,16 +443,17 @@ export (`POST /v1/projects/{project_id}/export_voicelines`) or the ACX check
 1. `assembleProject()` renders every scene through the **production render path** (the same
    scene resolution and `render_core` the Studio Render tab uses), so the exported book sounds
    exactly like what you previewed.
-2. One `ffmpeg` invocation muxes it: the chapter WAVs go through the concat demuxer, an
+2. One FFmpeg invocation muxes it: the chapter WAVs go through the concat demuxer, an
    FFMETADATA file supplies the chapter marks, and `-f ipod` writes the M4B container at
    `aac 128k`.
 3. Title comes from the project name; author from the project's **Author** field on Overview, or,
    when that is empty, from the project description when it starts with `by `.
 4. Download → upload to ACX.
 
-**ffmpeg must be on the server's PATH.** Without it the endpoint returns `503` with
-`"ffmpeg is not installed — required for M4B export"` rather than failing silently. This is the
-same ffmpeg [mastering](mastering.md) requires.
+**The M4B needs FFmpeg — the app's own, from AI Settings → FFmpeg** (or your own copy that
+tab's setting names; see [Mastering → FFmpeg](mastering.md#ffmpeg)). Without it the endpoint
+returns `503` with `"FFmpeg isn't installed — required for M4B export. Install it in AI Settings →
+FFmpeg."` rather than failing silently. It is the same FFmpeg [mastering](mastering.md) runs.
 
 Cover art and narrator/ASIN metadata are **not** written today — add them in a tag editor
 (MP3Tag, Audiobook Builder) if your distributor wants them.
@@ -538,7 +540,7 @@ doesn't have.
 
 ## Troubleshooting
 
-- **M4B export fails with 503** — ffmpeg is not on the server's PATH. Install it and restart the server; the same binary powers [mastering](mastering.md).
+- **M4B export fails with 503** — the app has no FFmpeg yet. Click **Install** on AI Settings → FFmpeg (no restart needed); the same FFmpeg powers [mastering](mastering.md#ffmpeg).
 - **M4B is missing chapter markers** — chapters come from the FFMETADATA file `muxM4b()` writes, one entry per assembled chapter. The export renders any line that has no take itself, and a chapter that can't render stops the export and says why.
 - **WAV plays at wrong speed** — Mismatched sample rate. Check the engine's output rate vs the destination application's expected rate. Every local engine — Kokoro, Qwen3-TTS, Chatterbox — renders at 24 kHz on the speech runtime; an online provider may differ.
 - **Mastered audio is silent at the start** — A bug in the mastering normalize step. Try the "iAudio" target instead of ACX; iAudio's threshold is gentler.

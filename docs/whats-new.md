@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **The app installs FFmpeg itself (2026-11-07)** — mastering, the chapter masters and the M4B run the
+  app's own FFmpeg: **Install** on the new **AI Settings → FFmpeg** tab downloads a pinned 9.0.2 build
+  for your computer, checks it, and it is used at once — no restart. Your own FFmpeg still works: type
+  its path in that tab's **Your own copy**. An FFmpeg on your PATH is no longer picked up, and the
+  messages that said "Install ffmpeg and restart the server" now point at the tab; the one-click run's
+  note has an **FFmpeg ➜** link ([Mastering → FFmpeg](mastering.md#ffmpeg))
 - **Settings → Mastering changes the real targets (2026-11-06)** — pick ACX, iAudio, Podcast or YouTube
   and change its loudness, true peak, loudness range and head and tail silence; a book on that target
   masters to them from its next render. The page was a leftover from the preview: its fields, a Custom

@@ -2332,7 +2332,14 @@ to 471 s, 24 kHz mono, one thread):
   "full_build" (`--enable-gpl --enable-version3`, so GPLv3; librubberband and ladspa, no lv2).
   Mastering needs only LGPL filters. BtbN/FFmpeg-Builds ships win64/winarm64/linux64/linuxarm64 in
   `gpl` and `lgpl` variants (n8.1 win64 lgpl 162 MB), no macOS. (was, in the session's answer of
-  2026-10-11: "the app already ships ffmpeg for mastering" — wrong.)
+  2026-10-11: "the app already ships ffmpeg for mastering" — wrong.) **Since 2026-11-07 (fa85a314)
+  the app installs the kit's FFmpeg** — the `ffmpeg` tool runtime (just-core RESEARCH, FFmpeg: 9.0.2,
+  gyan.dev essentials on Windows, Martin Riedl's on macOS and Linux, SHA-256-pinned rows), AI
+  Settings → FFmpeg; `mastering.js` `ffmpegBin()` is the kit's `ffmpegExe`, never PATH. Measured
+  on this PC through the app on the dev data: installed into the shared cache
+  (`justwrite-app\data\ai-cache\ffmpeg\9.0.2\cpu\`), Alice VIII's ACX check mastered through it and
+  its M4B came out 851.4 s, AAC 44.1 kHz mono, chapter and tags as the PATH 8.1.1's (ffprobe; its
+  chapter time base 1/44100 where 8.1.1 wrote 1/1000). — *measured, 2026-11-07*.
 - **ffmpeg as a character-voice layer:** no formant shift without a GPL build (`rubberband` needs
   `--enable-librubberband`, a GPL external library; `af_rubberband.c` never calls Rubber Band's
   formant-scale call — a Size workaround `asetrate=sr*0.8,aresample,rubberband=pitch=1.25:

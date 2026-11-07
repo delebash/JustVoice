@@ -7,9 +7,12 @@ tails for anything specific to that surface.
 attribution, smart assign, show notes, …) need a provider — set one up under
 AI Settings (the sidebar page). TTS itself never needs an LLM.
 
-**Mastering or export answers 503 mentioning ffmpeg.** ffmpeg isn't installed or
-isn't on PATH. Install it and restart the server; everything that muxes or
-masters audio depends on it.
+**Mastering or export answers 503 — "FFmpeg isn't installed".** The app has no
+FFmpeg yet. Click **Install** on **AI Settings → FFmpeg** — the app downloads its
+own copy; no restart is needed. Everything that muxes or masters audio depends
+on it. An FFmpeg on your PATH is not used: to use your own copy, type its full
+path in that tab's **Your own copy** setting. See
+[Mastering → FFmpeg](mastering.md#ffmpeg).
 
 **Mastering failed — "ffmpeg could not start (Windows error 0xC0000142)".**
 Windows refused to start ffmpeg at all, so it never read the chapter. Every line

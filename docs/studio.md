@@ -124,7 +124,7 @@ through every step of Studio by itself, in this order:
 | Direction | how each spoken line should be said, where the book gives a reason ([Can be directed](#can-be-directed)) | the language model |
 | Render every line | a take for every line that has none | each speaker's persona |
 | Check the takes | reads every take back and renders a failed one again once ([Checking takes](#checking-takes)) | your speech recognition |
-| Master and export the M4B | joins and masters each chapter, then encodes the book | ffmpeg |
+| Master and export the M4B | joins and masters each chapter, then encodes the book | FFmpeg |
 
 It does the language model's steps together, then the voices, then the
 render, so the AI model and the speech models change places on your graphics
@@ -151,8 +151,10 @@ when the narrator has a model of its own and its licence is the one waiting — 
 name the scans found ignored while the book has no
 speaker but the narrator — *Every name the scans found is ignored — the book
 would be read in one voice. Undo some on Discover ➜* (since 2026-10-16;
-[removing a speaker](#removing-a-speaker) ignores their names). What it will meet is said too: without ffmpeg it stops
-before the M4B, and without speech recognition the takes go unchecked.
+[removing a speaker](#removing-a-speaker) ignores their names). What it will meet is said too: without FFmpeg it stops
+before the M4B — *FFmpeg isn't installed, so the run will stop before the M4B. Install it in AI
+Settings → FFmpeg, then Resume. FFmpeg ➜* (the link opens that tab, whose **Install** fetches it) —
+and without speech recognition the takes go unchecked.
 
 **On a cloud model it asks once.** When any AI step runs on a cloud account
 (Claude, GPT, Gemini…), the card adds an **Estimate** column and a line — *Sends
@@ -188,7 +190,7 @@ you don't write the same chapter at once (since 2026-10-16).
 
 **It never stops to ask.** Where it isn't sure it marks the line, the way Script
 and Render mark lines, and carries on. A step that can't go on — no language
-model, a model that fails, no ffmpeg — stops the run with its reason, in red,
+model, a model that fails, no FFmpeg — stops the run with its reason, in red,
 and the step's row says *Stopped here*. Fix it, then **▶ Resume**: it picks up
 at that step and chapter. A run the app closed during is **Paused** — *The app
 closed while this ran. Resume picks up at Direction, CHAPTER VIII…* — and
@@ -1725,9 +1727,10 @@ deliverable is Export's **M4B**; its chapter WAVs (zip) are not encoded. An MP3
 of a target comes only from the API: `POST /v1/render_chapter` sent `lines` and
 a `master`.
 
-Mastering needs **ffmpeg**. Without it the pill says so and chapters render
-raw rather than failing — install ffmpeg and restart the server to get the
-target applied.
+Mastering needs **FFmpeg** — the app's own, installed from **AI Settings → FFmpeg**
+([Mastering → FFmpeg](mastering.md#ffmpeg)). Without it the pill says *FFmpeg missing — renders
+stay raw* and chapters render raw rather than failing; install it there (no restart needed) to get
+the target applied.
 
 ### The ACX check
 
@@ -1735,7 +1738,7 @@ target applied.
 (a line with no take is rendered, and kept as no take) and measures RMS and
 peak against the ACX limits. It measures the **mastered**
 chapter — the audio the export would ship — so a pass means the finished book
-passes. If ffmpeg is missing, QC still runs and tells you the numbers are for
+passes. If FFmpeg is missing, QC still runs and tells you the numbers are for
 the raw render and not what the finished book would measure. While a chapter
 renders, **Run ACX QC** is greyed out and its tooltip says why: *Waits for the
 render to finish — the check renders lines that have no take.*
