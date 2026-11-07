@@ -9,7 +9,8 @@
 //   - `assembleProject(state, projectId, {renderSceneFn})` — tests inject a fake renderer
 //     returning synthetic WAVs.
 //   - `muxM4b(…, {run})` isolates the ffmpeg invocation; tests stub `run` and assert the argv
-//     + FFMETADATA chapter file. ffmpeg starts through the kit's procs door only.
+//     + FFMETADATA chapter file. ffmpeg starts through the kit's procs door only, and it is the
+//     kit's FFmpeg (mastering.js `ffmpegBin` — AI Settings → FFmpeg).
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,7 +18,6 @@ import path from "node:path";
 import { getLogger } from "@delebash/core/platform/log";
 import * as procs from "@delebash/core/platform/procs";
 import { pyRound, RuntimeError, ValueError } from "@delebash/core/platform/py";
-import * as hardware from "@delebash/core/runner/hardware";
 import * as renderChapterApi from "./api/render_chapter_api.js";
 import { analyze } from "./audio/analyzer.js";
 import { parseWavHeader } from "./audio/wav.js";
@@ -25,6 +25,7 @@ import * as session from "./database/session.js";
 import { Scene } from "./database/models.js";
 import { ApiError } from "./errors.js";
 import * as lineTakes from "./line_takes.js";
+import * as mastering from "./mastering.js";
 
 export const log = getLogger("justvoice.export_audiobook");
 
@@ -195,7 +196,7 @@ export function buildFfmetadata(chapters, bookTitle, author) {
 }
 
 export function haveFfmpeg() {
-  return hardware.which("ffmpeg") !== null;
+  return mastering.haveFfmpeg();
 }
 
 /**
@@ -206,6 +207,8 @@ export function haveFfmpeg() {
  */
 export async function muxM4b(chapters, bookTitle, author, { run = null } = {}) {
   if (!chapters.length) throw new ValueError("nothing to export — no rendered chapters");
+  const exe = mastering.ffmpegBin();
+  if (!exe) throw new RuntimeError(`FFmpeg isn't installed. ${mastering.INSTALL_FFMPEG}`);
   const runner = run ?? ((argv) => procs.run(argv));
   const tdir = mkdtempSync(path.join(tmpdir(), "jv-m4b-"));
   try {
@@ -219,7 +222,7 @@ export async function muxM4b(chapters, bookTitle, author, { run = null } = {}) {
     writeFileSync(path.join(tdir, "chapters.txt"), buildFfmetadata(chapters, bookTitle, author), "utf8");
     const out = path.join(tdir, "book.m4b");
     const argv = [
-      "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+      exe, "-hide_banner", "-loglevel", "error", "-y",
       "-f", "concat", "-safe", "0", "-i", path.join(tdir, "concat.txt"),
       "-i", path.join(tdir, "chapters.txt"),
       "-map_metadata", "1",

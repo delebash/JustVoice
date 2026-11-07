@@ -3,9 +3,11 @@
 // justvoice/mastering.py).
 //
 // The orchestration writes the raw WAV to a temp file, builds the right ffmpeg filtergraph for
-// the preset, and reads the result. Requires ffmpeg on PATH. ffmpeg starts through the kit's
-// procs door only (no console to inherit — RESEARCH §3: without CREATE_NO_WINDOW, under a dead
-// console, every chapter's mastering failed with 0xC0000142).
+// the preset, and reads the result. The FFmpeg it runs is the kit's (the `ffmpeg` tool runtime,
+// AI Settings → FFmpeg: its pinned build, or the user's own its path setting names — `ffmpegBin`;
+// decided 2026-11-06, TASKS "FFmpeg from the kit"), never one from PATH. ffmpeg starts through the
+// kit's procs door only (no console to inherit — RESEARCH §3: without CREATE_NO_WINDOW, under a
+// dead console, every chapter's mastering failed with 0xC0000142).
 //
 // Two doors onto the same filtergraph:
 //
@@ -28,7 +30,7 @@ import { getLogger } from "@delebash/core/platform/log";
 import * as procs from "@delebash/core/platform/procs";
 import { pyInt, RuntimeError, ValueError } from "@delebash/core/platform/py";
 import { pyFloat } from "@delebash/core/platform/pyjson";
-import * as hardware from "@delebash/core/runner/hardware";
+import { ffmpegExe } from "@delebash/core/runner/ffmpeg";
 import { writeWavContainer } from "./audio/wav.js";
 import * as self from "./mastering.js";
 
@@ -79,8 +81,17 @@ export function resolveMasterTarget({ requested = null, projectMaster = null, pr
   return [kindDefault(projectType), "kind"];
 }
 
+/** What a screen or an error says when there is no FFmpeg yet. */
+export const INSTALL_FFMPEG = "Install it in AI Settings → FFmpeg.";
+
+/** The FFmpeg this app runs — the kit's pinned build, or the user's own its path setting names
+ * (AI Settings → FFmpeg) — or null: none yet. Read at each call, so an install needs no restart. */
+export function ffmpegBin() {
+  return ffmpegExe()?.exe ?? null;
+}
+
 export function haveFfmpeg() {
-  return hardware.which("ffmpeg") !== null;
+  return self.ffmpegBin() !== null;
 }
 
 /** Apply a mastering preset and return the encoded audio bytes (async). */
@@ -113,9 +124,9 @@ function namedTemp(suffix) {
   }
 }
 
-/** The ffmpeg command for a preset — `[argv, format]` — from the two temp paths. Exported for
- * the parity check (scripts/compare-render.*). */
-export function _masterCommand(channels, { presetName, presets, outFormat = null, title = null, author = null, book = null, inPath, outPath }) {
+/** The ffmpeg command for a preset — `[argv, format]` — from the two temp paths and the FFmpeg
+ * to run (`exe`, `ffmpegBin()`'s). */
+export function _masterCommand(channels, { presetName, presets, outFormat = null, title = null, author = null, book = null, inPath, outPath, exe }) {
   const preset = Object.hasOwn({ acx: 1, inaudio: 1, podcast: 1, youtube: 1 }, presetName) ? presets[presetName] : null;
   if (preset == null) throw new ValueError(`Unknown mastering preset: ${presetName}`);
   // The deliverable encoding is the preset's; callers who want the processing without a codec
@@ -141,7 +152,7 @@ export function _masterCommand(channels, { presetName, presets, outFormat = null
   afChain.unshift(`apad=pad_dur=${f(preset.tail_silence_secs)}`);
   const af = afChain.join(",");
 
-  const cmd = ["ffmpeg", "-y", "-i", inPath, "-af", af, "-ac", String(preset.channels), "-ar", String(preset.sample_rate)];
+  const cmd = [exe, "-y", "-i", inPath, "-af", af, "-ac", String(preset.channels), "-ar", String(preset.sample_rate)];
   if (fmt === "mp3") cmd.push("-codec:a", "libmp3lame", "-b:a", `${preset.bitrate_kbps}k`, "-id3v2_version", "4");
   else if (fmt === "m4a") cmd.push("-codec:a", "aac", "-b:a", `${preset.bitrate_kbps}k`);
   else if (fmt === "wav") cmd.push("-codec:a", "pcm_s16le");
@@ -153,7 +164,8 @@ export function _masterCommand(channels, { presetName, presets, outFormat = null
 }
 
 async function _runMaster(pcm, sampleRate, channels, { presetName, presets, outFormat, title = null, author = null, book = null }) {
-  if (!self.haveFfmpeg()) throw new RuntimeError("ffmpeg not on PATH. Install ffmpeg or set its bundled path.");
+  const exe = self.ffmpegBin();
+  if (!exe) throw new RuntimeError(`FFmpeg isn't installed. ${INSTALL_FFMPEG}`);
   const preset = Object.hasOwn({ acx: 1, inaudio: 1, podcast: 1, youtube: 1 }, presetName) ? presets[presetName] : null;
   if (preset == null) throw new ValueError(`Unknown mastering preset: ${presetName}`);
   const fmt = outFormat || preset.format;
@@ -161,7 +173,7 @@ async function _runMaster(pcm, sampleRate, channels, { presetName, presets, outF
   const inPath = namedTemp(".wav");
   writeFileSync(inPath, writeWavContainer(pcm, sampleRate, channels));
   const outPath = namedTemp(`.${fmt}`);
-  const [cmd] = _masterCommand(channels, { presetName, presets, outFormat, title, author, book, inPath, outPath });
+  const [cmd] = _masterCommand(channels, { presetName, presets, outFormat, title, author, book, inPath, outPath, exe });
   try {
     const result = await procs.run(cmd, { timeout: 600 });
     if (result.returncode !== 0) throw new RuntimeError(procs.failed("ffmpeg", result.returncode, result.stderr));

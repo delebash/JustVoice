@@ -302,7 +302,7 @@ test("qc_says_whether_it_measured_a_mastered_render", async () => {
     let body = (await c.get(`/v1/projects/${pid}/qc`)).json();
     expect(body.master_preset).toBe("acx");
     expect(body.mastered).toBe(false);
-    expect(body.note).toContain("ffmpeg");
+    expect(body.note).toContain("FFmpeg isn't installed");
 
     ffmpeg.mockReturnValue(true);
     body = (await c.get(`/v1/projects/${pid}/qc`)).json();

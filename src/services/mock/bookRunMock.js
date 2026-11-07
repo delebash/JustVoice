@@ -212,8 +212,8 @@ export function mockRun(state, { frontier = false } = {}) {
   if (state === "failed") {
     return runAt("failed", "export", {
       frontier,
-      over: { done: 0, total: 0, seconds: 1, error: "ffmpeg is not installed — required for M4B export. Install ffmpeg and restart the server." },
-      error: { step: "export", text: "ffmpeg is not installed — required for M4B export. Install ffmpeg and restart the server." },
+      over: { done: 0, total: 0, seconds: 1, error: "FFmpeg isn't installed — required for M4B export. Install it in AI Settings → FFmpeg." },
+      error: { step: "export", text: "FFmpeg isn't installed — required for M4B export. Install it in AI Settings → FFmpeg." },
     });
   }
   if (state === "done") return runAt("completed", null, { frontier });

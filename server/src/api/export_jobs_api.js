@@ -45,6 +45,7 @@ import { Project } from "../database/models.js";
 import * as session from "../database/session.js";
 import { badRequest, HttpError, notFound } from "../errors.js";
 import * as exportAudiobook from "../export_audiobook.js";
+import * as mastering from "../mastering.js";
 import * as synthScheduler from "../synth_scheduler.js";
 import { m4bAuthor } from "./projects_api.js";
 import * as renderChapterApi from "./render_chapter_api.js";
@@ -168,7 +169,7 @@ function _project(projectId) {
 
 function _needFfmpeg(what) {
   if (!exportAudiobook.haveFfmpeg()) {
-    throw new HttpError(503, `ffmpeg is not installed — required for ${what}. Install ffmpeg and restart the server.`);
+    throw new HttpError(503, `FFmpeg isn't installed — required for ${what}. ${mastering.INSTALL_FFMPEG}`);
   }
 }
 

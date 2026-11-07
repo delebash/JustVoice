@@ -587,7 +587,7 @@ export function router() {
     }
 
     if (!mastering.haveFfmpeg()) {
-      throw internal("ffmpeg is not installed. Install ffmpeg + restart the server to use mastering presets.");
+      throw internal(`FFmpeg isn't installed — required for mastering presets. ${mastering.INSTALL_FFMPEG}`);
     }
     let mastered;
     try {

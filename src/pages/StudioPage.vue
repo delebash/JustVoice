@@ -470,7 +470,7 @@ const masterPill = computed(() => {
   const m = masterTarget.value;
   if (!m) return "no master target";
   if (!m.preset) return "no master target · raw audio";
-  if (!m.ffmpeg) return `${masterLabel(m.preset)} target · ffmpeg missing — renders stay raw`;
+  if (!m.ffmpeg) return `${masterLabel(m.preset)} target · FFmpeg missing — renders stay raw`;
   const t = m.targets || {};
   const numbers = t.loudness_target_lufs
     ? ` · ${t.loudness_target_lufs} LUFS · peak ${t.true_peak_dbfs} dB`
@@ -488,7 +488,7 @@ const masterPillTitle = computed(() => {
   const m = masterTarget.value;
   if (!m) return "";
   if (m.preset && !m.ffmpeg) {
-    return "ffmpeg is not installed, so chapters render without mastering. Install ffmpeg and restart the server.";
+    return "FFmpeg isn't installed, so chapters render without mastering. Install it in AI Settings → FFmpeg.";
   }
   const where = {
     project: "set on this project",

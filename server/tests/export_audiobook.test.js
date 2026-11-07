@@ -23,6 +23,7 @@ import { writeWavContainer } from "../src/audio/wav.js";
 import * as exportAudiobook from "../src/export_audiobook.js";
 import * as exportVoicelines from "../src/export_voicelines.js";
 import { buildFfmetadata, ChapterAudio, muxM4b, qcReport } from "../src/export_audiobook.js";
+import * as mastering from "../src/mastering.js";
 import * as synthScheduler from "../src/synth_scheduler.js";
 import { bookJson, scene } from "./jw_fixtures.js";
 
@@ -67,6 +68,8 @@ test("ffmetadata_cumulative_chapter_marks", () => {
 // ── mux argv (ffmpeg stubbed) ───────────────────────────────────────
 
 test("mux_m4b_builds_one_ffmpeg_call", async () => {
+  // the kit's FFmpeg (AI Settings → FFmpeg), where it says it is
+  vi.spyOn(mastering, "ffmpegBin").mockReturnValue("C:/models/ffmpeg/9.0.2/cpu/ffmpeg.exe");
   const calls = {};
   const fakeRun = async (argv) => {
     calls.argv = argv;
@@ -77,7 +80,7 @@ test("mux_m4b_builds_one_ffmpeg_call", async () => {
   const out = await muxM4b([ch("One", 0.1)], "The Ninth Facet", null, { run: fakeRun });
   expect(out.toString()).toBe("m4b-bytes");
   const argv = calls.argv;
-  expect(argv[0]).toBe("ffmpeg");
+  expect(argv[0]).toBe("C:/models/ffmpeg/9.0.2/cpu/ffmpeg.exe");
   expect(argv).toContain("-f");
   expect(argv).toContain("ipod");
   expect(argv).toContain("concat");
@@ -85,6 +88,7 @@ test("mux_m4b_builds_one_ffmpeg_call", async () => {
 });
 
 test("mux_m4b_raises_on_ffmpeg_failure", async () => {
+  vi.spyOn(mastering, "ffmpegBin").mockReturnValue("ffmpeg");
   const fakeRun = async () => ({ returncode: 1, stderr: "boom" });
   await expect(muxM4b([ch("One", 0.1)], "X", null, { run: fakeRun })).rejects.toThrow(RuntimeError);
   await expect(muxM4b([ch("One", 0.1)], "X", null, { run: fakeRun })).rejects.toThrow(/boom/);
@@ -130,12 +134,15 @@ async function app() {
   return c;
 }
 
-/** ffmpeg, faked: writes `bytes` where it was told to write the book. */
-const fakeFfmpeg = (bytes) =>
-  vi.spyOn(procs, "run").mockImplementation(async (argv) => {
+/** ffmpeg, faked: the kit's FFmpeg said to be there, and it writes `bytes` where it was told to
+ * write the book. */
+const fakeFfmpeg = (bytes) => {
+  vi.spyOn(mastering, "ffmpegBin").mockReturnValue("ffmpeg");
+  return vi.spyOn(procs, "run").mockImplementation(async (argv) => {
     writeFileSync(argv.at(-1), bytes);
     return { returncode: 0, stderr: "" };
   });
+};
 
 test("qc_endpoint_with_stubbed_renderer", async () => {
   const c = await app();
@@ -174,7 +181,7 @@ test("export_m4b_503_without_ffmpeg", async () => {
   vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(false);
   const r = await c.post(`/v1/projects/${pid}/export_m4b`);
   expect(r.status).toBe(503);
-  expect(r.text).toContain("ffmpeg");
+  expect(r.text).toContain("FFmpeg isn't installed");
 });
 
 test("export_m4b_with_stubbed_ffmpeg", async () => {
@@ -269,7 +276,7 @@ test("the_export_job_says_when_ffmpeg_is_missing", async () => {
   vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(false);
   const r = await c.post(`/v1/projects/${pid}/export_m4b/start`);
   expect(r.status).toBe(503);
-  expect(r.text).toContain("ffmpeg");
+  expect(r.text).toContain("Install it in AI Settings → FFmpeg.");
 });
 
 test("the_chapter_audio_export_holds_each_chapter_and_its_master", async () => {

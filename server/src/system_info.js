@@ -5,11 +5,12 @@
 // Hardware primitives (GPU name/VRAM/driver, RAM, CPU cores) come from the shared runner's
 // single hardware authority — the kit's `runner/hardware.detect()` — so JustVoice and the LLM
 // runner never run two divergent `nvidia-smi` probes. This module adds only the
-// JustVoice-specific extras: the full OS string, CPU name, ffmpeg availability, and the
+// JustVoice-specific extras: the full OS string, CPU name, the FFmpeg it runs, and the
 // runtime matrix. Every program it starts goes through the kit's procs door (no console).
 
 import { readFileSync } from "node:fs";
 import os from "node:os";
+import { ffmpegExe } from "@delebash/core/runner/ffmpeg";
 import * as hardware from "@delebash/core/runner/hardware";
 import * as procs from "@delebash/core/platform/procs";
 import { construct, SystemInfo } from "./models.js";
@@ -102,14 +103,17 @@ export function _detectRuntimes(base = null) {
   return { cpu: true, ...(base || {}) };
 }
 
+/** The FFmpeg this app runs (the kit's, AI Settings → FFmpeg — `bundled` true — or the user's own
+ * its path setting names), its path and `-version` line; null: none yet. */
 export async function _detectFfmpeg() {
-  const bin = hardware.which("ffmpeg");
-  if (!bin) return null;
+  const at = ffmpegExe();
+  if (!at) return null;
+  const bundled = at.source === "kit";
   try {
-    const out = await procs.checkOutput([bin, "-version"], { timeout: 5 });
+    const out = await procs.checkOutput([at.exe, "-version"], { timeout: 5 });
     const firstLine = out ? (out.split(/\r\n|\r|\n/)[0] ?? "") : "";
-    return { bundled: false, path: bin, version: firstLine };
+    return { bundled, path: at.exe, version: firstLine };
   } catch {
-    return { bundled: false, path: bin, version: "unknown" };
+    return { bundled, path: at.exe, version: "unknown" };
   }
 }

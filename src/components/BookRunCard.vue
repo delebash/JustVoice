@@ -76,7 +76,7 @@ const rowClass = (row) => {
 function modelText(row) {
   if (row.key === "add") return "—";
   if (row.key === "render") return "Each speaker's persona";
-  if (row.key === "export") return props.plan?.warnings.some((w) => w.code === "no_ffmpeg") ? "ffmpeg — not installed" : "ffmpeg";
+  if (row.key === "export") return props.plan?.warnings.some((w) => w.code === "no_ffmpeg") ? "FFmpeg — not installed" : "FFmpeg";
   if (row.key === "check" && props.plan?.warnings.some((w) => w.code === "no_recognition")) return `${row.model} — not installed`;
   return row.model || "—";
 }

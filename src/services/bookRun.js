@@ -160,7 +160,7 @@ export const PROBLEMS = {
   no_language: { text: "Set the book's Language below first — its voices are made in it.", go: null, link: "" },
   // Every scanned name ignored, no speaker but the narrator (decided 2026-10-16).
   all_ignored: { text: "Every name the scans found is ignored — the book would be read in one voice.", go: ["discover"], link: "Undo some on Discover ➜" },
-  no_ffmpeg: { text: "ffmpeg isn't installed, so the run will stop before the M4B. Install ffmpeg and restart the server, then Resume.", go: null, link: "" },
+  no_ffmpeg: { text: "FFmpeg isn't installed, so the run will stop before the M4B. Install it in AI Settings → FFmpeg, then Resume.", go: ["ai", "runtime-ffmpeg"], link: "FFmpeg ➜" },
   no_recognition: { text: "Speech recognition isn't installed, so the takes won't be checked.", go: ["ai", "runtime-audiocpp"], link: "Speech ➜" },
 };
 

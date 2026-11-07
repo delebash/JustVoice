@@ -4,15 +4,21 @@
 //
 // Found 2026-09-29 on a live render: `dynaudnorm` ran after `loudnorm` and renormalised toward a
 // 0.95 peak, so an "acx" chapter measured -16.8 LUFS with its peak at -0.5 dBFS — mastered, and
-// failing ACX. Skipped without ffmpeg. The noise under the tones is a seeded generator of our
-// own (Python used random.Random(7)); the check is a threshold, not a byte comparison.
-import { expect, test } from "vitest";
+// failing ACX. The noise under the tones is a seeded generator of our own (Python used
+// random.Random(7)); the check is a threshold, not a byte comparison.
+//
+// It needs a real FFmpeg. The app runs the kit's (AI Settings → FFmpeg), which a test's sandboxed
+// cache never has, so this test runs the machine's own from PATH in its place (the app never
+// does) — skipped where there is none.
+import { expect, test, vi } from "vitest";
+import * as hardware from "@delebash/core/runner/hardware";
 import "./engines_helpers.js";
 import { analyze } from "../src/audio/analyzer.js";
-import { haveFfmpeg, masterToWav } from "../src/mastering.js";
+import * as mastering from "../src/mastering.js";
 import { construct, MasterPresetSettings } from "../src/models.js";
 
 const RATE = 44_100;
+const FFMPEG = hardware.which("ffmpeg");
 
 /** Mono 16-bit PCM: voiced-band tones under a syllable-rate envelope, in loud and quiet
  * passages — the dynamics a narrated chapter has. */
@@ -42,10 +48,18 @@ function speechlike(seconds) {
   return out;
 }
 
-test.skipIf(!haveFfmpeg())("acx_master_passes_the_acx_qc_limits", async () => {
-  const wav = await masterToWav(speechlike(24.0), RATE, 1, { presetName: "acx", presets: construct(MasterPresetSettings, {}) });
+test.skipIf(!FFMPEG)("acx_master_passes_the_acx_qc_limits", async () => {
+  vi.spyOn(mastering, "ffmpegBin").mockReturnValue(FFMPEG);
+  const wav = await mastering.masterToWav(speechlike(24.0), RATE, 1, { presetName: "acx", presets: construct(MasterPresetSettings, {}) });
   const loud = (await analyze(wav)).loudness;
   expect(loud.peak_dbfs).toBeLessThanOrEqual(-3.0);
   expect(loud.rms_dbfs).toBeGreaterThanOrEqual(-23.0);
   expect(loud.rms_dbfs).toBeLessThanOrEqual(-18.0);
+});
+
+test("without_the_kits_ffmpeg_mastering_says_where_to_install_it", async () => {
+  vi.spyOn(mastering, "ffmpegBin").mockReturnValue(null);
+  expect(mastering.haveFfmpeg()).toBe(false);
+  await expect(mastering.masterToWav(speechlike(1.0), RATE, 1, { presetName: "acx", presets: construct(MasterPresetSettings, {}) }))
+    .rejects.toThrow("FFmpeg isn't installed. Install it in AI Settings → FFmpeg.");
 });

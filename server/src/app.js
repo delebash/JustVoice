@@ -362,8 +362,10 @@ export async function createApp(dataDir = null) {
     // length, load options, transcription shaping and licence gate; `npm run dev` runs our
     // checkout's build in place of an installed one (round E, docs/plans/2026-10-29-round-e-onto-
     // the-kit.md §4 step 1). The AI model's RAM refusal names the speech models the runtime holds
-    // (the kit's own list — the narrowings review, M3).
-    runtimes: ["audiocpp"],
+    // (the kit's own list — the narrowings review, M3). FFmpeg is the kit's too, a tool runtime —
+    // mastering and the M4B run it (mastering.js `ffmpegBin`), AI Settings → FFmpeg installs it
+    // (decided 2026-11-06, TASKS "FFmpeg from the kit").
+    runtimes: ["audiocpp", "ffmpeg"],
     runtimeModels: runtimeModelRows(),
     runtimeSpeech: { audiocpp: SPEECH_HOOKS },
     runtimeExeOverrides: { audiocpp: () => devBuild.current() },

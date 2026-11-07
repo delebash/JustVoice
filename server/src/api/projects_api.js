@@ -1493,8 +1493,8 @@ export function router() {
     let qcNote = null;
     if (target && !mastered) {
       qcNote =
-        `Measured without the ${target} master — ffmpeg is not installed, so these are raw-render numbers, ` +
-        "not what the finished book would measure. Install ffmpeg and re-run.";
+        `Measured without the ${target} master — FFmpeg isn't installed, so these are raw-render numbers, ` +
+        "not what the finished book would measure. Install it in AI Settings → FFmpeg and re-run.";
     }
     return c.json(
       construct(ProjectQCResponse, {
@@ -1520,7 +1520,7 @@ export function router() {
     const project = projectById(h, projectId);
     if (project === null) throw notFound(`project ${projectId}`);
     if (!exportAudiobook.haveFfmpeg()) {
-      throw new HttpError(503, "ffmpeg is not installed — required for M4B export. Install ffmpeg and restart the server.");
+      throw new HttpError(503, `FFmpeg isn't installed — required for M4B export. ${mastering.INSTALL_FFMPEG}`);
     }
     const st = getState();
     // Whole-book warm, engine-grouped (§7 of the 2026-08-08 plan); the assembly below re-reads

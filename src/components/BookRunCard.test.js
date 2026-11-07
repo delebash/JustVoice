@@ -75,7 +75,7 @@ test("before a run: one start, each step's model, nothing to pay on this compute
   expect(chip.className).toBe("ev-lic ev-lic--separate");
   expect(chip.title).toContain("BreezeBlue Research and Non-Commercial License · JustVoice's reading, checked 2026-10-11");
   expect(cells(9)).toEqual(["Render every line", "Each speaker's persona"]);
-  expect(cells(11)).toEqual(["Master and export the M4B", "ffmpeg"]);
+  expect(cells(11)).toEqual(["Master and export the M4B", "FFmpeg"]);
   expect(el.querySelector(".book-run__cost").textContent).toContain("nothing to pay");
   expect(buttons()).toEqual(["▶ Make audiobook"]);
   await new DOMWrapper(el.querySelector("button")).trigger("click");
@@ -120,6 +120,15 @@ test("running: the step and chapter it is on, the time so far, Stop", async () =
   expect(events).toEqual([["onStop"]]);
 });
 
+test("no FFmpeg yet: the export step says so, and the note opens AI Settings → FFmpeg", async () => {
+  const events = await mount({ plan: mockPlan({ noFfmpeg: true }), run: null });
+  expect(cells(11)).toEqual(["Master and export the M4B", "FFmpeg — not installed"]);
+  expect(el.querySelector(".jv-banner--info").textContent)
+    .toContain("FFmpeg isn't installed, so the run will stop before the M4B. Install it in AI Settings → FFmpeg, then Resume.");
+  el.querySelector(".jv-banner--info button").click();
+  expect(events).toEqual([["onGo", "ai", "runtime-ffmpeg"]]);
+});
+
 test("paused after a restart, stopped, or stopped on a problem: why, and Resume", async () => {
   await mount({ plan: mockPlan(), run: mockRun("paused") });
   expect(text(".tag")).toContain("Paused");
@@ -129,7 +138,7 @@ test("paused after a restart, stopped, or stopped on a problem: why, and Resume"
   el.remove();
   await mount({ plan: mockPlan(), run: mockRun("failed") });
   expect(text(".tag")).toContain("Stopped on a problem");
-  expect(el.querySelector(".jv-banner--danger").textContent).toContain("ffmpeg is not installed");
+  expect(el.querySelector(".jv-banner--danger").textContent).toContain("FFmpeg isn't installed");
   expect(el.querySelectorAll(".jv-row--attention").length).toBe(1);
   expect(cells(11)[2]).toBe("Stopped here");
 });
