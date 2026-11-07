@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **Your Claude or ChatGPT plan instead of an API key (2026-11-07)** — when Claude Code is installed on
+  this computer and signed in, **AI Settings → LLM providers** offers it: **Connect** runs the AI steps on
+  your own Claude plan, and the row shows how much of this week's plan is used; an **OpenAI** provider has
+  **Sign in with ChatGPT** for a Plus or Pro plan. A one-click run on a plan names the plan and its use
+  instead of a price, and still asks once ([LLM + TTS providers](ai-providers.md#your-own-plan-instead-of-a-key-llm))
 - **The app installs FFmpeg itself (2026-11-07)** — mastering, the chapter masters and the M4B run the
   app's own FFmpeg: **Install** on the new **AI Settings → FFmpeg** tab downloads a pinned 9.0.2 build
   for your computer, checks it, and it is used at once — no restart. Your own FFmpeg still works: type

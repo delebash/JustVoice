@@ -20,6 +20,7 @@ speech provider** flow.
 | Your own TTS server | OpenAI-compatible (TTS provider) | Point a base URL at your Kokoro-FastAPI / Chatterbox-TTS-Server / Qwen3-TTS server |
 | Low-cost cloud LLM | DeepSeek or OpenRouter (LLM provider) | Cheaper per-token than Claude / OpenAI for speaker attribution at audiobook scale |
 | Local LLM, no API costs | Ollama (LLM provider) | Run llama3.2 / qwen3 / mistral locally. Routes everything through your machine |
+| A cloud LLM on the plan you already pay for | Your Claude plan (through Claude Code), or Sign in with ChatGPT on an OpenAI provider | No API key and nothing billed per call; it counts toward your plan's limits (see [Your own plan instead of a key](#your-own-plan-instead-of-a-key-llm)) |
 
 ## Adding a speech provider
 
@@ -61,6 +62,31 @@ for that run; a route card's Lab run or an API call forces its own route per
 run too. Thinking is a per-feature preset setting like anywhere else — it
 ships on for **Reasoned extraction** (speaker attribution's routes, Direction,
 and Find same people's Frontier card) and off on every other preset.
+
+## Your own plan instead of a key (LLM)
+
+- **Your Claude plan (through Claude Code)** — when Claude Code is installed on
+  this computer, the **LLM providers** tab's online list says so; **Connect**
+  makes it a provider that runs on the Claude plan you already pay for (not
+  signed in, it gives the command, `claude auth login`, and **Look again**). Its
+  row shows how much of this week's plan is used; **Test connection** says
+  whether Claude Code is found and signed in. Each request starts Claude Code
+  afresh, so the first word takes a few seconds. Anthropic's terms allow your
+  own subscription in the unmodified Claude Code; how they apply to apps that
+  run it isn't settled, and any enforcement would fall on your account.
+- **Sign in with ChatGPT** — a saved **OpenAI** provider has **Sign in with
+  ChatGPT** under **Edit**: it signs in at OpenAI in this computer's browser and
+  then uses your ChatGPT Plus or Pro plan instead of the key; **Sign out** goes
+  back to the key.
+
+Calls on a plan cost nothing per call (the usage shows $0; the tokens still
+count), and temperature and a reply-length limit don't apply to them. A plan's
+limits are meant for ordinary personal use: a whole book's run is a lot of it.
+Before a one-click run on a plan, the question names the plan instead of a
+price — "on your Claude plan (30% of this week used so far) — nothing billed per
+call" — and still asks once, because the book's text leaves the computer. A
+Google AI Pro or Ultra plan includes monthly Google Cloud credits that can pay
+for a Gemini key's use.
 
 ## Editing or removing
 
