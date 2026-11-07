@@ -116,12 +116,27 @@ export function stepStatusText(step, unit, run) {
   return `Done · ${count(key, total, unit)}${kept}`;
 }
 
+const PLAN_NAMES = { claude: "your Claude plan", chatgpt: "your ChatGPT plan" };
+
+/** The person's own plans a run draws on instead of a price (the kit's providerPlan — their Claude Code, Sign in
+ * with ChatGPT; the user's go, 2026-11-07): "your Claude plan (30% of this week used so far)". */
+export function planWords(plans) {
+  return (plans ?? [])
+    .map((p) => `${PLAN_NAMES[p.plan] ?? `your ${p.plan} plan`}${typeof p.used === "number" ? ` (${Math.round(p.used * 100)}% of this week used so far)` : ""}`)
+    .join(" and ");
+}
+
+/** Every cloud step runs on the person's own plan: nothing is billed per call. */
+const allOnPlans = (estimate) => Boolean(estimate?.plans?.length) && estimate.price === 0;
+
 /** "up to about $0.76" — the estimate leans high, answers counted at their reserve (2026-10-16) —
- * or that the price isn't known. */
+ * or that the price isn't known; on the person's own plan, which plan instead of a price. */
 export function priceText(estimate) {
   if (!estimate) return "";
-  if (estimate.price === null) return "price unknown — AI Settings → Pricing has no price for it";
-  return `up to about $${Number(estimate.price).toFixed(2)}`;
+  const plans = estimate.plans?.length ? planWords(estimate.plans) : "";
+  if (estimate.price === null) return `price unknown — AI Settings → Pricing has no price for it${plans ? `; the rest on ${plans}` : ""}`;
+  if (allOnPlans(estimate)) return `on ${plans} — nothing billed per call`;
+  return `up to about $${Number(estimate.price).toFixed(2)}${plans ? `, plus ${plans}` : ""}`;
 }
 
 /** The line under the steps before a run: what it will cost, or that it costs nothing. */
@@ -138,15 +153,18 @@ export function planLine(plan) {
 export function priceQuestion(plan) {
   const e = plan.estimate;
   const models = [...new Set(plan.steps.filter((s) => s.kind === "ai" && s.cloud).map((s) => s.model))].join(", ");
+  const plans = e.plans?.length ? planWords(e.plans) : "";
   const cost = e.price === null
-    ? `AI Settings → Pricing has no price for ${e.unpriced.join(", ")}, so what it costs isn't known.`
-    : `At your prices in AI Settings → Pricing that is ${priceText(e)}.`;
+    ? `AI Settings → Pricing has no price for ${e.unpriced.join(", ")}, so what it costs isn't known.${plans ? ` The rest runs on ${plans}.` : ""}`
+    : allOnPlans(e)
+      ? `It runs on ${plans}, so nothing is billed per call; it counts toward your plan's limits.`
+      : `At your prices in AI Settings → Pricing that is ${priceText(e)}.`;
   return {
     title: "Send the book to a cloud model?",
     message: `This run sends about ${e.tokens_in.toLocaleString()} tokens of the book to ${models} and gets about `
       + `${e.tokens_out.toLocaleString()} back. ${cost} It's an estimate; the run writes down what it really used. `
       + "It asks only this once — Resume won't ask again.",
-    confirmLabel: e.price === null ? "Make audiobook" : `Make audiobook — ${priceText(e)}`,
+    confirmLabel: e.price === null || allOnPlans(e) ? "Make audiobook" : `Make audiobook — up to about $${Number(e.price).toFixed(2)}`,
   };
 }
 

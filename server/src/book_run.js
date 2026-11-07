@@ -311,18 +311,23 @@ export function estimateRun(h, projectId, routes, { redo = [], settings }) {
     raw.direction = perChapter("direction", (s) => before.get(s.scene.id));
   } else raw.direction = perChapter("direction");
 
-  const out = { steps: {}, tokens_in: 0, tokens_out: 0, price: 0, unpriced: [] };
+  // `plans`: the person's own plans the cloud steps draw on instead of a price (the kit's providerPlan — their Claude
+  // Code, Sign in with ChatGPT), each `{plan, used}` once; such a step is priced 0 — nothing is billed per call
+  // (the user's go, 2026-11-07).
+  const out = { steps: {}, tokens_in: 0, tokens_out: 0, price: 0, unpriced: [], plans: [] };
   for (const [key, t] of Object.entries(raw)) {
     const route = routes[key];
     let price = 0;
-    if (route.cloud) {
+    if (route.cloud && route.plan) {
+      if (!out.plans.some((p) => p.plan === route.plan)) out.plans.push({ plan: route.plan, used: route.plan_used ?? null });
+    } else if (route.cloud) {
       if (priceFor(route.model)) price = costFor(route.model, t.tokens_in, t.tokens_out);
       else {
         price = null;
         if (!out.unpriced.includes(route.model)) out.unpriced.push(route.model);
       }
     }
-    out.steps[key] = { ...t, price };
+    out.steps[key] = { ...t, price, plan: route.cloud ? (route.plan ?? null) : null };
     out.tokens_in += t.tokens_in;
     out.tokens_out += t.tokens_out;
     if (out.price !== null) out.price = price === null ? null : out.price + price;
@@ -428,6 +433,7 @@ export function planRun(h, projectId, { redo = [] } = {}) {
       model: m.model ?? null,
       provider: m.provider ?? null,
       cloud: Boolean(m.cloud),
+      plan: m.plan ?? null,
       configured: m.configured ?? true,
       recipe: m.recipe ?? null,
       action: m.action ?? null,
@@ -440,7 +446,7 @@ export function planRun(h, projectId, { redo = [] } = {}) {
     project_id: projectId,
     chapters: chapters.length,
     steps,
-    estimate: estimate ? { tokens_in: estimate.tokens_in, tokens_out: estimate.tokens_out, price: estimate.price, unpriced: estimate.unpriced } : null,
+    estimate: estimate ? { tokens_in: estimate.tokens_in, tokens_out: estimate.tokens_out, price: estimate.price, unpriced: estimate.unpriced, plans: estimate.plans } : null,
     ask_price: steps.some((s) => s.kind === "ai" && s.cloud),
     problems,
     warnings,
@@ -477,7 +483,9 @@ export function createRun(projectId, { scope = "project", acceptPrice = false, r
     throw conflict(`This run sends the book to a cloud model — ${priceWords(plan.estimate)}. Start it again with accept_price to go ahead.`);
   }
   const runId = uuid();
-  const options = { redo: asked, accept_price: Boolean(acceptPrice), estimate: plan.estimate, ask_price: plan.ask_price };
+  // plan_steps: the AI steps on the person's own plan at the start ({key: "claude"|"chatgpt"}) — the run's price leaves them out
+  const plan_steps = Object.fromEntries(plan.steps.filter((s) => s.kind === "ai" && s.cloud && s.plan).map((s) => [s.key, s.plan]));
+  const options = { redo: asked, accept_price: Boolean(acceptPrice), estimate: plan.estimate, ask_price: plan.ask_price, plan_steps };
   h.insert(BookRun, { id: runId, project_id: projectId, scope, status: "queued", steps_json: pyJson(stepsOf(null)), options_json: pyJson(options) });
   return h.get(BookRun, runId);
 }
@@ -520,10 +528,21 @@ export function problemText(p) {
   return p.code;
 }
 
+/** The person's own plans a run draws on, in words: "your Claude plan (30% of this week used so far)". */
+export function planWords(plans) {
+  const NAMES = { claude: "your Claude plan", chatgpt: "your ChatGPT plan" };
+  return (plans ?? [])
+    .map((p) => `${NAMES[p.plan] ?? `your ${p.plan} plan`}${typeof p.used === "number" ? ` (${Math.round(p.used * 100)}% of this week used so far)` : ""}`)
+    .join(" and ");
+}
+
 function priceWords(estimate) {
   if (!estimate) return "its price can't be estimated";
   const tokens = `about ${estimate.tokens_in.toLocaleString("en-US")} tokens in and ${estimate.tokens_out.toLocaleString("en-US")} out`;
-  return estimate.price === null ? `${tokens}, at a price AI Settings → Pricing doesn't have` : `${tokens}, up to about $${estimate.price.toFixed(2)}`;
+  const plans = estimate.plans?.length ? planWords(estimate.plans) : "";
+  if (estimate.price === null) return `${tokens}, at a price AI Settings → Pricing doesn't have${plans ? `, and on ${plans}` : ""}`;
+  if (plans && !estimate.price) return `${tokens}, on ${plans} — nothing billed per call`;
+  return `${tokens}, up to about $${estimate.price.toFixed(2)}${plans ? `, and on ${plans}` : ""}`;
 }
 
 /** Start the runner. Idempotent — one live runner per run. */
@@ -659,6 +678,8 @@ export function runStatus(runId) {
   let price = 0;
   for (const key of STEPS) {
     const st = steps[key];
+    // a step that started on the person's own plan was billed nothing per call
+    if (options.plan_steps?.[key]) continue;
     if (st.model && (st.tokens_in || st.tokens_out)) price += costFor(st.model, st.tokens_in, st.tokens_out);
   }
   const exp = steps.export;

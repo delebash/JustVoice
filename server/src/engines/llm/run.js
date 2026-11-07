@@ -18,6 +18,7 @@
 
 import { LLMNotConfiguredError, measureAction, resolveRoute, runAction, stores, streamAction } from "@delebash/core/llm";
 import { buildLlmConfig } from "@delebash/core/llm/config_builder";
+import { providerPlan } from "@delebash/core/llm/plans";
 import { resolveFeaturePresetWithSource } from "@delebash/core/llm/preset_resolve";
 import { PREFER_LOCAL_FEATURES } from "../../feature_catalog.js";
 
@@ -31,8 +32,11 @@ export function jvLlmConfig() {
  * The model a feature action runs on right now → `{configured, model, provider, provider_id,
  * cloud, detail}` — the kit's own resolution, as GET /v1/ai/resolved-route reports it (the
  * action's preset over the feature's route). `cloud`: a provider that isn't on this machine (a
- * metered account — the kit's `local` flag, which `presetRecipe` reads too). The one-click run's
- * plan (`book_run.stepRoute`) and Discover's Find same people both ask it.
+ * metered account — the kit's `local` flag, which `presetRecipe` reads too). `plan`: the
+ * person's own plan a cloud provider draws on instead of a price ("claude" — their Claude Code;
+ * "chatgpt" — Sign in with ChatGPT; the kit's `providerPlan`), else null; `plan_used`: how much of
+ * it is used (0..1), when known. The one-click run's plan (`book_run.stepRoute`) and Discover's
+ * Find same people both ask it.
  */
 export function featureRoute(feature, action) {
   const [preset] = resolveFeaturePresetWithSource(action, feature);
@@ -43,17 +47,20 @@ export function featureRoute(feature, action) {
       modelOverride: preset?.model || null,
     });
     const provider = stores.getProviderStore().get(adapter.provider_id);
+    const plan = providerPlan(provider);
     return {
       configured: true,
       model,
       provider: provider?.name || adapter.provider_id,
       provider_id: adapter.provider_id,
       cloud: provider?.local === false,
+      plan: plan?.plan ?? null,
+      plan_used: plan?.used ?? null,
       detail: null,
     };
   } catch (e) {
     if (!(e instanceof LLMNotConfiguredError)) throw e;
-    return { configured: false, model: null, provider: null, provider_id: null, cloud: false, detail: String(e?.message ?? e) };
+    return { configured: false, model: null, provider: null, provider_id: null, cloud: false, plan: null, plan_used: null, detail: String(e?.message ?? e) };
   }
 }
 

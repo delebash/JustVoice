@@ -414,6 +414,19 @@ test("a_frontier_route_shows_its_price_and_the_run_asks_once", { timeout: 60000 
   expect(unknown.estimate.price).toBeNull();
   expect(unknown.estimate.unpriced).toEqual(["an-unpriced-cloud-model"]);
   expect(unknown.ask_price).toBe(true);
+
+  // On the person's own plan (their Claude Code — the kit's providerPlan, 2026-11-07): no price, the plan and its use
+  // instead — and it still asks, the book still leaves the computer.
+  vi.spyOn(bookRun, "stepRoute").mockReturnValue({ configured: true, model: "sonnet", provider: "Your Claude plan (through Claude Code)", provider_id: "cc", cloud: true, plan: "claude", plan_used: 0.3, detail: null });
+  const onPlan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
+  expect(onPlan.estimate.price).toBe(0);
+  expect(onPlan.estimate.unpriced).toEqual([]);
+  expect(onPlan.estimate.plans).toEqual([{ plan: "claude", used: 0.3 }]);
+  expect(onPlan.steps.find((s) => s.key === "analyze")).toMatchObject({ cloud: true, plan: "claude" });
+  expect(onPlan.ask_price).toBe(true);
+  const unasked = await c.post("/v1/book_runs", { json: { project_id: pid } });
+  expect(unasked.status).toBe(409);
+  expect(unasked.text).toContain("on your Claude plan (30% of this week used so far) — nothing billed per call");
 });
 
 test("stop_ends_the_language_models_call_at_once_on_every_ai_step", { timeout: 120000 }, async () => {

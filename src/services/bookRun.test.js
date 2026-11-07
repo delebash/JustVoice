@@ -8,7 +8,7 @@ import { describe, expect, test, vi } from "vitest";
 vi.mock("@delebash/ui", () => ({ withAiTask: vi.fn() }));
 
 const {
-  STEP_LABELS, currentStepText, planLine, priceQuestion, priceText, reviewItems, runBanner, runningLine, stepStatusText, stepsDone,
+  STEP_LABELS, currentStepText, planLine, planWords, priceQuestion, priceText, reviewItems, runBanner, runningLine, stepStatusText, stepsDone,
 } = await import("./bookRun.js");
 const { REVIEW, mockPlan, mockRun, VII, VIII } = await import("./mock/bookRunMock.js");
 
@@ -79,6 +79,23 @@ describe("the price", () => {
     const unknown = { ...plan, estimate: { ...plan.estimate, price: null, unpriced: ["claude-opus-5-5"] } };
     expect(priceQuestion(unknown).message).toContain("AI Settings → Pricing has no price for claude-opus-5-5, so what it costs isn't known.");
     expect(priceQuestion(unknown).confirmLabel).toBe("Make audiobook");
+  });
+
+  test("on the person's own plan, the plan and its use instead of a price — and it still asks", () => {
+    // the kit's providerPlan (2026-11-07): their Claude Code, 30% of the week's plan used so far
+    const plan = mockPlan({ frontier: true });
+    const onPlan = { ...plan, estimate: { ...plan.estimate, price: 0, unpriced: [], plans: [{ plan: "claude", used: 0.3 }] } };
+    expect(planWords(onPlan.estimate.plans)).toBe("your Claude plan (30% of this week used so far)");
+    expect(priceText(onPlan.estimate)).toBe("on your Claude plan (30% of this week used so far) — nothing billed per call");
+    expect(planLine(onPlan)).toContain(", on your Claude plan (30% of this week used so far) — nothing billed per call. The run asks once before it starts.");
+    const q = priceQuestion(onPlan);
+    expect(q.title).toBe("Send the book to a cloud model?");
+    expect(q.message).toContain("It runs on your Claude plan (30% of this week used so far), so nothing is billed per call; it counts toward your plan's limits.");
+    expect(q.confirmLabel).toBe("Make audiobook");
+    // a plan whose use isn't known (ChatGPT reports none), beside a priced step
+    const mixed = { ...plan, estimate: { ...plan.estimate, plans: [{ plan: "chatgpt", used: null }] } };
+    expect(priceText(mixed.estimate)).toBe("up to about $0.76, plus your ChatGPT plan");
+    expect(priceQuestion(mixed).confirmLabel).toBe("Make audiobook — up to about $0.76");
   });
 });
 

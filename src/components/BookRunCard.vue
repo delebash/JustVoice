@@ -21,7 +21,7 @@ import { computed } from "vue";
 import { useQuasar } from "quasar";
 import { LuFeatureChip, UiButton, UiProgress, UiTable, UiTag } from "@delebash/ui";
 import {
-  LIVE, PROBLEMS, RECIPE_WORDS, RUN_TAGS, RUN_TITLE, RUNS_ON_SERVER, STEP_LABELS, planLine, priceText, problemWords,
+  LIVE, PROBLEMS, RECIPE_WORDS, RUN_TAGS, RUN_TITLE, RUNS_ON_SERVER, STEP_LABELS, planLine, planWords, priceText, problemWords,
   reviewItems, runBanner, runningLine, stepStatusText, stepsDone,
 } from "../services/bookRun.js";
 import { licClass, licTitle } from "../services/engineFacts.js";
@@ -93,6 +93,8 @@ const estimateText = (row) => {
   const e = row.estimate;
   if (!e) return "";
   const tokens = `${(e.tokens_in + e.tokens_out).toLocaleString()} tokens`;
+  // a step on the person's own plan (their Claude Code, Sign in with ChatGPT) has no price — the plan it uses
+  if (e.plan) return `${tokens} · ${planWords([{ plan: e.plan }])}`;
   return e.price === null ? tokens : `${tokens} · $${e.price.toFixed(2)}`;
 };
 
