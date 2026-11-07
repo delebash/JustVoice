@@ -34,6 +34,14 @@ export const BookRunEstimateStep = T.Object({
   tokens_in: T.Integer(),
   tokens_out: T.Integer(),
   price: nullable(T.Number()),
+  // The person's own plan a cloud step draws on ("claude" | "chatgpt" — the kit's providerPlan), priced 0.
+  plan: opt(nullable(T.String()), null),
+});
+
+/** A plan the run's cloud steps draw on instead of a price, and how much of it is used (0..1, null: not known). */
+export const BookRunPlanUse = T.Object({
+  plan: T.String(),
+  used: nullable(T.Number()),
 });
 
 export const BookRunEstimate = T.Object({
@@ -42,6 +50,8 @@ export const BookRunEstimate = T.Object({
   price: nullable(T.Number()),
   // Cloud models with no price in AI Settings → Pricing.
   unpriced: opt(T.Array(T.String()), []),
+  // The person's own plans the cloud steps draw on (2026-11-07).
+  plans: opt(T.Array(BookRunPlanUse), []),
 });
 
 /** A model a speech step runs on whose licence isn't a plain "Yes" — its words, as the Speech
@@ -66,6 +76,8 @@ export const BookRunPlanStep = T.Object({
   model: opt(nullable(T.String()), null),
   provider: opt(nullable(T.String()), null),
   cloud: opt(T.Boolean(), false),
+  // The person's own plan a cloud step draws on ("claude" | "chatgpt"), else null.
+  plan: opt(nullable(T.String()), null),
   configured: opt(T.Boolean(), true),
   recipe: opt(nullable(T.String()), null),
   // The AI step's feature and prompt row — where AI Settings → Routing by feature changes it.
