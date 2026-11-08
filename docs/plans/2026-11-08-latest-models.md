@@ -45,21 +45,36 @@ That was my miss: a new VoxCPM2 package is exactly a candidate for the best voic
 - [x] 2. Model revision → 73ce4162; catalog regenerated at jv 73a2b82e (142 families, 58 speech, 455
   packages); sanoTTS's small files re-pinned; the three new families' licences (D10); Kitten's voice
   ids (D11). The app lists 265 model rows (live, 17494).
-- [ ] 3. Round 11 (`data/round11`, the 13 lines × told/plain × seeds 7–9, the Hatter's voice): CPU
-  now — `pocket-small-r11` (Pocket TTS Small 18M), `kitten2-r11` (Kitten TTS 2 20261021, its licence
-  accepted in the app for the test — commercial use needs registering with Stellon Labs, the user's),
-  VocalRender Pro through the fork's CLI (scratchpad `vocalrender_r11.js`, seed 7 first); on the card
-  after web-9e: `breeze-q4-r11`, `drama3-word` on the merged build, Nemotron Transcribe one
-  transcription. Then the LAION score (scratchpad `judge/r10_judge.js`'s way) and read-back.
+- [ ] 3. Round 11 (`data/round11`, the 13 lines × told/plain × seeds 7–9 = 78 takes an arm, the
+  Hatter's voice `voice_8862414b55f04b1ca66c43700b741848`). **The machine locked up at ~14:14 and
+  restarted 14:15 (2026-11-08)**; counted from `data/round11/manifest.json` and
+  `vocalrender-r11-manifest.json` after the restart:
+  - `pocket-small-r11` (Pocket TTS Small 18M, CPU): 78/78. Read back 52/78 (scratchpad of session
+    6571a392, `judge/r11-readback.json`; stopped to free the CPU).
+  - `kitten2-r11` (Kitten TTS 2 20261021, CPU; its licence accepted in the app for the test —
+    commercial use needs registering with Stellon Labs, the user's): 68/78; 10 "fetch failed" while the
+    CPU was saturated (median 50.2 s a take). A rerun fills them: the script re-renders a take with no file.
+  - VocalRender Pro (the fork's CLI, CPU, `vocalrender_r11.js`): seed 7 only, 24/26; 8-48-told-7 and
+    8-67-told-7 failed "audiocpp_cli failed: bad allocation"; seeds 8–9 not run.
+  - `breeze-q4-r11` (card): 60/78 when the machine locked; 7-3-told-9 "fetch failed"; 17 not reached.
+  - Not started: `drama3-word` on the merged build, Nemotron Transcribe's one transcription, the read-back
+    of the other arms, the LAION score (`judge/r11.js score`, round 10's way).
+  - The card: shared with just-stage and just-direct-mocap (new sessions after the restart); ask
+    "card?" before each piece.
 - [x] 4. The marks, built (D12): server `modelPicks` + `GET /v1/book-voices/picks` (live: VoxCPM2
   characters and Drama 3 narrator "Best voices you can sell", BreezeTTS 2 "Best acting — not for
   sale"); renderer store `voicePicks`, `services/modelPicks.js`, `ModelPickChips.vue`, `.ev-pick`;
   wired into the clone maker, the design maker (both selects), Voices (filter, Copy to another
   model), Personas filter, the persona editor (filter, This model), Studio → Cast (Models to choose
   from, the persona filter), AI Settings → Speech (engine heads, the picking table), Quick setup.
-  Tests written: server book_run.test.js, src/services/modelPicks.test.js, SpeechTabSlots.test.js.
-  The real window and user docs: open.
-- [ ] 5. End run.
+  Tests written: server book_run.test.js, src/services/modelPicks.test.js, SpeechTabSlots.test.js;
+  the revision's pinned facts moved in audiocpp_generated, seven_engines_slice4 and
+  seven_engines_unchanged (none run yet). User docs written: engines.md "The best picks, marked
+  wherever you pick a model" (with a worked example), personas.md, voices.md, whats-new.md. The real
+  window: open — the desktop build of 10:29 (`dist/electron/UnPackaged`) already has the marks.
+- [ ] 5. End run. Nothing committed since c20cbaf4: the job's code, catalog, tests and user docs are in
+  the working tree (30 changed, 7 new files). The fork's merge 73a2b82e is local only (origin/jv is
+  6d64f04e).
 
 ## Decisions (mine, under the go)
 
@@ -125,3 +140,6 @@ alone with no grouping read as one more option among 40.
 - Don't hold a candidate back behind a release schedule when the job is "the best".
 - A log watch: no `cut` in the pipe (it holds lines); `awk … fflush()`.
 - Look at a process before stopping it.
+- Three CPU jobs at once (Kitten, the read-back, VocalRender at 12 GB) beside a desktop build and the
+  release's e2e saturated the machine: Kitten's 10 failures, VocalRender's 2 "bad allocation", the
+  release's JustWrite e2e timeouts. Run one CPU piece at a time.
