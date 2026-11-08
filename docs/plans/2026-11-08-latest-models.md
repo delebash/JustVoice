@@ -56,7 +56,8 @@ That was my miss: a new VoxCPM2 package is exactly a candidate for the best voic
     CPU was saturated (median 50.2 s a take). A rerun fills them: the script re-renders a take with no file.
   - VocalRender Pro (the fork's CLI, CPU, `vocalrender_r11.js`): seed 7 only, 24/26; 8-48-told-7 and
     8-67-told-7 failed "audiocpp_cli failed: bad allocation"; seeds 8–9 not run.
-  - `breeze-q4-r11` (card): 60/78 when the machine locked; 7-3-told-9 "fetch failed"; 17 not reached.
+  - ~~`breeze-q4-r11`~~ **dropped (D13)**: 60/78 were rendered before the lockup; they are left out of
+    the scoring and nothing more is rendered.
   - Not started: `drama3-word` on the merged build, Nemotron Transcribe's one transcription, the read-back
     of the other arms, the LAION score (`judge/r11.js score`, round 10's way).
   - The card: shared with just-stage and just-direct-mocap (new sessions after the restart); ask
@@ -122,6 +123,12 @@ call sites; surprise — the makers' first model changes to VoxCPM2; edge — a 
 picker (not downloaded, or not directable the page's way) just isn't grouped; simpler — the labels
 alone with no grouping read as one more option among 40.
 
+**D13 — BreezeTTS 2's new 4-bit package is not tested (2026-11-08).** It went into round 11 only as
+"a new package", against the user's ruling (TASKS, the release stop, 2026-11-07: "NOT: a non-commercial
+engine as a default or as the subject of a tuning round — only as a comparison arm"). The comparison
+arm is BreezeTTS 2's round-10 score. The user, 2026-11-08: "why are we even doing anything with breeze
+ata all". The arm is removed from `server/scripts/round4_render.js`; its 60 takes stay unscored.
+
 ## The standard each piece follows
 
 | Piece | Standard | Kit code |
@@ -138,6 +145,8 @@ alone with no grouping read as one more option among 40.
 ## Mistakes to avoid
 
 - Don't hold a candidate back behind a release schedule when the job is "the best".
+- Check every test arm against the TASKS rulings before it runs: a non-commercial model is never the
+  subject of a round (D13 — BreezeTTS 2 4-bit took the card for 60 takes for nothing).
 - A log watch: no `cut` in the pipe (it holds lines); `awk … fflush()`.
 - Look at a process before stopping it.
 - Three CPU jobs at once (Kitten, the read-back, VocalRender at 12 GB) beside a desktop build and the
