@@ -70,7 +70,9 @@ STATE:  DECIDED 2026-11-07 — the user: "the point wa the best for commercial a
 WHY:    both one-click defaults are BreezeTTS 2, which can't be sold with (`server/src/models.js:518-519`, the dev
         database the same, read 2026-11-07); round 8 and the narrator tests were tuned on it (RESEARCH §10.35-36).
 NOT:    a non-commercial engine as a default or as the subject of a tuning round — only as a comparison arm.
-BUILT:  the stop sent to the family release session (2026-11-07). OPEN: the commercial test plan, for the
+BUILT:  the stop sent to the family release session (2026-11-07); it cancelled the fork's release run 42444512703
+        (v0.9.4-jv.7) before it published — checked: no v0.9.4 tag on the fork, no release there or in JustVoice;
+        the kit's audio.cpp pin still v0.9.2-jv.6. OPEN: the commercial test plan, for the
         user's go; the item "JustVoice closed out for its release" below no longer stands until it's done.
 GO:     the stop given; the testing needs a go.
 
