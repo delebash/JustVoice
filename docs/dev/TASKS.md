@@ -76,9 +76,19 @@ NOT:    a non-commercial model as a round's subject (BreezeTTS 2's 4-bit package
         held behind a release date.
 BUILT:  docs/plans/2026-11-08-latest-models.md (D9–D15, every decision mine, attacked): the fork's upstream merge built
         (73a2b82e); the model files at 73ce4162 with the new families' licence readings; the picks marked in every model
-        picker (D12: `GET /v1/book-voices/picks`, `ModelPickChips.vue`); the user docs. Not committed until its end run.
-OPEN:   D15's steps 1–7 — Drama 3 and Nemotron Transcribe on the merged build, Kitten TTS 2's and VocalRender Pro's
-        retakes, the scoring, the new recognisers, the window, the end run, the kit's development-build module.
+        picker (D12, D24: `GET /v1/book-voices/picks`, `ModelPickChips.vue`); the user docs. Round 11 (D21): the picks
+        stay. Drama 3 and Nemotron weighed by their first card load (D16, the kit's filesOnCard 6e89c974); Nemotron's
+        one read thread (D18); the dev build through the kit's module (D20); distinct model names (D22); VocalRender Pro
+        unoffered with its reason (D23). JustVoice 8905adda.
+CHECKED 2026-11-08, once at the end: lint; unit 318; server 1313 (+1 skipped); the family guard; build:spa + the smoke
+        gate on the user's data (every view, zero JS errors); build:unpacked + e2e 10/10; the real window (every model
+        picker's marks — docs/plans/2026-11-08-latest-models.md "Where it stands"). The kit's core suite: 5 failures,
+        sd.cpp size pins of just-direct-mocap's jd-1078 row (theirs, told); its speech_placement tests pass.
+OPEN:   for the app, none. For the release (the user's word, the release session's steps — the fork item below): push
+        the fork's merge 73a2b82e — tested here on what it changes, Drama 3 (78 takes) and Nemotron Transcribe — and tag
+        it, so the packaged app runs Drama 3 V2 and Nemotron; the catalog at the tag. One listen could still move a pick:
+        Drama 3 told the feeling's word scored highest of the voices you can sell for characters, inside VoxCPM2's
+        interval (D21), and the rule set before the round keeps VoxCPM2.
 GO:     given 2026-11-08 (above).
 
 ### The release is STOPPED: the best engine you can sell with, tested and tuned first (decided 2026-11-07)
@@ -308,7 +318,10 @@ OPEN:   at the release (upstream merged again — 27f41cac, above): tag `v0.9.4-
         2026-11-08: upstream merged once more by the family release session — 73a2b82e (upstream 408935bf: Drama 3 and
         Nemotron Transcribe on shared MoE execution), local in ../audio.cpp, `jv` on GitHub still 6d64f04e. JustVoice
         tests what it changes (the latest-models item, D15 steps 1–2); the tag comes from it once that passes, and the
-        catalog at the tag goes with the model files at 73ce4162 (that item's D9).
+        catalog at the tag goes with the model files at 73ce4162 (that item's D9). PASSED 2026-11-08 under `npm run
+        server` with the dev build at 73a2b82e: Drama 3 (V2) 78/78 takes on the card, WER 0.012 told; Nemotron Transcribe
+        every word of a clip on the card with Experts from disk and one read thread (D18). Not pushed: the push and the
+        tag are the release session's (the user, 2026-11-07).
         And the standing rule, 2026-10-29: "before we do any work on audio cpp nextime we should update the fork
         and test it in our app, this should be in i guess the core or jv, this should be true for any forks for
         futre apps that we may use" — in the kit's `docs/family-rules.md` (every web app imports it) and

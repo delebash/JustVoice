@@ -91,7 +91,19 @@ That was my miss: a new VoxCPM2 package is exactly a candidate for the best voic
     skipped (exit 0). The kit: lint clean; core 1720 passed, 5 failed — sd.cpp size pins in
     runtimes.test.js and runtime_service.test.js from just-direct-mocap's jd-1078 row (told; theirs to
     fix, after my run); speech_placement passed. build:spa exit 0; the smoke gate on the user's data
-    (17494): every view, zero JS errors. Running: build:unpacked and the desktop e2e.
+    (17494): every view, zero JS errors. build:unpacked; e2e 10/10 (WCAG 2.2 AA light and dark). The
+    real window (scratchpad `marks_all.js` on the UnPackaged build over the user's data): every place a
+    model is chosen clicked open and read — New clone (starts on VoxCPM2, its mark and licence chip
+    under it, the picks grouped first), New design (its keep-a-take model the same; the design model
+    unmarked, as D12 decided), the persona page's filter and This model, Personas' filter, Voices'
+    filter, ⧉ Copy to another model…, Studio → Cast's Models to choose from (screenshot) and its persona
+    filter, AI Settings → Speech's heads and table, Quick setup's "The voices for books"; no page
+    overflow at 1280 or 390 px, no page error. It found D24 (a pick's row lost its mark when the list
+    scrolled to the chosen model) — fixed; unit, lint, build:spa, smoke, build:unpacked and e2e run again
+    after it, all green.
+  - Committed: JustVoice 8905adda (pushed). The kit's 6e89c974 is on its origin (pushed with
+    family-release's d343643a). JustVoice's server stopped, no engine left, 17494 free; "CPU free" and
+    "card free" sent to just-stage and just-direct-mocap (18:47).
 - [x] 4. The marks, built (D12): server `modelPicks` + `GET /v1/book-voices/picks` (live: VoxCPM2
   characters and Drama 3 narrator "Best voices you can sell", BreezeTTS 2 "Best acting — not for
   sale"); renderer store `voicePicks`, `services/modelPicks.js`, `ModelPickChips.vue`, `.ev-pick`;
@@ -106,7 +118,7 @@ That was my miss: a new VoxCPM2 package is exactly a candidate for the best voic
 - [x] The kit change landed: 6e89c974 on the kit's main after family-release's "dispatched" (17:3x; its
   three releases carry core_ref dcc413f5), and on origin with family-release's d343643a push —
   **unverified until the end run's kit tests**. The worktree and branch removed.
-- [ ] 5. End run, once, after the kit's placement change lands on the kit's main (after family-release's
+- [x] 5. End run (done 18:47, every check green — the results below). Planned as: once, after the kit's placement change lands on the kit's main (after family-release's
   "dispatched"; rebased onto the kit's HEAD then — 3d18f8e7 at 17:08, its start-screen fix included):
   the kit — `packages/core` suite and lint (its speech_placement test first), the family guard
   (`node ../just-core/scripts/check-family.js`); JustVoice — `npm run lint`, `npm run test:server`,
