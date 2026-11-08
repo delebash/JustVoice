@@ -2,7 +2,7 @@
 
 **A cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Electron + Vue 3 + a Node server (Hono + SQLite).**
 
-JustWrite-compatible imports are one of several supported workflows — see `docs/import-formats.md`.
+JustWrite-compatible imports are one of several supported workflows — see `docs/import-and-export.md`.
 
 License: **MIT** (see `LICENSE`).
 
@@ -10,9 +10,9 @@ License: **MIT** (see `LICENSE`).
 
 - **Audiobook production** — write in JustWrite, produce in JustVoice, ship to ACX with chapter markers and ACX-spec mastering
 - **Game NPC voicing** — voice 50–500 NPCs from one project, export per-line WAVs for Unreal Engine import
-- **Podcasting** — multi-track timeline editor, paralinguistic tags, multi-character mixing
-- **Dictation** — global hotkey + local speech recognition (Qwen3-ASR) + local LLM refinement + OS-level paste injection
-- **General TTS** — Kokoro, Chatterbox Multilingual and Qwen3-TTS (CustomVoice, Base, VoiceDesign), run by one local speech runtime ([audio.cpp](https://github.com/0xShug0/audio.cpp)), plus OpenAI-compatible and cloud providers — every bundled model permits commercial output
+- **Podcasting** — episodes voiced segment by segment in Studio (a multi-track timeline is planned, not built), paralinguistic tags, multi-character mixing
+- **Dictation** — ● Record on Captures + local speech recognition (Qwen3-ASR) + local LLM refinement (no global hotkey or paste into other apps in this release)
+- **General TTS** — Kokoro, Chatterbox Multilingual and Qwen3-TTS (CustomVoice, Base, VoiceDesign), run by one local speech runtime ([audio.cpp](https://github.com/0xShug0/audio.cpp)), plus OpenAI-compatible and cloud providers — every model's licence is shown, and one that isn't a plain yes to commercial use asks you to accept it before its first download
 
 **Five audiences share one engine pool, voice catalogue, lexicon, and persona layer — differentiation lives in import/export pipelines and per-use-case UI surfaces.**
 
@@ -22,14 +22,14 @@ Read the docs in this order:
 
 | File | Purpose |
 |---|---|
-| **`FEATURES.md`** | **User-facing guide. Read first if you're using the app.** Every feature explained: what it is, when to use it, how to use it, worked examples, troubleshooting. |
-| `DESIGN_FREEZE.md` | Architecture decisions, full data model, complete API surface |
-| `CONTRACT.md` | The JustWrite ↔ JustVoice HTTP boundary contract |
+| **`docs/`** | **User-facing guide — the app's own Help. Read first if you're using the app.** Every feature explained: what it is, when to use it, how to use it, worked examples, troubleshooting. |
+| `docs/plans/archive/DESIGN_FREEZE.md` | Architecture decisions, full data model, complete API surface — a historical record; the current one is `docs/dev/design-decisions.md` |
+| `docs/plans/archive/CONTRACT.md` | The JustWrite ↔ JustVoice HTTP boundary contract — archived; its rules now live in `docs/dev/design-decisions.md` §3 |
 | `docs/plans/archive/PHASE_PLAN.md` | Build phases 1 → 6 (status of each) |
 | `docs/plans/archive/PHASE5_JUSTWRITE_INTEGRATION.md` | Concrete JustWrite-side edits for the JustWrite → JustVoice audiobook bridge |
 | `NOTICE.md` | Third-party attribution (MIT/Apache lifts, the speech runtime, models) |
 | `LICENSES.md` | Dependency license inventory |
-| `MORNING_RECAP.md` | Current build state — what shipped, what's pending |
+| `docs/whats-new.md` · `docs/dev/TASKS.md` | What each release shipped · what's pending |
 
 ## Quick start
 
@@ -71,11 +71,12 @@ Then point any browser at `http://localhost:17494/ui/`. More in
 
 ### Install the speech engines
 
-Use AI Settings → Speech engines in the UI: **Install speech runtime** downloads
+Use AI Settings → Speech in the UI: **Install** under **Engine: audio.cpp** downloads
 the one program every engine runs on, in the build that suits your machine
 (CUDA, Vulkan, CPU or Metal), and each model downloads from its own row. There
-is nothing else to install; the app is the installer. See
-[docs/engines.md](docs/engines.md).
+is nothing else to install; the app is the installer — mastering and the M4B run
+FFmpeg, which **AI Settings → FFmpeg** installs the same way. See
+[docs/engines.md](docs/engines.md) and [docs/mastering.md](docs/mastering.md#ffmpeg).
 
 ## Repository layout
 
@@ -95,8 +96,8 @@ is nothing else to install; the app is the installer. See
 │   ├── pages/                 # one <Name>Page.vue per route (each a q-page); DictatePage, ConnectionErrorPage; mock/ (dev only)
 │   ├── router/                # index.js · routes.js (the pages under the layout) · mockRoutes.js
 │   ├── css/                   # tokens.css · app.scss · quasar.variables.scss (the kit's theme)
-│   ├── components/            # ListPane, CapturePill, AudioKeepAlive, etc.
-│   ├── stores/                # Pinia: api, server, player, ui, audioChannel, generation (AI tasks live in the kit's store)
+│   ├── components/            # BookRunCard, CapturePill, AudioKeepAlive, etc.
+│   ├── stores/                # Pinia: api, server, ui, projects, personas, voices, lexicons, engines, … (AI tasks live in the kit's store)
 │   ├── services/              # HTTP client per endpoint group; native.js is the one door to the desktop shell
 ├── server/                    # The Node server (Hono + SQLite) — the brain; its own package
 │   │                          #   (justvoice-server), which the desktop app installs
@@ -111,8 +112,6 @@ is nothing else to install; the app is the installer. See
 │   │   ├── app.js             # The server: registers every router
 │   │   └── serve.js           # The entry the desktop app and `npm run server` run
 │   └── tests/                 # vitest (`npm run test:server`)
-├── preview/
-│   └── ux-feature-inventory.html  # Visual feature catalog (cream/forest-green aesthetic preview)
 ```
 
 ## What's done as of the current build
@@ -132,13 +131,13 @@ is nothing else to install; the app is the installer. See
 
 ## Status
 
-See `MORNING_RECAP.md` for the current build state. JustVoice's data model + HTTP API + desktop shell + license posture are all locked. Remaining work is mostly UI tabs (Phase 4b) — they land one-per-PR going forward.
+What each release shipped is `docs/whats-new.md`; open work is `docs/dev/TASKS.md`.
 
 ## Project relationships
 
 ### To `justwrite-app` (same developer)
 
-JustWrite is the novel-writing app. JustVoice can be driven by JustWrite (the audiobook workflow) OR run standalone (game, podcast, dictation). The wire format is HTTP per `CONTRACT.md`. JustWrite owns the manuscript + final M4B mux (via FFmpeg.wasm); JustVoice owns the engine pool + ACX mastering. Either can ship without the other.
+JustWrite is the novel-writing app. JustVoice can be driven by JustWrite (the audiobook workflow) OR run standalone (game, podcast, dictation). The wire format is HTTP; the boundary rules are `docs/dev/design-decisions.md` §3 (the original `CONTRACT.md` is archived in `docs/plans/archive/`). JustWrite owns the manuscript; JustVoice owns the engine pool, ACX mastering and the M4B. Either can ship without the other.
 
 ## Contributing
 
@@ -152,4 +151,4 @@ See `project_licensing_attribution` in the memory layer for the policy + templat
 - **Server and app**: Biome for lint (`npm run lint`), vitest for tests (`npm run test:server`, `npm run test:unit`). Run them before opening a PR.
 - **Vue**: prefer single-file components. CSS variables for design tokens (no Tailwind).
 - **Desktop shell**: `src-electron/electron-main.js` only names this app's settings; the shell is the kit's. Business logic lives in the server.
-- **Docs are mandatory**: every feature ships with a `FEATURES.md` section (what/when/how/examples/troubleshooting).
+- **Docs are mandatory**: every feature ships with its section in `docs/`, the app's Help (what/when/how/examples/troubleshooting).

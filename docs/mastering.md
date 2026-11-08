@@ -89,7 +89,7 @@ removed on 2026-10-03.)
 A **chapter render** applies the processing and hands you a WAV — you are
 auditioning, and the .m4b export should encode once, at the end, not twice.
 The encoded deliverable in the preset's own format (ACX's MP3) comes from
-**Export**. Mastering needs **FFmpeg** ([below](#ffmpeg)): without it, chapters render raw and the
+**Export**. Mastering needs **FFmpeg** ([above](#ffmpeg)): without it, chapters render raw and the
 Render tab's pill says so rather than failing the render.
 
 ## ACX QC report
@@ -121,7 +121,7 @@ refused to build.
 **True peak ceiling (dBFS)**, **Loudness range (LU)**, **Head silence (s)** and
 **Tail silence (s)**. A change is saved when you leave the field, and applies to
 every book on that target from its next render. There is no custom target: a
-book picks one of the four (or none) on its Overview, under **Master**.
+book picks one of the four (or none) on its Overview, under **Mastering target**.
 
 ## What it doesn't do
 

@@ -3,7 +3,7 @@
 JustVoice's AI page handles two kinds of provider, each on its own tab:
 
 - **Local engines** — Kokoro / Chatterbox Multilingual / Qwen3-TTS, plus Speech recognition. Managed by JustVoice: every one runs in the one speech runtime JustVoice installs, with one model loaded per kind (speech, speech recognition). See `engines.md` for the catalog.
-- **Online + self-hosted providers** — Anthropic Claude / OpenAI / Gemini / Ollama / DeepSeek / OpenRouter for LLM; ElevenLabs / Speechify / Speechmatics / OpenAI TTS / OpenAI-compatible servers for TTS. These talk HTTP, don't install anything locally, and need an API key + base URL.
+- **Online + self-hosted providers** — Anthropic Claude / OpenAI / Gemini / Ollama / DeepSeek / OpenRouter for LLM; ElevenLabs / Speechify / Speechmatics / OpenAI TTS / OpenAI-compatible servers for TTS. These talk HTTP, don't install anything locally, and need an API key + base URL — except a cloud LLM on [your own plan](#your-own-plan-instead-of-a-key-llm), which runs the Claude Code installed on this computer, or signs in with ChatGPT, instead.
 
 Language models live on the **LLM providers** tab; everything speech lives on
 the **Speech** tab: the speech runtime and the models JustVoice installs, and,

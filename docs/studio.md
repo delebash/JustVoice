@@ -7,8 +7,8 @@ always lands on its **Overview**. From there the steps run in order:
 **Discover → Script → Cast → Render → Export**
 
 Or all of them at once: an audiobook's Overview has **▶ Make audiobook**, which
-runs every step for you, unattended, and exports the M4B —
-[Make the audiobook](#make-the-audiobook) below.
+runs every step for you, stopping once when the cast is ready so you can hear
+the voices, and exports the M4B — [Make the audiobook](#make-the-audiobook) below.
 
 The step names adapt to your project kind (chapters for audiobooks, scenes for
 game projects, segments for podcasts) — same flow, your vocabulary. Each step's
@@ -182,7 +182,7 @@ cloud model?*, and the run starts only on your yes; Resume never asks again. The
 estimate is arithmetic, not a measurement: the text each step reads at about
 four characters a token (`book_run.chars_per_token`, [Settings
 reference](settings-reference.md)), each spoken line's answer at
-`extraction.answer_tokens_per_line`, priced from AI Settings → Pricing; the
+`extraction.answer_tokens_per_line`, priced from AI Settings → Usage → **Cloud pricing**; the
 step for [lines with no single speaker](#lines-with-no-single-speaker) as one
 question for each line whose narration says several people speak it, with the
 text around it. The answers are counted at the room a line is given, not what
