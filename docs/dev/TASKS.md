@@ -88,8 +88,11 @@ BUILT:  2026-11-07 — `book_run.js` `castStop` (the run goes `waiting` at Rende
 OPEN:   D1's fresh book (decision 2): one chapter in an empty data folder, the cast heard at the stop, then the M4B.
         Run 2026-11-08 (data\fresh-book-2026-11-07, "Alice VIII (fresh book)", run 96e2205d): the stop came
         5 min after the press (00:31 → 00:36 UTC), 9 voices made, the card in its waiting state checked by
-        screenshot. Waiting on the user's listen (the page claude.ai/artifact/EJh996HaGbMT2MMvVas62C), then
-        Continue. Found: opening Studio while the run waits loaded the chat model again (19:36 local), so the
+        screenshot; the cast page claude.ai/artifact/EJh996HaGbMT2MMvVas62C. Continue at the user's "continue";
+        DONE 01:16 UTC: render 181/181 (0 failed), the check flagged 1 (line 174, "extra" words; re-rendered
+        once, still listed), `data/one-click/Alice VIII (fresh book).m4b` — 998.5 s (ffprobe), AAC 44.1 kHz
+        mono, its chapter mark, title and artist. The render's 1650.8 s is not comparable to the 2026-11-06
+        run's: the suites, two builds and another session's CPU jobs ran beside it. Found: opening Studio while the run waits loaded the chat model again (19:36 local), so the
         first Cast ▶ had to swap it out for BreezeTTS 2 (~1 min); Alice designed as "seven to nine years old".
         2026-11-08 — shown ("Only you: 1. Listen to the finished fresh book … 2. Approve the words on the new
         stop … 3. Turn on JustVoice's Release workflow … 4. Give the release-day go"; and "11. … the kit's
@@ -180,7 +183,12 @@ CHECKED 2026-11-06, once at the end: lint; server 1298 (+1 skipped); unit 306; t
         a bare `.click()` in the new card test — 58cc8864); smoke every view, zero JS errors (8741, the user's
         data); AI Settings → FFmpeg seen at 1280 ("Installed — build 9.0.2", Reinstall, Remove, "Your own copy");
         e2e 10/10. FOUND, not on the list: the kit's tab draws "Your own copy" as a short field (about 110 px)
-        for a full path — the kit's control.
+        for a full path — the kit's control. FIXED 2026-11-08 (mine, attacked — every app's FFmpeg tab changes,
+        only its width): kit 1c7be87b, a runtime's settingsUi rule names a text box's width; FFmpeg's path
+        takes UiInput's `path` (480 px); the kit's ffmpeg.test.js.
+        Again 2026-11-08 after the cast stop, the kit fix and the comment repairs: lint (633 files); unit 310;
+        server 1299 (+1 skipped); the guard (no violations); smoke every view, zero JS errors (8741, the
+        user's data); e2e 10/10; the kit's core 1694 (+13 skipped), UI 94, both lints; the template's unit 141.
 OPEN:   B9's majors move with the family (Electron 45, jsdom 31, Biome, electron-builder): checked 2026-11-08,
         JustVoice is on the family's versions today — the same as JustWrite's and the template's (Electron
         44.10.0, electron-builder 26.15.3, Biome 2.5.15, jsdom ^30.1.2); B10's rest (the kit's pin — with the
