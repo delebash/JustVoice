@@ -5685,6 +5685,22 @@ new engines thats greate but left out the other new vocpm2 and other".
   takes a package's spec from the GGUF first but its contract (options) from a workspace or built-in spec first
   (`src/framework/model_spec/package.cpp` `default_package_spec_path`, `find_contract_spec_path`). — *the GGUF
   headers and blobs on this PC; our fork at 73a2b82e, 2026-11-08*.
+- **The same files sound the same.** The fork's CLI at 73a2b82e on the CPU, seed 7, the old (661a224e) and
+  new (73ce4162) files: VoxCPM2 q8_0 plain and told, Qwen3-TTS VoiceDesign q8_0 and Qwen3-ASR 1.7B q8_0's text
+  came out byte-identical, and a second run of the new file the same again. — *measured 2026-11-08*.
+- **Drama 3's file is new: V2, Fish Audio's October 29 replacement checkpoint.** Jmica/Drama-3-GGUF 060acc8e
+  (2026-11-05, "Release Drama 3 GGUF V2"; fishaudio/drama-3 78e5ab7, uploaded 2026-10-29) against 17a5b40c, which
+  rounds 6–8 heard (V1, kept at revision `original-2026-10-13`): the same tensor table (1,386 tensors), other tensor
+  data, other embedded files; 23,371,670,016 against 23,386,029,088 bytes. Fish Audio's LICENSE unchanged since
+  2026-10-13. The maker: V2 "does not establish speed, perceptual parity, voice similarity, or correct words in
+  every take". On our merged build, through the app, 78 of 78 takes, loaded in 260 s, a median 7.3 s a take
+  (round 6k on V1: 5.9 s). — *HF API and both files, 2026-11-08*.
+- **Nemotron Transcribe runs on an 8 GB card** with `disk_experts` and `disk_expert_read_threads` 1: ~5.4 GB of the
+  card, every word of a 10 s clip in 36 s with the load. Its default 4 read threads fail without OpenMP ("parallel
+  disk expert reads require ENGINE_ENABLE_OPENMP=ON"), which upstream's release builds and ours switch off. —
+  *measured 2026-11-08*.
+- **VocalRender Pro on the CPU holds ~21 GB**: 20.6 GB working set, 21.7 GB committed for one take (original
+  precision, the fork's CLI). — *measured 2026-11-08*.
 - **Nemotron 3.5 Transcribe's packages:** IQ4_NL (default) 20.37 GB + its encoder 1.67 GB; Q4_K 21.67, Q3_K 17.29,
   Q2_K 13.95 GB (+ the same encoder); since upstream 408935bf it takes `nemotron_transcribe.disk_experts` (routed
   experts read from the file into `expert_cache_size` slots, 8 by default). — *the catalog, ../audio.cpp

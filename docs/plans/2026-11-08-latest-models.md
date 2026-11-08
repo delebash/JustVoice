@@ -68,6 +68,18 @@ That was my miss: a new VoxCPM2 package is exactly a candidate for the best voic
     of the other arms, the LAION score (`judge/r11.js score`, round 10's way).
   - The card: shared with just-stage and just-direct-mocap (new sessions after the restart); ask
     "card?" before each piece.
+  - **My slot, 16:26–16:50 (the app's headless server on the dev build `dev · 73a2b82e`, the user's
+    data):** `drama3-word` 78/78 on the card (Drama 3 V2 — D17; it downloaded the new 23.37 GB file
+    first; loaded in 260 s; median 7.3 s a take); Nemotron Transcribe — first 500 (D18), then on the card
+    with one read thread every word of the test clip in 36 s, ~5.4 GB of the card, the Transcription
+    preset put back to `qwen3-asr-1.7b-q8` (checked); `kitten2-r11` 78/78 (the 10 retakes in ~1 min);
+    VocalRender Pro stopped at 20.6 GB (D19), 24 takes; the default recipe's old and new files on the
+    same build and seed, CPU: VoxCPM2 plain and told, Qwen3-TTS VoiceDesign and Qwen3-ASR's text —
+    **byte-identical**, and each run repeatable (scratchpad `file_ab.js`).
+  - Next: the scoring on the card beside family-release's CPU hour, after just-stage's face renders —
+    read-back (r11.js readback), LAION (`take-check empathic --device cuda`), similarity (`take-check
+    score`), the tables against round 10; then Phonon-2, Orukeet, VibeVoice ASR Streaming 7B and Haas one
+    transcription each.
 - [x] 4. The marks, built (D12): server `modelPicks` + `GET /v1/book-voices/picks` (live: VoxCPM2
   characters and Drama 3 narrator "Best voices you can sell", BreezeTTS 2 "Best acting — not for
   sale"); renderer store `voicePicks`, `services/modelPicks.js`, `ModelPickChips.vue`, `.ev-pick`;
@@ -216,6 +228,46 @@ spills and the kit's `failedOnCard` sends it to the CPU after, as for OmniVoice;
 switched off: the files count again. 5 nothing new. Kit: worktree `E:\Dev\Web\just-core-placement`,
 branch `jv/files-on-card`, into the kit's main only after family-release's "dispatched" (it holds
 the kit's tree at HEAD for its release run); tested then with the end run.
+
+**D17 — the narrator stays on Drama 3 V2, the maker's current files, unless the automatic checks show a
+regression (2026-11-08, mine).** Found in D15 step 1: Drama 3's file is not unchanged (D15's round 2 said
+so; it had checked only audio.cpp's own model repo). The catalog's pin of Jmica/Drama-3-GGUF moved from
+17a5b40c to 060acc8e — "Release Drama 3 GGUF V2 … conversions of the October 29 replacement checkpoint"
+(Fish Audio's fishaudio/drama-3 78e5ab7; V1, the October 13 checkpoint the user heard in rounds 6–8, kept
+at revision `original-2026-10-13`). Same tensor table (1,386 tensors), other tensor data; Fish Audio's
+LICENSE unchanged since 2026-10-13 (so still Conditional). The maker's card: V2 "does not establish
+speed, perceptual parity, voice similarity, or correct words in every take", and the earlier listening
+and silence studies "do not describe this replacement checkpoint". Rounds: 1 past decisions — D6 picked
+Drama 3 by the user's ears on V1; the user: "i want the latest model"; the catalog takes each maker's
+repo at its main (since 2026-10-11) — V2. 2 evidence — no judge reads narration and the user won't
+listen (2026-11-08), so the check is automatic: round 11's 78 V2 takes (`drama3-word`, merged build,
+through the app) against round 6k's V1 takes of the same lines and seeds (read-back words, flagged
+takes, the LAION feeling and its told-over-plain gain). 3 a regression there — then one change at a
+time: V1 and V2 on the same build, and V1 pinned (a NOT STANDARD pin, its reason in the catalog
+script) if V1 is better. 4 surprise — the narrator a user hears isn't the one the user picked by ear:
+said in the report and in What's new. 5 nothing new. Held.
+
+**D18 — Nemotron Transcribe reads its experts on one thread (2026-11-08, mine).** Measured: on the card
+with Experts from disk, its first transcription answered 500 "parallel disk expert reads require
+ENGINE_ENABLE_OPENMP=ON" — audio.cpp's default `disk_expert_read_threads` is 4 for Nemotron (1 for Drama
+3), and OpenMP is off in upstream's own release builds (.github/workflows/release.yml, #286) and so in
+ours and the dev build (scripts/audiocpp-dev.js copies the release's flags). The fix: its
+`LOAD_OPTIONS.disk_expert_read_threads` default 1, its hint saying why. Rounds: 1 past decisions — the
+dev build copies the release's flags so it behaves as a user's would; keep. 2 the other way — OpenMP on
+in our builds changes every engine's host threading in the released runtime and parts from upstream's
+release flags: rejected. 3 cost — serial reads are slower; measured below. 4 edge — a user who sets
+more threads gets audio.cpp's own refusal; the hint says so before. 5 nothing new.
+
+**D19 — VocalRender Pro ends at seed 7 (2026-11-08, mine; refines D15 rule 3).** Measured: its retake on
+the CPU (the fork's CLI, original precision) held 20.6 GB of the 32 GB PC and free memory fell to 3.8 GB,
+under the slot's 4 GB stop line — stopped at 16:48 (the morning's lockup began at this size). It is
+scored on its 24 seed-7 takes (8-48-told-7 and 8-67-told-7 never rendered) against VoxCPM2's seed-7
+takes of the same lines. No seeds 8–9: the app can't offer it (audio.cpp's web UI doesn't list the
+package for VoxCPM2) and a load needs ~21 GB of RAM or more than an 8 GB card, so no result could make it
+a pick for this app's users; more renders would only risk the machine. Rounds: 1 the user's words ("left
+out the other new vocpm2") — it is tested and scored, its limits measured and said; 2 cost — measured
+above; 3 the other way — on a 24 GB card it would fit, but the offering is still NOT STANDARD against
+audio.cpp's own catalog; 4 nothing new.
 
 ## The standard each piece follows
 
