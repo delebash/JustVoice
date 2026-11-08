@@ -86,6 +86,11 @@ BUILT:  2026-11-07 — `book_run.js` `castStop` (the run goes `waiting` at Rende
         every voice made and nothing rendered, Continue finishes it, a re-run with nothing to render doesn't
         stop); BookRunCard.test.js + bookRun.test.js 18/18.
 OPEN:   D1's fresh book (decision 2): one chapter in an empty data folder, the cast heard at the stop, then the M4B.
+        Run 2026-11-08 (data\fresh-book-2026-11-07, "Alice VIII (fresh book)", run 96e2205d): the stop came
+        5 min after the press (00:31 → 00:36 UTC), 9 voices made, the card in its waiting state checked by
+        screenshot. Waiting on the user's listen (the page claude.ai/artifact/EJh996HaGbMT2MMvVas62C), then
+        Continue. Found: opening Studio while the run waits loaded the chat model again (19:36 local), so the
+        first Cast ▶ had to swap it out for BreezeTTS 2 (~1 min); Alice designed as "seven to nine years old".
 GO:     given 2026-11-07 ("your rec all go").
 
 ### JustVoice closed out for its release — the list A–D (decided 2026-11-06)
