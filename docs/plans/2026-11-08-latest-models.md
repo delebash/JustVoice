@@ -91,7 +91,15 @@ That was my miss: a new VoxCPM2 package is exactly a candidate for the best voic
   seven_engines_unchanged (none run yet). User docs written: engines.md "The best picks, marked
   wherever you pick a model" (with a worked example), personas.md, voices.md, whats-new.md. The real
   window: open — the desktop build of 10:29 (`dist/electron/UnPackaged`) already has the marks.
-- [ ] 5. End run. Nothing committed since c20cbaf4: the job's code, catalog, tests and user docs are in
+- [ ] 5. End run, once, after the kit's placement change lands on the kit's main (after family-release's
+  "dispatched"; rebased onto the kit's HEAD then — 3d18f8e7 at 17:08, its start-screen fix included):
+  the kit — `packages/core` suite and lint (its speech_placement test first), the family guard
+  (`node ../just-core/scripts/check-family.js`); JustVoice — `npm run lint`, `npm run test:server`,
+  `npm run test:unit`, `npm run build:spa` + the smoke gate on the user's data (`JV_BASE=…17494 npm run
+  smoke`), then the server closed and 17494 free for `npm run build:unpacked` + `e2e/` `npm test`; the
+  real window (`marks_all.js`) on that fresh build. Every heavy step booked with the other sessions.
+  Then commit JustVoice (pathspecs) and push; the kit's branch merged and pushed.
+  Nothing committed since c20cbaf4: the job's code, catalog, tests and user docs are in
   the working tree (30 changed, 7 new files). The fork's merge 73a2b82e is local only (origin/jv is
   6d64f04e).
 
@@ -232,7 +240,9 @@ the kit's tree at HEAD for its release run); tested then with the end run.
 **D17 — the narrator stays on Drama 3 V2, the maker's current files, unless the automatic checks show a
 regression (2026-11-08, mine).** Found in D15 step 1: Drama 3's file is not unchanged (D15's round 2 said
 so; it had checked only audio.cpp's own model repo). The catalog's pin of Jmica/Drama-3-GGUF moved from
-17a5b40c to 060acc8e — "Release Drama 3 GGUF V2 … conversions of the October 29 replacement checkpoint"
+17a5b40c to 060acc8e on 2026-11-05 (00e26b50, the catalog rebuilt at the merged fork 281de44a — the
+maker's main that day), before the commercial job's D6 pick, which reused round 6's V1 takes; this PC
+still held only V1 until today's download — "Release Drama 3 GGUF V2 … conversions of the October 29 replacement checkpoint"
 (Fish Audio's fishaudio/drama-3 78e5ab7; V1, the October 13 checkpoint the user heard in rounds 6–8, kept
 at revision `original-2026-10-13`). Same tensor table (1,386 tensors), other tensor data; Fish Audio's
 LICENSE unchanged since 2026-10-13 (so still Conditional). The maker's card: V2 "does not establish
@@ -285,6 +295,10 @@ audio.cpp's own catalog; 4 nothing new.
 ## Mistakes to avoid
 
 - Don't hold a candidate back behind a release schedule when the job is "the best".
+- A wait loop's "not done" word must not occur in what it reads: `grep -q no` matched "phonon2" and the
+  loop never ended (2026-11-08); match the exact field (`:no\b`) or count in the script.
+- A model's files can change in its own maker's repo, not only in audio.cpp's (Drama 3's V2, D17): check
+  every pinned repo the catalog moved, not one.
 - Check every test arm against the TASKS rulings before it runs: a non-commercial model is never the
   subject of a round (D13 — BreezeTTS 2 4-bit took the card for 60 takes for nothing).
 - A log watch: no `cut` in the pipe (it holds lines); `awk … fflush()`.

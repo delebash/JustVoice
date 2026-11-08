@@ -5689,8 +5689,8 @@ new engines thats greate but left out the other new vocpm2 and other".
   new (73ce4162) files: VoxCPM2 q8_0 plain and told, Qwen3-TTS VoiceDesign q8_0 and Qwen3-ASR 1.7B q8_0's text
   came out byte-identical, and a second run of the new file the same again. — *measured 2026-11-08*.
 - **Drama 3's file is new: V2, Fish Audio's October 29 replacement checkpoint.** Jmica/Drama-3-GGUF 060acc8e
-  (2026-11-05, "Release Drama 3 GGUF V2"; fishaudio/drama-3 78e5ab7, uploaded 2026-10-29) against 17a5b40c, which
-  rounds 6–8 heard (V1, kept at revision `original-2026-10-13`): the same tensor table (1,386 tensors), other tensor
+  (2026-11-05, "Release Drama 3 GGUF V2"; fishaudio/drama-3 78e5ab7, uploaded 2026-10-29) — the catalog's pin
+  since JustVoice 00e26b50 (2026-11-05) — against 17a5b40c, which rounds 6–8 heard (V1, kept at revision `original-2026-10-13`): the same tensor table (1,386 tensors), other tensor
   data, other embedded files; 23,371,670,016 against 23,386,029,088 bytes. Fish Audio's LICENSE unchanged since
   2026-10-13. The maker: V2 "does not establish speed, perceptual parity, voice similarity, or correct words in
   every take". On our merged build, through the app, 78 of 78 takes, loaded in 260 s, a median 7.3 s a take
