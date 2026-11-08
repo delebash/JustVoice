@@ -75,9 +75,9 @@ describe("the price", () => {
     expect(q.title).toBe("Send the book to a cloud model?");
     expect(q.confirmLabel).toBe("Make audiobook — up to about $0.76");
     expect(q.message).toContain("It asks only this once — Resume won't ask again.");
-    // A model AI Settings → Pricing has no price for.
+    // A model AI Settings → Usage → Cloud pricing has no price for.
     const unknown = { ...plan, estimate: { ...plan.estimate, price: null, unpriced: ["claude-opus-5-5"] } };
-    expect(priceQuestion(unknown).message).toContain("AI Settings → Pricing has no price for claude-opus-5-5, so what it costs isn't known.");
+    expect(priceQuestion(unknown).message).toContain("AI Settings → Usage → Cloud pricing has no price for claude-opus-5-5, so what it costs isn't known.");
     expect(priceQuestion(unknown).confirmLabel).toBe("Make audiobook");
   });
 

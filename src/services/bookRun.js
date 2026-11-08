@@ -139,7 +139,7 @@ const allOnPlans = (estimate) => Boolean(estimate?.plans?.length) && estimate.pr
 export function priceText(estimate) {
   if (!estimate) return "";
   const plans = estimate.plans?.length ? planWords(estimate.plans) : "";
-  if (estimate.price === null) return `price unknown — AI Settings → Pricing has no price for it${plans ? `; the rest on ${plans}` : ""}`;
+  if (estimate.price === null) return `price unknown — AI Settings → Usage → Cloud pricing has no price for it${plans ? `; the rest on ${plans}` : ""}`;
   if (allOnPlans(estimate)) return `on ${plans} — nothing billed per call`;
   return `up to about $${Number(estimate.price).toFixed(2)}${plans ? `, plus ${plans}` : ""}`;
 }
@@ -160,10 +160,10 @@ export function priceQuestion(plan) {
   const models = [...new Set(plan.steps.filter((s) => s.kind === "ai" && s.cloud).map((s) => s.model))].join(", ");
   const plans = e.plans?.length ? planWords(e.plans) : "";
   const cost = e.price === null
-    ? `AI Settings → Pricing has no price for ${e.unpriced.join(", ")}, so what it costs isn't known.${plans ? ` The rest runs on ${plans}.` : ""}`
+    ? `AI Settings → Usage → Cloud pricing has no price for ${e.unpriced.join(", ")}, so what it costs isn't known.${plans ? ` The rest runs on ${plans}.` : ""}`
     : allOnPlans(e)
       ? `It runs on ${plans}, so nothing is billed per call; it counts toward your plan's limits.`
-      : `At your prices in AI Settings → Pricing that is ${priceText(e)}.`;
+      : `At your prices in AI Settings → Usage → Cloud pricing that is ${priceText(e)}.`;
   return {
     title: "Send the book to a cloud model?",
     message: `This run sends about ${e.tokens_in.toLocaleString()} tokens of the book to ${models} and gets about `

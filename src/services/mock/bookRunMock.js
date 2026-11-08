@@ -17,7 +17,7 @@
 // Analyze 123 s + 80 s, Direction on VII 50 s and 4,250 tokens in, 2,104 out); the rest — the
 // other token counts, the design, render and check times — are made up to sit beside them. The
 // frontier estimate is book_run.estimateRun's arithmetic on the same book, priced at Claude Opus
-// 5.5's $4 in / $20 out a million tokens (RESEARCH §10.2) as a row in AI Settings → Pricing.
+// 5.5's $4 in / $20 out a million tokens (RESEARCH §10.2) as a row in AI Settings → Usage → Cloud pricing.
 
 import { STEP_LABELS } from "../bookRun.js";
 

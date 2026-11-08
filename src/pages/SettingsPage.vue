@@ -1186,7 +1186,7 @@ onMounted(() => {
         <div class="jv-card__header"><h3 class="jv-card__title">Mastering targets</h3></div>
         <p class="jv-muted jv-hint jv-mb14">
           What each target masters a chapter to. A book picks its target on its Overview
-          (Master); a change here applies to every book on that target from its next render.
+          (Mastering target); a change here applies to every book on that target from its next render.
         </p>
 
         <div class="jv-chips" role="tablist" aria-label="Target">

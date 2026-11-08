@@ -271,7 +271,7 @@ function chapterSizes(h, projectId, chapters, words) {
  * with the text around it (Alice VII, 2026-10-16: 3 calls, 9,949 tokens — a third of the run's).
  * The answers are counted at the reserve a line gets, so the figure leans high: the price is shown
  * as "up to about" (decided 2026-10-16). A step on a model of this machine costs nothing; a cloud
- * model with no row in AI Settings → Pricing has no price (`unpriced`), and then neither has the
+ * model with no row in AI Settings → Usage → Cloud pricing has no price (`unpriced`), and then neither has the
  * total.
  */
 export function estimateRun(h, projectId, routes, { redo = [], settings }) {
@@ -546,7 +546,7 @@ function priceWords(estimate) {
   if (!estimate) return "its price can't be estimated";
   const tokens = `about ${estimate.tokens_in.toLocaleString("en-US")} tokens in and ${estimate.tokens_out.toLocaleString("en-US")} out`;
   const plans = estimate.plans?.length ? planWords(estimate.plans) : "";
-  if (estimate.price === null) return `${tokens}, at a price AI Settings → Pricing doesn't have${plans ? `, and on ${plans}` : ""}`;
+  if (estimate.price === null) return `${tokens}, at a price AI Settings → Usage → Cloud pricing doesn't have${plans ? `, and on ${plans}` : ""}`;
   if (plans && !estimate.price) return `${tokens}, on ${plans} — nothing billed per call`;
   return `${tokens}, up to about $${estimate.price.toFixed(2)}${plans ? `, and on ${plans}` : ""}`;
 }

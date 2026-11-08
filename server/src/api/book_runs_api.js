@@ -48,7 +48,7 @@ export const BookRunEstimate = T.Object({
   tokens_in: T.Integer(),
   tokens_out: T.Integer(),
   price: nullable(T.Number()),
-  // Cloud models with no price in AI Settings → Pricing.
+  // Cloud models with no price in AI Settings → Usage → Cloud pricing.
   unpriced: opt(T.Array(T.String()), []),
   // The person's own plans the cloud steps draw on (2026-11-07).
   plans: opt(T.Array(BookRunPlanUse), []),

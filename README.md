@@ -116,18 +116,10 @@ FFmpeg, which **AI Settings → FFmpeg** installs the same way. See
 
 ## What's done as of the current build
 
-✅ **Phase 1** — Foundation docs (CONTRACT, NOTICE, LICENSES)
-✅ **Phase 1.5** — SQLite migration: 24 ORM tables, idempotent migrations, foreign keys ON, init_db wired into FastAPI startup
-✅ **Phase 2** — pytest baseline (~15 tests) + mastering.py audit (already correct — uses ffmpeg loudnorm, not np.clip)
-✅ **Phase 3** — Upstream torch helpers + chunked TTS lifted (per-file MIT attribution in headers); pedalboard adopted; **atomic license flip Apache-2.0 → GPL-3.0-or-later** across LICENSE + pyproject.toml + 15 first-party SPDX headers. **Reversed 2026-07-29** — pedalboard replaced by our own DSP, flipped to MIT; see `NOTICE.md`
-✅ **Phase 4a** — 14 new backend endpoints: takes, channels, mcp_bindings, projects (with JustWrite import), webhooks (HMAC signed), render_presets, bulk_delete (atomic with dry-run guard), backup/restore (stream-zipped), voice_preview (LRU), project_export, sse_streams, active_tasks, capture_readiness
-✅ **Phase 4c (Tauri)** — System tray with 11-item menu, close-to-tray when keep-server-running is on, 21 Tauri invoke commands (start/stop/restart_server, set_keep_server_running, audio device + Mac TCC + hotkey stubs)
-✅ **Phase 5 (JustVoice side)** — All endpoints for JustWrite to drive JustVoice are live; PHASE5_JUSTWRITE_INTEGRATION.md documents the JustWrite-side edits
-✅ **Phase 6 partial** — README + FEATURES.md (23 sections, ~6000 words) + all architecture docs
-
-🚧 **Phase 4b (UI)** — Foundation in place (AudioKeepAlive, ListPane, CapturePill, 5 new Pinia stores, BooksView). Pending: 8 settings sub-routes, full aesthetic CSS sweep matching the preview HTML, StoriesView (timeline editor port), CapturesView (dictation pill), EffectsView (pedalboard chain editor)
-🚧 **Phase 4c+5 (the dictation window's agent-speak cycle)** — Backend ready, Vue + Rust window-spawn integration pending
-🚧 **UE integration** — Research-first, deferred until main program completes (see `project_unreal_deep_dive_deferred` memory)
+JustVoice v0.1.0, its first release, on the family's stack: a Node server (Hono, SQLite) and the desktop app on
+Electron, the speech engines on our audio.cpp fork. What it does is the in-app Help (`docs/`); what each release
+shipped is `docs/whats-new.md`; open work is `docs/dev/TASKS.md`. How it was built before — Python, FastAPI and
+Tauri until the move to Node and Electron in October 2026 — is in git's history.
 
 ## Status
 
