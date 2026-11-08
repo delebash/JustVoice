@@ -58,6 +58,16 @@ https://github.com/openai/whisper (commit 26a7cac, 2025-01-04) — MIT License, 
 OpenAI; the full notice is kept in the file. The take check normalises a line's words and the
 recogniser's transcript with it (added 2026-10-16).
 
+### NVIDIA NeMo's Empathic-Insight-Voice wrapper (Apache-2.0) — the test kit only
+
+`tools/take-check/src/take_check/emotion_encoder.py` is NVIDIA NeMo's
+`nemo/collections/tts/metrics/emotion_encoder.py` (https://github.com/NVIDIA/NeMo, commit cd61689d,
+2026-11-06) — Apache License 2.0, Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES; its notice is
+kept in the file, with JustVoice's one change stated there (every LAION head added to its label
+map). The test kit scores takes with LAION's Empathic-Insight-Voice heads through it
+(laion/Empathic-Insight-Voice-Small, CC-BY-4.0, downloaded on use, never redistributed). The test
+kit is a tool beside the app and never ships (added 2026-11-08).
+
 ### Through the shared kit (`@delebash/ui`, bundled into the renderer)
 
 - The table's sorting and filtering rules (`ui/src/common/components/tableRows.js`) are ported from

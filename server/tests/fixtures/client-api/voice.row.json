@@ -1,0 +1,16 @@
+{
+  "id": "voice_0123456789abcdef0123456789abcdef",
+  "engine": "voxcpm2",
+  "source": "cloned",
+  "name": "Inspector Maigret",
+  "language": "en-US",
+  "gender": "male",
+  "sample_url": null,
+  "model": "voxcpm2",
+  "model_name": "VoxCPM2",
+  "directed_by": "words",
+  "speaks": ["en"],
+  "design_prompt": null,
+  "made_by": "JustDirect",
+  "licence": { "commercial": "Yes", "summary": "Yes — “free for commercial use”, in its makers’ words (Apache-2.0).", "url": "https://huggingface.co/openbmb/VoxCPM2" }
+}

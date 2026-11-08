@@ -138,6 +138,28 @@ def main() -> None:
     score_parser.add_argument(
         "--cache-dir", default=str(DEFAULT_CACHE), help="where models are downloaded (default: %(default)s)"
     )
+    emp_parser = commands.add_parser(
+        "empathic", help="LAION Empathic-Insight-Voice's expert heads on every take (empathic.csv)"
+    )
+    emp_parser.add_argument("--manifest", required=True, help="path to manifest.json")
+    emp_parser.add_argument("--out", required=True, help="folder for empathic.csv")
+    emp_parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
+    emp_parser.add_argument("--size", choices=("small", "large"), default="small")
+    emp_parser.add_argument(
+        "--heads",
+        default="",
+        help="only these heads, comma-separated (e.g. Sadness,Anger,Arousal) — each holds ~295 MB of memory; default: all 55",
+    )
+    emp_parser.add_argument(
+        "--cache-dir", default=str(DEFAULT_CACHE), help="where models are downloaded (default: %(default)s)"
+    )
     args = parser.parse_args()
     if args.command == "score":
         sys.exit(score(args))
+    if args.command == "empathic":
+        if args.device == "cpu":
+            os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+        from take_check.empathic import score_empathic
+
+        only = [h.strip() for h in args.heads.split(",") if h.strip()] or None
+        sys.exit(score_empathic(Path(args.manifest).resolve(), Path(args.out).resolve(), args.device, Path(args.cache_dir).resolve(), args.size, only))

@@ -1,0 +1,9 @@
+{
+  "name": "Inspector Maigret",
+  "description": "Male, fifties, broad-shouldered Paris detective; slow, patient, pipe-smoker's low voice.",
+  "lines": ["Sit down. We have all night, and I am in no hurry at all.", "You were at the café when the lights went out?"],
+  "context": "A 1930s Paris murder mystery.",
+  "language": "en-US",
+  "gender": "male",
+  "commercial_use": true
+}

@@ -14,4 +14,7 @@ export const VERSION = pkg.version;
 // line renders has its own key parts (the DSP and pitch-engine versions in audio/effects.js).
 export const RENDER_KEY_VERSION = "0.0.1";
 export const API_VERSION = "v1";
+// The client API's contract (api/client_api.js, docs/dev/client-api.md) — raised when one of its
+// shapes changes, so a calling app (JustDirect) can tell.
+export const CLIENT_API_VERSION = 1;
 export const DEFAULT_PORT = 17494;

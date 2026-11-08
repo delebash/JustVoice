@@ -86,7 +86,8 @@ const INSTRUCTION = new Set(["instruct", "instruction"]);
 function appInstructs(family, name) {
   const current = currentOptionName(family, name);
   const dir = CURATED[family]?.DIRECTION;
-  const directs = [dir?.option, ...Object.keys(dir?.set || {})].filter(Boolean).map((o) => currentOptionName(family, o));
+  const phraseOptions = Object.values(dir?.phrases || {}).flatMap((p) => (p && typeof p === "object" ? Object.keys(p) : []));
+  const directs = [dir?.option, ...Object.keys(dir?.set || {}), ...phraseOptions].filter(Boolean).map((o) => currentOptionName(family, o));
   if (directs.includes(current)) return true;
   const designs = (CATALOG.families[family]?.entries || []).some((e) => e.task === "vdes");
   return designs && designOptionOf(family) === current;
@@ -1163,8 +1164,13 @@ export function applyDirection(direction, cue) {
   } else if (direction.kind === "phrases") {
     const phrase = emotion ? direction.phrases[emotion] : null;
     if (!phrase) return out;
-    Object.assign(out.options, direction.set || {});
-    out.options[direction.option] = phrase;
+    // A phrase is the option's value, or the options themselves for an emotion the option can't
+    // say (Ming's shouted and whispered: its `basic` template's volume, not an emotion label).
+    if (typeof phrase === "object") Object.assign(out.options, phrase);
+    else {
+      Object.assign(out.options, direction.set || {});
+      out.options[direction.option] = phrase;
+    }
     out.dropReferenceText = Boolean(direction.drop_reference_text);
     out.directed = true;
   } else if (direction.kind === "vector") {

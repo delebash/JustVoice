@@ -1,0 +1,7 @@
+{
+  "lines": [
+    { "id": "sc1-l1", "voice": "voice_0123456789abcdef0123456789abcdef", "input": "Sit down.", "emotion": "neutral" },
+    { "id": "sc1-l2", "voice": "voice_0123456789abcdef0123456789abcdef", "input": "Where were you at nine?", "instructions": "sharp, suspicious", "emotion": "angry", "seed": 7 }
+  ],
+  "release": true
+}

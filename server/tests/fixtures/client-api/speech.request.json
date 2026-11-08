@@ -1,0 +1,8 @@
+{
+  "input": "Nobody leaves this room until I say so.",
+  "voice": "voice_0123456789abcdef0123456789abcdef",
+  "instructions": "quiet, cold, barely holding back anger",
+  "emotion": "angry",
+  "response_format": "wav",
+  "seed": 7
+}

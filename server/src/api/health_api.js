@@ -6,7 +6,7 @@ import { getState } from "../app_state.js";
 import * as kitSpeech from "../engines/audiocpp/kit_speech.js";
 import { _variantRows, getManifest } from "../engines/model_catalog.js";
 import { construct, HealthResponse } from "../models.js";
-import { API_VERSION, PRODUCT, VERSION } from "../version.js";
+import { API_VERSION, CLIENT_API_VERSION, PRODUCT, VERSION } from "../version.js";
 
 /** The loaded model's own name — its catalog row's (*Kokoro 82M*, the version the kit's runtime
  * holds), else the engine's, else whatever the registry calls it. Never the bare id when a name
@@ -51,5 +51,6 @@ export function engineHealth() {
     current_model: loadedModelName(current),
     engines,
     dataDir: st.dataDir ?? null,
+    client_api: CLIENT_API_VERSION,
   });
 }

@@ -11,7 +11,7 @@
 // Needs a running JustVoice (it owns the models and the voices) and a voice with a clip to copy —
 // the Hatter's, frozen from his VoiceDesign audition as in rounds 1–3. Each arm copies that voice to
 // its model (`POST /v1/voices/{id}/copy`, reused by name on a second run), loads the model
-// (`POST /v1/engines/{engine}/load`) and renders each take with `POST /v1/generate`, uncached. A
+// (the kit's `POST /v1/ai/runtimes/audiocpp/models/{id}/load`) and renders each take with `POST /v1/generate`, uncached. A
 // take already on disk is kept, so a run picks up where it stopped. Built 2026-10-16.
 //
 // Round 5 (TASKS "Round 5 — …", RESEARCH §10.25), the same way into its own folder:
@@ -205,6 +205,19 @@ const ARMS = {
     options: { "fish_drama3.disk_experts": "true", "fish_drama3.cpu_expert_layers": "0" },
     request: { top_k: "4097" },
   },
+  // ── Round 10 (docs/plans/2026-11-08-commercial-engine.md) — engines a user can sell with ──
+  // Ming 3.0 TTS (MIT) through the app: its makers' emotion labels on the clip's speaker
+  // embedding, shouted and whispered as its volume (curated/ming3_tts.js DIRECTION).
+  "ming3-r10": { engine: "ming3_tts", variant: "ming3_tts-bf16", told: appWay },
+  // Fish Audio Drama 3 through the app told only the feeling's word ("[sad] …", its DIRECTION's
+  // tag), the one-word way VoxCPM2 acted best by ear (rounds 4 and 9 against 5 and 6).
+  "drama3-word": {
+    engine: "fish_drama3",
+    variant: "fish_drama3-fishdrama3-q4k",
+    told: appWay,
+    pin: "gpu",
+    options: { "fish_drama3.disk_experts": "true", "fish_drama3.cpu_expert_layers": "0" },
+  },
   // ── Round 9 (RESEARCH §10.37) ──
   // DotTTS takes a feeling only through its Edit model, as a second pass over a take: the text
   // wrapped in `<emo desc="…">` in the authors' form (doteBench's "a happy and excited tone", arXiv
@@ -242,16 +255,32 @@ const PRIME = {
 
 class Exit extends Error {}
 
-/** A model load, asked again while its download outlasts Node's 300 s wait for a reply's headers
- * (undici's `headersTimeout`; IndexTTS 2.0's 3.5 GB stopped round 5) — the server keeps fetching. */
-async function load(server, engine, variant) {
-  for (let tries = 0; ; tries++) {
-    try {
-      return await call(server, `/v1/engines/${engine}/load`, { method: "POST", body: { model_variant: variant }, timeoutS: 1800 });
-    } catch (e) {
-      if (!/Headers Timeout|fetch failed/i.test(String(e?.cause?.message ?? e?.message ?? e)) || tries >= 12) throw e;
-      console.log(`   still loading ${variant} (a download, most likely) — asking again`);
-    }
+/** A model load through the kit's speech runtime (round E, 2026-10-29: the app's own
+ * `/v1/engines/:engine/load` is gone): `POST /v1/ai/runtimes/audiocpp/models/:id/load`, which
+ * answers 202 while the model downloads and loads it after; waited for on `/loaded`, with the
+ * model's row read for a download or load error. */
+async function load(server, _engine, variant) {
+  await call(server, `/v1/ai/runtimes/audiocpp/models/${variant}/load`, { method: "POST", body: {}, timeoutS: 1800 });
+  const until = Date.now() + 3600 * 1000;
+  for (let n = 0; Date.now() < until; n++) {
+    const { loaded } = await call(server, "/v1/ai/runtimes/audiocpp/loaded");
+    if (loaded.some((l) => (l.modelId ?? l.id) === variant)) return;
+    const { models } = await call(server, "/v1/ai/runtimes/audiocpp/models");
+    const row = models.find((m) => m.id === variant);
+    const err = row?.loadError || row?.error;
+    if (err) throw new Exit(`${variant} didn't load: ${err}`);
+    if (n % 6 === 0) console.log(`   waiting for ${variant}: ${row?.status || row?.loading || "loading"} ${row?.total ? `${Math.round((100 * row.downloaded) / row.total)} %` : ""}`);
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  throw new Exit(`${variant} didn't load within an hour`);
+}
+
+/** Let go of every speech model the kit's runtime holds (the app's `/v1/engines/unload` is gone). */
+async function unloadSpeech(server) {
+  const { loaded } = await call(server, "/v1/ai/runtimes/audiocpp/loaded");
+  for (const l of loaded) {
+    if ((l.kind ?? "tts") !== "tts") continue;
+    await call(server, `/v1/ai/runtimes/audiocpp/models/${l.modelId ?? l.id}/unload`, { method: "POST", body: {} });
   }
 }
 
@@ -317,6 +346,8 @@ async function main() {
       // in place of the key's cue lines; told takes only (the round pairs two told takes).
       "lines-file": { type: "string", default: "" },
       "told-only": { type: "boolean", default: false },
+      // Round 10: every arm on this placement for the run ("cpu" while another app holds the card).
+      pin: { type: "string", default: "" },
       // Round 9: DotTTS Edit's GGUF (audio.cpp's catalog entry dots_tts_edit_q8_0).
       "edit-model": { type: "string", default: path.join(ROOT, "data", "round9", "models", "DotTTS-Edit-GGUF", "dots-tts-edit-q8_0.gguf") },
     },
@@ -365,10 +396,11 @@ async function main() {
       source.transcript = existsSync(manifestFile) ? JSON.parse(readFileSync(manifestFile, "utf8")).transcript : null;
       if (!source.transcript) throw new Exit(`${source.name} has no transcript for its clip`);
     }
-    if (a.pin) {
-      // Pinned for the round; the setting is put back to Auto at the end of the arm.
-      await call(server, "/v1/settings", { method: "PATCH", body: { engines: { engine_overrides: { [a.engine]: { placements: { [a.variant]: a.pin } } } } } });
-    }
+    // Pinned for the round (the arm's `pin`, or --pin for every arm); put back to Auto at the end of
+    // the arm. The kit holds each model's Auto / GPU / CPU since round E (2026-10-29), at its own
+    // route — the old `engine_overrides.placements` setting no longer reaches a load.
+    const pin = args.pin || a.pin;
+    if (pin) await call(server, `/v1/ai/runtimes/audiocpp/models/${a.variant}/placement`, { method: "PUT", body: { placement: pin } });
     const bank = a.clip ? await emotionBank(server, args, rows, path.resolve(args.out, "bank")) : null;
     // Load options the arm needs (the model row's own, as its Load options set them).
     if (a.options) {
@@ -453,9 +485,9 @@ async function main() {
     }
     const done = manifest.takes.filter((t) => t.model === armName && !t.error);
     console.log(`   ${done.length} takes; median ${median(done.map((t) => t.render_s)).toFixed(1)} s each`);
-    if (a.pin) await call(server, "/v1/settings", { method: "PATCH", body: { engines: { engine_overrides: { [a.engine]: { placements: { [a.variant]: "auto" } } } } } });
+    if (pin) await call(server, `/v1/ai/runtimes/audiocpp/models/${a.variant}/placement`, { method: "PUT", body: { placement: "auto" } });
     // The app loads its own registration again next time (the runtime reloads a changed entry).
-    if (a.ours || a.edit) await call(server, "/v1/engines/unload", { method: "POST", body: { kind: "tts" } });
+    if (a.ours || a.edit) await unloadSpeech(server);
   }
   if (args.prime) await cutLeadIns(server, args.out, manifest, save);
 }
@@ -467,7 +499,7 @@ async function cutLeadIns(server, out, manifest, save) {
   const todo = manifest.takes.filter((t) => t.primed && !t.error && t.cut_at == null);
   if (!todo.length) return;
   console.log(`\ncutting ${todo.length} lead-ins …`);
-  await call(server, "/v1/engines/unload", { method: "POST", body: { kind: "tts" } });
+  await unloadSpeech(server);
   for (const t of todo) {
     const full = readFileSync(path.join(out, t.full_wav));
     const form = new FormData();
@@ -645,7 +677,7 @@ async function cremaDirections(server, args) {
     rows.push(new Float32Array(Uint8Array.from(buf).buffer));
     if ((i + 1) % 250 === 0) console.log(`   ${i + 1}/${clips.length} (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
   }
-  await call(server, "/v1/engines/unload", { method: "POST", body: { kind: "tts" } });
+  await unloadSpeech(server);
   const all = Buffer.concat(rows.map((r) => Buffer.from(r.buffer)));
   writeFileSync(path.join(dir, "fingerprints.f32"), all);
   writeFileSync(path.join(dir, "fingerprints.json"), `${JSON.stringify({ dims, rows: [...names, `voice:${source.id}`], model: variant, encoder: "qwen3-base-1.7b-q8", seconds: (Date.now() - t0) / 1000 }, null, 1)}\n`);

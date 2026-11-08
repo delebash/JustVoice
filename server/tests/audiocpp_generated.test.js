@@ -11,6 +11,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as drama3 from "../src/engines/audiocpp/curated/fish_drama3.js";
+import * as ming3 from "../src/engines/audiocpp/curated/ming3_tts.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
 import { runtimeModelRows } from "../src/engines/audiocpp/kit_models.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
@@ -341,6 +342,13 @@ test("the direction kinds apply as data", () => {
   expect(generated.applyDirection(drama3.DIRECTION, { emotion: "fearful", words: "" }).prefix).toBe("[frightened] ");
   expect(generated.applyDirection(drama3.DIRECTION, { emotion: "neutral", words: "" }).directed).toBe(false);
   expect(generated.directionEmotions(drama3.DIRECTION)).toBeNull(); // any emotion reaches it in words
+  // Ming 3.0 TTS: an emotion as its label in the emotion template, the clip's words dropped; shouted
+  // and whispered as the basic template's volume (a phrase that is options, not a word).
+  const sad = generated.applyDirection(ming3.DIRECTION, { emotion: "sad", words: "sighed" });
+  expect(sad.options).toEqual({ template_name: "emotion", emotion: "悲伤" });
+  expect(sad.dropReferenceText).toBe(true);
+  expect(generated.applyDirection(ming3.DIRECTION, { emotion: "whispered", words: "" }).options).toEqual({ template_name: "basic", volume: "低" });
+  expect(generated.applyDirection(ming3.DIRECTION, { emotion: "sarcastic", words: "drily" }).directed).toBe(false);
   expect(generated.coerceOption({ type: "int", min: 1, max: 10 }, "42")).toBe(10);
   expect(generated.coerceOption({ type: "enum", values: ["a"] }, "b")).toBeUndefined();
 });

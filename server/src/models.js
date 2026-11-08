@@ -238,6 +238,8 @@ export const HealthResponse = T.Object({
   // The data folder in use (JustWrite's and the template's extra): the release's start check
   // compares the window's and the headless server's (scripts/start-packaged.js --default-data).
   dataDir: opt(nullable(T.String()), null),
+  // The client API's contract version (docs/dev/client-api.md) — another app checks it.
+  client_api: opt(nullable(T.Integer()), null),
 });
 
 export const GpuInfo = T.Object({
@@ -635,8 +637,18 @@ export const VoiceRecord = T.Object({
   sample_count: opt(T.Integer(), 0),
   blend_recipe: opt(nullable(BlendRecipe), null),
   embedding: opt(nullable(T.Array(T.Number())), null),
+  // The app that made it through the client API (its `X-Client` header, e.g. "JustDirect"); null
+  // for a voice made in JustVoice (docs/dev/client-api.md).
+  made_by: opt(nullable(T.String()), null),
   created_at: DateTime(),
   updated_at: DateTime(),
+});
+
+/** A model's licence in our words — can a person sell what it makes? (curated/<family>.js). */
+export const ModelLicence = T.Object({
+  commercial: T.String(), // Yes | Conditional | Separate licence | Unclear | No
+  summary: opt(T.String(), ""),
+  url: opt(T.String(), ""),
 });
 
 export const Voice = T.Object({
@@ -654,6 +666,9 @@ export const Voice = T.Object({
   speaks: opt(T.Array(T.String()), []),
   // A designed voice's description — what it speaks from (no clip) or was designed from.
   design_prompt: opt(nullable(T.String()), null),
+  // The app that made it through the client API, and its model's licence (docs/dev/client-api.md).
+  made_by: opt(nullable(T.String()), null),
+  licence: opt(nullable(ModelLicence), null),
 });
 
 /** POST /v1/voices/clip-check — a clip about to be cloned, decoded to WAV by the page. */
@@ -675,7 +690,9 @@ export const UpdateVoiceRequest = T.Object({
 });
 
 export const CloneVoiceRequest = T.Object({
-  engine: T.String(),
+  // Left out (the client API, docs/dev/client-api.md) = the one-click run's cast model,
+  // `book_voices.clone_model`, and its engine.
+  engine: opt(nullable(T.String()), null),
   // The model the clone is made for; left out = the engine's default model that can clone.
   model: opt(nullable(T.String()), null),
   name: T.String(),
@@ -1233,6 +1250,53 @@ export const GenerateRequest = T.Object({
   cache: opt(T.Boolean(), true),
   // The persona's delivery, effects and lexicon ride under the request's.
   persona_id: opt(nullable(T.String()), null),
+});
+
+// ─── The client API (docs/dev/client-api.md) ───────────────────────────
+// Another app calling JustVoice live — JustDirect first (2026-11-08).
+
+/** POST /v1/character-voices — one character's voice, the one-click run's recipe for one person. */
+export const CharacterVoiceRequest = T.Object({
+  name: T.String({ maxLength: 200 }),
+  // Who they are, as the caller's card says (age, sex, look, manner).
+  description: T.String({ maxLength: 4000 }),
+  // Their lines, for the describer to read and one to design the voice speaking.
+  lines: opt(T.Array(T.String({ maxLength: 4000 }), { maxItems: 200 }), []),
+  // The story in a line ("a 1920s Paris murder mystery").
+  context: opt(T.String({ maxLength: 1000 }), ""),
+  language: opt(T.String(), "en-US"),
+  gender: opt(nullable(literal("male", "female")), null),
+  // Refuse a model whose licence word is No, Separate licence or Unclear.
+  commercial_use: opt(T.Boolean(), false),
+});
+
+/** POST /v1/audio/speech — OpenAI's speech request (platform.openai.com/docs/api-reference/audio/
+ * createSpeech), `voice` a JustVoice voice id; `emotion` and `seed` are JustVoice's own. */
+export const SpeechRequest = T.Object({
+  model: opt(nullable(T.String()), null), // OpenAI's; JustVoice speaks with the voice's own model
+  input: T.String({ maxLength: 50000 }),
+  voice: T.String(),
+  instructions: opt(nullable(T.String({ maxLength: 2000 })), null),
+  response_format: opt(T.String(), "wav"),
+  speed: opt(nullable(T.Number({ minimum: 0.25, maximum: 4 })), null),
+  emotion: opt(nullable(literal(...EMOTION_VALUES)), null),
+  seed: opt(nullable(T.Integer()), null),
+});
+
+export const SpeechBatchLine = T.Object({
+  id: T.String({ maxLength: 128 }),
+  voice: T.String(),
+  input: T.String({ maxLength: 50000 }),
+  instructions: opt(nullable(T.String({ maxLength: 2000 })), null),
+  emotion: opt(nullable(literal(...EMOTION_VALUES)), null),
+  speed: opt(nullable(T.Number({ minimum: 0.25, maximum: 4 })), null),
+  seed: opt(nullable(T.Integer()), null),
+});
+
+/** POST /v1/audio/speech/batch — many lines in one job; `release` lets go of the card at its end. */
+export const SpeechBatchRequest = T.Object({
+  lines: T.Array(SpeechBatchLine, { maxItems: 5000 }),
+  release: opt(T.Boolean(), true),
 });
 
 export const ChapterLine = T.Object({

@@ -42,6 +42,7 @@ import { router as activeTasksRouter } from "./api/active_tasks_api.js";
 import { router as alignRouter } from "./api/align_api.js";
 import { router as bookRunsRouter } from "./api/book_runs_api.js";
 import { router as bookVoicesRouter } from "./api/book_voices_api.js";
+import { router as clientRouter } from "./api/client_api.js";
 import { router as bulkDeleteRouter } from "./api/bulk_delete_api.js";
 import { router as cacheRouter } from "./api/cache_api.js";
 import { router as captureReadinessRouter } from "./api/capture_readiness_api.js";
@@ -386,6 +387,9 @@ export async function createApp(dataDir = null) {
   app.route("/", takesRouter());
   app.route("/", renderJobsRouter());
   app.route("/", exportJobsRouter());
+  // The client API — another app calling JustVoice live (docs/dev/client-api.md); its jobs are on
+  // the export jobs' registry, so /v1/jobs below follows them too.
+  app.route("/", clientRouter());
   // /v1/jobs/:id — following a long job and its Cancel, the kit's (makeJobsRouter, round E §4 step 6):
   // the book's exports run on its JobRegistry (api/export_jobs_api.js)
   app.route("/", makeJobsRouter(exportJobs));

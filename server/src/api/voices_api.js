@@ -18,7 +18,8 @@ import { noiseMarginDb } from "../audio/analyzer.js";
 import { parseWavHeader } from "../audio/wav.js";
 import * as blending from "../engines/blending.js";
 import * as run from "../engines/llm/run.js";
-import { manifests } from "../engines/model_catalog.js";
+import { engineFacts } from "../engines/audiocpp/generated.js";
+import { getManifest, manifests } from "../engines/model_catalog.js";
 import { badRequest, notFound, notImplemented } from "../errors.js";
 import {
   BlendVoiceRequest,
@@ -39,9 +40,28 @@ import * as vmod from "../voice_model.js";
 import { RunUsage } from "./extraction_api.js";
 import { sentBody } from "./settings_api.js";
 
-/** What speaks a voice, as every screen reads it (voice_model.js). */
+/** What speaks a voice, as every screen reads it (voice_model.js), and its model's licence in our
+ * words (the client API's `licence`, docs/dev/client-api.md). */
 export function _facts(vm) {
-  return { model: vm.model, model_name: vm.name, directed_by: vm.directedBy, speaks: [...vm.speaks] };
+  return { model: vm.model, model_name: vm.name, directed_by: vm.directedBy, speaks: [...vm.speaks], licence: modelLicence(vm.model) };
+}
+
+/** A model's licence in our words — `{commercial, summary, url}` from its family's file, through the
+ * same reading the Speech engines list shows (generated.engineFacts) — or null for a model with
+ * none (an online provider's). */
+export function modelLicence(model) {
+  if (!model) return null;
+  const engine = vmod.engineOfModel(model);
+  const manifest = engine ? getManifest(engine) : null;
+  const lic = manifest?.module ? engineFacts(manifest.module).licence : null;
+  return lic ? { commercial: lic.commercial, summary: lic.summary ?? "", url: lic.url ?? "" } : null;
+}
+
+/** The app calling through the client API — its `X-Client` header (e.g. "JustDirect"), trimmed
+ * and cut to 64 characters — or null (docs/dev/client-api.md). */
+export function clientOf(c) {
+  const v = strip(String(c.req.header("x-client") ?? "")).slice(0, 64);
+  return v || null;
 }
 
 export function _storedToDto(rec) {
@@ -55,6 +75,7 @@ export function _storedToDto(rec) {
     language: rec.language,
     gender: rec.gender || "",
     design_prompt: rec.source === "designed" ? rec.design_prompt : null,
+    made_by: rec.made_by ?? null,
     ..._facts(vm),
   });
 }
@@ -270,7 +291,23 @@ export function clipBytes(b64) {
 
 export function router() {
   const app = new Hono();
-  app.get("/v1/voices", async (c) => c.json(await listVoices()));
+  // `?made_by=JustDirect`: only the voices that app made through the client API.
+  app.get("/v1/voices", input({ querystring: T.Object({ made_by: opt(nullable(T.String()), null) }) }), async (c) => {
+    const all = await listVoices();
+    const by = c.req.valid("query").made_by;
+    return c.json(by ? { voices: all.voices.filter((v) => v.made_by === by) } : all);
+  });
+
+  /** A stored voice's clip — what it speaks from; a designed voice's kept audition (the client
+   * API's `audition_url`, docs/dev/client-api.md). */
+  app.get("/v1/voices/:id/clip.wav", (c) => {
+    const st = getState();
+    const id = c.req.param("id");
+    if (!st.voices.get(id)) throw notFound(`voice ${id}`);
+    const clip = String(st.voices.refWavPath(id));
+    if (!isFile(clip)) throw notFound(`voice ${id} has no clip`);
+    return c.body(readFileSync(clip), 200, { "content-type": "audio/wav" });
+  });
 
   /** Which version of its model speaks this voice. */
   app.get("/v1/voices/:id/model-version", input({ querystring: T.Object({ language: opt(nullable(T.String()), null) }) }), async (c) => {
@@ -338,13 +375,17 @@ export function router() {
   app.post("/v1/voices/clone", input({ body: CloneVoiceRequest }), (c) => {
     const st = getState();
     const body = c.req.valid("json");
-    if (!body.engine || !body.name) throw badRequest("engine + name required");
+    if (!body.name) throw badRequest("name required");
+    // No engine (the client API): the one-click run's cast model and its engine.
+    const castModel = st.settings.get().book_voices.clone_model;
+    const engine = body.engine || vmod.engineOfModel(castModel);
+    if (!engine) throw badRequest(`no engine given, and book_voices.clone_model (${castModel}) isn't a model this app has`);
     const wavBytes = clipBytes(body.ref_wav_b64);
-    const model = _modelFor(body.engine, body.model, "clone");
+    const model = _modelFor(engine, body.engine ? body.model : body.model || castModel, "clone");
     const now = utcNow();
     const created = st.voices.create({
       id: "",
-      engine: body.engine,
+      engine,
       model,
       source: "cloned",
       name: body.name,
@@ -353,6 +394,7 @@ export function router() {
       transcript: body.transcript,
       xvector_only: body.xvector_only,
       sample_count: 0,
+      made_by: clientOf(c),
       created_at: now,
       updated_at: now,
     });

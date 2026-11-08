@@ -65,8 +65,16 @@ export const jobs = new JobRegistry({
     const e = _exports.get(job.id);
     _exports.delete(job.id);
     if (e?.path && !e.fetched) removeTemp(e.path);
+    for (const fn of _forgetHooks) fn(job);
   },
 });
+
+// The other jobs on this registry clean up after themselves too (the client API's batches,
+// client_api.js): each hook is called with the forgotten job's snapshot.
+const _forgetHooks = [];
+export function onForget(fn) {
+  _forgetHooks.push(fn);
+}
 
 const KIND = { m4b: "export-m4b", chapters: "export-chapters" };
 

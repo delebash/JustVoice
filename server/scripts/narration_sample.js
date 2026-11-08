@@ -93,7 +93,17 @@ if (OPENING_WORDS) manifest.opening = opening;
 const render = async (voice, text) => call("/v1/generate", { method: "POST", body: { voice, text, language: "en", seed: 7, cache: false }, raw: true });
 for (const [engine, variant] of ENGINES) {
   const voice = await voiceOn(engine, variant);
-  await call(`/v1/engines/${engine}/load`, { method: "POST", body: { model_variant: variant } });
+  // The kit's speech runtime loads it (round E: the app's /v1/engines/:engine/load is gone); a
+  // download answers 202 and the load follows, waited for on /loaded.
+  await call(`/v1/ai/runtimes/audiocpp/models/${variant}/load`, { method: "POST", body: {} });
+  for (let n = 0; n < 720; n++) {
+    const { loaded } = await call("/v1/ai/runtimes/audiocpp/loaded");
+    if (loaded.some((l) => (l.modelId ?? l.id) === variant)) break;
+    const { models } = await call("/v1/ai/runtimes/audiocpp/models");
+    const row = models.find((m) => m.id === variant);
+    if (row?.loadError || row?.error) throw new Error(`${variant} didn't load: ${row.loadError || row.error}`);
+    await new Promise((r) => setTimeout(r, 5000));
+  }
   const dir = path.join(OUT, engine);
   mkdirSync(dir, { recursive: true });
   for (const [i, text] of passages.entries()) {

@@ -1,0 +1,11 @@
+{
+  "voice_id": "voice_0123456789abcdef0123456789abcdef",
+  "name": "Inspector Maigret",
+  "gender": "male",
+  "description": "Male, in his fifties, low and gravelly pitch with a slow, patient manner.",
+  "described_by": "gemma-4-26b-a4b-qat",
+  "design": { "model": "qwen3-vd", "name": "Qwen3-TTS VoiceDesign", "commercial": "Yes", "summary": "Yes. Apache-2.0, nothing added.", "url": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base" },
+  "clone": { "model": "voxcpm2", "name": "VoxCPM2", "commercial": "Yes", "summary": "Yes — “free for commercial use”, in its makers’ words (Apache-2.0).", "url": "https://huggingface.co/openbmb/VoxCPM2" },
+  "audition": "You were at the café when the lights went out?",
+  "audition_url": "/v1/voices/voice_0123456789abcdef0123456789abcdef/clip.wav"
+}

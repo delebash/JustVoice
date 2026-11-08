@@ -1,0 +1,6 @@
+{
+  "lines": [
+    { "id": "sc1-l1", "file": "sc1-l1.wav", "url": "/v1/audio/speech/batch/<job id>/lines/sc1-l1.wav", "voice": "voice_0123456789abcdef0123456789abcdef", "seconds": 2.4, "error": null },
+    { "id": "sc1-l2", "file": "sc1-l2.wav", "url": "/v1/audio/speech/batch/<job id>/lines/sc1-l2.wav", "voice": "voice_0123456789abcdef0123456789abcdef", "seconds": 2.9, "error": null }
+  ]
+}

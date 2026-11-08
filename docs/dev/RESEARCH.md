@@ -5570,6 +5570,67 @@ card (below); no searches run.
   Two groups worse, so by the rule both versions are reverted; one run each, so whether +1 and +2 are
   noise is not known. The live database's two direction rows were put back. — *measured, 2026-11-05*.
 
+### 10.39 The engine a user can sell with — the judge, and the field again (2026-11-08)
+
+`docs/plans/2026-11-08-commercial-engine.md` (the job, its decisions). The user, 2026-11-07: the
+point was always the best engine for commercial use; BreezeTTS 2 (Separate licence) was both
+one-click defaults. 2026-11-08: no more listening pages — the session judges.
+
+- **take-check does not stand in for the user's ears.** 321 takes the user rated on the pages of
+  rounds 4, 5, 6, 7 and 9 (full 72 · like 32 · weaker 77 · plain 113 · something else 27; Breeze
+  76, VoxCPM2 91, Drama 3 39, IndexTTS 38, CustomVoice 39, dots.tts 26, Higgs 12), each joined to its
+  take-check row and its untold twin's. Fitted on all families but one and tested on the one left
+  out, a logistic model on every score predicts "full" at take AUC 0.60–0.66 and ranks the 25 arms
+  at Spearman −0.25 to +0.14 against the user's full rate. Single scores: the told take's loudness
+  against its twin, signed by the feeling — arm Spearman 0.56, take AUC 0.63; low emotion2vec
+  "neutral" 0.43 / 0.70; the asked class's probability 0.38 / 0.53. dots.tts's edits, heard full on
+  0 of 13, score among the most emotional. — *measured* (scratchpad `judge/build.js`, `fit.js`,
+  session 6571a392).
+- **A judge LAION uses for exactly this:** Empathic-Insight-Voice (laion/Empathic-Insight-Voice-Small,
+  CC-BY-4.0, 2025-05; a Whisper-Small encoder, `laion/BUD-E-Whisper`, and 55 expert heads — 40
+  emotions plus Arousal, Valence, "Monotone vs. Expressive", Authenticity, Soft vs. Harsh …; 30 s
+  cap). LAION scores its MOSS-8B voice-acting study with the Plus version (target emotion, arousal,
+  valence, expressiveness, volume; best prompt style differs per emotion — anger "negate calm",
+  fear "an escalation arc", sadness and joy "ellipses + exclamation marks"; no reference clip)
+  (✓ projects.laion.ai/moss-8b-voice-acting/emotion_prompting_study.html). NVIDIA NeMo ships an
+  Apache-2.0 wrapper for it (`nemo/collections/tts/metrics/emotion_encoder.py`, commit cd61689d,
+  2026-11-06; MagpieTTS's `--with_prosody_metrics`), vendored into `tools/take-check` with every
+  head (`take-check empathic`). — *web + code*.
+- **The field, October 2026** (✓ artificialanalysis.ai/text-to-speech/leaderboard, provider voices,
+  open-weights rows): Fish Audio Drama 3 1275 · Drama 3 Preview 1241 · BreezeTTS 2 1228 ·
+  **Ming-3.0-tts 1187** · Phonon 31M 1114 · Fish S2 Pro 1108 · Step Audio EditX 1101 · Voxtral 1092
+  · Magpie-Multilingual 1064 · Kokoro 1064 · Maya1 1047 · Higgs V3 1039 · Chatterbox 1023. Its
+  cloned-voice arena (8 voices) was not readable (404). Roundup articles add nothing checkable.
+- **Ming-3.0-tts 0.5B** (✓ huggingface.co/inclusionAI/Ming-3.0-tts-0.5B, MIT): clones from a short
+  clip; an EMOTION task with seven labels 高兴 / 悲伤 / 愤怒 / 恐惧 / 厌恶 / 惊讶 / 中性 (✓
+  github.com/inclusionAI/Ming-3.0-tts, the cookbook's example clones from a clip with no
+  transcript); FREEFORM instructions without a clip only ("adding a reference is not recommended");
+  CV3 emotion control 72.33 %, hard set 37.33 %. In our fork: `template_name` emotion / basic
+  (speed, pitch, volume 低 中 高) / freeform …, built as a JSON instruction
+  (`../audio.cpp/src/models/ming3_tts/prompt.cpp`); bf16 and q8 packages. — *web + code*.
+- **The LAION heads against the user's ears** (the same 321 takes, every head scored on the told
+  take and its twin by `take-check empathic`; 512 takes took 18.5 GB of RAM and ~1 h on the CPU).
+  A score fixed before looking — the mean of the asked feeling's heads on the told take (happy:
+  Elation, Amusement, Hope, Contentment; sad: Sadness, Disappointment, Helplessness; angry: Anger,
+  Impatience, Bitterness; fearful: Fear, Distress, Helplessness; contemptuous: Contempt, Disgust,
+  Bitterness, Sourness; shouted: Arousal, Anger; whispered and neutral none) — ranks the 25 arms at
+  **Spearman 0.73 (bootstrap over lines 0.36–0.87)** and the 7 families at 0.89; told minus twin
+  0.65; "Monotone vs. Expressive" 0.40; Authenticity −0.18. Fitted combinations do worse left out
+  (−0.18 to −0.20), as do same-line nearest neighbours. **Its limit: it tells the strong actors
+  (Breeze 0.97–1.14, IndexTTS words 1.14, Higgs 1.02) from the rest, but not the sellable arms from
+  each other** (VoxCPM2, Drama 3, CustomVoice, dots.tts: Spearman 0.20, 50 of 87 pairs) — it rates
+  VoxCPM2 told the cue phrases (user 0–18 %) above Drama 3 told them (36 %). Within one arm it
+  picks the user's full takes over the others at AUC 0.70 (411 pairs): good enough to choose the best
+  of several takes, not to rank engines that are close. — *measured* (scratchpad `judge/fit2.js`,
+  `attack.js`, session 6571a392).
+- **VoxCPM2 told one word against the cue phrases, by the user's ears** (the rated takes above):
+  one word with the clip alone (rounds 4 and 9, two seeds' takes) full on 5 + 6 of 26 = 42 %; the
+  line's cue words at guidance 2.7 (rounds 5–7) full on 2, 1, 3, 0 of 13 (12 %), the delivery note 0
+  of 13. Drama 3 told the cue words 5 of 13 (38 %, the same takes rated twice, 5 both times), told
+  the note 0 of 13. — *the user's answers*.
+- **VocalRender Pro** (the new VoxCPM2 package past 661a224e) is a singing model on VoxCPM2
+  (✓ huggingface.co/pymaster/VocalRender), not speech. — *web*.
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next
