@@ -190,6 +190,33 @@ just-direct-mocap first, one heavy piece at a time:
    dev_build.js onto it, with its own server-suite run if that comes after step 6.
 Light work (docs, scripts) runs while the machine is booked to others.
 
+**D16 — a model whose load options keep weights off the card isn't weighed at its files (2026-11-08,
+mine; a kit change).** Found while preparing D15 step 2: the kit's Auto placement weighs a model not
+measured here at the larger of audio.cpp's estimate and its files (speech_placement.js `needOf`,
+decided 2026-10-12: "the weights alone take that much"). Drama 3's default package declares no
+estimate and has 22.9 GB of files, so on any machine without a card measurement of it Auto sends the
+default narrator to the CPU ("its files are about 23 GB, more than this card's 8 GB") — though with
+Experts from disk it took ~7.2 GB of the 8 GB card (rounds 6–8). Nemotron Transcribe (20.5 + 1.7 GB)
+the same. The fix: a kit hook `filesOnCard(row)` (default true — nothing changes for any other app
+or model); false, the files don't bound the need, the estimate alone does, and with none it is the
+kit's own "memory not measured yet" path (try the card, measure, a load that doesn't fit moves to the
+CPU — decided 2026-10-15). JustVoice answers it from the family file: a load option marked
+`keepsWeightsOffCard` (Drama 3's and now Nemotron's `disk_experts`, on by default) switched on
+(runtime_options.js `weightsOffCard`, kit_hooks.js `filesOnCard`). Rounds: 1 past decisions — the
+2026-10-12 premise is false only for disk-backed experts (audio.cpp's docs: "Dense weights and all
+expert computation remain on the selected backend"), so it stays for every other row; D6 (Drama 3
+narrates, on an 8 GB card) becomes true on a fresh install. 2 standard — a pre-load size computed from
+the GGUF's tensor table (llama.cpp's own fitting) needs each family's expert naming and cache rule;
+a declared 7.2 GB constant breaks the kit's "no pre-load estimate constant" rule; the kit's own
+measure-first path is its standard, so it's reused. 3 blast radius (grep) — `needOf` is called only by
+`placementFor`; `filesGbOf` there three times (all moved to the hook's answer); the Speech tab's fit
+word reads only `peakVramMb`; the hook reaches the placement through `runtime_service.js`'s
+`...speech` spread, unchanged. 4 edges — a card it really doesn't fit: the first load fails or
+spills and the kit's `failedOnCard` sends it to the CPU after, as for OmniVoice; Experts from disk
+switched off: the files count again. 5 nothing new. Kit: worktree `E:\Dev\Web\just-core-placement`,
+branch `jv/files-on-card`, into the kit's main only after family-release's "dispatched" (it holds
+the kit's tree at HEAD for its release run); tested then with the end run.
+
 ## The standard each piece follows
 
 | Piece | Standard | Kit code |
