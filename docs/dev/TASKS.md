@@ -234,6 +234,12 @@ OPEN:   B9's majors move with the family (Electron 45, jsdom 31, Biome, electron
         past 661a224e with its new packages curated (Kitten TTS 2's 20261021 voices, Pocket TTS Small, VoxCPM2
         VocalRender Pro, Phonon-2 — each its licence reading; decided 2026-11-07); re-add the five "later" ideas and the global hotkey and paste
         (`git show 69e00a8d:docs/dev/IDEAS.md`; the hotkey's ruling, a C++ addon: docs/plans/2026-10-05-electron-node-study.md §9).
+        From the release on (mine, 2026-11-08, after web-4c's note): a seeded prompt whose text is revised lists its
+        old text in `featurePromptHeals` (the kit's seed.js heals, as JustWrite's FEATURE_PROMPT_HEALS), since a user
+        never resets. Until then the user resets (the no-migrations rule, 2026-08-07), so no heals are wired today.
+        Measured 2026-11-08: the dev database's 21 prompt rows match the seeds except refine.base, smart_cleanup,
+        self_correction and preserve_technical, which still hold the voicebox-era texts the 2026-10-08 clean-room
+        rewrite replaced (64edd258). A fresh database, and so the installer, seeds the new ones; a reset clears them.
 GO:     given 2026-11-06 ("your recs think adversierliy on it again … go").
 
 ### Our audio.cpp fork is released with the family, once every app is done
