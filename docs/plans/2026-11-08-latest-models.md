@@ -152,3 +152,10 @@ ata all". The arm is removed from `server/scripts/round4_render.js`; its 60 take
 - Three CPU jobs at once (Kitten, the read-back, VocalRender at 12 GB) beside a desktop build and the
   release's e2e saturated the machine: Kitten's 10 failures, VocalRender's 2 "bad allocation", the
   release's JustWrite e2e timeouts. Run one CPU piece at a time.
+- The lockup, from Windows' System log (read after the restart): at 10:34 "low virtual memory",
+  the top three audiocpp_cli.exe 22.8 GB (VocalRender Pro, mine), audiocpp_server.exe 16.5 GB (the
+  app's CPU speech server, mine) and blender.exe 9.0 GB, on a 32 GB PC; from 11:00 Windows services
+  timed out starting (12, 15, 18 an hour) until the hang — last heartbeat 13:53, hard restart 14:15
+  (Kernel-Power 41). No Bluetooth or display-driver fault before it. My CPU jobs had ended by 12:07,
+  so the log can't say what kept the machine starved after them. Book RAM and the processor with the
+  other sessions as the card is (the global rule, 2026-11-08).
