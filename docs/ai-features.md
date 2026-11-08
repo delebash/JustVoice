@@ -708,7 +708,7 @@ set through `PATCH /v1/settings` under `book_voices`:
 | `design_model` | `qwen3-vd` | The model each voice is designed on (any model that can make a voice from words — Qwen3-TTS VoiceDesign, VoxCPM2 …). |
 | `clone_model` | `voxcpm2` | The model each character's designed take is kept on. It must clone and still take direction, written or by tags; the design step refuses one that can't — Qwen3-TTS Base, for one, drops direction. |
 | `narrator_model` | `fish_drama3-fishdrama3` | The model the narrator's designed take is kept on, held to the same rule. Set it to `clone_model`'s to have one model read the whole book. |
-| `sets` | *Voices you can sell* (`voxcpm2`, narrator `fish_drama3-fishdrama3`) · *Best acting — not for sale* (`breeze_tts` for both) | The choices of the card's **Voices**, each `{key, label, clone_model, narrator_model}`; picking one sets those two models. Models no set names show as *Your own models*. |
+| `sets` | *Best voices you can sell* (`voxcpm2`, narrator `fish_drama3-fishdrama3`) · *Lighter voices you can sell* (`voxcpm2` for both) · *Best acting — not for sale* (`breeze_tts` for both) | The choices of the card's **Voices**, each `{key, label, clone_model, narrator_model}`; picking one sets those two models. Models no set names show as *Your own models*. |
 | `speaker_words` | 2000 | How much of a speaker's paragraphs the Local recipe reads, in words. |
 | `narrator_words` | 2000 | How much of the book's opening the Local recipe reads for the narrator, in words. |
 | `audition_words` | 25 | The length, in words, of the line a voice's audition speaks. |

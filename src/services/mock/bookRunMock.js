@@ -81,7 +81,8 @@ export const BREEZE_LICENCE = {
 };
 // The card's Voices (book_voices.sets, decided 2026-11-08), as the plan gives them.
 export const VOICE_SETS = [
-  { key: "sell", label: "Voices you can sell", models: "VoxCPM2 · narrator Fish Audio Drama 3", commercial: "Conditional", clone_model: "voxcpm2", narrator_model: "fish_drama3-fishdrama3" },
+  { key: "sell", label: "Best voices you can sell", models: "VoxCPM2 · narrator Fish Audio Drama 3", commercial: "Conditional", clone_model: "voxcpm2", narrator_model: "fish_drama3-fishdrama3" },
+  { key: "light", label: "Lighter voices you can sell", models: "VoxCPM2", commercial: "Yes", clone_model: "voxcpm2", narrator_model: "voxcpm2" },
   { key: "best", label: "Best acting — not for sale", models: "BreezeTTS 2", commercial: "Separate licence", clone_model: "breeze_tts", narrator_model: "breeze_tts" },
 ];
 

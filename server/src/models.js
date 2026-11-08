@@ -524,11 +524,13 @@ export const VoiceSet = T.Object({
   narrator_model: T.String(),
 });
 
-/** The two the card offers: the best a user can sell what they make with, and the best acting,
- * not for sale (docs/plans/2026-11-08-commercial-engine.md D5, D6). Settings, so they change
- * without a code change. */
+/** The three the card offers: the best a user can sell what they make with; a lighter set they can
+ * sell with too, one ~3 GB model for a smaller computer; and the best acting, not for sale
+ * (docs/plans/2026-11-08-commercial-engine.md D5, D6, D8). Settings, so they change without a code
+ * change. */
 export const DEFAULT_VOICE_SETS = [
-  { key: "sell", label: "Voices you can sell", clone_model: "voxcpm2", narrator_model: "fish_drama3-fishdrama3" },
+  { key: "sell", label: "Best voices you can sell", clone_model: "voxcpm2", narrator_model: "fish_drama3-fishdrama3" },
+  { key: "light", label: "Lighter voices you can sell", clone_model: "voxcpm2", narrator_model: "voxcpm2" },
   { key: "best", label: "Best acting — not for sale", clone_model: "breeze_tts", narrator_model: "breeze_tts" },
 ];
 

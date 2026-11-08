@@ -151,13 +151,19 @@ stays as you leave it for every book.
 **Voices** — the models the voices are made on, picked above that box before a
 run (since 2026-11-08):
 
-- **Voices you can sell — VoxCPM2 · narrator Fish Audio Drama 3**, as it ships:
-  the models you may sell an audiobook made with. Of those, blind listening
-  liked them best — VoxCPM2 acting the characters' lines, Drama 3 reading the
-  narration (its narration was preferred even to BreezeTTS 2's). Drama 3's
-  licence is *Conditional*: free to sell with while you and your affiliates
-  earn under USD 500,000 a year, with "Built with Fish Audio" shown on a
-  related page ([Speech engines → Commercial use](engines.md#commercial-use-in-plain-words)).
+- **Best voices you can sell — VoxCPM2 · narrator Fish Audio Drama 3**, as it
+  ships: the models you may sell an audiobook made with. Of those, blind
+  listening liked them best — VoxCPM2 acting the characters' lines, Drama 3
+  reading the narration (its narration was preferred even to BreezeTTS 2's).
+  Drama 3's licence is *Conditional*: free to sell with while you and your
+  affiliates earn under USD 500,000 a year, with "Built with Fish Audio" shown
+  on a related page ([Speech engines → Commercial use](engines.md#commercial-use-in-plain-words)).
+  It is big: a 23 GB download that maps about 17 GB of it in memory while it
+  narrates, at about half real time on an 8 GB card.
+- **Lighter voices you can sell — VoxCPM2** for every voice: one 3 GB model, a
+  plain yes to selling, much faster — for a computer with less memory or disk.
+  Its narration is plainer: in the same listening BreezeTTS 2's was preferred to
+  it on 10 passages of 10.
 - **Best acting — not for sale — BreezeTTS 2**: it played every line like the
   book in the same listening, the best of all — but its licence doesn't let you
   sell what it makes without a separate licence from its makers. For a book you

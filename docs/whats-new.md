@@ -5,8 +5,9 @@
 - **Voices you can sell, by default (2026-11-08)** — **Make the audiobook** now makes its voices on
   the models you may sell an audiobook made with: each character on **VoxCPM2**, the narrator on
   **Fish Audio Drama 3**, chosen by blind listening among the models you can sell with. The card's new
-  **Voices** picks between them and **Best acting — not for sale** (BreezeTTS 2, which acted best of
-  all but needs its makers' separate licence to sell with). Drama 3's licence is *Conditional* (under
+  **Voices** picks between them (**Best voices you can sell**), **Lighter voices you can sell**
+  (VoxCPM2 for every voice — one 3 GB model, faster, plainer narration) and **Best acting — not for
+  sale** (BreezeTTS 2, which acted best of all but needs its makers' separate licence to sell with). Drama 3's licence is *Conditional* (under
   USD 500,000 a year, "Built with Fish Audio" shown), so you accept it once before its first download;
   it loads with its experts read from disk, to fit an 8 GB card ([Studio → Make the
   audiobook](studio.md#make-the-audiobook))

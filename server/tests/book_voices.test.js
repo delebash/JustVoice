@@ -114,6 +114,7 @@ test("the_feature_its_three_rows_and_its_settings_are_seeded", async () => {
   expect([s.min_lines, s.design_model, s.clone_model, s.narrator_model]).toEqual([3, "qwen3-vd", "voxcpm2", "fish_drama3-fishdrama3"]);
   expect(s.sets.map((x) => [x.key, x.clone_model, x.narrator_model])).toEqual([
     ["sell", "voxcpm2", "fish_drama3-fishdrama3"],
+    ["light", "voxcpm2", "voxcpm2"],
     ["best", "breeze_tts", "breeze_tts"],
   ]);
 

@@ -47,7 +47,7 @@ const plan = computed(() => {
   const p = mockPlan({ frontier: frontier.value, blocked: state.value === "blocked", noFfmpeg: state.value === "failed" });
   const set = p.voice_sets.find((s) => s.key === voiceSet.value);
   const steps = p.steps.map((s) => (s.key === "design"
-    ? { ...s, model: `Qwen3-TTS VoiceDesign → ${set.models}`, licences: set.key === "sell" ? s.licences : [BREEZE_LICENCE] }
+    ? { ...s, model: `Qwen3-TTS VoiceDesign → ${set.models}`, licences: { sell: s.licences, best: [BREEZE_LICENCE] }[set.key] ?? [] }
     : s));
   return { ...p, steps, stop_for_cast: stopForCast.value, voice_set: voiceSet.value };
 });

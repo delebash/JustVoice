@@ -131,7 +131,8 @@ test("Voices: the voices you can sell, or the best acting not for sale — picke
   const select = el.querySelector(".book-run__voices select");
   expect([...select.querySelectorAll("option")].map((o) => o.textContent)).toEqual([
     "Your own models",
-    "Voices you can sell — VoxCPM2 · narrator Fish Audio Drama 3",
+    "Best voices you can sell — VoxCPM2 · narrator Fish Audio Drama 3",
+    "Lighter voices you can sell — VoxCPM2",
     "Best acting — not for sale — BreezeTTS 2",
   ]);
   expect(select.value).toBe("sell");

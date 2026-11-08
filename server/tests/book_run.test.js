@@ -234,7 +234,8 @@ test("alice_vii_from_one_press_to_an_m4b_with_the_time_and_tokens_written_down",
   // The card's Voices: the voices you can sell, in use by default; BreezeTTS 2 the other set.
   expect(before.plan.voice_set).toBe("sell");
   expect(before.plan.voice_sets.map(({ key, label, models, commercial }) => ({ key, label, models, commercial }))).toEqual([
-    { key: "sell", label: "Voices you can sell", models: "VoxCPM2 · narrator Fish Audio Drama 3", commercial: "Conditional" },
+    { key: "sell", label: "Best voices you can sell", models: "VoxCPM2 · narrator Fish Audio Drama 3", commercial: "Conditional" },
+    { key: "light", label: "Lighter voices you can sell", models: "VoxCPM2", commercial: "Yes" },
     { key: "best", label: "Best acting — not for sale", models: "BreezeTTS 2", commercial: "Separate licence" },
   ]);
   expect(before.plan.estimate.price).toBe(0);
@@ -545,8 +546,12 @@ test("the_cards_voices_are_the_sets_in_settings_and_a_set_of_your_own_is_none_of
   let plan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
   expect(plan.voice_set).toBe("best");
   expect(plan.steps.find((s) => s.key === "design").model).toBe("Qwen3-TTS VoiceDesign → BreezeTTS 2");
-  // Models no set names: your own.
+  // One model for every voice: the lighter set.
   await c.patch("/v1/settings", { json: { book_voices: { clone_model: "voxcpm2", narrator_model: "voxcpm2" } } });
+  plan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
+  expect(plan.voice_set).toBe("light");
+  // Models no set names: your own.
+  await c.patch("/v1/settings", { json: { book_voices: { clone_model: "voxcpm2", narrator_model: "breeze_tts" } } });
   plan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
   expect(plan.voice_set).toBeNull();
 });

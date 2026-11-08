@@ -187,6 +187,13 @@ its 8 GB load options are now its defaults (`curated/fish_drama3.js` LOAD_OPTION
 sale" (BreezeTTS 2) — so both of the user's picks are one click away; the sets are settings (the
 family's no-hardcoded-presets rule). Picking one sets `clone_model` and `narrator_model`.
 
+**D8 — a lighter set you can sell (mine, 2026-11-08, after attacking D6 from the end user's side).**
+Drama 3 is a 23.4 GB download that maps ~17 GB of the file in memory; on the floor tier (8 GB card,
+16 GB of RAM) it may not run well, and the card offered no lighter sellable choice. So `sets`
+gets a third: **Lighter voices you can sell — VoxCPM2** for every voice (one ~3 GB model, a plain
+Yes, faster; its narration lost to Breeze's 0 to 10 by the user's ears — said beside it). The first
+set's label becomes **Best voices you can sell** so the two read apart.
+
 **JustDirect's brief (web-4c, 2026-11-08; the user told it "there is a jv session running if you
 need to have it do any code changes jv needs").** After the commercial pick, on the same defaults:
 1 make a character voice in one call (book_voices' recipe; commercial cloner; job), 2 speak a line in
