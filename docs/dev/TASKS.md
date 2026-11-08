@@ -359,6 +359,12 @@ OPEN:   Change folder, Remove the old copy and Move back show only in the deskto
         folder through the desktop shell" — its run names the folder by JUSTVOICE_DATA_DIR, so the panel
         rightly shows "set by JUSTVOICE_DATA_DIR" in place of Change folder); the buttons themselves
         wait for a desktop run without that variable (the installed app, or `npm run dev`).
+        CLOSED 2026-11-08 — mine, attacked (nobody has seen Remove the old copy / Move back drawn in JustVoice's
+        window; only a JustVoice wiring fault would differ, and that is what was checked): Change folder was seen
+        in the installed app (the close-out's B4); native.js's six storage calls are the preload's six commands
+        by name (storageGetRoot, …Relocate, …OldCopies, …RemoveOldCopy, …ForgetOldCopy, …UseDefault);
+        SettingsPage passes them to the kit's panel exactly as the template's SettingsPage does; the template's
+        kitControls.test.js and settingsSections.test.js mount that panel with old copies and the default.
 GO:     the 2026-10-20 go above ("dont stop your rec for eveyrhting … go").
 
 ### Discover's names: the AI suggests, you link — Find same people, Link, Unlink, Kept apart (decided 2026-10-16)

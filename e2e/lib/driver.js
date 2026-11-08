@@ -21,7 +21,7 @@
 //
 // A fresh data folder has no speech runtime and no models, so nothing here loads a model on the
 // graphics card: a voice's preview answers 409 (the client's ask-before-load), and warm-on-boot
-// is off by default.
+// (on by default, the family's) finds no default local chat model to load.
 
 import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
