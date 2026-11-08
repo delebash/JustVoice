@@ -190,10 +190,10 @@ async function boot({ app, router, store: pinia }) {
   useUiStore(pinia);
   // Warm the default local model BEFORE mount (the kit's startWarmOnBoot —
   // family mechanic): the layout's splash overlay is up on the very first Vue
-  // paint, a seamless hand-off from index.html's static plate. JV's warm
-  // default is OFF (ruling 2026-08-05: TTS owns the GPU until F4's arbiter),
-  // so this normally decides "nothing to warm" and the app just opens; the
-  // mechanics ship identically so flipping the toggle on is all it takes.
+  // paint, a seamless hand-off from index.html's static plate. JV takes the
+  // kit's family default, ON, since 2026-08-13 (the 2026-08-05 warm-OFF stopgap
+  // retired with the VRAM arbiter — server/src/llm_bootstrap.js): a speech
+  // model that needs the card later swaps the chat model out through the arbiter.
   await startWarmOnBoot();
   // Another device's changes (sync) reload the window (services/syncWatch.js).
   watchSync();

@@ -91,7 +91,20 @@ OPEN:   D1's fresh book (decision 2): one chapter in an empty data folder, the c
         screenshot. Waiting on the user's listen (the page claude.ai/artifact/EJh996HaGbMT2MMvVas62C), then
         Continue. Found: opening Studio while the run waits loaded the chat model again (19:36 local), so the
         first Cast ▶ had to swap it out for BreezeTTS 2 (~1 min); Alice designed as "seven to nine years old".
-GO:     given 2026-11-07 ("your rec all go").
+        2026-11-08 — shown ("Only you: 1. Listen to the finished fresh book … 2. Approve the words on the new
+        stop … 3. Turn on JustVoice's Release workflow … 4. Give the release-day go"; and "11. … the kit's
+        'Your own copy' field … Rec: widen it"). The user: "i am not doing anything manually no more listning
+        or testing from me 1-4 you do or skip i dont care, i want the app complete for family run as qquick as
+        possble"; then "11 i told you to make your own godman decison after thinking adversily foolllow
+        rules". My decisions (mine, not the user's): 1 — the user's listen skipped; the run's own check (each
+        take read back) and the M4B's probe stand for it; 2 — the card's words kept as built; 3 — the Release
+        workflow enabled (workflow_dispatch only, so nothing builds by itself); 4 — JustVoice handed to the
+        family release session, whose run releases it with the family; 11 — the field widened in the kit.
+        The user's other "look" items (the BreezeTTS 2 card, Discover's Link/Unlink) skipped by the same words.
+        The chat model loaded on opening Studio: LEFT — mine, attacked: it is the family default since 2026-08-13
+        (warm on start; llm_bootstrap.js), the arbiter swapped it out for BreezeTTS 2 as designed, and the cost is
+        ~1 min on the first speech after opening; boot/jv.js's comment that said "OFF" corrected.
+GO:     given 2026-11-07 ("your rec all go"); 2026-11-08 as above.
 
 ### JustVoice closed out for its release — the list A–D (decided 2026-11-06)
 STATE:  DECIDED 2026-11-06 — the user: "i want to get jv in the same state where all items are closed out … only
@@ -168,10 +181,12 @@ CHECKED 2026-11-06, once at the end: lint; server 1298 (+1 skipped); unit 306; t
         data); AI Settings → FFmpeg seen at 1280 ("Installed — build 9.0.2", Reinstall, Remove, "Your own copy");
         e2e 10/10. FOUND, not on the list: the kit's tab draws "Your own copy" as a short field (about 110 px)
         for a full path — the kit's control.
-OPEN:   B9's majors and pins with the family (Electron 45, jsdom 31, Biome, electron-builder — the "family
-        release" session sends them); B10's rest (the kit's pin — with the tag; the kit's 2026-10-20 changes 1, 3,
-        11 and the start checks are tested by the release run); then D1–D3 (the
-        user's); D4: no website for this release (decided 2026-11-07). After the release: the model revision
+OPEN:   B9's majors move with the family (Electron 45, jsdom 31, Biome, electron-builder): checked 2026-11-08,
+        JustVoice is on the family's versions today — the same as JustWrite's and the template's (Electron
+        44.10.0, electron-builder 26.15.3, Biome 2.5.15, jsdom ^30.1.2); B10's rest (the kit's pin — with the
+        tag; the kit's 2026-10-20 changes 1, 3, 11 and the start checks are tested by the release run); D1–D3
+        decided 2026-11-08 (the one-click item above: the user's listen skipped, Release enabled, JustVoice
+        handed to the family release session); D4: no website for this release (decided 2026-11-07). After the release: the model revision
         past 661a224e with its new packages curated (Kitten TTS 2's 20261021 voices, Pocket TTS Small, VoxCPM2
         VocalRender Pro, Phonon-2 — each its licence reading; decided 2026-11-07); re-add the five "later" ideas and the global hotkey and paste
         (`git show 69e00a8d:docs/dev/IDEAS.md`; the hotkey's ruling, a C++ addon: docs/plans/2026-10-05-electron-node-study.md §9).
@@ -190,9 +205,9 @@ WHY:    the packaged app and `npm run server` run the pinned `v0.9.2-jv.6`, whic
 BUILT:  nothing. FINDING 2026-10-29: `jv` (1de98891, 2026-10-19) is 150 commits behind upstream main (5951ca47,
         2026-10-29) and lacks upstream's v0.9.3 (2026-10-26); 46 commits are ours. The only fork any family app uses
         (`gh repo list delebash --fork`; the others have no checkout here and no app references them).
-OPEN:   whether upstream is merged into `jv` before the release — your call. Then: tag `v0.9.2-jv.7` (or on v0.9.3),
-        the kit's audiocpp rows and pin moved (the pin is the kit's since round E), the catalog regenerated at the
-        tag and committed (it replaces the uncommitted `catalog.json`).
+OPEN:   at the release (upstream is merged — 281de44a, below): tag `v0.9.2-jv.7`, the kit's audiocpp rows and pin
+        moved (the pin is the kit's since round E), `seed_audiocpp_catalog.json` regenerated at the tag and committed
+        (`scripts/audiocpp-catalog.js`; the old `catalog.json` name ended 2026-10-29).
         And the standing rule, 2026-10-29: "before we do any work on audio cpp nextime we should update the fork
         and test it in our app, this should be in i guess the core or jv, this should be true for any forks for
         futre apps that we may use" — in the kit's `docs/family-rules.md` (every web app imports it) and
@@ -286,7 +301,9 @@ BUILT:  —
         hint above. Lean: keep them." The user: "autocompacted re read rules docs session your rec
         go"): the dev database's `book_voices.clone_model` set to `breeze_tts` through `PATCH
         /v1/settings` (the narrator stays `voxcpm2`); the stops' words kept as built.
-OPEN:   the user's look at the card (#/mock/one-click, and a real book).
+OPEN:   none — the user's look skipped 2026-11-08 ("no more listning or testing from me"); the real card was seen
+        by screenshot that day (data\fresh-book-2026-11-07: "Qwen3-TTS VoiceDesign → BreezeTTS 2", "Commercial use:
+        Separate licence").
 GO:     given 2026-10-16 ("your rec on breeze and license"; after the check, "your rec on all
         go"). The narrator plan (docs/plans/2026-10-17-narrator-and-character-engines.md), shown
         2026-10-18: "4. The setting's name: `narrator_model`? Lean: yes. 5. The run's card:
@@ -406,8 +423,8 @@ BUILT:  the mock (`#/mock/discover`, 2026-10-16). 2026-11-05, the server and the
         server discover_same_people.test.js (8), merge_names.test.js (+3), ai_cancel_routes
         (find's Cancel), one_click_alice (the run's links); unit studioStatus.test.js (+5),
         StudioDiscover.test.js (8, mounted in the mock's states).
-OPEN:   the user's look in the real app (Discover before the AI, Find, Link, Unlink, Kept apart,
-        after Make the audiobook) beside the mock at the same width.
+OPEN:   none — the user's look skipped 2026-11-08 ("no more listning or testing from me"); the real page beside
+        the mock was checked in the close-out (B4).
 GO:     given 2026-10-16 ("your rec go") for the mock; the server and the real page under the finish run's go
         of 2026-11-05 ("just keep going fix all the things you think yo can … dont stop and ask me unless
         you absolutley need to"), the user's look skipped as not absolutely needed — the design was argued
