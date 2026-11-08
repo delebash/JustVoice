@@ -31,9 +31,33 @@ money and accounts.
 - [x] Round 10 rendered and scored (Ming on the CPU; LAION score; read-back by the app's recogniser
   on the CPU — no card needed). D5 characters VoxCPM2, D6 narrator Drama 3, D7 the card's Voices.
 - [x] Defaults, Voices, VoxCPM2 feeling words, Ming direction, Drama 3 load options, tests, mock, docs.
-- [ ] End run: lint ✓; server 1309/1 fail → fixed (a source-text test of planLine); unit 311/1 fail →
-  fixed (the card test found Voices first); guard: JustVoice's plan table added (just-direct's is
-  web-4c's). Rerun going. Then build:unpacked + e2e (hermetic, no model).
+- [x] End run: lint; server 1310 (+2 skipped); unit 312; the guard; e2e 10/10 — on 3d5b2020 and again
+  on e23e09a8 (D8). Pushed: 29eb8380, 3d5b2020, e23e09a8. Rerunning both suites on the kit's 0076ba18
+  (web-9e's mocap changes landed after my run).
+- [x] JustDirect: fixtures sent; it aligned its client; its live round trip runs on my server in the
+  card window (after "JustVoice ready"), then it gets "card free" with JustVoice closed.
+- [x] The real window, 2026-11-08 (the UnPackaged build of e23e09a8 on <repo>/data through the
+  server on 17494, scratchpad `window/look.js`, `look390.js`): Alice VIII's card read "Qwen3-TTS
+  VoiceDesign → BreezeTTS 2 · Commercial use: Separate licence"; Voices → "Best voices you can sell"
+  turned it into "→ VoxCPM2 · narrator Fish Audio Drama 3 · Commercial use: Conditional", no stop
+  (Drama 3's licence accepted here), saved `voxcpm2` / `fish_drama3-fishdrama3`; no page error; at
+  390 px no overflow, the select 282 px wide, its label cut with "…", the chip under it. The mock
+  (#/mock/one-click) shows the same words in its design step and Voices; its picture is behind the
+  start-up splash (the dev renderer warms the chat model), not taken. The dev database is now on
+  the sellable set (switched through the card).
+- [x] JustDirect's live round trip on my server (web-4c's report, 2026-11-08 06:43–06:47 UTC):
+  POST /v1/character-voices → done in 211 s — Mara described by JustVoice's prompt on gemma, designed
+  on Qwen3-TTS VoiceDesign (Yes), kept on VoxCPM2 (Yes), the audition 4.32 s at 24 kHz; POST
+  /v1/audio/speech/batch, release: true → done in 40 s, the line fetched by its url (3.36 s at 48 kHz),
+  the batch deleted; the card back to 604 MiB as the batch ended (the release worked). My fault in
+  it: my mock capture's start-up asked the server for the chat model at 01:43:41 local, 10 s after the
+  arbiter had evicted it for the designer, so it loaded beside the designer over budget — the job
+  still finished. Don't open a renderer on a server another app is using.
+- [x] The smoke gate: every view, zero JS errors (17494, the user's data). JustVoice closed (no
+  process, ports 17494 and 8080 free), "card free" sent to web-4c.
+- **Done.** JustVoice is ready for the release on its side. The release itself stays the user's; when
+  it is restarted, the release session must ship the fork's v0.9.4-jv.7 (Drama 3 and Ming are not in
+  jv.6) and the catalog at its tag — told by message 2026-11-08.
 - [ ] Waits for "card free" (just-stage, then web-4c): the smoke gate on the user's data and the real
   window (Overview's card: Voices, switching the dev database to "Voices you can sell"); both load
   the chat model on the card. The placements I changed are back to Auto (Ming, Transcription).

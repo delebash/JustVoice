@@ -83,11 +83,18 @@ BUILT:  the stop sent to the family release session (2026-11-07); it cancelled t
         VoxCPM2's FEELING_WORDS (persona_render.planLine), Ming 3.0 TTS's direction (curated/ming3_tts.js),
         Drama 3's 8 GB load options (curated/fish_drama3.js LOAD_OPTIONS); docs ai-features, studio, personas,
         settings-reference, engines, whats-new. Also the client API JustDirect asked for (docs/dev/client-api.md).
-OPEN:   the suites, the gate, e2e and the real window, once at the end; the dev database still holds `breeze_tts`
-        for both (saved 2026-10-19 and 2026-11-06), switched through the card's Voices in the window check.
-        For the release (the release session's): Drama 3 and Ming are not in the pinned v0.9.2-jv.6 — the release
-        must carry the fork's v0.9.4-jv.7 and the catalog at its tag (the fork item below already plans it), or a
-        packaged app's default narrator won't load.
+        Then (D8) a third set, *Lighter voices you can sell* (VoxCPM2 for every voice), for a computer that can't
+        take Drama 3's 23 GB. Pushed 29eb8380, 3d5b2020, e23e09a8.
+CHECKED 2026-11-08, once at the end: lint; server 1310 (+2 skipped) and unit 312, again on the kit's 0076ba18;
+        the family guard; e2e 10/10 (on 3d5b2020 and e23e09a8); the smoke gate on the user's data (17494, every
+        view, zero JS errors); the real window (the UnPackaged build on <repo>/data): Alice VIII's card switched
+        through **Voices** to *Best voices you can sell* — the dev database now holds `voxcpm2` /
+        `fish_drama3-fishdrama3` — no overflow at 390 px; JustDirect's live round trip on that server (a character
+        voice in 211 s, a batch in 40 s, the card freed at its end).
+OPEN:   for the release (the release session's, when the user restarts it): Drama 3 and Ming are not in the pinned
+        v0.9.2-jv.6 — the release must carry the fork's v0.9.4-jv.7 and the catalog at its tag (the fork item below
+        already plans it), or a packaged app's default narrator won't load; *Lighter voices you can sell* and
+        *Best acting* run on jv.6 as it is.
 GO:     given 2026-11-08 (above); the release itself stays the user's.
 
 ### One-click stops once when the cast is ready, so you hear the voices before the render (decided 2026-11-07)
