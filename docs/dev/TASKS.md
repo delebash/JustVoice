@@ -61,6 +61,19 @@
 
 ## The next build
 
+### The release is STOPPED: the best engine you can sell with, tested and tuned first (decided 2026-11-07)
+STATE:  DECIDED 2026-11-07 — the user: "the point wa the best for commercial and i just realized everything we
+        have been testing to get the best results are on breeze tts 2 which is not what we are supposed to focus
+        on"; "i gave you a single task give me 1 best model for commercial and 1 best model for non commercial
+        … do we need to start testing for commercial"; "sotp the fucking releawe since you fucked up and we have
+        to start over testing and tweaking as now jv is not really ready".
+WHY:    both one-click defaults are BreezeTTS 2, which can't be sold with (`server/src/models.js:518-519`, the dev
+        database the same, read 2026-11-07); round 8 and the narrator tests were tuned on it (RESEARCH §10.35-36).
+NOT:    a non-commercial engine as a default or as the subject of a tuning round — only as a comparison arm.
+BUILT:  the stop sent to the family release session (2026-11-07). OPEN: the commercial test plan, for the
+        user's go; the item "JustVoice closed out for its release" below no longer stands until it's done.
+GO:     the stop given; the testing needs a go.
+
 ### One-click stops once when the cast is ready, so you hear the voices before the render (decided 2026-11-07)
 STATE:  DECIDED 2026-11-07 — the user, on D1's two books: "so one click just does everythign automatically without
         any decision from user, do you think that is good? maybe, i mean user can manually do it, what do you dthink ,
