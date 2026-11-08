@@ -58,7 +58,7 @@ money and accounts.
 - **Done.** JustVoice is ready for the release on its side. The release itself stays the user's; when
   it is restarted, the release session must ship the fork's v0.9.4-jv.7 (Drama 3 and Ming are not in
   jv.6) and the catalog at its tag — told by message 2026-11-08.
-- [ ] JustDirect's second run (web-4c, 2026-11-08: a 3-shot film end to end, one voice cloned from
+- [x] JustDirect's second run (web-4c, 2026-11-08: a 3-shot film end to end, one voice cloned from
   Mara's audition, one described, their lines as one batch with release: true, then its clips): my
   headless server is up on 17494 with the dev build (fork 6d64f04e), on "Best voices you can sell"
   (design qwen3-vd, cast voxcpm2, narrator fish_drama3-fishdrama3). What I told it about release
