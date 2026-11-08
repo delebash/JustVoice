@@ -65,8 +65,11 @@ money and accounts.
   (checked in client_api.js and the kit's runtime_service.js): every speech model goes; the kit holds
   one per kind, since a load unloads the kind's others. The chat model is not release's: the
   designer's card load evicts it through the arbiter, and it stays (mostly in RAM, until its 900 s
-  idle sleep) only if the designer ran on the CPU. To do: measure the card and RAM as the batch ends;
-  unload anything of mine still on the card; close JustVoice; send "card free".
+  idle sleep) only if the designer ran on the CPU. Measured as the batch ended (03:50 local): one load
+  only, VoxCPM2 on the card; the card 501–612 MiB after (nvidia-smi); left: one idle speech server
+  (397 MB RAM, no model) and the Node server. Pell had no line, so JustDirect skipped its
+  character voice on purpose; one clone (Ines) and one batch was the whole call. To do: close
+  JustVoice when its run ends; send "card free".
 - [x] The smoke gate on the user's data and the real window, after "card free" (above). The
   placements I changed are back to Auto (Ming, Transcription).
 - [x] JustDirect's client API built (`api/client_api.js`, voices_api changes, models, health
