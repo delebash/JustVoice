@@ -58,15 +58,22 @@ money and accounts.
 - **Done.** JustVoice is ready for the release on its side. The release itself stays the user's; when
   it is restarted, the release session must ship the fork's v0.9.4-jv.7 (Drama 3 and Ming are not in
   jv.6) and the catalog at its tag — told by message 2026-11-08.
-- [ ] Waits for "card free" (just-stage, then web-4c): the smoke gate on the user's data and the real
-  window (Overview's card: Voices, switching the dev database to "Voices you can sell"); both load
-  the chat model on the card. The placements I changed are back to Auto (Ming, Transcription).
-- [x] JustDirect's client API built (not yet run): `api/client_api.js`, voices_api changes,
-  models, health `client_api`, `docs/dev/client-api.md`, `tests/client_api.test.js` + fixtures.
-  Shapes sent to web-4c 2026-11-08; per-line WAV URLs added at its request.
-- [ ] Tuning the leader (how it is told, its knobs), scored.
-- [ ] The narrator pick, scored.
-- [ ] Defaults switched (code, dev database, tests, mock, docs), suites run once, the app looked at.
+- [ ] JustDirect's second run (web-4c, 2026-11-08: a 3-shot film end to end, one voice cloned from
+  Mara's audition, one described, their lines as one batch with release: true, then its clips): my
+  headless server is up on 17494 with the dev build (fork 6d64f04e), on "Best voices you can sell"
+  (design qwen3-vd, cast voxcpm2, narrator fish_drama3-fishdrama3). What I told it about release
+  (checked in client_api.js and the kit's runtime_service.js): every speech model goes; the kit holds
+  one per kind, since a load unloads the kind's others. The chat model is not release's: the
+  designer's card load evicts it through the arbiter, and it stays (mostly in RAM, until its 900 s
+  idle sleep) only if the designer ran on the CPU. To do: measure the card and RAM as the batch ends;
+  unload anything of mine still on the card; close JustVoice; send "card free".
+- [x] The smoke gate on the user's data and the real window, after "card free" (above). The
+  placements I changed are back to Auto (Ming, Transcription).
+- [x] JustDirect's client API built (`api/client_api.js`, voices_api changes, models, health
+  `client_api`, `docs/dev/client-api.md`, `tests/client_api.test.js` + fixtures), and since run live
+  (above). Shapes sent to web-4c 2026-11-08; per-line WAV URLs added at its request.
+- [x] Tuning the leader: VoxCPM2 told the feeling's words (D5). The narrator pick: Drama 3 (D6).
+- [x] Defaults switched (code, dev database, tests, mock, docs), suites run once, the app looked at.
 
 The graphics card: just-stage holds it (~1.5–2 h from 2026-11-08 ~00:15), then web-4c's clips run,
 then me — each sends "card free". Until then only CPU work. No ~18 GB CPU job while web-4c's retry
