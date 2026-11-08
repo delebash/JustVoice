@@ -5675,6 +5675,31 @@ new engines thats greate but left out the other new vocpm2 and other".
   revision; Kitten TTS 2 (Stellon Labs Community License) — commercial use needs registering with
   Stellon Labs. — *each maker's page, 2026-11-08*.
 - **Kitten TTS 2's two packages share 47 voice names** (94 voices, 47 ids before D11). — *generated.js*.
+- **The default recipe's changed files hold the same weights.** VoxCPM2 q8_0, Qwen3-TTS 1.7B VoiceDesign q8_0 and
+  Qwen3-ASR 1.7B q8_0 at 73ce4162 are the same blobs as at fd2fe4c3 (SHA-256 8df1faf2…, b86e03d1…, 3bc2462e…),
+  and against 661a224e each has the same tensor table (889, 900, 707 tensors) and the same tensor data (SHA-256
+  of everything after the header); only metadata changed — `general.name` (now a hash), `audiocpp.source_format`
+  (packed → .gguf), `audiocpp.weight_type` (q8_0 → "orig"), `audiocpp.tensor_sources.*` and the embedded
+  `audiocpp.model_spec.json` (20 → 288 fields for VoxCPM2, 24 → 350 for VoiceDesign). The embedded specs are
+  older than our fork's `model_specs/*.json` (VoxCPM2's lacks `ultimate_clone`, Qwen3-ASR's `perf_mode`). audio.cpp
+  takes a package's spec from the GGUF first but its contract (options) from a workspace or built-in spec first
+  (`src/framework/model_spec/package.cpp` `default_package_spec_path`, `find_contract_spec_path`). — *the GGUF
+  headers and blobs on this PC; our fork at 73a2b82e, 2026-11-08*.
+- **Nemotron 3.5 Transcribe's packages:** IQ4_NL (default) 20.37 GB + its encoder 1.67 GB; Q4_K 21.67, Q3_K 17.29,
+  Q2_K 13.95 GB (+ the same encoder); since upstream 408935bf it takes `nemotron_transcribe.disk_experts` (routed
+  experts read from the file into `expert_cache_size` slots, 8 by default). — *the catalog, ../audio.cpp
+  docs/models/nemotron_transcribe.md, 2026-11-08*.
+- **The kit's Auto placement weighed Drama 3 at its files.** `needOf` takes the larger of audio.cpp's estimate and
+  the files; Drama 3's default package has no estimate and 22.9 GB of files, so without a card measurement on the
+  machine Auto put it on the CPU ("its files are about 23 GB, more than this card's 8 GB"), though with Experts from
+  disk it takes ~7.2 GB of the 8 GB card (§10.33). The plan's D16 fixes it. — *the kit's speech_placement.js,
+  2026-11-08*.
+- **The machine's lockup, 2026-11-08 ~14:14** (Windows' System log): a low-virtual-memory warning at 10:34 —
+  audiocpp_cli.exe 22.8 GB (VocalRender Pro on the CPU), audiocpp_server.exe 16.5 GB (the app's CPU speech server),
+  blender.exe 9.0 GB on the 32 GB PC; Windows services timing out from 11:00 (12, 15, 18 an hour) until the hang;
+  last heartbeat 13:53, hard restart 14:15. MediaTek's Bluetooth service (MTKBTSVC) gains ~100 handles a minute (the
+  family release measured 1.39 M handles and a 9 GB paged pool that morning). — *Event Viewer, Get-Process,
+  2026-11-08*.
 
 ## Records not yet distilled
 

@@ -61,6 +61,26 @@
 
 ## The next build
 
+### The latest models tested as voices you can sell, and the two picks marked wherever a model is chosen (decided 2026-11-08)
+STATE:  DECIDED 2026-11-08 — the user: "i want the latest model whou told you to hold that for nex release, you tsted
+        new engines thats greate but left out the other new vocpm2 and other, why"; "so the app should make it abouvies
+        that 1 this is best model for cocmmercial, 2 this is best model for non commercial, does it make this very
+        cleary?"; "do the test with th newer models dont stop until it is all done"; "it needs to be obvoius in othe
+        rparts of the app, model selecttion, do a prpofessional job not half baked". After the machine's lockup: "you
+        make all decisions on your own but ony after you think each decision adverserily until you dont flip your
+        anwers, i dont what to have to do anything or interact with you until the app is complete and ready for
+        releaese".
+WHY:    my 2026-11-07 hold ("the new packages come after the release") kept the newest sellable candidates — a new
+        VoxCPM2 package among them — away from the commercial pick.
+NOT:    a non-commercial model as a round's subject (BreezeTTS 2's 4-bit package dropped — the plan's D13); a candidate
+        held behind a release date.
+BUILT:  docs/plans/2026-11-08-latest-models.md (D9–D15, every decision mine, attacked): the fork's upstream merge built
+        (73a2b82e); the model files at 73ce4162 with the new families' licence readings; the picks marked in every model
+        picker (D12: `GET /v1/book-voices/picks`, `ModelPickChips.vue`); the user docs. Not committed until its end run.
+OPEN:   D15's steps 1–7 — Drama 3 and Nemotron Transcribe on the merged build, Kitten TTS 2's and VocalRender Pro's
+        retakes, the scoring, the new recognisers, the window, the end run, the kit's development-build module.
+GO:     given 2026-11-08 (above).
+
 ### The release is STOPPED: the best engine you can sell with, tested and tuned first (decided 2026-11-07)
 STATE:  DECIDED 2026-11-07 — the user: "the point wa the best for commercial and i just realized everything we
         have been testing to get the best results are on breeze tts 2 which is not what we are supposed to focus
@@ -230,9 +250,9 @@ OPEN:   B9's majors move with the family (Electron 45, jsdom 31, Biome, electron
         44.10.0, electron-builder 26.15.3, Biome 2.5.15, jsdom ^30.1.2); B10's rest (the kit's pin — with the
         tag; the kit's 2026-10-20 changes 1, 3, 11 and the start checks are tested by the release run); D1–D3
         decided 2026-11-08 (the one-click item above: the user's listen skipped, Release enabled, JustVoice
-        handed to the family release session); D4: no website for this release (decided 2026-11-07). After the release: the model revision
-        past 661a224e with its new packages curated (Kitten TTS 2's 20261021 voices, Pocket TTS Small, VoxCPM2
-        VocalRender Pro, Phonon-2 — each its licence reading; decided 2026-11-07); re-add the five "later" ideas and the global hotkey and paste
+        handed to the family release session); D4: no website for this release (decided 2026-11-07). The model revision past 661a224e with its new
+        packages curated: moved BEFORE the release by the user's word, 2026-11-08 (the latest-models item above — the
+        2026-11-07 "after the release" was my rec, overturned). After the release: re-add the five "later" ideas and the global hotkey and paste
         (`git show 69e00a8d:docs/dev/IDEAS.md`; the hotkey's ruling, a C++ addon: docs/plans/2026-10-05-electron-node-study.md §9).
         From the release on (mine, 2026-11-08, after web-4c's note): a seeded prompt whose text is revised lists its
         old text in `featurePromptHeals` (the kit's seed.js heals, as JustWrite's FEATURE_PROMPT_HEALS), since a user
@@ -285,6 +305,10 @@ BUILT:  nothing. FINDING 2026-10-29: `jv` (1de98891, 2026-10-19) is 150 commits 
 OPEN:   at the release (upstream merged again — 27f41cac, above): tag `v0.9.4-jv.7`, the kit's audiocpp rows and pin
         moved (the pin is the kit's since round E), `seed_audiocpp_catalog.json` regenerated at the tag and committed
         (`scripts/audiocpp-catalog.js`; the old `catalog.json` name ended 2026-10-29).
+        2026-11-08: upstream merged once more by the family release session — 73a2b82e (upstream 408935bf: Drama 3 and
+        Nemotron Transcribe on shared MoE execution), local in ../audio.cpp, `jv` on GitHub still 6d64f04e. JustVoice
+        tests what it changes (the latest-models item, D15 steps 1–2); the tag comes from it once that passes, and the
+        catalog at the tag goes with the model files at 73ce4162 (that item's D9).
         And the standing rule, 2026-10-29: "before we do any work on audio cpp nextime we should update the fork
         and test it in our app, this should be in i guess the core or jv, this should be true for any forks for
         futre apps that we may use" — in the kit's `docs/family-rules.md` (every web app imports it) and
