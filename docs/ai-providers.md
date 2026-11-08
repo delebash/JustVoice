@@ -61,7 +61,10 @@ unless you choose **Read: with examples** or **Read: rules only** on Script
 for that run; a route card's Lab run or an API call forces its own route per
 run too. Thinking is a per-feature preset setting like anywhere else — it
 ships on for **Reasoned extraction** (speaker attribution's routes, Direction,
-and Find same people's Frontier card) and off on every other preset.
+and Find same people's Frontier card) and off on every other preset. A Claude
+(Anthropic) provider takes no temperature or samplers from a preset: Anthropic's
+current API refuses them on every Claude model, so Claude answers at its own
+defaults.
 
 ## Your own plan instead of a key (LLM)
 

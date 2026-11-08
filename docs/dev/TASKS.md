@@ -144,7 +144,7 @@ BUILT:  B1 da7d1b05 · B2 c8a7d653 · B7 860a18b8 · B3 abae21a1 (re-run words "
         at its latest within its range (root, server, Capacitor, e2e), the MCP SDK 1.32.2; left `npm audit`'s 5
         moderate in `@vue/test-utils`' js-beautify (glob, minimatch — tests only, never shipped; its fix is a
         breaking downgrade); sass-embedded pinned to 1.107.1 (`overrides`: 1.108.0's Windows package has no
-        `sass.snapshot`, which its own loader needs — every Quasar build failed); Playwright's 1.65 browser.
+        `sass.snapshot`, which its own loader needs — every Quasar build failed) — the pin removed 2026-11-07 by the family release: 1.108.1 ships the file again; Playwright's 1.65 browser.
         B6: the silence runaway is gone at fork 281de44a (RESEARCH §9; the guard stays; the FINDING closed).
         B10: the model revision fd2fe4c3 tried, its 14 changed families re-tested, and put back (the fork item
         above: it brings packages not curated yet; 14 server tests fail with it). B11: the three docs audits'

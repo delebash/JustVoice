@@ -15,7 +15,7 @@
   "dependencies": {
     "@delebash/core": "file:../../just-core/packages/core",
     "@delebash/sqlite-sync": "file:../../just-sqlite-sync",
-    "@fastify/busboy": "^3.2.2",
+    "@fastify/busboy": "^3.2.5",
     "@modelcontextprotocol/sdk": "1.32.2",
     "diff": "^9.0.0",
     "lru-cache": "^11.5.3",
