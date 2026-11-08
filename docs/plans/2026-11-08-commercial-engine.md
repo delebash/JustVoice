@@ -68,8 +68,12 @@ money and accounts.
   idle sleep) only if the designer ran on the CPU. Measured as the batch ended (03:50 local): one load
   only, VoxCPM2 on the card; the card 501–612 MiB after (nvidia-smi); left: one idle speech server
   (397 MB RAM, no model) and the Node server. Pell had no line, so JustDirect skipped its
-  character voice on purpose; one clone (Ines) and one batch was the whole call. To do: close
-  JustVoice when its run ends; send "card free".
+  character voice on purpose; one clone (Ines) and one batch was the whole call. The run ended
+  09:13:45 UTC with no errors on my side; JustVoice closed (its process tree, the speech server
+  included; 17494 doesn't answer); web-4c gave just-stage "card free" itself. Mistakes: my first log
+  watch piped through `cut`, which held its lines, so it was blind (I read the log directly; the
+  numbers stand); and I stopped a leftover `tail -f` in the same command that printed what it was. It
+  turned out an orphan (its parent gone, its log last written 2026-10-29), but look first, then stop.
 - [x] The smoke gate on the user's data and the real window, after "card free" (above). The
   placements I changed are back to Auto (Ming, Transcription).
 - [x] JustDirect's client API built (`api/client_api.js`, voices_api changes, models, health
