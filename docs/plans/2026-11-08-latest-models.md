@@ -11,6 +11,12 @@ the judge, the picks). Its rules stand here.
 - "so the app should make it abouvies that 1 this is best model for cocmmercial, 2 this is best
   model for non commercial, does it make this very cleary?"
 - The go: "do the test with th newer models dont stop until it is all done"
+- After the lockup (2026-11-08, ~15:25): "so rethink on these recs adverserily and go cooridinate with
+  just-stage as to when you cna use pc resources"; "you make all decisions on your own but ony after
+  you think each decision adverserily until you dont flip your anwers, i dont what to have to do
+  anything or interact with you until the app is complete and ready for releaese". So: every decision
+  is mine, attacked until it holds; no questions to the user until JustVoice is complete and ready for
+  release; the release itself stays the user's word.
 
 Who held them: I did. The new packages were put after the release on my rec (2026-11-07, the
 close-out's B10, "your recs go"), and the commercial job (D3's candidates) never reopened that.
@@ -150,6 +156,39 @@ Each heavy piece booked with the other sessions first (the global rule). Rounds:
 licences (found VoxCPM2's changed files); 2 cost and the machine (VocalRender alone, RAM gates);
 3 what the update adds (the recognisers); 4 surprise and order (the dev app warms the chat model onto
 the card: start it only inside my card booking, unload the chat model if it loads); 5 nothing new.
+
+**D15 — what is left to make JustVoice ready for release, attacked again (2026-11-08 ~15:30, mine;
+supersedes D14).** Rounds: 1 past rulings — Nemotron Transcribe back (the merge changed it; D14 had
+dropped it silently); the fork's push and tag stay the release session's (the user, 2026-11-07: "hand
+it off to the release session"); TASKS records the user's 2026-11-08 overturn of "after the release".
+2 the sellable recipe as a whole — the file check widens from VoxCPM2 to every default model whose
+files changed at 73ce4162: VoxCPM2 (`clone_model`), Qwen3-TTS 1.7B VoiceDesign (`design_model`
+qwen3-vd), Qwen3-ASR 1.7B (the transcription preset, the run's read-back); Drama 3's files are
+unchanged. 3 cost and the machine — the renders go through the app's own server, headless, with the
+dev build (`JUSTVOICE_AUDIOCPP_BUILD`, as for JustDirect's runs): no window, so no chat model warmed
+onto the card; VocalRender Pro finishes seed 7 (2 retakes) and is compared with VoxCPM2's seed-7
+takes of the same lines; seeds 8–9 only if it is not clearly behind — the app can't offer it
+(audio.cpp's web UI doesn't list it for VoxCPM2), so a pick change would need a NOT STANDARD step,
+and ~50 min of the whole machine at 22.8 GB committed is what started the lockup (D14's "all three
+seeds" flipped, with this reason). 4 the judge — Drama 3's piece is `drama3-word` (round 10 planned
+it; `data/round10` never got it): its plain takes against round 6k's plain takes (same text, seed,
+voice, top-k 4097) test the merged build, its told takes score Drama 3 the app's way; no judge reads
+narration, so no new model can move the narrator pick, only a regression could. 5 the user's view,
+the whole app and kit — nothing changed. The order, each piece booked with just-stage and
+just-direct-mocap first, one heavy piece at a time:
+1. Card + most RAM: `drama3-word` (78 takes, ~6 s each by round 6k) on the merged build.
+2. Card + RAM: Nemotron Transcribe, one transcription (its CPU expert offload).
+3. CPU: Kitten TTS 2's 10 retakes, then VocalRender Pro's 2.
+4. Card: read-back and the feeling score for every sellable arm; the recipe's three changed files
+   checked (tensor data, then same-seed takes if it differs); one transcription each on Orukeet,
+   VibeVoice ASR Streaming 7B and Haas (a Japanese line Kokoro speaks).
+5. VocalRender seeds 8–9 only by rule 3. A pick changes only on the judge's evidence, said with its
+   limits.
+6. A fresh build; the marks in the real window, every picker clicked; the end run once (lint,
+   server, unit, guard, smoke, e2e); commit; RESEARCH 10.40; TASKS; the user docs' last check.
+7. The kit's development-build module once just-direct-mocap says "kit pushed": JustVoice's
+   dev_build.js onto it, with its own server-suite run if that comes after step 6.
+Light work (docs, scripts) runs while the machine is booked to others.
 
 ## The standard each piece follows
 
