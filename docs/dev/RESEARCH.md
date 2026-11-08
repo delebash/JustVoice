@@ -5648,6 +5648,34 @@ one-click defaults. 2026-11-08: no more listening pages — the session judges.
 - **VocalRender Pro** (the new VoxCPM2 package past 661a224e) is a singing model on VoxCPM2
   (✓ huggingface.co/pymaster/VocalRender), not speech. — *web*.
 
+### 10.40 The latest model files, their new speech models, and the picks marked (2026-11-08)
+
+`docs/plans/2026-11-08-latest-models.md` (the job, D9–D12); the pickers' survey:
+`docs/plans/2026-11-08-latest-models-picker-survey.md`. The user: "i want the latest model … you tsted
+new engines thats greate but left out the other new vocpm2 and other".
+
+- **The model repo's main is 73ce4162 (2026-11-07)**, 497 files; from 661a224e: 45 files added, 144
+  with other bytes, none removed (both tree listings). Added: Breeze-TTS-2 Q4_K (4.46 GB), Haas-ja
+  v1.0, Irodori-TTS v4.1 Small MeanFlow, KittenTTS2 20261021 (Q4/Q8/TQ2), Kokoro-82M multilingual
+  Q8, MOSS-SoundEffect v2, MuLaCover, MuScriptor, Orukeet, PocketTTS-Small (2M/7M/18M, each with a
+  "refl" twin), Underdog-Bark-3.0, VibeVoice-ASR-Streaming-7B, VoxCPM2 VocalRender Pro (9.54 GB,
+  original precision). — *HF API, 2026-11-08*.
+- **The catalog at our fork's 73a2b82e and 73ce4162:** 142 families (58 speech), 455 packages, 373
+  offered by audio.cpp's web UI; 11 package files not in their pinned repo; 0 whose embedded spec names
+  another family. The app builds 265 model rows (240 at 661a224e). Not offered: VocalRender Pro (audio.cpp's
+  web UI doesn't list it for VoxCPM2 — a different package stem), Irodori's MeanFlow packages (no web UI
+  entry offers them), Kokoro multilingual (in no spec of the fork). — *scripts/audiocpp-catalog.js,
+  generated.js*.
+- **Licences read at their sources:** Pocket TTS Small CC-BY-4.0 (Kyutai, checkpoint db04f0e6) — Yes;
+  Haas-ja Apache-2.0 — Yes; Orukeet r3 CC BY-SA 4.0 ("permits commercial use and modification, with
+  attribution and applicable ShareAlike requirements") — Yes; **Underdog Bark 3.0 CC BY-NC 4.0 since
+  2026-11-05** (commit e7a641c0 "Switch the license to CC BY-NC 4.0"; released 2026-10-15 under
+  CC-BY-4.0; its card: "commercial use: license@conway.tech") — Separate licence, while audio.cpp's
+  table (checked 2026-10-29) still says CC-BY-4.0 and its GGUF header records no licence or source
+  revision; Kitten TTS 2 (Stellon Labs Community License) — commercial use needs registering with
+  Stellon Labs. — *each maker's page, 2026-11-08*.
+- **Kitten TTS 2's two packages share 47 voice names** (94 voices, 47 ids before D11). — *generated.js*.
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next
