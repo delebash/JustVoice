@@ -129,6 +129,28 @@ engine as a default or as the subject of a tuning round — only as a comparison
 arm is BreezeTTS 2's round-10 score. The user, 2026-11-08: "why are we even doing anything with breeze
 ata all". The arm is removed from `server/scripts/round4_render.js`; its 60 takes stay unscored.
 
+**D14 — what is left, attacked in five rounds after the restart (2026-11-08, mine).** The round-11
+test list was never a decision and never attacked (the 4-bit BreezeTTS 2 went straight into the
+script); D9–D12 had one pass each. This list is the consensus; round 5 changed nothing.
+1. Drama 3 narrating on the merged build (its code changed; it is the sellable narrator) — first on
+   the card, its takes compared with round 10's.
+2. VoxCPM2's three files changed bytes (+7 KB each, 661a224e → 73ce4162): check its sound is the
+   same — the tensor data compared, or same-seed takes if they differ.
+3. Kitten TTS 2 (Conditional: register with Stellon Labs) — its 10 retakes, CPU, alone. Limit said
+   plainly: no cloning or direction, so it can't play characters.
+4. VocalRender Pro (Apache-2.0, the "new vocpm2" the user named) — its 2 retakes and seeds 8–9, CPU,
+   alone, only with room in RAM, watched every 20 s, stopped under 4 GB free. Seed 7 alone rejected:
+   the score compares three-seed means.
+5. Read-back and the LAION score for every sellable arm, beside round 10.
+6. The new recognisers the app now lists that you can sell — Orukeet, VibeVoice ASR Streaming 7B,
+   Haas (Japanese, on a line Kokoro speaks) — one transcription each through the app, not rounds;
+   Underdog Bark 3.0 (non-commercial) left out.
+7. The marks in the real window, every picker clicked; then the end run once.
+Each heavy piece booked with the other sessions first (the global rule). Rounds: 1 past rulings and
+licences (found VoxCPM2's changed files); 2 cost and the machine (VocalRender alone, RAM gates);
+3 what the update adds (the recognisers); 4 surprise and order (the dev app warms the chat model onto
+the card: start it only inside my card booking, unload the chat model if it loads); 5 nothing new.
+
 ## The standard each piece follows
 
 | Piece | Standard | Kit code |
