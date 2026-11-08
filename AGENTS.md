@@ -36,8 +36,8 @@ npm run dev:spa                    # the renderer alone in a browser tab (start 
 npm run build:spa                  # the browser build (dist/spa), what the headless server serves
 
 npm run server                     # headless; same UI at / (options after --)
-npm run lint && npm run test:server && npm run test:unit   # all must pass before a commit
-node ../just-core/scripts/check-family.js            # the family guard — must pass too
+npm run lint && npm run test:server && npm run test:unit   # once, when the job's whole list is done (never before each commit)
+node ../just-core/scripts/check-family.js            # the family guard — in the same end run
 ```
 
 The dev data folder is `<repo>/data` (gitignored) — the desktop app, `npm run server` and every
