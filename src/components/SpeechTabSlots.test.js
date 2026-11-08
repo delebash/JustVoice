@@ -161,6 +161,25 @@ test("an engine's head: its kind, its licence in plain words, testing, and Set a
   expect(texts("button")).toEqual(["Default ✓"]);
 });
 
+test("an engine's head marks a best pick beside its licence — the sets' own words, not-for-sale in its colour", async () => {
+  // GET /v1/book-voices/picks (latest-models D12): the store reads it when the head mounts
+  api.safeRequest.mockImplementation(async (url, fallback) =>
+    url === "/v1/book-voices/picks"
+      ? {
+          picks: [
+            { model: "pocket", engine: "pocket", name: "Pocket TTS", set: "best", label: "Best acting — not for sale", sellable: false, commercial: "Separate licence", roles: ["characters", "narrator"] },
+          ],
+        }
+      : fallback,
+  );
+  const engines = await mount(SpeechEngineHead, { engineId: "pocket" });
+  engines.items = [{ ...POCKET, licence: { name: "X", commercial: "Separate licence", table: "No", summary: "Ask its makers.", checked: "2026-11-08", url: "" }, tested: null }];
+  await flush();
+  await nextTick();
+  expect(texts(".ev-caps > span")).toEqual(["TTS", "Best acting — not for sale · plays the characters and narrates", "Commercial use: Separate licence", "NOT TESTED BY JUSTVOICE YET"]);
+  expect(el.querySelector(".ev-pick").classList.contains("ev-pick--not-for-sale")).toBe(true);
+});
+
 test("the filters edit the tab's own object; Fits this card shows only with a card of its own", async () => {
   const filters = {};
   api.safeRequest.mockResolvedValue({ vramTotalMb: 8192, memArch: "discrete" });

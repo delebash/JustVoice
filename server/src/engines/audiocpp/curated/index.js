@@ -32,6 +32,7 @@ import * as gigaam_asr from "./gigaam_asr.js";
 import * as glm_tts from "./glm_tts.js";
 import * as gradium_phonon from "./gradium_phonon.js";
 import * as granite5asr from "./granite5asr.js";
+import * as haas_asr from "./haas_asr.js";
 import * as higgs_audio_stt from "./higgs_audio_stt.js";
 import * as higgs_audio_tts from "./higgs_audio_tts.js";
 import * as hviske_asr from "./hviske_asr.js";
@@ -72,6 +73,7 @@ import * as phonon2_asr from "./phonon2_asr.js";
 import * as piper_tts from "./piper_tts.js";
 import * as plapre from "./plapre.js";
 import * as pocket_tts from "./pocket_tts.js";
+import * as pocket_tts_small from "./pocket_tts_small.js";
 import * as qwen3_asr from "./qwen3_asr.js";
 import * as qwen3_tts from "./qwen3_tts.js";
 import * as sanotts from "./sanotts.js";
@@ -79,6 +81,7 @@ import * as sense_asr from "./sense_asr.js";
 import * as soprano_tts from "./soprano_tts.js";
 import * as sopro_tts from "./sopro_tts.js";
 import * as supertonic from "./supertonic.js";
+import * as underdog_bark3 from "./underdog_bark3.js";
 import * as vibevoice from "./vibevoice.js";
 import * as vibevoice_asr from "./vibevoice_asr.js";
 import * as vibevoice_asr_streaming from "./vibevoice_asr_streaming.js";
@@ -116,6 +119,7 @@ export const CURATED = {
   glm_tts,
   gradium_phonon,
   granite5asr,
+  haas_asr,
   higgs_audio_stt,
   higgs_audio_tts,
   hviske_asr,
@@ -156,6 +160,7 @@ export const CURATED = {
   piper_tts,
   plapre,
   pocket_tts,
+  pocket_tts_small,
   qwen3_asr,
   qwen3_tts,
   sanotts,
@@ -163,6 +168,7 @@ export const CURATED = {
   soprano_tts,
   sopro_tts,
   supertonic,
+  underdog_bark3,
   vibevoice,
   vibevoice_asr,
   vibevoice_asr_streaming,

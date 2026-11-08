@@ -464,7 +464,7 @@ authors document it:
 | **BreezeTTS 2** | The direction as its instruction, with its guidance raised to 4 on a directed line unless you set it yourself |
 | **Higgs Audio 3** | Its own emotion and style tags — happy, sad, angry, fearful, contemptuous (as disgust), whispered, shouted. It reads any other tag aloud, so nothing else is sent |
 | **Fish Audio S2 Pro** | The emotion as a tag and the direction as a short description at the start of the line |
-| **Fish Audio Drama 3** | One note in square brackets before the words, as its makers write it (*[choked up, crying quietly] I left his jacket by the door.*): the line's direction in words, else a word for its emotion (*[sad]*, *[whispering]*). Tested by JustVoice: in blind listening it was the best of the models you can sell with on loud lines, plain on most quiet ones, and a delivery note in other words than the book's cue hurt it. Its licence is *Conditional* — under USD 500,000 a year, with "Built with Fish Audio" shown ([why](#commercial-use-in-plain-words)). It narrates the one-click audiobook by default (since 2026-11-08: its narration was preferred even to BreezeTTS 2's). It loads with its experts read from the model file as they are needed (**Experts from disk** on its row, on by default, and none of its 40 expert layers on the CPU), so it fits an 8 GB card at about 7 GB, mapping ~17 GB of the file in memory; on a 24 GB card switch it off for speed. It loads with `npm run dev` now, and in the installed app once the next speech runtime release ships |
+| **Fish Audio Drama 3** | One note in square brackets before the words, as its makers write it (*[choked up, crying quietly] I left his jacket by the door.*): the line's direction in words, else a word for its emotion (*[sad]*, *[whispering]*). Tested by JustVoice: in blind listening it was the best of the models you can sell with on loud lines, plain on most quiet ones, and a delivery note in other words than the book's cue hurt it. Its licence is *Conditional* — under USD 500,000 a year, with "Built with Fish Audio" shown ([why](#commercial-use-in-plain-words)). It narrates the one-click audiobook by default (since 2026-11-08: its narration was preferred even to BreezeTTS 2's). Since 2026-11-08 its download is Fish Audio's replacement checkpoint of 29 October (the GGUF maker's *V2*); the blind listening above heard the first one of 13 October. Its licence is the same. It loads with its experts read from the model file as they are needed (**Experts from disk** on its row, on by default, and none of its 40 expert layers on the CPU), so it fits an 8 GB card at about 7 GB, mapping ~17 GB of the file in memory; on a 24 GB card switch it off for speed. It loads with `npm run dev` now, and in the installed app once the next speech runtime release ships |
 | **MOSS-TTSD**, **MOSS-TTS v1.5** | The line's direction in words, as its instruction (since 2026-10-15; not yet tested by JustVoice) |
 | **Ming 3.0 TTS** | Its makers' seven emotion labels — happy, sad, angry, fearful, contemptuous (as disgust) — on the copied voice; shouted and whispered as its loud and soft volume. Sarcastic and written direction aren't sent: its emotion control takes only its labels (since 2026-11-08) |
 | **VoxCPM2** | On a copied voice, the line's emotion as a word in its brackets — *(frightened. fearful)* — without the book's cue words: told that way it played 11 of 26 lines with the full feeling in blind listening, against 6 of 52 told the cue words (since 2026-11-08). A line's own instruction, typed on Render, still goes as written |
@@ -573,6 +573,13 @@ The cases:
   tries the graphics card first; if it doesn't fit, Load runs it on the CPU*. An
   estimate that fits the card only without the speech margin — audio.cpp's 8 GB
   for Qwen3-TTS Base 1.7B on an 8 GB card — says the same.
+- **Experts from disk** — Fish Audio Drama 3 and Nemotron Transcribe load with
+  **Experts from disk** on (their row's switch): their routed experts stay in the
+  model file and only a bounded cache of them goes to the card, so their files
+  (22.9 and 22 GB) don't say what the card needs. Auto tries the card and says
+  *memory not measured yet*; the first load measures it — Drama 3 took about
+  7.2 GB of an 8 GB card — and a load that doesn't fit moves to the CPU. Switch
+  Experts from disk off and the files count again.
 - **Nothing known** — no measurement, no estimate and no card reading: *memory
   not measured yet*, and the model's first load measures it.
 
@@ -644,8 +651,10 @@ JustVoice's own reading (since 2026-10-15; the seven audio.cpp added in its
 2026-10-29 update — Gradium Phonon, LFM3-Audio, Ming 3.0 TTS, Ming 3.0 Audio
 Tiny, Plapre 3, Whistle ASR and XTTS v2 — were read the same day, and the two its
 2026-11-05 update adds, Nemotron 3.5 Transcribe and Phonon-2, on that day; Phonon-2
-isn't offered until JustVoice's model downloads move to its newer files, the ones
-audio.cpp loads).
+is offered since JustVoice's model downloads moved to audio.cpp's newer files on
+2026-11-08; the new packages those files bring — Pocket TTS Small, Kitten TTS 2's
+refreshed voices, Orukeet, Haas, Underdog Bark 3.0 and VibeVoice ASR Streaming 7B —
+were read that day).
 
 ### Tested by JustVoice
 
@@ -758,6 +767,36 @@ The row above the models narrows and orders the list:
 A filter shows only the models that match and opens their engines; an engine
 with none drops out.
 
+## The best picks, marked wherever you pick a model
+
+JustVoice tested the models for an audiobook's acting and marks two picks everywhere a model is
+chosen:
+
+- **Best voices you can sell** — VoxCPM2 *plays the characters*, Fish Audio Drama 3 *narrates*. Their
+  licences let you sell what you make (Drama 3's is *Conditional*: under USD 500,000 a year, with
+  "Built with Fish Audio" shown).
+- **Best acting — not for sale** — BreezeTTS 2 *plays the characters and narrates*. It acts best of
+  all, but selling what you make with it needs its makers' separate licence.
+
+The marks come from the voice sets on Studio's one-click card (**Voices**, the `book_voices.sets`
+setting), so they change when the sets do. Where they show:
+
+- **A model list** — Persona → **New clone**, **New design**'s model to keep a take on, Voices →
+  **⧉ Copy to another model…** — lists the picks first, each under its mark, then *Other models*.
+  Every model's second line says its commercial use, and the chosen model shows its mark and its
+  *Commercial use* chip under the list. These lists start on the best voice you can sell.
+- **A model filter** — on Voices, Personas, a persona's page and Studio → Cast — says the mark under
+  each pick.
+- **Studio → Cast → Models to choose from** — the mark after the model's name.
+- **AI Settings → Speech** — the mark beside the engine's *Commercial use* chip, and the two picks
+  first in the table below.
+- **Quick setup** — under *The voices for books*.
+
+**Example.** On a persona, open **New clone**: **Model** reads *VoxCPM2 · loaded* with *Best voices
+you can sell · plays the characters* and *Commercial use: Yes* under it. Open the list: *Best voices
+you can sell* holds VoxCPM2 (and Fish Audio Drama 3, which narrates), *Best acting — not for sale*
+holds BreezeTTS 2 (*Commercial use: Separate licence*), and *Other models* holds the rest.
+
 ## Picking an engine is picking what a voice can do
 
 The Speech tab shows this table above the models. A persona's voice
@@ -767,6 +806,8 @@ tags, or only pace, pitch and gain.
 
 | If you want… | Use | What you give up |
 |---|---|---|
+| Best voices you can sell | VoxCPM2 plays the characters · Fish Audio Drama 3 narrates | Fish Audio Drama 3: commercial use Conditional — sell what you make if you meet its conditions |
+| Best acting — not for sale | BreezeTTS 2 plays the characters and narrates | BreezeTTS 2: commercial use Separate licence — its makers sell or grant one |
 | Ready-made voices, fast, on any machine | Kokoro — 54 built-in voices, 9 languages | No cloning and no written direction — pace, pitch, gain and pauses only |
 | English voices made for the CPU | Kitten — 8 built-in voices | English only; no cloning, no written direction |
 | Someone's own voice on a modest machine | Pocket — cloning, 20 built-in voices | One language per model; no written direction |
@@ -1056,7 +1097,7 @@ model's measured speed there instead once it has one (*— 0.1× real time here*
 | The line says | It runs on | When |
 |---|---|---|
 | *it fits in the card's free memory* | the graphics card | Auto read the card, and the model fits beside what other programs hold — at what it took here, or with the safety margin on an estimate |
-| *memory not measured yet* | the graphics card | The card can't be read, or the model has no size yet; its first load measures it |
+| *memory not measured yet* | the graphics card | The card can't be read, or the model has no size yet — Drama 3 and Nemotron Transcribe with Experts from disk among them; its first load measures it |
 | *audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU* | the graphics card | Only audio.cpp's estimate is too big for the card, or fits it only without the speech margin (since 2026-10-16), and the files fit with the margin |
 | *it fits beside the AI model (3433 MB)* | the graphics card | An AI model is on the card, and this model's measured size fits beside it |
 | *3.2× real time here, which keeps the graphics card for the AI model* | the CPU | An AI model is on the card, this model doesn't fit beside it, and it speaks at least 2× real time on the CPU (*on the reference machine* until measured here) |

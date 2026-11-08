@@ -43,11 +43,13 @@ export const SMALL_FILES = {
       },
     },
   ],
-  // sanoTTS: each download's config.json.
+  // sanoTTS: each download's config.json. At 4a8194aa (the repo's main when the catalog was built at
+  // our fork's 73a2b82e, 2026-11-08) all 18 are byte for byte the ones at c532a5d2 (fetched, size and Git
+  // id checked against the catalog). (was: c532a5d2 — until 2026-11-08.)
   sanotts: [
     {
       repo: "ampixa/sanoTTS",
-      revision: "c532a5d21c078a16cb633718e9182bfd71a5b760",
+      revision: "4a8194aa1dd958033ee449b3ad30c37e536b216e",
       sha256: {
         "gguf/config.json": "58eabea7a1156d436bf30731a47c86c3f1ec02623ee2a545a7cf042a8517b4dd",
         "gguf/heart/config.json": "0b3ffed9db2975352d662b4648006e1e6dfde9892bd30dcac6fea3d013607dd6",
@@ -77,10 +79,11 @@ export const SMALL_FILES = {
 // at the pinned model revision (its API's tree listing, `lfs.oid`, read 2026-10-29). The 79 English,
 // German, Spanish and Portuguese files downloaded here before (their `files.json`) carry the same
 // ids; the Italian ones were not downloaded. A language's two precisions share its folder, so each
-// file is one entry. French has no presets. At the model revision 661a224e every one of the 99 has the id
-// it had at f861648c (both tree listings, 2026-10-29). (was: pinned at f861648c — until that move.)
+// file is one entry. French has no presets. At the model revision 73ce4162 every one of the 99 has the id
+// it had at 661a224e and f861648c (the tree listings, 2026-10-29 and 2026-11-08). (was: pinned at
+// 661a224e until 2026-11-08, f861648c before 2026-10-29.)
 export const POCKET_VOICE_FILES = {
-  revision: "661a224e9d9adbd49c01626f85e426f5f425d771",
+  revision: "73ce4162f6cce370dd533c6782b772135c1b2a8e",
   sha256: {
     // english
     "PocketTTS-GGUF/english/embeddings/anna.safetensors": "5ea82f78db006c9fd34e32ddd5aae82674b5b32646097977436458d00af80dfa",

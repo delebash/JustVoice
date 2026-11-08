@@ -7,6 +7,8 @@
 //   - `pieceLength`: the piece length a line reaches the model in, which its price is measured at —
 //     the user's own for the model, else the catalog's, under `generation.max_chunk_chars` (800);
 //   - `loadOptionsKey`: the load-option set its price is kept under (runtime_options.js);
+//   - `filesOnCard`: false when those load options keep its weights off the card (disk-backed
+//     experts), so the kit doesn't weigh it at its files before a load measures it;
 //   - `sessionOptions`: the load options the user saved for it, registered by every load;
 //   - `transcribe`: a transcription's request and time limit — its recording at 16 kHz for a
 //     recogniser that takes nothing else;
@@ -60,6 +62,15 @@ export function loadOptionsKey(row) {
   return runtimeOptions.priceKeyFor(engineId, version);
 }
 
+/** Whether all of the model's files go to the graphics card with the options it loads with — false
+ * for Fish Audio Drama 3 and Nemotron Transcribe with experts from disk (their default), whose routed
+ * experts stay in the file: the kit then weighs it by its first load on the card, not by its files
+ * (speech_placement.js `needOf`; decided 2026-11-08). */
+export function filesOnCard(row) {
+  const { engineId, row: version } = versionOf(row);
+  return !runtimeOptions.weightsOffCard(engineId, version);
+}
+
 /** The load options the user saved for the model, as every load registers them (those other than
  * audio.cpp's own defaults). */
 export function sessionOptions(row) {
@@ -95,4 +106,4 @@ export async function transcribe(body, row) {
 }
 
 /** Every hook, as `installLlm`'s `runtimeSpeech.audiocpp`. */
-export const SPEECH_HOOKS = Object.freeze({ warm, pieceLength, loadOptionsKey, sessionOptions, transcribe, beforeDownload });
+export const SPEECH_HOOKS = Object.freeze({ warm, pieceLength, loadOptionsKey, filesOnCard, sessionOptions, transcribe, beforeDownload });

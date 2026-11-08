@@ -393,6 +393,10 @@ persona; pick the one you like. Then keep it one of two ways:
 | **💾 Keep as a description** | the words themselves | spoken from them again, so it can shift a little between lines; takes written direction on top |
 | **📌 Keep take N**, on the **Model** you pick | that take, as its clip, on the model you pick (any model that clones — VoxCPM2, BreezeTTS 2, Chatterbox Turbo or Nano, Multilingual, Qwen3 Base, Pocket TTS and the rest) | the same voice every time; it takes what that model takes — written direction on VoxCPM2 and BreezeTTS 2, tags on Turbo and Nano, none on Multilingual, Qwen3 Base or Pocket TTS |
 
+**Model**, here and on **New clone**, lists the best picks first — *Best voices you can sell* (VoxCPM2)
+and *Best acting — not for sale* (BreezeTTS 2) — then *Other models*, each with its commercial use, and
+starts on the best voice you can sell ([Speech engines → The best picks](engines.md#the-best-picks-marked-wherever-you-pick-a-model)).
+
 Either way the voice stays a design and keeps its description. Under
 **Tags** or **Sliders only** the description can't be kept as it is — both
 design models take written direction — so that button is off and says so, and

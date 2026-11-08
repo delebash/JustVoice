@@ -2010,6 +2010,12 @@ section.block > h3 {
    free licence, but its makers offer one. */
 .ev-lic--separate{border-color:var(--danger-line);color:var(--danger-ink)}
 .ev-lic--unclear{border-style:dashed;color:var(--ink-3)}
+/* A best pick's mark (2026-11-08, docs/plans/2026-11-08-latest-models.md D12): "Best voices you can
+   sell · plays the characters" filled in the accent, "Best acting — not for sale" in the warn gold —
+   beside the licence chip wherever a model is picked (components/ModelPickChips.vue, the Speech
+   tab's engine heads). */
+.ev-pick{font-size:12.5px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049);white-space:nowrap}
+.ev-pick--not-for-sale{border-color:#e2d2b0;background:#f5edda;color:#8a6a2a}
 .ev-cap.tested{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
 /* An engine's own notes on its head in the Speech tab — its description, what it is best for,
    what JustVoice's testing found, its licence in plain words (engine list slice 4): a line of

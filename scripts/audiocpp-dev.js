@@ -21,13 +21,15 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, readdirSync, readFileSync, readlinkSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ENV, INFO_FILE } from "../server/src/engines/audiocpp/dev_build.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WIN = process.platform === "win32";
 export const CHECKOUT = resolve(ROOT, "..", "audio.cpp");
 export const BUILD = join(CHECKOUT, "build", "jv-dev");
 export const BIN = join(BUILD, "bin");
-export const ENV = "JUSTVOICE_AUDIOCPP_BUILD";
+// The variable the server reads the build from — dev_build.js's, the one name for it.
+export { ENV };
 const CUDA_VERSION = "12.4"; // the release's cuda12 build (release.yml windows-cuda matrix)
 const MSVC_TOOLSET = "14.44"; // the VS 2022 toolset CI builds with; CUDA 12.4 needs it
 
@@ -233,7 +235,7 @@ function describe() {
     commit = git("rev-parse", "--short=8", "HEAD");
     dirty = git("status", "--porcelain", "--untracked-files=no") !== "";
   } catch {}
-  writeFileSync(join(BIN, "jv-dev-build.json"), `${JSON.stringify({
+  writeFileSync(join(BIN, INFO_FILE), `${JSON.stringify({
     commit, dirty, source: relative(ROOT, CHECKOUT), built: new Date().toISOString(),
   }, null, 1)}\n`);
 }

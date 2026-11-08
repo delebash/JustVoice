@@ -53,7 +53,10 @@ test("a model does what its spec says: copies a voice, makes one from words, spe
     const v = modelRow(engineId, model);
     return { clone: v.voice_cloning, design: v.voice_design, voices: v.preset_voices };
   };
-  expect(does("kitten_tts2", "kitten_tts2")).toEqual({ clone: true, design: false, voices: 47 });
+  // Kitten TTS 2 at the model revision 73ce4162: the 20261021 package (the engine's first) and the
+  // first one, each with its own 47 voices (latest-models D11).
+  expect(does("kitten_tts2", "kitten_tts2-kittentts220261021")).toEqual({ clone: true, design: false, voices: 47 });
+  expect(does("kitten_tts2", "kitten_tts2-kittentts2")).toEqual({ clone: true, design: false, voices: 47 });
   expect(does("supertonic", "supertonic")).toEqual({ clone: false, design: false, voices: 10 });
   expect(does("cosyvoice3", "cosyvoice3")).toEqual({ clone: true, design: false, voices: 0 });
   // Breeze's clone and voice-design entries are one package: one model doing both.
@@ -88,10 +91,15 @@ test("a model does what its spec says: copies a voice, makes one from words, spe
 });
 
 test("built-in voices: audio.cpp's names, their model, a gender and language only where audio.cpp's docs give one", () => {
+  // Two packages, 47 voice names each: the first model keeps the plain ids, the other's carry its
+  // model (latest-models D11), so no id is shared.
   const kitten = voicesOf("kitten_tts2");
-  expect(kitten).toHaveLength(47);
-  expect(kitten.find((v) => v.name === "Bella")).toEqual({ id: "kitten_tts2_Bella", name: "Bella", language: "en", gender: "", model: "kitten_tts2" });
-  expect(kitten.find((v) => v.name === "German").language).toBe("de");
+  expect(kitten).toHaveLength(94);
+  expect(kitten.filter((v) => v.name === "Bella")).toEqual([
+    { id: "kitten_tts2_Bella", name: "Bella", language: "en", gender: "", model: "kitten_tts2-kittentts220261021" },
+    { id: "kitten_tts2-kittentts2_Bella", name: "Bella", language: "en", gender: "", model: "kitten_tts2-kittentts2" },
+  ]);
+  expect(kitten.filter((v) => v.name === "German").map((v) => v.language)).toEqual(["de", "de"]);
   // KugelAudio's doc: German female, British English female and male.
   expect(voicesOf("kugelaudio").map((v) => [v.name, v.language, v.gender])).toEqual([
     ["default", "de", "female"],
@@ -121,7 +129,7 @@ test("built-in voices are voices in the app, listed like Kokoro's, each on its o
   try {
     const { voices } = await listVoices();
     const bella = voices.find((v) => v.id === "kitten_tts2_Bella");
-    expect(bella).toMatchObject({ engine: "kitten_tts2", source: "preset", model: "kitten_tts2", model_name: "Kitten TTS 2", gender: "" });
+    expect(bella).toMatchObject({ engine: "kitten_tts2", source: "preset", model: "kitten_tts2-kittentts220261021", model_name: "Kitten TTS 2 (2026-10-21)", gender: "" });
     // No direction file yet: can't be directed yet (the plan's E8).
     expect(bella.directed_by).toBe("not_yet");
     const usMale = voices.find((v) => v.id === "lfm2_audio_us_male");
@@ -136,7 +144,7 @@ test("built-in voices are voices in the app, listed like Kokoro's, each on its o
 });
 
 test("a built-in voice goes as audio.cpp names it; a model's one voice as none", () => {
-  const kitten = slot.toSpeechRequest(modelRow("kitten_tts2", "kitten_tts2"), { voice_id: "kitten_tts2_Bella", text: "Two days wrong!", ref_text: "x" });
+  const kitten = slot.toSpeechRequest(modelRow("kitten_tts2", "kitten_tts2-kittentts220261021"), { voice_id: "kitten_tts2_Bella", text: "Two days wrong!", ref_text: "x" });
   expect(kitten.voice).toBe("Bella");
   expect(kitten.voice_ref).toBeUndefined();
   expect(kitten.reference_text).toBeUndefined();
@@ -146,7 +154,7 @@ test("a built-in voice goes as audio.cpp names it; a model's one voice as none",
   // A voice that isn't one of its own, on a model that copies none: refused by name.
   expect(() => slot.toSpeechRequest(modelRow("supertonic", "supertonic"), { voice_id: "voice_x", text: "Hi." })).toThrow(/speaks only its built-in voices/);
   // A clip still wins on a model that clones and has built-in voices.
-  const clone = slot.toSpeechRequest(modelRow("kitten_tts2", "kitten_tts2"), { voice_id: "voice_x", text: "Hi.", audio_prompt_path: "C:\\clips\\hatter.wav" });
+  const clone = slot.toSpeechRequest(modelRow("kitten_tts2", "kitten_tts2-kittentts220261021"), { voice_id: "voice_x", text: "Hi.", audio_prompt_path: "C:\\clips\\hatter.wav" });
   expect(clone.voice_ref).toBe("C:/clips/hatter.wav");
   expect(clone.voice).toBeUndefined();
 });
@@ -218,7 +226,7 @@ async function warmUp(engineId, row, calibrateChars) {
 
 test("a model that speaks without a clip warms up on a full-length piece; a clone-only one can't", async () => {
   // M1: in its default built-in voice, at its spec's own piece budget (Kitten TTS 2's 380).
-  const [kitten, k] = await warmUp("kitten_tts2", modelRow("kitten_tts2", "kitten_tts2"), 800);
+  const [kitten, k] = await warmUp("kitten_tts2", modelRow("kitten_tts2", "kitten_tts2-kittentts220261021"), 800);
   expect(kitten).toBe(true);
   expect(k[0][1].voice).toBe("Bruno"); // the spec's default voice
   expect(k[0][1].input.length).toBeGreaterThan(300);
@@ -400,7 +408,7 @@ test("dictation is ready on the Transcription preset's recogniser, named as its 
   // reads the kit's readiness for it (kit_speech.js `transcriptionReadiness`), its model named by
   // our catalog where the kit's state names none.
   const { _sttReadiness } = await import("../src/api/capture_readiness_api.js");
-  const parakeet = engines.get("parakeet_tdt").VARIANTS.find((v) => v.id === "parakeet_tdt-q8");
+  const parakeet = engines.get("parakeet_tdt").VARIANTS.find((v) => v.id === "parakeet_tdt-parakeettdt-q8");
   vi.spyOn(kitSpeech, "transcriptionReadiness").mockReturnValue({ ready: true, need: "", model: parakeet.id, modelState: { id: parakeet.id, onDisk: true } });
   expect(_sttReadiness()).toMatchObject({ ready: true, display_name: parakeet.name, downloading: false });
   // No preset model: not set up, said as a state.

@@ -2,6 +2,26 @@
 
 ## v0.1.0
 
+- **Drama 3 and Nemotron Transcribe load on the graphics card by themselves (2026-11-08)** — with
+  **Experts from disk** on, their files (22.9 and 22 GB) no longer count as what the card needs, so
+  Auto tries the card and measures the first load instead of sending them to the CPU; Nemotron
+  Transcribe gets the same **Experts from disk** switch as Drama 3, with its experts read on one thread
+  (**Expert read threads**: more needs a speech runtime built with OpenMP); on an 8 GB card it takes about
+  5.4 GB ([Speech engines → Memory, before you load](engines.md#memory-before-you-load))
+- **Drama 3's newer checkpoint (2026-11-08)** — the narrator downloads Fish Audio's replacement checkpoint of
+  29 October (its GGUF maker's *V2*), about 23 GB, in place of the first one; the same licence
+  ([Speech engines](engines.md))
+- **The best picks, marked wherever you pick a model (2026-11-08)** — *Best voices you can sell*
+  (VoxCPM2 plays the characters, Fish Audio Drama 3 narrates) and *Best acting — not for sale*
+  (BreezeTTS 2): first in every model list, under each pick in the model filters, beside the
+  engine on AI Settings → Speech and in Quick setup, each model with its commercial use. New clone,
+  New design and Copy to another model start on the best voice you can sell
+  ([Speech engines → The best picks](engines.md#the-best-picks-marked-wherever-you-pick-a-model))
+- **The newest speech models (2026-11-08)** — the model files move to audio.cpp's latest
+  (2026-11-07): Pocket TTS Small, Kitten TTS 2's refreshed voices as **Kitten TTS 2 (2026-10-21)** (its
+  first voices stay, under **Kitten TTS 2**), a smaller BreezeTTS 2 (4-bit), and the recognisers Orukeet, Haas (Japanese), Underdog Bark
+  3.0 (non-commercial since 5 November) and VibeVoice ASR Streaming 7B. Models you have already downloaded whose files
+  changed download again on their next load ([Speech engines](engines.md))
 - **Voices you can sell, by default (2026-11-08)** — **Make the audiobook** now makes its voices on
   the models you may sell an audiobook made with: each character on **VoxCPM2**, the narrator on
   **Fish Audio Drama 3**, chosen by blind listening among the models you can sell with. The card's new

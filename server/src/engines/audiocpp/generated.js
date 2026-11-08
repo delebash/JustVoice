@@ -66,9 +66,22 @@ const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
 const PRECISION_STEM = /_(?:q8_0|q8|f16|fp16|bf16|safetensors|orig|f32|q4_k|q4_0)$/i;
 
 /** A model's name as the app shows it: its family's when the family has one model, else the
- * catalog entry's without the web UI's notes in brackets ("IndexTTS2.5 (tts, zh/en/ja/es/ar clone + emotion, GGUF Q8)" → "IndexTTS2.5"). */
-export const modelName = (m) =>
-  m.single ? m.fam.display_name : String(m.entry.display_name || m.fam.display_name).replace(/\s*\([^)]*\)\s*$/, "").trim();
+ * catalog entry's without the web UI's notes in brackets ("IndexTTS2.5 (tts, zh/en/ja/es/ar clone + emotion, GGUF Q8)" → "IndexTTS2.5")
+ * — unless that would give two models of the family one name: then each keeps its entry's whole
+ * name (`wholeName`: "Kitten TTS 2" and "Kitten TTS 2 (2026-10-21)", decided 2026-11-08,
+ * docs/plans/2026-11-08-latest-models.md D22). */
+export const modelName = (m) => {
+  const whole = String(m.entry?.display_name || m.fam.display_name).trim();
+  if (m.single) return m.fam.display_name;
+  return m.wholeName ? whole : whole.replace(/\s*\([^)]*\)\s*$/, "").trim();
+};
+
+/** The names, stripped of the web UI's notes, that two or more of a family's runnable models would
+ * share — those models keep their entries' whole names (modelName's `wholeName`). */
+function sharedNamesOf(fam, runnable) {
+  const names = runnable.map((r) => modelName({ single: false, fam, entry: r.entry }));
+  return new Set(names.filter((n, i) => names.indexOf(n) !== i));
+}
 
 /** The options a line can't set through a model's settings: the app sets them itself (the
  * line's text, the voice, its clip's words — `prompt_text` is VoxCPM1's name for them — the
@@ -467,9 +480,11 @@ export function generatedModels() {
   const out = [];
   for (const fam of offeredFamilies()) {
     const runnable = runnableOf(fam, speechEntry);
+    const shared = sharedNamesOf(fam, runnable);
     for (const r of runnable) {
       const modelId = modelIdOf(fam, fam.family, r, runnable);
       out.push({
+        wholeName: shared.has(modelName({ single: false, fam, entry: r.entry })),
         kind: "tts",
         engineId: fam.family,
         modelId,
@@ -496,8 +511,10 @@ export function generatedRecognisers() {
   for (const fam of offeredFamilies()) {
     const runnable = runnableOf(fam, recognitionEntry);
     const engineId = speaking.has(fam.family) ? `${fam.family}_asr` : fam.family;
+    const shared = sharedNamesOf(fam, runnable);
     for (const r of runnable) {
       out.push({
+        wholeName: shared.has(modelName({ single: false, fam, entry: r.entry })),
         kind: "stt",
         engineId,
         modelId: modelIdOf(fam, engineId, r, runnable),
@@ -542,7 +559,7 @@ export function builtinVoicesOf(m) {
     audiocpp_voice: spec,
   });
   if (m.ownVoice) return [one(builtinVoiceId(m.modelId, "model_default"), ownVoiceName(m), null)];
-  return m.voices.map((v) => one(builtinVoiceId(m.engineId, v), v, v));
+  return m.voices.map((v) => one(builtinVoiceId(m.voicePrefix ?? m.engineId, v), v, v));
 }
 
 // audio.cpp's wording where its language list describes rather than names ("100+ languages",
@@ -992,6 +1009,15 @@ export function generatedEngines() {
     // recommended one).
     const recommended = (m) => m.packages.some((p) => p.pkg.id === fam.ui?.recommended_package);
     const models = [...unordered.filter(recommended), ...unordered.filter((m) => !recommended(m))];
+    // A voice keeps its plain id (`kitten_tts2_Bella`) on the engine's first model that has its name;
+    // a later model with the same names carries its own model id in theirs (`kitten_tts2-kittentts2_Bella`)
+    // — Kitten TTS 2's 20261021 package and its first share 47 names (the model revision 73ce4162,
+    // docs/plans/2026-11-08-latest-models.md).
+    const named = new Set();
+    for (const m of models) {
+      if (m.voices.some((v) => named.has(v))) m.voicePrefix = m.modelId;
+      for (const v of m.voices) named.add(v);
+    }
     const variants = models.flatMap((m) => {
       // A precision's first package keeps the id and name it always had.
       const taken = new Set();

@@ -21,10 +21,13 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { UiButton, UiChip, UiField, UiInput, UiSelect, UiTextarea, languageName, pushToast, reportError } from "@delebash/ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
+import { groupedByPicks, pickOf, sellableFirst } from "../services/modelPicks.js";
 import {
   DESIGN_NOTE, MODEL_NOTE, engineOfRow, makerModelOptions, preferredModel, previewCandidate,
 } from "../services/voiceMakers.js";
 import { useApi } from "../stores/api.js";
+import { useVoicePicksStore } from "../stores/voicePicks.js";
+import ModelPickChips from "./ModelPickChips.vue";
 
 const props = defineProps({
   rows: { type: Object, default: () => ({}) },
@@ -41,6 +44,11 @@ const router = useRouter();
 
 // ── The design model ────────────────────────────────────────────────────
 const options = computed(() => makerModelOptions(props.rows, props.engines, "supports_voice_design"));
+// The design models with their commercial use; the model a take is kept on with the best picks first,
+// starting on the best voice you can sell until the user picks one (latest-models D12).
+const picksStore = useVoicePicksStore();
+void picksStore.ensureLoaded();
+const designOptions = computed(() => groupedByPicks(options.value, []));
 const model = ref("");
 watch(options, (opts) => {
   if (opts.some((o) => o.value === model.value)) return;
@@ -121,12 +129,16 @@ const descriptionOff = computed(() => (props.direction && props.direction !== "w
   ? "Qwen3 VoiceDesign and VoxCPM2 take written direction — keep a take on a model below instead."
   : ""));
 const cloneOptions = computed(() => makerModelOptions(props.rows, props.engines, "supports_voice_cloning", props.direction));
+const cloneGrouped = computed(() => groupedByPicks(cloneOptions.value, picksStore.picks));
 const cloneModel = ref("");
-watch(cloneOptions, (opts) => {
-  if (!opts.some((o) => o.value === cloneModel.value)) {
-    cloneModel.value = preferredModel(opts, ["voxcpm2", "chatterbox-turbo", "chatterbox-multilingual", "qwen3-base", "pocket"]);
+const clonePicked = ref(false);
+watch([cloneOptions, () => picksStore.picks], ([opts, picks]) => {
+  if (!clonePicked.value || !opts.some((o) => o.value === cloneModel.value)) {
+    cloneModel.value = preferredModel(opts, [...sellableFirst(picks), "voxcpm2", "chatterbox-turbo", "chatterbox-multilingual", "qwen3-base", "pocket"]);
   }
 }, { immediate: true });
+const clonePick = computed(() => pickOf(picksStore.picks, cloneModel.value));
+const cloneEngine = computed(() => engineOfRow(props.engines, cloneModel.value));
 const keeping = ref(false);
 async function keepDescription() {
   if (blocker.value || descriptionOff.value || !name.value.trim() || keeping.value) return;
@@ -173,12 +185,13 @@ async function keepTake() {
     <div class="jv-card__body jv-col">
       <div class="jv-field-row">
         <UiField label="Model" layout="block">
-          <UiSelect v-model="model" :options="options" width="name" :disabled="!options.length" placeholder="None can design here" />
+          <UiSelect v-model="model" :options="designOptions" width="name" :disabled="!options.length" placeholder="None can design here" />
         </UiField>
         <UiField v-if="languageOptions.length > 1" label="Language" layout="block">
           <UiSelect v-model="language" :options="[{ value: '', label: 'Auto' }, ...languageOptions]" width="id" />
         </UiField>
       </div>
+      <ModelPickChips v-if="model" :licence="engine?.licence ?? null" />
       <p v-if="DESIGN_NOTE[model]" class="jv-hint">{{ DESIGN_NOTE[model] }}</p>
       <p v-if="notLoaded" class="jv-hint">{{ row?.display_name || model }} isn't loaded — the first preview loads it, about a minute.</p>
       <div v-if="runtimeMissing" class="jv-banner jv-banner--warn">
@@ -225,13 +238,14 @@ async function keepTake() {
         <div class="jv-col jv-col--start">
           <div class="jv-field-row">
             <UiField label="Model" layout="block">
-              <UiSelect v-model="cloneModel" :options="cloneOptions" width="name" :disabled="!cloneOptions.length"
-                placeholder="None can be directed this way" />
+              <UiSelect v-model="cloneModel" :options="cloneGrouped" width="name" :disabled="!cloneOptions.length"
+                placeholder="None can be directed this way" @update:model-value="clonePicked = true" />
             </UiField>
             <UiButton intent="secondary" :label="chosenTake ? `📌 Keep take ${chosenTake.n}` : '📌 Keep a take'"
               :loading="keeping" :disabled="!chosenTake || !cloneModel || !name.trim()"
               :title="chosenTake ? '' : 'Preview first, then keep the take you like'" @click="keepTake" />
           </div>
+          <ModelPickChips v-if="cloneModel" :pick="clonePick" :licence="cloneEngine?.licence ?? null" />
           <p class="jv-hint">The take becomes the voice's clip, so it sounds the same on every line. {{ MODEL_NOTE[cloneModel] || "" }}</p>
         </div>
       </div>

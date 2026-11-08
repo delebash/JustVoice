@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: MIT
 // VibeVoice ASR Streaming — what audio.cpp's spec can't say (docs/plans/2026-10-11-audiocpp-engine-catalog.md §4).
 
+// What JustVoice measured (docs/plans/2026-11-08-latest-models.md D15): new from the model revision
+// 73ce4162, on our fork's merged build, through the app's Transcription, a 10-second clip — the 1.5B
+// package on the 8 GB card in 14 s with the load, the 7B on the CPU (Auto: audio.cpp's ~18 GB) in 33 s;
+// both wrote 28 of its 29 words ("he only" for "you only").
+export const TESTED = {
+  date: "2026-11-08",
+  record: "docs/plans/2026-11-08-latest-models.md D15",
+  note: "28 of 29 words of a 10-second clip: 1.5B on the card in 14 s, 7B on the CPU in 33 s, with the load.",
+};
+
 // Its licence in plain words — can a person use it, and what it writes, in work they sell? Our
 // reading of the licence at its source, checked 2026-10-15 (RESEARCH §10.13); the licence itself
 // is what counts.

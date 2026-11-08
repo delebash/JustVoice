@@ -8,12 +8,16 @@
 // the CPU — the model then holds about 7.2 GB of the card and maps ~17 GB of the file in memory.
 // audio.cpp's own defaults (experts resident, 4 banks on the CPU) are its 24 GB profile and don't
 // fit an 8 GB card; a bigger card can switch disk experts off on the model's row (decided
-// 2026-11-08, docs/plans/2026-11-08-commercial-engine.md).
+// 2026-11-08, docs/plans/2026-11-08-commercial-engine.md). With experts from disk its 22.9 GB of
+// files don't all go to the card, so Auto weighs it by its first load there, not by its files
+// (`keepsWeightsOffCard`, runtime_options.js weightsOffCard; decided 2026-11-08,
+// docs/plans/2026-11-08-latest-models.md D16).
 export const LOAD_OPTIONS = {
   disk_experts: {
     label: "Experts from disk",
     hint: "Reads the routed experts from the model file as they're needed, so it fits an 8 GB card; switch off on a 24 GB card for speed.",
     default: true,
+    keepsWeightsOffCard: true,
   },
   cpu_expert_layers: {
     label: "Expert layers on the CPU",

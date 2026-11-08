@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-// A development build of audio.cpp — what `npm run dev` runs instead of the pinned release
-// (the port of justvoice/engines/audiocpp/dev_build.py).
+// A development build of audio.cpp — what `npm run dev` runs instead of the pinned release.
 //
 // `scripts/audiocpp-dev.js` builds our fork's checkout beside this one (`../audio.cpp`, into
 // `build/jv-dev`) before the app starts and names its bin folder in JUSTVOICE_AUDIOCPP_BUILD
@@ -11,73 +10,29 @@
 // - every feature the kit knows is on, both what the app offers and what the build answers for
 //   (kit_settings.js `shippedHas`, `runtimeHas`) — the dev build is the fork's latest;
 // - its backend comes from the build's own CMake cache;
-// - the runtime row says it is the development build (`version`).
+// - the runtime row says it is the development build (`version`, "dev · 73a2b82e + local changes").
 //
-// A packaged app ignores the variable.
+// Reading the build is the kit's since 2026-11-08 (`@delebash/core/runner/dev_build` `devBuild` — one
+// module for every app, moved there from this file and JustDirect's): its server, backend, commit,
+// version, and a packaged app ignoring the variable. What stays ours: the variable's name, the info
+// file our build script writes beside the server (`jv-dev-build.json`: commit, dirty, source), and a
+// memo — dsp_client and kit_settings ask on every call.
 
-import { readFileSync, statSync } from "node:fs";
-import path from "node:path";
-import { runtime as dataRuntime } from "@delebash/core/platform/data_paths";
-import { getLogger } from "@delebash/core/platform/log";
-import { splitlines } from "@delebash/core/platform/py";
-
-const log = getLogger("justvoice.engines.audiocpp.dev_build");
+import { DEV_ENGINES, devBuild } from "@delebash/core/runner/dev_build";
 
 export const ENV = "JUSTVOICE_AUDIOCPP_BUILD";
-export const SERVER_EXE = process.platform === "win32" ? "audiocpp_server.exe" : "audiocpp_server";
+/** What scripts/audiocpp-dev.js writes beside the server: `{commit, dirty, source, built}`. */
+export const INFO_FILE = "jv-dev-build.json";
+export const SERVER_EXE = DEV_ENGINES.audiocpp.server;
 
-export class DevBuild {
-  constructor({ binDir, exe, backend, commit, dirty, source }) {
-    this.binDir = binDir;
-    this.exe = exe;
-    this.backend = backend; // "cuda" | "vulkan" | "metal" | "cpu" — from the build's CMake cache
-    this.commit = commit; // the checkout's commit when it was built ("" when unknown)
-    this.dirty = dirty; // the checkout had uncommitted edits
-    this.source = source; // the checkout, relative to this one ("..\\audio.cpp")
-    Object.freeze(this);
-  }
-
-  /** The runtime row's version (decided D4): "dev · 6a2bb4c5 + local changes". */
-  get version() {
-    const out = this.commit ? `dev · ${this.commit}` : "dev";
-    return this.dirty ? `${out} + local changes` : out;
-  }
-}
-
-function backendOf(cache) {
-  let text;
-  try {
-    text = readFileSync(cache).toString("utf8");
-  } catch {
-    return "cpu";
-  }
-  const on = new Set(splitlines(text).filter((l) => l.endsWith(":BOOL=ON")).map((l) => l.split(":", 1)[0]));
-  for (const [key, backend] of [
-    ["ENGINE_ENABLE_CUDA", "cuda"],
-    ["ENGINE_ENABLE_VULKAN", "vulkan"],
-    ["ENGINE_ENABLE_METAL", "metal"],
-    ["GGML_METAL", "metal"],
-  ]) {
-    if (on.has(key)) return backend;
-  }
-  return "cpu";
-}
-
-const isFile = (p) => {
-  try {
-    return statSync(p).isFile();
-  } catch {
-    return false;
-  }
-};
-
-// functools.cache: the answer is kept until `current.cacheClear()`.
+// The answer is kept until `current.cacheClear()`.
 const memo = { has: false, value: null };
 
-/** The development build `npm run dev` pointed this server at, or null. */
+/** The development build `npm run dev` pointed this server at, or null: the kit's
+ * `{binDir, exe, backend, commit, dirty, source, version}`. */
 export function current() {
   if (memo.has) return memo.value;
-  memo.value = compute();
+  memo.value = devBuild("audiocpp", ENV, { infoFile: INFO_FILE });
   memo.has = true;
   return memo.value;
 }
@@ -85,29 +40,3 @@ current.cacheClear = () => {
   memo.has = false;
   memo.value = null;
 };
-
-function compute() {
-  const raw = String(process.env[ENV] || "").trim();
-  if (!raw || dataRuntime.frozen) return null;
-  const binDir = path.normalize(raw);
-  const exe = path.join(binDir, SERVER_EXE);
-  if (!isFile(exe)) {
-    log.warning(`${ENV} names ${binDir}, which has no ${SERVER_EXE} — running the pinned release`);
-    return null;
-  }
-  let info = {};
-  try {
-    info = JSON.parse(readFileSync(path.join(binDir, "jv-dev-build.json"), "utf8"));
-    if (info === null || typeof info !== "object") info = {};
-  } catch {
-    info = {};
-  }
-  return new DevBuild({
-    binDir,
-    exe,
-    backend: backendOf(path.join(path.dirname(binDir), "CMakeCache.txt")),
-    commit: String(info.commit || ""),
-    dirty: Boolean(info.dirty),
-    source: String(info.source || path.dirname(path.dirname(path.dirname(binDir)))),
-  });
-}

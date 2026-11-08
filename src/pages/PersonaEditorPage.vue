@@ -66,6 +66,9 @@ import { usePersonasStore } from "../stores/personas.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { pageFlow } from "@delebash/ui";
+import ModelPickChips from "../components/ModelPickChips.vue";
+import { hintedByPicks, pickOf } from "../services/modelPicks.js";
+import { useVoicePicksStore } from "../stores/voicePicks.js";
 
 const api = useApi();
 const route = useRoute();
@@ -346,10 +349,14 @@ watch(directionFilter, () => {
   }
 });
 const modelNames = computed(() => Object.fromEntries(voices.value.map((v) => [v.model, v.model_name || v.model])));
+// The best picks say so in the open list and on "This model" (latest-models D12).
+const picksStore = useVoicePicksStore();
+void picksStore.ensureLoaded();
 const modelOptions = computed(() => [
   { value: "", label: "All models" },
-  ...facetOptions(voices.value, voiceFilters.value, "model", (v) => v.model, (m, n) => `${modelNames.value[m] || m} (${n})`),
+  ...hintedByPicks(facetOptions(voices.value, voiceFilters.value, "model", (v) => v.model, (m, n) => `${modelNames.value[m] || m} (${n})`), picksStore.picks),
 ]);
+const modelPick = computed(() => pickOf(picksStore.picks, voice.value?.model));
 const genderOptions = computed(() => [
   { value: "", label: "Any gender" },
   ...facetOptions(voices.value, voiceFilters.value, "gender",
@@ -1304,6 +1311,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
             <div class="jv-card__body jv-col jv-col--start">
               <template v-if="voice">
                 <strong>{{ modelName }}</strong>
+                <ModelPickChips :pick="modelPick" :licence="voice.licence ?? null" />
                 <div class="jv-inline-row persona-editor__tags">
                   <UiTag :intent="directionCell(directedBy, tagCount(row)).intent" :title="directionCell(directedBy).title">{{
                     directionCell(directedBy, tagCount(row)).label }}</UiTag>

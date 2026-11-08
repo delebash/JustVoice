@@ -218,6 +218,10 @@ const ARMS = {
     pin: "gpu",
     options: { "fish_drama3.disk_experts": "true", "fish_drama3.cpu_expert_layers": "0" },
   },
+  // ── Round 11 (docs/plans/2026-11-08-latest-models.md) — the model revision 73ce4162's new speech
+  // models, told the app's way (curated/<family>.js), as round 4's arms were ──
+  "kitten2-r11": { engine: "kitten_tts2", variant: "kitten_tts2-kittentts220261021-q8", told: appWay },
+  "pocket-small-r11": { engine: "pocket_tts_small", variant: "pocket_tts_small-18mf32", told: appWay },
   // ── Round 9 (RESEARCH §10.37) ──
   // DotTTS takes a feeling only through its Edit model, as a second pass over a take: the text
   // wrapped in `<emo desc="…">` in the authors' form (doteBench's "a happy and excited tone", arXiv

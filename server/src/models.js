@@ -534,6 +534,21 @@ export const DEFAULT_VOICE_SETS = [
   { key: "best", label: "Best acting — not for sale", clone_model: "breeze_tts", narrator_model: "breeze_tts" },
 ];
 
+/** A best pick every model picker marks (`GET /v1/book-voices/picks`, book_run.js `modelPicks`): a model
+ * of the first voice set a seller may sell with, or of the first one they can't, and the parts it
+ * plays there (docs/plans/2026-11-08-latest-models.md D12). */
+export const ModelPick = T.Object({
+  model: T.String(),
+  engine: T.Union([T.String(), T.Null()]),
+  name: T.String(),
+  set: T.String(),
+  label: T.String(),
+  sellable: T.Boolean(),
+  commercial: T.String(),
+  roles: T.Array(T.Union([T.Literal("characters"), T.Literal("narrator")])),
+});
+export const ModelPicksResponse = T.Object({ picks: T.Array(ModelPick) });
+
 export const BookVoicesSettings = T.Object({
   min_lines: opt(T.Integer({ minimum: 1 }), 3),
   design_model: opt(T.String(), "qwen3-vd"),

@@ -43,6 +43,8 @@ import { readPref, writePref } from "../services/prefs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { DIRECTION_OPTIONS, PERSONA_IS, baseLang, directionCell, sameLanguage, tagCount } from "../services/personaFacts.js";
 import { facetChoices, facetOptions, narrowed } from "../services/facets.js";
+import { hintedByPicks, labelWithPick, pickOf } from "../services/modelPicks.js";
+import { useVoicePicksStore } from "../stores/voicePicks.js";
 import { auditionPersona } from "../services/voiceAudition.js";
 import { voiceGender, voiceGenderWord } from "../services/voiceGender.js";
 
@@ -82,8 +84,12 @@ const narrator = computed(() => props.speakers.find((s) => s.role_label === "nar
 // ids, which still match where a model's id is its engine's (Kokoro, Kitten,
 // Pocket) — the others fall back to the default.
 const bookVoices = computed(() => voicesForBook(props.voices, props.project?.language));
+// The best picks say so after their names (the kit's multi-select shows a label only — latest-models D12).
+const picksStore = useVoicePicksStore();
+void picksStore.ensureLoaded();
 const castModelOptions = computed(() =>
-  castModelChoices(bookVoices.value, Object.fromEntries(props.engines.map((e) => [e.id, e.name]))),
+  castModelChoices(bookVoices.value, Object.fromEntries(props.engines.map((e) => [e.id, e.name])))
+    .map((o) => ({ ...o, label: labelWithPick(o.label, pickOf(picksStore.picks, o.value)) })),
 );
 const defaultModels = computed(() => {
   const nv = voiceById.value[personaOf(narrator.value)?.voice_id];
@@ -209,7 +215,7 @@ const personaFilters = computed(() => [
 const modelOptions = computed(() => {
   const names = Object.fromEntries(props.personas.map((p) => [p.model, p.model_name || p.model]));
   return [{ value: "", label: "All models" },
-    ...facetOptions(props.personas, personaFilters.value, "model", (p) => p.model, (m, n) => `${names[m] || m} (${n})`)];
+    ...hintedByPicks(facetOptions(props.personas, personaFilters.value, "model", (p) => p.model, (m, n) => `${names[m] || m} (${n})`), picksStore.picks)];
 });
 const directionOptions = computed(() =>
   facetChoices(props.personas, personaFilters.value, "direction", DIRECTION_OPTIONS, (p, d) => p.directed_by === d));

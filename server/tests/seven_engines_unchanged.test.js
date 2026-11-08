@@ -430,11 +430,11 @@ const RANGES = {
   voxcpm2: { retry_badcase_max_times: "open top", retry_badcase_ratio_threshold: "open" },
 };
 
-// The revision audio.cpp's own model repository is pinned at moved with the fork's merge (decided
-// 2026-10-29, RESEARCH §1.4 "MODEL_REVISION 661a224e"; 886403f3): the last revision before that
-// repository's embedded-spec refresh, every file downloaded here the same SHA-256 at both — so the
-// same files, at another commit's name. Each source of the seven there before names the new one.
-const REVISION_MOVED = { repo: "audio-cpp/audio.cpp-gguf", from: "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5", to: "661a224e9d9adbd49c01626f85e426f5f425d771" };
+// The revision audio.cpp's own model repository is pinned at: 661a224e from 2026-10-29 (RESEARCH §1.4;
+// 886403f3), the repo's main 73ce4162 from 2026-11-08 (the user: "i want the latest model";
+// docs/plans/2026-11-08-latest-models.md D9). Each source of the seven at the recorded revision names
+// the pinned one.
+const REVISION_MOVED = { repo: "audio-cpp/audio.cpp-gguf", from: "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5", to: "73ce4162f6cce370dd533c6782b772135c1b2a8e" };
 function revisionMoved(was) {
   let moved = 0;
   for (const engine of Object.values(was)) {
@@ -448,6 +448,12 @@ function revisionMoved(was) {
   }
   return moved;
 }
+
+// At 73ce4162 every file of audio.cpp's repository the seven load has other bytes than at 661a224e:
+// the same tensor table and tensor data, a refreshed embedded spec (latest-models D9; measured for
+// VoxCPM2, Qwen3-TTS VoiceDesign and Qwen3-ASR, RESEARCH §10.40). So a moved source's size may
+// differ — and nothing else about it.
+const MOVED_SIZE = /^[a-z0-9_]+\.models\..+\.row\.sources\.\d+\.size_bytes$/; // model ids hold dots (kitten-mini-0.8)
 
 test("every model, voice and price key there before is there, the same — but what a decision changed", () => {
   const was = before().facts;
@@ -481,6 +487,14 @@ test("every model, voice and price key there before is there, the same — but w
     const { voices: _was, ...wasRest } = was[engineId];
     const { voices: _is, ...isRest } = is[engineId];
     Object.assign(found, differences(wasRest, isRest, engineId));
+  }
+  // D9: the moved sources' sizes, one each, a few KB apart (the embedded spec), then the rest by name
+  const sizes = Object.keys(found).filter((k) => MOVED_SIZE.test(k));
+  expect(sizes).toHaveLength(29);
+  for (const k of sizes) {
+    const [from, to] = found[k];
+    expect(Math.abs(to - from), k).toBeLessThan(64 * 1024);
+    delete found[k];
   }
   expect(Object.keys(found).sort()).toEqual(Object.keys(CHANGED).sort());
   // F4: one voice each, sent as no voice; F10: the same 30 languages.

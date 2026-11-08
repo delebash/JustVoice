@@ -5699,6 +5699,18 @@ new engines thats greate but left out the other new vocpm2 and other".
   card, every word of a 10 s clip in 36 s with the load. Its default 4 read threads fail without OpenMP ("parallel
   disk expert reads require ENGINE_ENABLE_OPENMP=ON"), which upstream's release builds and ours switch off. —
   *measured 2026-11-08*.
+- **Round 11's scores** (13 lines × told/plain × seeds 7–9, the Hatter's voice; the LAION feeling on told takes,
+  33 an arm, with a bootstrap over lines; the app's Qwen3-ASR read-back): Drama 3 V2 told the feeling's word
+  1.28 (0.81–1.80, gain 0.50, WER told 0.012 · plain 0.004); VoxCPM2 0.84 (0.55–1.14); BreezeTTS 2 1.13;
+  Drama 3 V1 told the cue 0.62; Pocket TTS Small 0.36 (gain 0.00, WER 0.020); Kitten TTS 2 0.36 (gain 0.00, WER
+  0.004); VocalRender Pro at seed 7 0.52 against VoxCPM2's 0.81 on the same lines, WER 0.42 (16 of 24 takes
+  flagged). Drama 3 V2's plain takes "Monotone vs. Expressive" 1.29 against V1's 1.06. The plan's D21 reads them.
+  — *measured 2026-11-08, scratchpad r11_tables.js*.
+- **The new recognisers on the merged build, through the app** (one 10 s English clip, the test voice's): Phonon-2
+  q8 every word, 9 s with the load; Orukeet r3 q8 every word, 11 s; VibeVoice ASR Streaming 1.5B q8 on the card
+  14 s and 7B q8 on the CPU (Auto: "audio.cpp says it needs about 18 GB") 33 s, both "he only" for "you only" (28 of
+  29); Haas-ja q8 every character of a Japanese sentence Kokoro's Alpha spoke, 11 s. The 7B's CPU load took ~15 GB
+  in seconds. — *measured 2026-11-08*.
 - **VocalRender Pro on the CPU holds ~21 GB**: 20.6 GB working set, 21.7 GB committed for one take (original
   precision, the fork's CLI). — *measured 2026-11-08*.
 - **Nemotron 3.5 Transcribe's packages:** IQ4_NL (default) 20.37 GB + its encoder 1.67 GB; Q4_K 21.67, Q3_K 17.29,

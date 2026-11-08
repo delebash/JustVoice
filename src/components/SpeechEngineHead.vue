@@ -12,13 +12,19 @@
 import { computed } from "vue";
 import { UiButton, openExternal, pushToast, reportError } from "@delebash/ui";
 import { useEnginesStore } from "../stores/engines.js";
+import { useVoicePicksStore } from "../stores/voicePicks.js";
 import { licClass, licTitle, reading } from "../services/engineFacts.js";
+import { markText, picksOfEngine } from "../services/modelPicks.js";
 
 const props = defineProps({
   engineId: { type: String, required: true },
 });
 
 const engines = useEnginesStore();
+// The best picks on this engine, marked beside its licence (latest-models D12).
+const picksStore = useVoicePicksStore();
+void picksStore.ensureLoaded();
+const picks = computed(() => picksOfEngine(picksStore.picks, props.engineId));
 const e = computed(() => engines.byId(props.engineId));
 const caps = computed(() => (e.value?.kinds?.length ? e.value.kinds : [e.value?.kind || "tts"]));
 // The OS gate's verdict, computed SERVER-side (`supported_on_this_os`) — never re-derived here:
@@ -46,6 +52,8 @@ async function setDefault() {
   <template v-if="e">
     <span class="ev-caps">
       <span v-for="c in caps" :key="c" class="ev-cap" :class="c">{{ c.toUpperCase() }}</span>
+      <span v-for="p in picks" :key="p.set + p.model" class="ev-pick" :class="{ 'ev-pick--not-for-sale': !p.sellable }"
+        :title="`${p.name} — the voice sets' pick (the one-click card's Voices)`">{{ markText(p) }}</span>
       <span v-if="e.licence" class="ev-lic" :class="licClass(e.licence.commercial)" :title="licTitle(e.licence)">Commercial use: {{ e.licence.commercial }}</span>
       <span class="ev-cap" :class="{ tested: e.tested }" :title="e.tested?.note || 'Works as audio.cpp describes it; JustVoice hasn\'t listened to it yet'">
         {{ e.tested ? 'TESTED BY JUSTVOICE' : 'NOT TESTED BY JUSTVOICE YET' }}

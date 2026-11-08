@@ -9,6 +9,7 @@
 // here is what our rows and our warm-up give it.
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
+import { CURATED } from "../src/engines/audiocpp/curated/index.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
 import { runtimeModelRows } from "../src/engines/audiocpp/kit_models.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
@@ -94,8 +95,8 @@ test("QwenCleo-ASR: its package as audio.cpp's catalog gives it, its languages i
     { hf_repo: "mohammedaly22/QwenCleo-ASR-GGUF", revision: "6884dc2054684a2bb5e70ac8074e43f9c9fcd78a", size_bytes: 2_477_476_256, files: ["qwencleo-asr-q8_0.gguf"] },
     {
       hf_repo: "audio-cpp/audio.cpp-gguf",
-      revision: "661a224e9d9adbd49c01626f85e426f5f425d771",
-      size_bytes: 1_129_966_496,
+      revision: "73ce4162f6cce370dd533c6782b772135c1b2a8e",
+      size_bytes: 1_129_969_856,
       files: ["Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
     },
   ]);
@@ -121,12 +122,12 @@ test("QwenCleo-ASR's row names each file where its download puts it: each reposi
   const files = (id) => rows.find((r) => r.id === id).files.map((f) => [f.slot, f.repo, f.revision, f.path]);
   expect(files("qwencleo-asr-q8")).toEqual([
     ["model", "mohammedaly22/QwenCleo-ASR-GGUF", "6884dc2054684a2bb5e70ac8074e43f9c9fcd78a", "qwencleo-asr-q8_0.gguf"],
-    ["aligner", "audio-cpp/audio.cpp-gguf", "661a224e9d9adbd49c01626f85e426f5f425d771", "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
+    ["aligner", "audio-cpp/audio.cpp-gguf", "73ce4162f6cce370dd533c6782b772135c1b2a8e", "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
   ]);
   // Qwen3-ASR's, one repository, each at its own path.
   expect(files("qwen3-asr-1.7b-q8")).toEqual([
-    ["model", "audio-cpp/audio.cpp-gguf", "661a224e9d9adbd49c01626f85e426f5f425d771", "Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-q8_0.gguf"],
-    ["aligner", "audio-cpp/audio.cpp-gguf", "661a224e9d9adbd49c01626f85e426f5f425d771", "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
+    ["model", "audio-cpp/audio.cpp-gguf", "73ce4162f6cce370dd533c6782b772135c1b2a8e", "Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-q8_0.gguf"],
+    ["aligner", "audio-cpp/audio.cpp-gguf", "73ce4162f6cce370dd533c6782b772135c1b2a8e", "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-q8_0.gguf"],
   ]);
   // Each registers the aligner from its slot, on the first alignment (round E, G11).
   for (const id of ["qwencleo-asr-q8", "qwencleo-asr-f16", "qwen3-asr-1.7b-q8", "qwen3-asr-0.6b-f16"]) {
@@ -180,7 +181,9 @@ test("voices, languages and piece budgets read from audio.cpp's files (F10)", ()
   expect(row("kokoro", "kokoro-82m-q8").split_chars).toBe(240);
   // Every package audio.cpp's own UI offers for the seven's models (installChoices), and every other
   // GGUF package of their entries, is offered where its files are at the pinned revision (audio.cpp's
-  // own Turbo f16 isn't) — Pocket TTS French too, clone-only (TASKS "Slice 4's gaps" 2).
+  // own Turbo f16 isn't) — Pocket TTS French too, clone-only (TASKS "Slice 4's gaps" 2). A package
+  // its family file leaves out, with the reason, isn't counted (`NOT_OFFERED`: VoxCPM2's singing
+  // VocalRender Pro, latest-models D23).
   const offered = new Set([...generated.generatedEngines().values()].flatMap((m) => [...m.VARIANTS, ...(m.PENDING_VARIANTS || [])].map((v) => v.audiocpp.package)));
   const missing = [];
   for (const family of generated.OWN_FAMILIES) {
@@ -190,7 +193,8 @@ test("voices, languages and piece budgets read from audio.cpp's files (F10)", ()
       return p?.format === "gguf" && !p.source.files.some((f) => f.missing);
     };
     for (const e of fam.entries.filter((x) => x.workflow === "tts" || x.workflow === "design" || x.workflow === "asr")) {
-      for (const id of [...(e.install_packages || []).map((c) => c.id), ...e.packages]) if (usable(id) && !offered.has(id)) missing.push(id);
+      const leftOut = CURATED[family]?.NOT_OFFERED ?? {};
+      for (const id of [...(e.install_packages || []).map((c) => c.id), ...e.packages]) if (usable(id) && !offered.has(id) && !leftOut[id]) missing.push(id);
     }
   }
   expect([...new Set(missing)].sort()).toEqual([]);

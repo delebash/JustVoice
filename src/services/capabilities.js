@@ -67,9 +67,12 @@ export function rowOptions(rows, engines, field) {
       name: b.row.display_name || b.rowId,
       label: `${b.row.display_name || b.rowId}${statusSuffix(b.engine)}`,
       value: b.rowId,
+      // its engine's commercial-use word (GET /v1/engines `licence`), for the pickers' second line
+      // (services/modelPicks.js `groupedByPicks`)
+      commercial: b.engine.licence?.commercial ?? null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
-    .map(({ label, value }) => ({ label, value }));
+    .map(({ label, value, commercial }) => ({ label, value, commercial }));
 }
 
 /**

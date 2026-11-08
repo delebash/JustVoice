@@ -238,6 +238,15 @@ test("alice_vii_from_one_press_to_an_m4b_with_the_time_and_tokens_written_down",
     { key: "light", label: "Lighter voices you can sell", models: "VoxCPM2", commercial: "Yes" },
     { key: "best", label: "Best acting — not for sale", models: "BreezeTTS 2", commercial: "Separate licence" },
   ]);
+  // The marks every model picker shows: the first set you can sell with and the first you can't —
+  // never the lighter one — each model once with the parts it plays (latest-models D12).
+  const picks = await c.get("/v1/book-voices/picks");
+  expect(picks.status).toBe(200);
+  expect(picks.json().picks.map(({ model, engine, set, label, sellable, commercial, roles }) => ({ model, engine, set, label, sellable, commercial, roles }))).toEqual([
+    { model: "voxcpm2", engine: "voxcpm2", set: "sell", label: "Best voices you can sell", sellable: true, commercial: "Yes", roles: ["characters"] },
+    { model: "fish_drama3-fishdrama3", engine: "fish_drama3", set: "sell", label: "Best voices you can sell", sellable: true, commercial: "Conditional", roles: ["narrator"] },
+    { model: "breeze_tts", engine: "breeze_tts", set: "best", label: "Best acting — not for sale", sellable: false, commercial: "Separate licence", roles: ["characters", "narrator"] },
+  ]);
   expect(before.plan.estimate.price).toBe(0);
   expect(before.plan.estimate.tokens_in).toBeGreaterThan(0);
 

@@ -483,6 +483,43 @@ export function voiceSets(settings) {
   return { voice_sets: sets, voice_set: current?.key ?? null };
 }
 
+/** Licence words a seller may sell an audiobook under (the commercial job's D1: Yes, or Conditional). */
+const SELLABLE = new Set(["Yes", "Conditional"]);
+
+/** The best picks every model picker marks, from the voice sets in their order (`book_voices.sets`):
+ * the first set a seller may sell with and the first one they can't — each of its models once, with
+ * the parts it plays there → `[{model, engine, name, set, label, sellable, commercial, roles}]`
+ * (docs/plans/2026-11-08-latest-models.md D12). */
+export function modelPicks(settings) {
+  const { voice_sets: sets } = self.voiceSets(settings);
+  const chosen = [sets.find((s) => SELLABLE.has(s.commercial)), sets.find((s) => !SELLABLE.has(s.commercial))].filter(Boolean);
+  const out = [];
+  for (const s of chosen) {
+    for (const [model, role] of [
+      [s.clone_model, "characters"],
+      [s.narrator_model, "narrator"],
+    ]) {
+      let pick = out.find((p) => p.model === model && p.set === s.key);
+      if (!pick) {
+        const f = speechModelFacts(model);
+        pick = {
+          model,
+          engine: f?.engine ?? vmod.engineOfModel(model),
+          name: modelNameOf(model),
+          set: s.key,
+          label: s.label,
+          sellable: SELLABLE.has(s.commercial),
+          commercial: f?.licence?.commercial ?? "Yes",
+          roles: [],
+        };
+        out.push(pick);
+      }
+      if (!pick.roles.includes(role)) pick.roles.push(role);
+    }
+  }
+  return out;
+}
+
 // ── the run's life ────────────────────────────────────────────────────────
 
 /** The live run of a book (queued or running), or null. */

@@ -76,10 +76,22 @@ That was my miss: a new VoxCPM2 package is exactly a candidate for the best voic
     VocalRender Pro stopped at 20.6 GB (D19), 24 takes; the default recipe's old and new files on the
     same build and seed, CPU: VoxCPM2 plain and told, Qwen3-TTS VoiceDesign and Qwen3-ASR's text —
     **byte-identical**, and each run repeatable (scratchpad `file_ab.js`).
-  - Next: the scoring on the card beside family-release's CPU hour, after just-stage's face renders —
-    read-back (r11.js readback), LAION (`take-check empathic --device cuda`), similarity (`take-check
-    score`), the tables against round 10; then Phonon-2, Orukeet, VibeVoice ASR Streaming 7B and Haas one
-    transcription each.
+  - The scoring (17:41–17:47; D21's table): read-back of all 206 new takes, LAION on 258 on the card.
+    The recognisers (17:47–17:51): Phonon-2, Orukeet, VibeVoice ASR Streaming 1.5B (card) and 7B (CPU),
+    Haas — all work (RESEARCH 10.40); each test's Transcription preset put back and its model unloaded.
+    Placement choices this job left set, put back to Auto: Qwen3-ASR (the last session's CPU pin for its
+    read-back) and BreezeTTS 2 4-bit (round 11's pin). Left as found: Qwen3-TTS CustomVoice's GPU choice
+    (set 2026-10-29 by another session, purpose unknown).
+  - The end run (from 17:52): lint exit 0 (3 warnings and 4 infos, all in files untouched today);
+    unit — QuickSetup.test.js failed twice (no Pinia: the engines step's picks store), fixed and a test of
+    the picks added: 318/318; the family guard: no violations. Server suite — 9 failures in 4 files,
+    all the new revision's facts: Kitten's two packages (D11: ids and 94 voices), Parakeet's new id, two
+    models named "Kitten TTS 2" (D22, a real picker fault, fixed in the naming rule), VocalRender
+    counted as a left-out package (D23), the moved files' sizes (D9) — fixed, then 1313 passed + 1
+    skipped (exit 0). The kit: lint clean; core 1720 passed, 5 failed — sd.cpp size pins in
+    runtimes.test.js and runtime_service.test.js from just-direct-mocap's jd-1078 row (told; theirs to
+    fix, after my run); speech_placement passed. build:spa exit 0; the smoke gate on the user's data
+    (17494): every view, zero JS errors. Running: build:unpacked and the desktop e2e.
 - [x] 4. The marks, built (D12): server `modelPicks` + `GET /v1/book-voices/picks` (live: VoxCPM2
   characters and Drama 3 narrator "Best voices you can sell", BreezeTTS 2 "Best acting — not for
   sale"); renderer store `voicePicks`, `services/modelPicks.js`, `ModelPickChips.vue`, `.ev-pick`;
@@ -165,8 +177,9 @@ script); D9–D12 had one pass each. This list is the consensus; round 5 changed
    the card, its takes compared with round 10's.
 2. VoxCPM2's three files changed bytes (+7 KB each, 661a224e → 73ce4162): check its sound is the
    same — the tensor data compared, or same-seed takes if they differ.
-3. Kitten TTS 2 (Conditional: register with Stellon Labs) — its 10 retakes, CPU, alone. Limit said
-   plainly: no cloning or direction, so it can't play characters.
+3. Kitten TTS 2 (Conditional: register with Stellon Labs) — its 10 retakes, CPU, alone. (Corrected
+   2026-11-08 18:1x: it does clone — `voice_cloning: true`, round 11 spoke a copy of the Hatter on it; it
+   has no direction field, and D21 measured it doesn't act a feeling.)
 4. VocalRender Pro (Apache-2.0, the "new vocpm2" the user named) — its 2 retakes and seeds 8–9, CPU,
    alone, only with room in RAM, watched every 20 s, stopped under 4 GB free. Seed 7 alone rejected:
    the score compares three-seed means.
@@ -295,6 +308,70 @@ writes one); accepted with just-direct-mocap. 3 the script importing server code
 with the workspace installed (Quasar's beforeDev imports it by path); the other way round would put
 `scripts/` into the packaged server. 4 nothing new.
 
+**D21 — round 11's verdict: the picks stay (2026-11-08, mine).** Measured (the LAION feeling on the told
+takes, mean of the asked feeling's heads, 33 takes an arm, a bootstrap over lines; read-back WER by the
+app's Qwen3-ASR; scratchpad `r11_tables.js`):
+
+| arm | feeling | 95 % | gain | WER told · plain |
+|---|---|---|---|---|
+| Drama 3 V2 told the word (`drama3-word`) | 1.28 | 0.81–1.80 | 0.50 | 0.012 · 0.004 |
+| BreezeTTS 2 (not for sale, comparison) | 1.13 | 0.74–1.53 | 0.65 | — |
+| VoxCPM2 (the character pick) | 0.84 | 0.55–1.14 | 0.47 | 0.008 · 0.016 |
+| Ming 3.0 TTS | 0.65 | 0.34–0.99 | 0.13 | 0.012 · 0.012 |
+| Drama 3 V1 told the cue (`drama3-r6`) | 0.62 | 0.30–0.97 | 0.07 | 0.012 · 0.008 |
+| CosyVoice3 | 0.40 | 0.19–0.64 | 0.00 | — |
+| Pocket TTS Small | 0.36 | 0.16–0.59 | 0.00 | 0.020 · 0.020 |
+| Kitten TTS 2 | 0.36 | 0.13–0.64 | 0.00 | 0.004 · 0.004 |
+| VocalRender Pro, seed 7 (VoxCPM2 there: 0.81) | 0.52 | 0.26–0.80 | −0.03 | 0.42 · 0.41 (16 of 24 flagged) |
+
+Read: the narrator — Drama 3 V2's plain takes, like for like with V1's, are more expressive (1.29 against
+1.06) with no more words wrong, so no regression: D17 holds, V2 stays. The characters — Drama 3 told the
+feeling's word is the best-scored model you can sell, in BreezeTTS 2's tier; but its interval overlaps
+VoxCPM2's (0.81 < 1.14), and round 10's rule set before any number ("when two arms' bootstrap intervals
+overlap, a plain Yes beats a Conditional") keeps VoxCPM2 (Yes; 2.3 s a take against 7.3 s, ~3 GB against
+~17 GB mapped). Pocket TTS Small and Kitten TTS 2 read the words but don't act (gain 0.00): no set changes.
+VocalRender Pro drops ~4 words in 10 and acts less than VoxCPM2 on the same lines: out (D19). Rounds: 1 the
+rule was fixed before the numbers — changing it now would be choosing after seeing; held. 2 the judge's
+limit — it ranks sellable engines weakly (arm Spearman 0.20, the commercial job), which argues for the tie
+rule, not against it. 3 the user's ears — never heard Drama 3 told the word; the finding goes in the report
+as the one listen that could move a pick. 4 speaker similarity (take-check score) not run: it gates a pick
+change, and none is made. 5 nothing new.
+
+**D22 — two models of a family never share a name (2026-11-08, mine; found by the end run).** The
+naming rule strips the web UI's notes in brackets from a catalog entry's name, and at 73ce4162 it
+turned "Kitten TTS 2 (2026-10-21)" and "Kitten TTS 2" into one name — a picker listing the same name
+twice (engine_knob_wiring's "every capability row has its own display name", 75 names for 76 rows).
+The fix in the rule (generated.js `modelName`, `sharedNamesOf`): where stripping would give two of a
+family's runnable models one name, each keeps its entry's whole name. Only Kitten TTS 2 changes: its
+new checkpoint is "Kitten TTS 2 (2026-10-21)", its first "Kitten TTS 2". Also from the end run, the
+ids D11 moved — a family's models take their own ids once it has two (kitten_tts2-q8 →
+kitten_tts2-kittentts2-q8; parakeet_tdt-q8 → parakeet_tdt-parakeettdt-q8 beside Orukeet): the dev
+database names the old ids only in 7 model_measurements rows (prices and speeds, measured again on the
+next load); nothing is released yet, so no user's settings name them. Rounds: 1 standard — the
+names stay audio.cpp's own entry names; 2 blast radius — only families with a clash (one today); 3
+the other way, a hand-written `distinct_name` per family, has to be remembered at every catalog move;
+4 nothing new.
+
+**D23 — VocalRender Pro stays unoffered, with its reason in VoxCPM2's file (2026-11-08, mine; found by
+the end run).** seven_engines_slice4's rule (TASKS "Slice 4's gaps" 2: every GGUF package of the seven's
+entries is offered) counts it: it sits in VoxCPM2's speech entry at precision "orig". It isn't another
+precision of VoxCPM2 but a singing fine-tune, and round 11 measured it for speech (WER 0.42, acting
+below VoxCPM2, ~21 GB on the CPU); audio.cpp's web UI doesn't install it for speech either. So
+`curated/voxcpm2.js` `NOT_OFFERED` names it with the reason and the test skips what a family file
+leaves out that way. Rounds: 1 the slice-4 rule's purpose is not to hide a model's precisions — this is
+another model; 2 offering it labelled "singing" would still put a speech model that loses 4 words in 10
+in every model picker; 3 nothing new.
+
+**D24 — a pick's row in a model list says its whole mark (2026-11-08, mine; changes my D12, old and new
+here).** Seen in the real window: Voices → ⧉ Copy to another model… opens its list scrolled to the
+chosen model (QSelect's own behaviour), so "Best voices you can sell", the group's label, sat out of
+sight above VoxCPM2, whose row read only "Plays the characters · Commercial use: Yes". Old (D12): a
+pick's second line says the part it plays. New: it says the whole mark — "Best voices you can sell ·
+plays the characters · Commercial use: Yes" — as the filters already did (`hintedByPicks`), so the mark
+shows wherever the list is scrolled (services/modelPicks.js `second`). Rounds: 1 it repeats the group's
+label — accepted, the label alone fails when scrolled; 2 the other way, stopping the scroll to the
+chosen model, would change the kit's select for every app; 3 nothing new.
+
 ## The standard each piece follows
 
 | Piece | Standard | Kit code |
@@ -311,6 +388,9 @@ with the workspace installed (Quasar's beforeDev imports it by path); the other 
 ## Mistakes to avoid
 
 - Don't hold a candidate back behind a release schedule when the job is "the best".
+- Book a model's memory from its own row (audio.cpp's estimate, the files), never a guess: VibeVoice ASR
+  Streaming 7B was booked as "~10 GB", its row said ~18 GB, its CPU load took ~15 GB in 6 s and
+  just-stage's RAM guard stopped its Blender (2026-11-08, 17:51).
 - A wait loop's "not done" word must not occur in what it reads: `grep -q no` matched "phonon2" and the
   loop never ended (2026-11-08); match the exact field (`:no\b`) or count in the script.
 - A model's files can change in its own maker's repo, not only in audio.cpp's (Drama 3's V2, D17): check

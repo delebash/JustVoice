@@ -22,10 +22,13 @@ import {
   reportError,
 } from "@delebash/ui";
 import { acceptEngineTerms, handleTermsRefusal } from "../services/engineTerms.js";
+import { groupedByPicks, pickOf, sellableFirst } from "../services/modelPicks.js";
 import {
   MODEL_NOTE, blobToB64, checkClip, clipChecks, engineOfRow, makerModelOptions, preferredModel, previewCandidate,
 } from "../services/voiceMakers.js";
 import { useApi } from "../stores/api.js";
+import { useVoicePicksStore } from "../stores/voicePicks.js";
+import ModelPickChips from "./ModelPickChips.vue";
 
 const props = defineProps({
   rows: { type: Object, default: () => ({}) },      // GET /v1/engines/capabilities → engines
@@ -155,11 +158,18 @@ async function pickCapture(id) {
 
 // ── The model — one that can be directed the page's way ─────────────────
 const options = computed(() => makerModelOptions(props.rows, props.engines, "supports_voice_cloning", props.direction));
+// The best picks first, under their sets' labels (latest-models D12), and the maker starts on the best
+// voice you can sell — until the user picks one themselves.
+const picksStore = useVoicePicksStore();
+void picksStore.ensureLoaded();
+const grouped = computed(() => groupedByPicks(options.value, picksStore.picks));
 const model = ref("");
+const picked = ref(false);
 const ORDER = ["chatterbox-turbo", "voxcpm2", "chatterbox-multilingual", "qwen3-base", "pocket", "chatterbox-nano"];
-watch(options, (opts) => {
-  if (!opts.some((o) => o.value === model.value)) model.value = preferredModel(opts, ORDER);
+watch([options, () => picksStore.picks], ([opts, picks]) => {
+  if (!picked.value || !opts.some((o) => o.value === model.value)) model.value = preferredModel(opts, [...sellableFirst(picks), ...ORDER]);
 }, { immediate: true });
+const pick = computed(() => pickOf(picksStore.picks, model.value));
 const row = computed(() => props.rows[model.value] || null);
 const engine = computed(() => engineOfRow(props.engines, model.value));
 const runtimeMissing = computed(() => engine.value?.status === "not_installed");
@@ -316,13 +326,14 @@ async function keep() {
       <!-- The model it speaks on — set here, once (plan 10-03 §5.2). -->
       <div class="jv-field-row">
         <UiField label="Model" layout="block">
-          <UiSelect v-model="model" :options="options" width="name" :disabled="!options.length"
-            :placeholder="options.length ? 'Pick a model' : 'None can be directed this way'" />
+          <UiSelect v-model="model" :options="grouped" width="name" :disabled="!options.length"
+            :placeholder="options.length ? 'Pick a model' : 'None can be directed this way'" @update:model-value="picked = true" />
         </UiField>
         <UiField v-if="languageOptions.length > 1" label="Language of the clip" layout="block">
           <UiSelect v-model="language" :options="[{ value: '', label: 'Auto' }, ...languageOptions]" width="id" />
         </UiField>
       </div>
+      <ModelPickChips v-if="model" :pick="pick" :licence="engine?.licence ?? null" />
       <p v-if="MODEL_NOTE[model]" class="jv-hint">{{ MODEL_NOTE[model] }}</p>
       <p v-if="notLoaded" class="jv-hint">{{ row?.display_name || model }} isn't loaded — the first preview loads it, about a minute.</p>
       <div v-if="runtimeMissing" class="jv-banner jv-banner--warn">

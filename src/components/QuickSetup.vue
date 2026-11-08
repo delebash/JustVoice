@@ -26,6 +26,12 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { DownloadBar, createDownloadTask, errorText, fmtBytes, pushToast, reportError, runtimeEngineChannel } from "@delebash/ui";
 import { UiButton, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/ui";
+import ModelPickChips from "./ModelPickChips.vue";
+import { useVoicePicksStore } from "../stores/voicePicks.js";
+
+// The voice sets' best picks, said on the engines step (latest-models D12): what books are voiced with.
+const picksStore = useVoicePicksStore();
+void picksStore.ensureLoaded();
 
 const emit = defineEmits(["close"]);
 
@@ -323,6 +329,14 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
                 <UiTag intent="ghost" v-else>needs the speech runtime</UiTag>
               </li>
             </ul>
+            <div v-if="picksStore.picks.length" class="jv-col quick-setup__picks">
+              <div class="jv-eyebrow quick-setup__row-label">The voices for books</div>
+              <div v-for="p in picksStore.picks" :key="p.set + p.model" class="jv-inline-row">
+                <span class="quick-setup__engine-name">{{ p.name }}</span>
+                <ModelPickChips :pick="p" />
+              </div>
+              <p class="jv-muted quick-setup__note">Each downloads the first time a book needs it. Studio's one-click card picks between them (Voices).</p>
+            </div>
             <p class="jv-muted quick-setup__note quick-setup__note--est">
               Every engine runs on one speech runtime — it downloads now<template v-if="runtimeBytes"> (about
                 <strong>{{ fmtBytes(runtimeBytes) }}</strong> for this computer)</template>. Each engine's model downloads the first time you load it<template

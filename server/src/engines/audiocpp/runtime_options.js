@@ -135,6 +135,18 @@ export function sessionOptionsFor(engineId, row) {
   return Object.fromEntries(Object.entries(chosenFor(engineId, row)).filter(([k, v]) => v !== null && v !== runtimeDefault[k]));
 }
 
+/** Whether the options the model loads with keep its weights off the graphics card — a switch its
+ * family file marks `keepsWeightsOffCard` (audio.cpp's disk-backed experts: Fish Audio Drama 3,
+ * Nemotron Transcribe), switched on. The kit then doesn't weigh the model at its files before a
+ * load measures it (kit_hooks.js `filesOnCard`; decided 2026-11-08, docs/plans/2026-11-08-latest-models.md
+ * D16). */
+export function weightsOffCard(engineId, row) {
+  const family = (row.audiocpp || {}).family;
+  const known = CURATED[family]?.LOAD_OPTIONS || {};
+  const chosen = chosenFor(engineId, row);
+  return Object.entries(known).some(([name, k]) => k.keepsWeightsOffCard && chosen[`${family}.${name}`] === "true");
+}
+
 /** The load-option set a model's memory price is kept under (§7 question 3, decided 2026-10-15:
  * a price per load-option set, measured the first time each is used): the values chosen other
  * than the defaults, as "key=value" in key order — "" for the default set, whose prices were

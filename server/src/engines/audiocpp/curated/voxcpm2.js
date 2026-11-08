@@ -80,3 +80,14 @@ export const MODELS = [
 // audio.cpp's list adds "zh dialects", a description rather than a language; left out, as before
 // (whether and how to show it is open — the narrowings review F10).
 export const LEFT_OUT_LANGUAGES = ["zh dialects"];
+
+// A package in VoxCPM2's speech entry that isn't offered, and why (decided 2026-11-08,
+// docs/plans/2026-11-08-latest-models.md D23). VocalRender Pro, new at the model revision 73ce4162,
+// is a singing fine-tune (lyrics, MIDI pitches, tempo — its card), not another precision of
+// VoxCPM2: measured for speech in round 11 it dropped ~4 words in 10 (WER 0.42, 16 of 24 takes
+// flagged) and acted less than VoxCPM2 on the same lines (LAION 0.52 against 0.81), and one load
+// on the CPU held ~21 GB (more than an 8 GB card at its original precision). audio.cpp's own web
+// UI doesn't install it for speech either (its entry's install_packages: q8_0 and bf16).
+export const NOT_OFFERED = {
+  voxcpm2_vocalrender_pro: "A singing fine-tune: for speech it dropped ~4 words in 10 and acted less than VoxCPM2 (round 11).",
+};

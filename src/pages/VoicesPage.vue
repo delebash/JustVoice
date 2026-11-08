@@ -9,6 +9,8 @@ import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/ui";
 import { DIRECTION_OPTIONS, VOICE_KINDS, baseLang, directionCell, tagCount, voiceKind, voiceKindLabel } from "../services/personaFacts.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { rowOptions } from "../services/capabilities.js";
+import { groupedByPicks, hintedByPicks, sellableFirst } from "../services/modelPicks.js";
+import { useVoicePicksStore } from "../stores/voicePicks.js";
 import { voiceRowState } from "../services/voiceGrid.js";
 import { genderWord, savePresetGenderOverride, voiceGender } from "../services/voiceGender.js";
 import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiTable } from "@delebash/ui";
@@ -167,9 +169,16 @@ function setEngineFilter(id) {
 // the grid (decided 2026-10-05, services/facets.js): kokoro (54) + Written
 // direction used to be an empty grid. A remembered engine whose voices are
 // gone stays in the list with (0).
+// The best picks say so in the open list (latest-models D12); this filter's values are model names.
+const picksStore = useVoicePicksStore();
+void picksStore.ensureLoaded();
 const engineFilterOptions = computed(() => [
   { label: `All models (${facetTotal(voices.value || [], voiceFilters.value, "engine")})`, value: "all" },
-  ...facetOptions(voices.value || [], voiceFilters.value, "engine", (v) => v.model_name || v.engine, (m, n) => `${m} (${n})`),
+  ...hintedByPicks(
+    facetOptions(voices.value || [], voiceFilters.value, "engine", (v) => v.model_name || v.engine, (m, n) => `${m} (${n})`),
+    picksStore.picks,
+    (o) => picksStore.picks.find((p) => p.name === o.value)?.model,
+  ),
 ]);
 
 // Currently loaded TTS engine — surfaced in the toolbar (user ask: the
@@ -485,12 +494,15 @@ async function copyToModel(voice) {
     pushToast({ kind: "info", message: "No other model here can clone a voice." });
     return;
   }
+  // The best picks first, under their sets' labels; it starts on the best voice you can sell (D12).
+  const picks = await picksStore.ensureLoaded();
+  const first = sellableFirst(picks).find((m) => targets.some((o) => o.value === m)) ?? targets[0].value;
   const picked = await promptDialog({
     title: `Copy ${voice.name} to another model`,
     message: `The same clip becomes a second voice, spoken by the model you pick — `
       + `"${voice.name}" stays as it is on ${voice.model_name || voice.engine}.`,
     fields: [
-      { key: "model", label: "Model", type: "select", defaultValue: targets[0].value, options: targets },
+      { key: "model", label: "Model", type: "select", defaultValue: first, options: groupedByPicks(targets, picks) },
       { key: "name", label: "Name", optional: true, placeholder: `${voice.name} (the model's name)` },
     ],
     confirmLabel: "Copy",

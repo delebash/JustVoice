@@ -34,6 +34,8 @@ import { useApi } from "../stores/api.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useVoicesStore } from "../stores/voices.js";
+import { hintedByPicks } from "../services/modelPicks.js";
+import { useVoicePicksStore } from "../stores/voicePicks.js";
 
 // Kit grid in the JustVoice look (`jv-table-look`); sorting comes with it.
 const NARROW = { width: "1%", whiteSpace: "nowrap" };
@@ -98,10 +100,13 @@ const personaFilters = computed(() => [
   { key: "search", value: search.value.trim().toLowerCase(),
     test: (p, q) => (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q) },
 ]);
+// The best picks say so in the open list (latest-models D12).
+const picksStore = useVoicePicksStore();
+void picksStore.ensureLoaded();
 const modelOptions = computed(() => {
   const names = Object.fromEntries(personas.value.map((p) => [p.model, p.model_name || p.model]));
   return [{ value: "", label: "All models" },
-    ...facetOptions(personas.value, personaFilters.value, "model", (p) => p.model, (m, n) => `${names[m] || m} (${n})`)];
+    ...hintedByPicks(facetOptions(personas.value, personaFilters.value, "model", (p) => p.model, (m, n) => `${names[m] || m} (${n})`), picksStore.picks)];
 });
 const directionOptions = computed(() =>
   facetChoices(personas.value, personaFilters.value, "direction", DIRECTION_OPTIONS, (p, d) => p.directed_by === d));

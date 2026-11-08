@@ -7,7 +7,30 @@
   Moved from the Speech engines tab, which went with round E.
 -->
 <script setup>
+import { computed } from "vue";
 import { UiTable } from "@delebash/ui";
+import { COMMERCIAL_HINTS } from "../services/engineFacts.js";
+import { rolesText } from "../services/modelPicks.js";
+import { useVoicePicksStore } from "../stores/voicePicks.js";
+
+// The voice sets' two best picks lead the table (latest-models D12): what to use to sell what you make,
+// and the best acting that isn't for sale — from the server, as the one-click card's Voices.
+const picksStore = useVoicePicksStore();
+void picksStore.ensureLoaded();
+const pickRows = computed(() =>
+  [...new Set(picksStore.picks.map((p) => p.label))].map((label) => {
+    const set = picksStore.picks.filter((p) => p.label === label);
+    const limits = set.filter((p) => p.commercial !== "Yes");
+    return {
+      want: label,
+      use: set.map((p) => `${p.name} ${rolesText(p.roles)}`).join(" · "),
+      give: limits.length
+        ? limits.map((p) => `${p.name}: commercial use ${p.commercial} — ${COMMERCIAL_HINTS[p.commercial] ?? ""}`).join(" ")
+        : "—",
+    };
+  }),
+);
+const rows = computed(() => [...pickRows.value, ...PICKING]);
 
 const PICKING_COLUMNS = [
   { id: "want", header: "If you want…", accessorKey: "want" },
@@ -35,6 +58,6 @@ const PICKING = [
       whether it can clone someone's voice, and whether it takes written direction, tags, or only pace,
       pitch and gain.
     </p>
-    <UiTable class="jv-table-look" :data="PICKING" :columns="PICKING_COLUMNS" />
+    <UiTable class="jv-table-look" :data="rows" :columns="PICKING_COLUMNS" />
   </section>
 </template>

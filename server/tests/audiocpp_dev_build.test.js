@@ -5,9 +5,10 @@
 // offers every feature for it. Since round E (docs/plans/2026-10-29-round-e-onto-the-kit.md §3.3,
 // §4 step 1) the kit's audio.cpp runtime runs that build in place of an installed one
 // (`runtimeExeOverrides`, kit_runtime_wiring.test.js) and owns its install, its eSpeak NG, its
-// runtime row and the server processes; what stays ours is reading the build (dev_build.js
-// `current()`) and every feature on for it (kit_settings.js `shippedHas`, `runtimeHas`), and the
-// catalog built under it (the port of tests/test_audiocpp_dev_build.py).
+// runtime row and the server processes; since 2026-11-08 it also reads the build (the kit's
+// runner/dev_build.js `devBuild`, tested there). What stays ours: our variable and info file and the
+// memo (dev_build.js `current()`), every feature on for it (kit_settings.js `shippedHas`,
+// `runtimeHas`), and the catalog built under it (the port of tests/test_audiocpp_dev_build.py).
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { stores } from "@delebash/core/llm";

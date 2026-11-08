@@ -206,6 +206,24 @@ test("Drama 3 loads with its experts from disk and none on the CPU, so it fits a
   expect(hooks.sessionOptions(kitRow(r.id))).toMatchObject({ "fish_drama3.disk_experts": "true", "fish_drama3.cpu_expert_layers": "0" });
 });
 
+test("with experts from disk, Drama 3's and Nemotron Transcribe's files don't weigh what the card needs; switched off, they do", () => {
+  // docs/plans/2026-11-08-latest-models.md D16: Auto weighs such a model by its first load on the card (the kit's
+  // speech_placement.js needOf `filesOnCard`), not by its 22.9 / 22 GB of files
+  for (const [engine, variant] of [
+    ["fish_drama3", "fish_drama3-fishdrama3-q4k"],
+    ["nemotron_transcribe", "nemotron_transcribe-iq4nl"],
+  ]) {
+    expect(option(row(engine, variant), `${engine}.disk_experts`)).toMatchObject({ type: "switch", default: "true", runtime_default: "false", featured: true });
+    expect(hooks.sessionOptions(kitRow(variant))).toMatchObject({ [`${engine}.disk_experts`]: "true" });
+    expect(hooks.filesOnCard(kitRow(variant))).toBe(false);
+    vi.spyOn(runtimeOptions, "savedFor").mockReturnValue({ [`${engine}.disk_experts`]: "false" });
+    expect(hooks.filesOnCard(kitRow(variant))).toBe(true);
+    vi.restoreAllMocks();
+  }
+  expect(hooks.filesOnCard(kitRow("voxcpm2-q8"))).toBe(true); // nothing in its options keeps weights off the card
+  expect(hooks.SPEECH_HOOKS.filesOnCard).toBe(hooks.filesOnCard);
+});
+
 test("Qwen3's decoder stays 16-bit by default; its two measured options stay on the row", () => {
   const r = row("qwen3", "qwen3-cv-1.7b-q8");
   const shown = runtimeOptions.describe("qwen3", r);

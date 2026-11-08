@@ -41,29 +41,54 @@ test("every engine is built from audio.cpp's files; the seven described by our o
   expect(found.has("kokoro")).toBe(true);
 });
 
-test("the model revision 661a224e brings Plapre and Whistle, pinned there", () => {
-  // Moved from f861648c on 2026-10-29: the last revision before the repo's embedded-spec refresh,
-  // so no file downloaded before changes bytes (RESEARCH §1.4).
-  expect(generated.CATALOG.generated_from.model_revision).toBe("661a224e9d9adbd49c01626f85e426f5f425d771");
-  for (const id of ["plapre", "whistle_asr"]) {
+test("the model revision 73ce4162 brings the newest models, every one pinned there", () => {
+  // Moved from 661a224e on 2026-11-08, the repo's main (the user: "i want the latest model";
+  // docs/plans/2026-11-08-latest-models.md D9).
+  const REV = "73ce4162f6cce370dd533c6782b772135c1b2a8e";
+  expect(generated.CATALOG.generated_from.model_revision).toBe(REV);
+  for (const id of ["plapre", "whistle_asr", "pocket_tts_small", "haas_asr", "underdog_bark3"]) {
     const mod = engines.get(id);
     expect(mod?.VARIANTS.length, id).toBeGreaterThan(0);
-    for (const v of mod.VARIANTS) expect(v.sources[0].revision, v.id).toBe("661a224e9d9adbd49c01626f85e426f5f425d771");
+    for (const v of mod.VARIANTS) expect(v.sources[0].revision, v.id).toBe(REV);
+  }
+  // the new packages of families JustVoice already had
+  const ids = (id) => engines.get(id).VARIANTS.map((v) => v.id);
+  expect(ids("breeze_tts")).toContain("breeze_tts-q4");
+  expect(ids("kitten_tts2")).toEqual(expect.arrayContaining(["kitten_tts2-kittentts220261021-q8", "kitten_tts2-kittentts2-q8"]));
+  expect(ids("parakeet_tdt")).toEqual(expect.arrayContaining(["parakeet_tdt-orukeet-q8"]));
+});
+
+test("an offered model's file names its own family: Phonon-2's files at 73ce4162 do, so it's offered", () => {
+  // audio.cpp resolves a package by the spec embedded in its GGUF and refuses one naming another
+  // family ("GGUF embeds model spec for family 'parakeet_tdt', not 'phonon2_asr'" — Phonon-2 at
+  // 661a224e, 2026-11-05); generated.js `usablePackage` leaves such a package out. At 73ce4162 they name
+  // phonon2_asr, so it comes back by itself.
+  const phonon = generated.CATALOG.families.phonon2_asr;
+  expect(phonon.packages.flatMap((p) => p.source.files.map((f) => f.embedded_family))).toEqual(["phonon2_asr", "phonon2_asr"]);
+  expect(engines.has("phonon2_asr")).toBe(true);
+  // no offered model's main file names another family
+  for (const [id, mod] of engines) {
+    for (const v of mod.VARIANTS) {
+      const fam = generated.CATALOG.families[v.audiocpp.family];
+      const file = fam.packages.flatMap((p) => p.source.files).find((f) => f.path === v.audiocpp.file);
+      if (file?.embedded_family) expect(file.embedded_family, `${id} ${v.id}`).toBe(v.audiocpp.family);
+    }
   }
 });
 
-test("a model whose file names another family isn't offered: Phonon-2 at 661a224e names parakeet_tdt", () => {
-  // audio.cpp resolves a package by the spec embedded in its GGUF and refuses one naming another
-  // family ("GGUF embeds model spec for family 'parakeet_tdt', not 'phonon2_asr'", 2026-11-05);
-  // the repo's next files (fd2fe4c3) name phonon2_asr, so it's offered when the revision moves.
-  const phonon = generated.CATALOG.families.phonon2_asr;
-  expect(phonon.packages.flatMap((p) => p.source.files.map((f) => f.embedded_family))).toEqual(["parakeet_tdt", "parakeet_tdt"]);
-  expect(engines.has("phonon2_asr")).toBe(false);
-  expect(generated.generatedRecognisers().some((m) => m.family === "phonon2_asr")).toBe(false);
-  // A file naming its own family stays offered.
-  const kokoro = generated.CATALOG.families.kokoro_tts.packages.flatMap((p) => p.source.files).filter((f) => f.path.endsWith(".gguf"));
-  for (const f of kokoro) expect(f.embedded_family, f.path).toBe("kokoro_tts");
-  expect(engines.has("kokoro")).toBe(true);
+test("Kitten TTS 2's two packages share their voice names: the first model keeps the plain ids", () => {
+  // latest-models D11: the recommended 20261021 package's voices are `kitten_tts2_<name>`, the older
+  // package's carry its model id; every voice id in the app is one voice.
+  const kitten = engines.get("kitten_tts2");
+  const first = kitten.STATIC_VOICES.find((v) => v.name === "Bella" && v.model === "kitten_tts2-kittentts220261021");
+  const older = kitten.STATIC_VOICES.find((v) => v.name === "Bella" && v.model === "kitten_tts2-kittentts2");
+  expect(first.id).toBe("kitten_tts2_Bella");
+  expect(older.id).toBe("kitten_tts2-kittentts2_Bella");
+  const all = [...engines.values()].flatMap((m) => m.STATIC_VOICES ?? []).map((v) => v.id);
+  expect(new Set(all).size).toBe(all.length);
+  // each model's request speaks its own voice ids
+  const old = kitten.VARIANTS.find((v) => v.id === "kitten_tts2-kittentts2-q8");
+  expect(old.audiocpp.voices["kitten_tts2-kittentts2_Bella"]).toBe("Bella");
 });
 
 test("every generated model is one download per precision, a speech one with a capability row", () => {

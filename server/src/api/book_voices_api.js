@@ -9,10 +9,12 @@ import { aiRunHttpError, isAbortError, LLMNotConfiguredError } from "@delebash/c
 import { Hono, input } from "@delebash/core/platform";
 import { getLogger } from "@delebash/core/platform/log";
 import { literal, nullable, opt, T } from "@delebash/core/platform/models";
+import { getState } from "../app_state.js";
+import { modelPicks } from "../book_run.js";
 import { describeVoices, makeVoices, matchRest } from "../book_voices/index.js";
 import * as session from "../database/session.js";
 import { HttpError } from "../errors.js";
-import { construct } from "../models.js";
+import { construct, ModelPicksResponse } from "../models.js";
 import { RunUsage } from "./extraction_api.js";
 import { clientGone } from "./generate_api.js";
 
@@ -101,6 +103,9 @@ async function aiStep(name, fn) {
 
 export function router() {
   const app = new Hono();
+
+  /** The best picks every model picker marks: the voice sets' best you can sell and best not for sale. */
+  app.get("/v1/book-voices/picks", (c) => c.json(construct(ModelPicksResponse, { picks: modelPicks(getState().settings.get()) })));
 
   /** Step 1: each main speaker's and the narrator's voice description. Writes nothing. */
   app.post("/v1/projects/:project_id/book-voices/describe", input({ body: nullable(DescribeVoicesRequest) }), async (c) => {

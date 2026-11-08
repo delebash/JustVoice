@@ -134,7 +134,9 @@ Every list that offers a voice elsewhere — the persona's page, the cache's **P
   it speaks ([Personas](personas.md#the-personas-page)).
 - **⧉ Copy to another model…** — on a cloned, imported or designed voice.
   Pick a model that can clone and, if you like, a name; the same clip becomes a
-  second voice spoken by that model, and the first stays as it is. Use it to
+  second voice spoken by that model, and the first stays as it is. The list puts the best picks
+  first (*Best voices you can sell*, *Best acting — not for sale*) and starts on the best voice you
+  can sell ([Speech engines → The best picks](engines.md#the-best-picks-marked-wherever-you-pick-a-model)). Use it to
   have one recording on Chatterbox Multilingual for Spanish and on Qwen3 Base
   for English. What the target model needs is checked first, by name: Turbo and
   Nano need a clip longer than 5 seconds; Qwen3 Base needs the words the clip
