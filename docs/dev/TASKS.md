@@ -208,12 +208,39 @@ STATE:  DECIDED 2026-10-29 — "do a release once all apps bugs are finished i a
         have the new session do this it is called family release"; then "have it do all your recs for the apps
         that you listed". So JustWrite, house-paint and docgen release now (the kit's TASKS, "The family release");
         JustVoice — and with it this fork's tag — later, once its own TASKS is done.
+        2026-11-07 — the user, here: "pass what need to be done to release session so we can do family release
+        let it know if anyting needs updating for jv". JustVoice joins the family release; the brief went to the
+        "family release" session the same day (the order below). It answered: the releases (the fork's, then
+        JustVoice's) wait for the user's word in that session; the fork releases first, since the kit's rows
+        carry its published assets' sizes and SHA-256.
+        Decided 2026-11-07 under the finish run's go, mine (not the user's), attacked:
+        - The tag is `v0.9.4-jv.7`, not the `v0.9.2-jv.7` written here before: the merged code's base is
+          upstream's v0.9.4 (`git describe`: v0.9.4-56-g281de44a), and our tags carry their base (v0.9.0-jv.5,
+          v0.9.2-jv.6) with one counter across bases. The kit orders builds by `AUDIOCPP_BUILDS_IN_ORDER`, not by
+          the name. The family release session checked it the same way and agreed.
+        - The fork is merged again before the tag: upstream main was 14 commits ahead (to 3bbbd1d2, 2026-11-07:
+          Pocket TTS's capitalisation, shared CTC decoding for ASR, streaming delay, Xet downloads, OmniVoice
+          batching, MOSS-SoundEffect v2, MuLaCover), and the user's 2026-11-05 ruling is "always keep fork up to
+          date". Merged as 27f41cac (two conflicts, independent fields side by side in the server config: our
+          `model_management`, upstream's `models_root`, #1227).
+        - The fork's release.yml runs by hand only (6d64f04e): it still had upstream's `push: tags: v*`, against
+          the global rule "nothing builds by itself". With publish on, a manual run makes and pushes the tag
+          itself. Its other workflows push-trigger only on main, dev, ci/** and release-0.2, never on `jv`.
+        Then the user, 2026-11-07: "what are you doing i said hand it off to the release session not do it
+        yourslef". Every step below is the family release session's; this session stopped its build (the merge and
+        the release.yml commit are local in ../audio.cpp: built partly, untested, unpushed). The order: (1) build the
+        merged `jv`, run the fork's tests, test it in JustVoice, push; (2) release the fork by dispatch (`gh workflow
+        run release.yml -R delebash/audio.cpp --ref jv -f version=v0.9.4-jv.7 -f publish=true`); (3) move the kit's
+        pin, rows and `AUDIOCPP_BUILDS_IN_ORDER`; (4) regenerate `seed_audiocpp_catalog.json`, add its What's new
+        line and run every JustVoice suite on that kit commit; (5) any dependency moved for the family moves
+        JustVoice too; (6) tag JustVoice v0.1.0 (its first release; notes = What's new's `## v0.1.0`) and run its
+        release.yml with the family's `core_ref` and `sync_ref`.
 WHY:    the packaged app and `npm run server` run the pinned `v0.9.2-jv.6`, which has no Fish Audio Drama 3; only
         `npm run dev` runs the fork's `jv` branch.
 BUILT:  nothing. FINDING 2026-10-29: `jv` (1de98891, 2026-10-19) is 150 commits behind upstream main (5951ca47,
         2026-10-29) and lacks upstream's v0.9.3 (2026-10-26); 46 commits are ours. The only fork any family app uses
         (`gh repo list delebash --fork`; the others have no checkout here and no app references them).
-OPEN:   at the release (upstream is merged — 281de44a, below): tag `v0.9.2-jv.7`, the kit's audiocpp rows and pin
+OPEN:   at the release (upstream merged again — 27f41cac, above): tag `v0.9.4-jv.7`, the kit's audiocpp rows and pin
         moved (the pin is the kit's since round E), `seed_audiocpp_catalog.json` regenerated at the tag and committed
         (`scripts/audiocpp-catalog.js`; the old `catalog.json` name ended 2026-10-29).
         And the standing rule, 2026-10-29: "before we do any work on audio cpp nextime we should update the fork

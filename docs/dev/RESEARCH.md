@@ -590,7 +590,7 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   package of another repository is pinned at what its revision resolves to on the day: Kitten TTS 2's
   `dignome/kitten_tts2` moved `be39e32c` → `895debc1`, every file's id the same. **Ahead of the pin:**
   the packaged app and `npm run server` run v0.9.2-jv.6, which lists these engines without loading
-  them, until the family release ships v0.9.2-jv.7 (TASKS "Our audio.cpp fork is released with the
+  them, until the family release ships v0.9.4-jv.7 (TASKS "Our audio.cpp fork is released with the
   family"). (was: the catalog at the pin v0.9.2-jv.6 — 122 families (50 speech), 386 packages, 69
   engines (44, 25), 215 versions — until 2026-10-29.) **`MODEL_REVISION` `661a224e`** (decided 2026-10-29): the
   merged specs name 22 files missing at `f861648c` — the 13 of v0.9.2 and 9 added to `audio-cpp/audio.cpp-gguf`
