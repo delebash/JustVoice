@@ -91,6 +91,9 @@ That was my miss: a new VoxCPM2 package is exactly a candidate for the best voic
   seven_engines_unchanged (none run yet). User docs written: engines.md "The best picks, marked
   wherever you pick a model" (with a worked example), personas.md, voices.md, whats-new.md. The real
   window: open — the desktop build of 10:29 (`dist/electron/UnPackaged`) already has the marks.
+- [x] The kit change landed: 6e89c974 on the kit's main after family-release's "dispatched" (17:3x; its
+  three releases carry core_ref dcc413f5), and on origin with family-release's d343643a push —
+  **unverified until the end run's kit tests**. The worktree and branch removed.
 - [ ] 5. End run, once, after the kit's placement change lands on the kit's main (after family-release's
   "dispatched"; rebased onto the kit's HEAD then — 3d18f8e7 at 17:08, its start-screen fix included):
   the kit — `packages/core` suite and lint (its speech_placement test first), the family guard
@@ -278,6 +281,19 @@ a pick for this app's users; more renders would only risk the machine. Rounds: 1
 out the other new vocpm2") — it is tested and scored, its limits measured and said; 2 cost — measured
 above; 3 the other way — on a 24 GB card it would fit, but the offering is still NOT STANDARD against
 audio.cpp's own catalog; 4 nothing new.
+
+**D20 — JustVoice reads its dev build through the kit's module (2026-11-08, mine; D15 step 7).** The kit's
+`runner/dev_build.js` (just-direct-mocap, pushed 404ef332) is the same job as our `dev_build.js` was — the
+family rule, one implementation in the kit. `dev_build.js` keeps only what is ours: `ENV`, `INFO_FILE`,
+`SERVER_EXE` (the kit's `DEV_ENGINES.audiocpp.server`) and the `current()` memo over `devBuild("audiocpp",
+ENV, { infoFile })`; its own reader (the `DevBuild` class, `backendOf`) is gone. `scripts/audiocpp-dev.js`
+takes `ENV` and `INFO_FILE` from it (its own copy of the variable's name gone). Rounds: 1 shape — the kit's
+object has the same fields our callers read (app.js `runtimeExeOverrides`, dsp_client `binDir`,
+kit_settings null or not); checked against the real build: `dev · 73a2b82e`, cuda. 2 differences — the
+kit warns once per folder; with no info file it reads git's 7-character commit (our script always
+writes one); accepted with just-direct-mocap. 3 the script importing server code — it runs from the repo
+with the workspace installed (Quasar's beforeDev imports it by path); the other way round would put
+`scripts/` into the packaged server. 4 nothing new.
 
 ## The standard each piece follows
 
