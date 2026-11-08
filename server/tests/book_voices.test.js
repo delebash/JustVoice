@@ -107,10 +107,15 @@ test("the_feature_its_three_rows_and_its_settings_are_seeded", async () => {
     expect(DEFAULT_FEATURE_PRESETS[key]).toBe("p_extract");
     expect(DEFAULT_TEST_SAMPLES.some((s) => s.actions.includes(key))).toBe(true);
   }
-  // The decided defaults: N = 3 over the whole book (Q1); the characters on BreezeTTS 2 (round 4's
-  // ears) and the narrator too (round 7's narration sample, 2026-10-21; VoxCPM2 before).
+  // The decided defaults: N = 3 over the whole book (Q1); the voices you can sell (2026-11-08) —
+  // the characters on VoxCPM2, the narrator on Fish Audio Drama 3 (BreezeTTS 2 before, which can't
+  // be sold with: the card's other set).
   const s = construct(Settings, {}).book_voices;
-  expect([s.min_lines, s.design_model, s.clone_model, s.narrator_model]).toEqual([3, "qwen3-vd", "breeze_tts", "breeze_tts"]);
+  expect([s.min_lines, s.design_model, s.clone_model, s.narrator_model]).toEqual([3, "qwen3-vd", "voxcpm2", "fish_drama3-fishdrama3"]);
+  expect(s.sets.map((x) => [x.key, x.clone_model, x.narrator_model])).toEqual([
+    ["sell", "voxcpm2", "fish_drama3-fishdrama3"],
+    ["best", "breeze_tts", "breeze_tts"],
+  ]);
 
   const { c } = await appClient(undefined, { seed: true });
   const rows = Object.fromEntries((await c.get("/v1/ai/prompts")).json().prompts.map((p) => [p.key, p]));
@@ -121,7 +126,7 @@ test("the_feature_its_three_rows_and_its_settings_are_seeded", async () => {
   const r = await c.patch("/v1/settings", { json: { book_voices: { min_lines: 5 } } });
   expect(r.status, r.text).toBe(200);
   expect(r.json().settings.book_voices.min_lines).toBe(5);
-  expect(r.json().settings.book_voices.clone_model).toBe("breeze_tts");
+  expect(r.json().settings.book_voices.clone_model).toBe("voxcpm2");
 });
 
 // ── What the steps read of the book ───────────────────────────────────────
@@ -288,13 +293,13 @@ test("each_description_is_designed_once_kept_as_a_voxcpm2_clip_and_made_a_person
   expect(kw.language).toBe("en");
   expect(out.made[0].audition).toBe(HATTER_CALM);
 
-  // The audition kept as the clip of a BreezeTTS 2 voice, its words and description with it.
+  // The audition kept as the clip of a VoxCPM2 voice, its words and description with it.
   const st = getState();
   const voice = st.voices.get(out.made[0].voice_id);
-  expect([voice.engine, voice.model, voice.source, voice.name, voice.gender]).toEqual(["breeze_tts", "breeze_tts", "designed", "Hatter", "male"]);
-  // The narrator's on its own model (book_voices.narrator_model) — BreezeTTS 2 by default.
+  expect([voice.engine, voice.model, voice.source, voice.name, voice.gender]).toEqual(["voxcpm2", "voxcpm2", "designed", "Hatter", "male"]);
+  // The narrator's on its own model (book_voices.narrator_model) — Fish Audio Drama 3 by default.
   const narratorVoice = st.voices.get(out.made[1].voice_id);
-  expect([narratorVoice.engine, narratorVoice.model, narratorVoice.source]).toEqual(["breeze_tts", "breeze_tts", "designed"]);
+  expect([narratorVoice.engine, narratorVoice.model, narratorVoice.source]).toEqual(["fish_drama3", "fish_drama3-fishdrama3", "designed"]);
   expect(voice.design_prompt).toBe("Male, middle-aged, sharp and eccentric.");
   expect(voice.transcript).toBe(HATTER_CALM);
   expect(existsSync(st.voices.refWavPath(voice.id))).toBe(true);

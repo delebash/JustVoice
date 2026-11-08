@@ -20,7 +20,7 @@ import { strip, truthy } from "@delebash/core/platform/py";
 import { PyFloat, pyFloatValue } from "@delebash/core/platform/pyjson";
 import { chainEntries } from "./audio/effects.js";
 import { composeInstruct, mergeDelivery, nestEngineKeys } from "./delivery_merge.js";
-import { currentSettings, takesSetting } from "./engines/audiocpp/generated.js";
+import { currentSettings, feelingWords, takesSetting } from "./engines/audiocpp/generated.js";
 import * as capabilityDetails from "./engines/capability_details.js";
 import { construct, EMOTION_VALUES, PersonaDelivery } from "./models.js";
 import * as renderCore from "./render_core.js";
@@ -321,7 +321,13 @@ export async function planLine(
   if (tags.length && !("tags" in request)) delivery.tags = tags;
 
   const standing = strip(persona?.voice_instruct || "") || null;
-  const composed = composeInstruct(design, delivery.instruct || standing, delivery.emotion, strip(direction || "") || null);
+  // A model whose family file names words for the line's feeling (VoxCPM2's FEELING_WORDS) takes
+  // those in place of the label and the book's cue words — the way the user heard it act best
+  // (RESEARCH §10.39); a line's own instruction still goes.
+  const feeling = feelingWords(model, delivery.emotion);
+  const composed = feeling
+    ? composeInstruct(design, delivery.instruct || standing, feeling)
+    : composeInstruct(design, delivery.instruct || standing, delivery.emotion, strip(direction || "") || null);
   if (composed) delivery.instruct = composed;
 
   return new LinePlan({

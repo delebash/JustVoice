@@ -106,6 +106,26 @@ test("the_direction_is_composed_most_specific_last", async () => {
   expect(plan.delivery.instruct).toBe("Clipped, world-weary. angry. edge of irritation");
 });
 
+test("a_voxcpm2_line_takes_its_feelings_words_in_place_of_the_books_cue_words", async () => {
+  // VoxCPM2 acted best by the user's ears told the feeling's word, not the cue words (RESEARCH
+  // §10.39): its family file's FEELING_WORDS go in their place; a line's own instruction still goes.
+  const vm = await voiceModel.voiceModel(st, "Sohee");
+  vi.spyOn(voiceModel, "voiceModel").mockResolvedValue({ ...vm, model: "voxcpm2" });
+  const persona = draft({ voice_id: "Sohee" });
+  const told = await personaRender.planLine(st, persona, {
+    text: "I'm so frightened.",
+    direction: "trembling, edging away",
+    requestDelivery: { emotion: "fearful" },
+  });
+  expect(told.delivery.instruct).toBe("frightened. fearful");
+  const typed = await personaRender.planLine(st, persona, { text: "Go.", requestDelivery: { emotion: "sad", instruct: "under her breath" } });
+  expect(typed.delivery.instruct).toBe("under her breath. sad. sad");
+  // A model with no such words keeps the label and the cue words.
+  vi.spyOn(voiceModel, "voiceModel").mockResolvedValue({ ...vm, model: "qwen3-cv" });
+  const other = await personaRender.planLine(st, persona, { text: "Go.", direction: "trembling", requestDelivery: { emotion: "fearful" } });
+  expect(other.delivery.instruct).toBe("fearful. trembling");
+});
+
 test("a_kokoro_persona_speaks_its_voices_language_whatever_it_was_set_to", async () => {
   const plan = await personaRender.planLine(st, draft({ voice_id: "af_heart", language: "ja" }), { text: "Hi." });
   expect(plan.language).toBe("en-US");

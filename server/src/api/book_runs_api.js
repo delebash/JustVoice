@@ -101,6 +101,15 @@ export const BookRunProblem = T.Object({
   uses: opt(T.Array(T.String()), []),
 });
 
+export const BookRunVoiceSet = T.Object({
+  key: T.String(),
+  label: T.String(),
+  models: T.String(), // in words: "VoxCPM2 · narrator Fish Audio Drama 3"
+  commercial: T.String(), // the word of the one a user can sell least with
+  clone_model: T.String(),
+  narrator_model: T.String(),
+});
+
 export const BookRunPlan = T.Object({
   project_id: T.String(),
   chapters: T.Integer(),
@@ -109,6 +118,9 @@ export const BookRunPlan = T.Object({
   ask_price: opt(T.Boolean(), false),
   // The run stops once when the cast is ready, before the render (Settings `book_run.stop_for_cast`).
   stop_for_cast: opt(T.Boolean(), true),
+  // The card's Voices: each set of models (`book_voices.sets`) and the one in use (null: your own).
+  voice_sets: opt(T.Array(BookRunVoiceSet), []),
+  voice_set: opt(nullable(T.String()), null),
   problems: opt(T.Array(BookRunProblem), []),
   warnings: opt(T.Array(BookRunProblem), []),
 });

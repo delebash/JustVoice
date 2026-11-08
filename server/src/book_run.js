@@ -377,8 +377,8 @@ function stepModels(settings) {
     out[key] = { ...self.stepRoute(s.feature, action), feature: s.feature, action, recipe: s.recipe(settings) };
   }
   const cfg = settings.book_voices;
-  // "Qwen3-TTS VoiceDesign → BreezeTTS 2 · narrator VoxCPM2" (decided 2026-10-18); the narrator
-  // goes unsaid when it shares the characters' model, as it does by default since 2026-10-21.
+  // "Qwen3-TTS VoiceDesign → VoxCPM2 · narrator Fish Audio Drama 3" (the form decided 2026-10-18;
+  // the models 2026-11-08); the narrator goes unsaid when it shares the characters' model.
   const narrator = cfg.narrator_model !== cfg.clone_model ? ` · narrator ${modelNameOf(cfg.narrator_model)}` : "";
   const used = [...new Set([cfg.design_model, cfg.clone_model, cfg.narrator_model])].map(speechModelFacts).filter(Boolean);
   // What each model makes here — a model whose licence isn't accepted on this machine stops the
@@ -454,9 +454,33 @@ export function planRun(h, projectId, { redo = [] } = {}) {
     estimate: estimate ? { tokens_in: estimate.tokens_in, tokens_out: estimate.tokens_out, price: estimate.price, unpriced: estimate.unpriced, plans: estimate.plans } : null,
     ask_price: steps.some((s) => s.kind === "ai" && s.cloud),
     stop_for_cast: settings.book_run.stop_for_cast,
+    ...self.voiceSets(settings),
     problems,
     warnings,
   };
+}
+
+/** The card's **Voices** (decided 2026-11-08): each set in `book_voices.sets` — its models in words
+ * and the commercial word of the one a user can sell least with — and the one in use (`voice_set`,
+ * null when the models set match none: someone set their own). */
+export function voiceSets(settings) {
+  const cfg = settings.book_voices;
+  const RANK = ["Yes", "Conditional", "Unclear", "Separate licence", "No"];
+  const wordOf = (model) => speechModelFacts(model)?.licence?.commercial ?? "Yes";
+  const sets = (cfg.sets ?? []).map((s) => {
+    const narrator = s.narrator_model !== s.clone_model ? ` · narrator ${modelNameOf(s.narrator_model)}` : "";
+    const words = [s.clone_model, s.narrator_model].map(wordOf);
+    return {
+      key: s.key,
+      label: s.label,
+      models: `${modelNameOf(s.clone_model)}${narrator}`,
+      commercial: words.reduce((a, b) => (RANK.indexOf(b) > RANK.indexOf(a) ? b : a), "Yes"),
+      clone_model: s.clone_model,
+      narrator_model: s.narrator_model,
+    };
+  });
+  const current = (cfg.sets ?? []).find((s) => s.clone_model === cfg.clone_model && s.narrator_model === cfg.narrator_model);
+  return { voice_sets: sets, voice_set: current?.key ?? null };
 }
 
 // ── the run's life ────────────────────────────────────────────────────────

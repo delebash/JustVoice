@@ -28,9 +28,15 @@ money and accounts.
   (arm Spearman 0.73, families 0.89) but not the sellable arms from each other (0.20) — RESEARCH
   §10.39. So: the LAION score places a new engine in or out of Breeze's tier; between sellable
   engines the user has heard, the user's own ratings decide.
-- [ ] Round 10: Ming 3.0 TTS rendering on the CPU (the headless server on the dev build, Ming
-  pinned to the CPU; the harness's load/pin moved to the kit's routes, round4_render.js); then the
-  LAION score on Ming + the reused arms (`judge/r10_manifest.js`), then WER/speaker on the card.
+- [x] Round 10 rendered and scored (Ming on the CPU; LAION score; read-back by the app's recogniser
+  on the CPU — no card needed). D5 characters VoxCPM2, D6 narrator Drama 3, D7 the card's Voices.
+- [x] Defaults, Voices, VoxCPM2 feeling words, Ming direction, Drama 3 load options, tests, mock, docs.
+- [ ] End run: lint ✓; server 1309/1 fail → fixed (a source-text test of planLine); unit 311/1 fail →
+  fixed (the card test found Voices first); guard: JustVoice's plan table added (just-direct's is
+  web-4c's). Rerun going. Then build:unpacked + e2e (hermetic, no model).
+- [ ] Waits for "card free" (just-stage, then web-4c): the smoke gate on the user's data and the real
+  window (Overview's card: Voices, switching the dev database to "Voices you can sell"); both load
+  the chat model on the card. The placements I changed are back to Auto (Ming, Transcription).
 - [x] JustDirect's client API built (not yet run): `api/client_api.js`, voices_api changes,
   models, health `client_api`, `docs/dev/client-api.md`, `tests/client_api.test.js` + fixtures.
   Shapes sent to web-4c 2026-11-08; per-line WAV URLs added at its request.
@@ -138,6 +144,49 @@ takes direction, `book_voices/index.js` `checkedModels`), sellable under D1, on 
   sell with and BreezeTTS 2 (the best you can't), so the user's "1 best for commercial and 1 best
   for non commercial" are both one click away — today only `book_voices.*` in settings.
 
+**Round 10's numbers (2026-11-08)** — the LAION feeling score on the 11 scorable lines × 3 seeds
+(told takes; gain = over the untold twin; expressive = "Monotone vs. Expressive"):
+
+| Arm | Licence | Feeling [95 %] | Gain | Expressive |
+|---|---|---|---|---|
+| BreezeTTS 2 (comparison) | Separate licence | 1.13 [0.75–1.56] | 0.65 | 1.78 |
+| VoxCPM2, one word (round 4) | Yes | 0.84 [0.55–1.14] | 0.47 | 1.64 |
+| Ming 3.0 TTS (round 10) | Yes | 0.65 [0.33–1.01] | 0.13 | 0.67 |
+| Drama 3, cue words (round 6) | Conditional | 0.62 [0.28–1.00] | 0.07 | 1.13 |
+| CosyVoice3 (round 4) | Yes | 0.40 [0.18–0.65] | 0.00 | 0.97 |
+
+Ming acts sad (1.40, 0.99) and a little fearful, not shouted (its volume control: 0.38, 0.04).
+
+**D5 — the character voices: VoxCPM2, told the feeling's words (mine, 2026-11-08).** The user's ears
+put it first among the sellable engines heard (42 %, Drama 3 38 % — a tie, and D1 gives a tie to a
+plain Yes); the judge agrees (0.84, above Ming, Drama 3, CosyVoice3; no new engine reached Breeze's
+tier). Attacks: (1) past decisions — "best for commercial" (2026-11-07) is what it answers; the
+2026-10-16 Breeze pick was for best overall and stays the non-commercial best. (2) cost — in the
+pinned jv.6 (no release dependency), 2.3 s a take, ~3 GB. (3) surprise — it acts below Breeze (42 %
+against 70 %+ by the same ears) and its whispers drew "volume wrong" (round 9): said in the docs and
+the card's licence chip stays Yes. (4) simpler — VoxCPM2 was a default before (the narrator until
+2026-10-21). (5) edge — only told the feeling's words (FEELING_WORDS); the cue-word way is the 12 %
+one. Held.
+
+**D6 — the narrator: Fish Audio Drama 3 (mine, 2026-11-08).** By the user's ears the sellable
+narrator: Drama 3 over BreezeTTS 2 5 to 3 (3 the same, round 8), BreezeTTS 2 over VoxCPM2 10 to 0
+(round 7). No automatic judge reads narration: of 20 LAION heads the best agrees with 13 of the 18
+decided picks (Serious vs. Humorous) — chance level for the best of 20 — so Ming 3.0 TTS's narration
+(rendered, `data/round10/narration`) can't be placed, and the ears' pick stands. Attacks: (1) past
+decisions — the 2026-10-21 narrator on Breeze is replaced by the commercial ruling; D1 counts
+Conditional. (2) cost — ~2× slower than real time on the 8 GB card (round 8: 256 s for 120 s), a
+23.4 GB download, ~17 GB mapped while loaded, two models in a run (the speech queue groups lines by
+engine, so few swaps — the 2026-10-18 default had two too). (3) surprise — the licence stop before
+the first run ("Fish Audio Drama 3's licence isn't accepted…") and "Built with Fish Audio": said on
+the card and in the docs. (4) simpler — VoxCPM2 for both is faster but lost the narration 0 to 10
+to Breeze. (5) edge — not in the pinned jv.6: the release must carry v0.9.4-jv.7 (already its plan);
+its 8 GB load options are now its defaults (`curated/fish_drama3.js` LOAD_OPTIONS). Held.
+
+**D7 — the card's Voices (mine, 2026-11-08):** the one-click card gets a **Voices** choice between
+`book_voices.sets` — "Voices you can sell" (VoxCPM2 · narrator Drama 3) and "Best acting — not for
+sale" (BreezeTTS 2) — so both of the user's picks are one click away; the sets are settings (the
+family's no-hardcoded-presets rule). Picking one sets `clone_model` and `narrator_model`.
+
 **JustDirect's brief (web-4c, 2026-11-08; the user told it "there is a jv session running if you
 need to have it do any code changes jv needs").** After the commercial pick, on the same defaults:
 1 make a character voice in one call (book_voices' recipe; commercial cloner; job), 2 speak a line in
@@ -191,6 +240,19 @@ file, design-decisions §3).
 - Attack 4, simpler/standard: a batch as many `/v1/audio/speech` calls loses the "free the card at
   the end" and the one-zip handoff the user designed ("do a batch to jv do all sound work in
   groups"); kept.
+
+## The standard each piece follows
+
+| Piece | Standard | Kit code |
+|---|---|---|
+| Speech models: load, place, unload (the batch's release too) | the kit's audio.cpp runtime | `packages/core/src/runner/runtime_service.js` |
+| Long work of the client API (a character's voice, a batch) | the kit's job registry and its routes | `makeJobsRouter` |
+| The card's **Voices** | the kit's select | `UiSelect` |
+| The licence words (`licence`, the card's chip) | JustVoice's reading of each model's licence at its source | app — curated/<family>.js, JustVoice's own catalog of voices |
+| A line's feeling for VoxCPM2 and Ming 3.0 TTS | each model's makers' way, as tested by ear | app — how a voice model is directed is JustVoice's own logic |
+| `POST /v1/audio/speech` | OpenAI's createSpeech request (platform.openai.com/docs/api-reference/audio/createSpeech) | app — JustVoice's speech door; the kit has no speech route |
+| The voice sets | settings, not code (the family's no-hardcoded-presets rule) | app — JustVoice's `book_voices` settings |
+| The judge (take-check's LAION heads) | NVIDIA NeMo's Empathic-Insight wrapper, vendored | app — the test kit beside the app, never shipped |
 
 ## Mistakes to avoid
 - `take-check empathic` took 18.5 GB of RAM on 512 takes (not the 3–4 GB guessed): tell the other

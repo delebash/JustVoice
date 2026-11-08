@@ -649,16 +649,23 @@ and the seconds.
    descriptions. Each voice is designed once on **Qwen3-TTS VoiceDesign**,
    speaking one of the speaker's own lines — the calm one (no *!*) nearest 25
    words; the narrator's, a line of narration; a stock sentence when a speaker
-   has none half that long. That take is kept at once as the clip of a
-   **BreezeTTS 2** voice, the narrator's too, with the
+   has none half that long. That take is kept at once as the clip of a voice on
+   the models you can sell what you make with — each character's on
+   **VoxCPM2**, the narrator's on **Fish Audio Drama 3** — with the
    description as the voice's description: what **📌 Keep take N** does on a
-   persona's [New design](personas.md#new-design). Your ears chose it twice:
-   BreezeTTS 2 played every character's line like the book in the blind
-   listening test, and with the narrator's own designed voice it read the
-   narration better than VoxCPM2 on 10 passages of 10 (the narrator was on
-   VoxCPM2 until 2026-10-21). BreezeTTS 2's licence doesn't let you sell what it makes
-   without a separate licence from its makers, so the run's card shows its
-   licence word before you start ([Studio → Make the audiobook](studio.md#make-the-audiobook)).
+   persona's [New design](personas.md#new-design). Chosen by blind listening
+   (since 2026-11-08): of the models you can sell with, VoxCPM2 played the
+   characters' lines best — told only the line's feeling, it gave the full
+   feeling on 11 of 26 lines — and Drama 3's narration was preferred even to
+   BreezeTTS 2's, 5 passages to 3. **BreezeTTS 2** acts best of all — every
+   line like the book in the same test — but its licence doesn't let you sell
+   what it makes without a separate licence from its makers; the run's card
+   offers it as the other choice of **Voices**, *Best acting — not for sale*
+   ([Studio → Make the audiobook](studio.md#make-the-audiobook)). Drama 3's
+   licence is *Conditional* — you may sell while you earn under USD 500,000 a
+   year, with "Built with Fish Audio" shown — so you accept it once before
+   its first download; it narrates at about half real time on an 8 GB card
+   (a 10-hour book takes about 20 hours) and downloads 23 GB.
    A persona named after the speaker is made with that voice, its note the
    description and the model that wrote it
    ([Personas → Personas made from the book](personas.md#personas-made-from-the-book)),
@@ -692,15 +699,16 @@ describe route can name one instead (`{"recipe": "local"}` or
 `"frontier"`) — for comparing the two. All three ship on **Structured
 extraction**, thinking off.
 
-**Its settings** have no control in the app yet; they are set through
-`PATCH /v1/settings` under `book_voices`:
+**Its settings:** the run's card picks the models (**Voices**); the rest are
+set through `PATCH /v1/settings` under `book_voices`:
 
 | Setting | Default | What it does |
 |---|---|---|
 | `min_lines` | 3 | A speaker with at least this many lines in the whole book gets a voice made from the book; the rest are matched from your library. |
 | `design_model` | `qwen3-vd` | The model each voice is designed on (any model that can make a voice from words — Qwen3-TTS VoiceDesign, VoxCPM2 …). |
-| `clone_model` | `breeze_tts` | The model each character's designed take is kept on. It must clone and still take direction, written or by tags; the design step refuses one that can't — Qwen3-TTS Base, for one, drops direction. |
-| `narrator_model` | `breeze_tts` | The model the narrator's designed take is kept on, held to the same rule. The same as `clone_model` by default, so one model reads the whole book; set another to give the narrator its own. |
+| `clone_model` | `voxcpm2` | The model each character's designed take is kept on. It must clone and still take direction, written or by tags; the design step refuses one that can't — Qwen3-TTS Base, for one, drops direction. |
+| `narrator_model` | `fish_drama3-fishdrama3` | The model the narrator's designed take is kept on, held to the same rule. Set it to `clone_model`'s to have one model read the whole book. |
+| `sets` | *Voices you can sell* (`voxcpm2`, narrator `fish_drama3-fishdrama3`) · *Best acting — not for sale* (`breeze_tts` for both) | The choices of the card's **Voices**, each `{key, label, clone_model, narrator_model}`; picking one sets those two models. Models no set names show as *Your own models*. |
 | `speaker_words` | 2000 | How much of a speaker's paragraphs the Local recipe reads, in words. |
 | `narrator_words` | 2000 | How much of the book's opening the Local recipe reads for the narrator, in words. |
 | `audition_words` | 25 | The length, in words, of the line a voice's audition speaks. |

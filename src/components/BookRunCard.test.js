@@ -28,6 +28,16 @@ vi.mock("@delebash/ui", () => ({
       ]),
   },
   UiTag: slot("span", "tag"),
+  // The select as its options; a change sends the option's value.
+  UiSelect: {
+    props: ["modelValue", "options", "placeholder"],
+    emits: ["update:modelValue"],
+    setup: (p, { emit }) => () =>
+      h("select", { class: "select", value: p.modelValue, onChange: (e) => emit("update:modelValue", e.target.value) }, [
+        h("option", { value: "" }, p.placeholder),
+        ...p.options.map((o) => h("option", { value: o.value }, o.label)),
+      ]),
+  },
   LuFeatureChip: {
     props: ["resolvedProviderName", "resolvedModel"],
     setup: (p) => () => h("span", { class: "chip" }, `${p.resolvedProviderName} · ${p.resolvedModel}`),
@@ -60,7 +70,7 @@ async function mount(props) {
   app = createTestApp(BookRunCard, {
     unit: UNIT,
     ...props,
-    ...Object.fromEntries(["onStart", "onStop", "onResume", "onSave", "onGo", "onRouting", "onStopForCast"].map((k) => [k, (...a) => events.push([k, ...a])])),
+    ...Object.fromEntries(["onStart", "onStop", "onResume", "onSave", "onGo", "onRouting", "onStopForCast", "onVoiceSet"].map((k) => [k, (...a) => events.push([k, ...a])])),
   });
   app.mount(el);
   for (let i = 0; i < 3; i++) await nextTick();
@@ -78,11 +88,12 @@ test("before a run: one start, each step's model, nothing to pay on this compute
   expect(headers()).toEqual(["Step", "Runs on"]);
   expect(cells(0)).toEqual(["Discover the speakers", "Built-in provider — llama.cpp · gemma-4-26b-a4b-qat"]);
   expect(cells(3)).toEqual(["Analyze — who speaks each line", "Built-in provider — llama.cpp · gemma-4-26b-a4b-qatLocal"]);
-  expect(cells(6)).toEqual(["Design the voices", "Qwen3-TTS VoiceDesign → BreezeTTS 2 Commercial use: Separate licence"]);
-  // Breeze's licence word, as the Speech tab shows it, its hover the licence's words.
+  expect(cells(6)).toEqual(["Design the voices", "Qwen3-TTS VoiceDesign → VoxCPM2 · narrator Fish Audio Drama 3 Commercial use: Conditional"]);
+  // The narrator's licence word, as the Speech tab shows it, its hover the licence's words (the
+  // characters' VoxCPM2 is a plain Yes: no chip).
   const chip = el.querySelector(".book-run__steps .ev-lic");
-  expect(chip.className).toBe("ev-lic ev-lic--separate");
-  expect(chip.title).toContain("BreezeBlue Research and Non-Commercial License · JustVoice's reading, checked 2026-10-11");
+  expect(chip.className).toBe("ev-lic ev-lic--warn");
+  expect(chip.title).toContain("Fish Audio Community License v1.0 · JustVoice's reading, checked 2026-10-18");
   expect(cells(9)).toEqual(["Render every line", "Each speaker's persona"]);
   expect(cells(11)).toEqual(["Master and export the M4B", "FFmpeg"]);
   expect(el.querySelector(".book-run__cost").textContent).toContain("nothing to pay");
@@ -103,7 +114,7 @@ test("blocked: what is in the way, and no start", async () => {
   expect(text(".jv-banner--warn")).toEqual([
     "No language model is set up for the AI steps. AI Settings ➜",
     "Set the book's Language below first — its voices are made in it.",
-    "BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the character voices and the narrator's voice. BreezeTTS 2's licence ➜",
+    "Fish Audio Drama 3's licence isn't accepted on this computer. Accept it to make the narrator's voice. Fish Audio Drama 3's licence ➜",
   ]);
   expect(cells(0)[1]).toBe("No model set");
   expect(el.querySelector("button[disabled]")?.textContent).toBe("▶ Make audiobook");
@@ -111,8 +122,28 @@ test("blocked: what is in the way, and no start", async () => {
 
 test("blocked by a licence: its link opens the engine's licence to accept", async () => {
   const events = await mount({ plan: mockPlan({ blocked: true }), run: null });
-  await new DOMWrapper([...el.querySelectorAll("button")].find((b) => b.textContent === "BreezeTTS 2's licence ➜")).trigger("click");
-  expect(events).toEqual([["onGo", "terms", "breeze_tts"]]);
+  await new DOMWrapper([...el.querySelectorAll("button")].find((b) => b.textContent === "Fish Audio Drama 3's licence ➜")).trigger("click");
+  expect(events).toEqual([["onGo", "terms", "fish_drama3"]]);
+});
+
+test("Voices: the voices you can sell, or the best acting not for sale — picked before a run", async () => {
+  const events = await mount({ plan: mockPlan(), run: null });
+  const select = el.querySelector(".book-run__voices select");
+  expect([...select.querySelectorAll("option")].map((o) => o.textContent)).toEqual([
+    "Your own models",
+    "Voices you can sell — VoxCPM2 · narrator Fish Audio Drama 3",
+    "Best acting — not for sale — BreezeTTS 2",
+  ]);
+  expect(select.value).toBe("sell");
+  expect(el.querySelector(".book-run__voices .ev-lic").textContent).toBe("Commercial use: Conditional");
+  select.value = "best";
+  await new DOMWrapper(select).trigger("change");
+  expect(events.map(([k, set]) => [k, set.key, set.clone_model])).toEqual([["onVoiceSet", "best", "breeze_tts"]]);
+});
+
+test("Voices isn't offered while a run goes on", async () => {
+  await mount({ plan: mockPlan(), run: mockRun("running"), elapsed: 1 });
+  expect(el.querySelector(".book-run__voices")).toBeNull();
 });
 
 test("running: the step and chapter it is on, the time so far, Stop", async () => {

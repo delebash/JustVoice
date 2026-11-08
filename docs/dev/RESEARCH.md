@@ -5628,6 +5628,23 @@ one-click defaults. 2026-11-08: no more listening pages — the session judges.
   line's cue words at guidance 2.7 (rounds 5–7) full on 2, 1, 3, 0 of 13 (12 %), the delivery note 0
   of 13. Drama 3 told the cue words 5 of 13 (38 %, the same takes rated twice, 5 both times), told
   the note 0 of 13. — *the user's answers*.
+- **Round 10** (`data/round10`; through the app's headless server on the dev build, fork jv
+  6d64f04e, Ming pinned to the CPU — the card was another session's): Ming 3.0 TTS bf16 told its
+  makers' labels (curated/ming3_tts.js), round 5's 13 lines × told/plain × seeds 7–9, 78 takes, none
+  failed, a median 7.0 s a take on the CPU. Against round 4's and 6's takes of the same lines and
+  seeds, the LAION feeling score (11 scorable lines; told; [bootstrap over lines]; gain over the
+  twin; "Monotone vs. Expressive"): BreezeTTS 2 1.13 [0.75–1.56] · 0.65 · 1.78; VoxCPM2 one word 0.84
+  [0.55–1.14] · 0.47 · 1.64; **Ming 0.65 [0.33–1.01] · 0.13 · 0.67**; Drama 3 cue words 0.62
+  [0.28–1.00] · 0.07 · 1.13; CosyVoice3's fixed sentences 0.40 [0.18–0.65] · 0.00 · 0.97. Ming acts
+  sad (1.40, 0.99), a little fearful (0.57), not shouted on its loud volume (0.38, 0.04). Read back by
+  the app's own recogniser (Qwen3-ASR 1.7B on the CPU, the take check's rule): words wrong 1.2 % Ming,
+  0.8 % VoxCPM2 told, 1.2 % Drama 3 told; no take flagged. — *measured, 2026-11-08*.
+- **No automatic judge reads narration.** The user's 18 decided narration picks (round 7: BreezeTTS 2
+  over VoxCPM2 on 10 of 10; round 8: Drama 3 over BreezeTTS 2 on 5, BreezeTTS 2 on 3, 3 the same)
+  against 20 LAION heads on those passages: the best, Serious vs. Humorous, agrees on 13 of 18;
+  Soft vs. Harsh 12; Monotone vs. Expressive and Recording Quality 11 — chance for the best of 20.
+  So Ming's narration (`data/round10/narration`, the 10 passages and the 311-word opening) can't be
+  placed by a score. — *measured, 2026-11-08* (scratchpad `judge/narr_judge.js`).
 - **VocalRender Pro** (the new VoxCPM2 package past 661a224e) is a singing model on VoxCPM2
   (✓ huggingface.co/pymaster/VocalRender), not speech. — *web*.
 

@@ -2,6 +2,22 @@
 
 ## v0.1.0
 
+- **Voices you can sell, by default (2026-11-08)** — **Make the audiobook** now makes its voices on
+  the models you may sell an audiobook made with: each character on **VoxCPM2**, the narrator on
+  **Fish Audio Drama 3**, chosen by blind listening among the models you can sell with. The card's new
+  **Voices** picks between them and **Best acting — not for sale** (BreezeTTS 2, which acted best of
+  all but needs its makers' separate licence to sell with). Drama 3's licence is *Conditional* (under
+  USD 500,000 a year, "Built with Fish Audio" shown), so you accept it once before its first download;
+  it loads with its experts read from disk, to fit an 8 GB card ([Studio → Make the
+  audiobook](studio.md#make-the-audiobook))
+- **VoxCPM2 and Ming 3.0 TTS take a line's feeling the way they act best (2026-11-08)** — VoxCPM2 gets
+  the line's emotion as a word, without the book's cue words: told that way it played the full feeling
+  on 11 of 26 lines, against 6 of 52 with the cue words. **Ming 3.0 TTS** now takes direction at all —
+  its makers' emotion labels, and its loud and soft volume for shouted and whispered lines
+  ([Speech engines → How a model takes direction](engines.md))
+- **Other apps can ask JustVoice for voices (2026-11-08)** — a character's voice made in one call, a
+  line in OpenAI's speech request, a batch of lines that frees the graphics card when it ends — for
+  JustDirect first; the shapes are in the developer docs (`docs/dev/client-api.md`)
 - **Make the audiobook stops once, when the cast is ready (2026-11-07)** — after Direction, before it
   renders, the card says **Waiting for you**: listen to each voice on Cast, change any you want, then
   **▶ Continue** renders every line, checks the takes and makes the M4B. Rendering is most of a run, so a

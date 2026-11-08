@@ -198,8 +198,9 @@ async function aliceVII(dir = undefined, { acceptTerms = true, stopForCast = fal
   expect((await c.patch(`/v1/projects/${pid}`, { json: { language: "en" } })).status).toBe(200);
   expect((await c.patch("/v1/settings", { json: { book_voices: { min_lines: 20 } } })).status).toBe(200);
   if (!stopForCast) expect((await c.patch("/v1/settings", { json: { book_run: { stop_for_cast: false } } })).status).toBe(200);
-  // The character voices' model, BreezeTTS 2, has a licence to accept first, as on a real install.
-  if (acceptTerms) expect((await c.post("/v1/engines/breeze_tts/terms")).status).toBe(200);
+  // The narrator's model, Fish Audio Drama 3, has a licence to accept first, as on a real install
+  // (the characters' VoxCPM2 is a plain Yes).
+  if (acceptTerms) expect((await c.post("/v1/engines/fish_drama3/terms")).status).toBe(200);
   const gentle = (await c.post("/v1/personas", { json: { name: "Gentle", voice_id: "af_heart", note: "soft and quick" } })).json().id;
   return { c, pid, gentle, dir: d };
 }
@@ -229,7 +230,13 @@ test("alice_vii_from_one_press_to_an_m4b_with_the_time_and_tokens_written_down",
   expect(before.plan.stop_for_cast).toBe(true); // the stop when the cast is ready, on by default
   expect(before.plan.steps.map((s) => s.key)).toEqual(bookRun.STEPS);
   expect(before.plan.steps.find((s) => s.key === "analyze")).toMatchObject({ kind: "ai", model: "gemma-test", cloud: false });
-  expect(before.plan.steps.find((s) => s.key === "design").model).toBe("Qwen3-TTS VoiceDesign → BreezeTTS 2");
+  expect(before.plan.steps.find((s) => s.key === "design").model).toBe("Qwen3-TTS VoiceDesign → VoxCPM2 · narrator Fish Audio Drama 3");
+  // The card's Voices: the voices you can sell, in use by default; BreezeTTS 2 the other set.
+  expect(before.plan.voice_set).toBe("sell");
+  expect(before.plan.voice_sets.map(({ key, label, models, commercial }) => ({ key, label, models, commercial }))).toEqual([
+    { key: "sell", label: "Voices you can sell", models: "VoxCPM2 · narrator Fish Audio Drama 3", commercial: "Conditional" },
+    { key: "best", label: "Best acting — not for sale", models: "BreezeTTS 2", commercial: "Separate licence" },
+  ]);
   expect(before.plan.estimate.price).toBe(0);
   expect(before.plan.estimate.tokens_in).toBeGreaterThan(0);
 
@@ -512,22 +519,36 @@ test("every_scanned_name_ignored_and_no_speaker_stops_the_run_it_would_be_one_vo
   expect(await codes()).not.toContain("all_ignored");
 });
 
-test("the_character_voices_licence_word_is_on_the_plan_and_unaccepted_it_stops_the_run", async () => {
-  // A fresh install: BreezeTTS 2's licence not yet accepted (decided 2026-10-16, its words 2026-10-18).
+test("the_narrators_licence_word_is_on_the_plan_and_unaccepted_it_stops_the_run", async () => {
+  // A fresh install on the voices you can sell (2026-11-08): the characters' VoxCPM2 is a plain Yes,
+  // the narrator's Fish Audio Drama 3 Conditional — its licence not yet accepted (the stop decided
+  // 2026-10-16, its words 2026-10-18).
   const { c, pid } = await aliceVII(undefined, { acceptTerms: false });
   const plan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
   const design = plan.steps.find((s) => s.key === "design");
-  expect(design.licences.map((l) => [l.model, l.name, l.commercial])).toEqual([["breeze_tts", "BreezeTTS 2", "Separate licence"]]);
-  // The narrator on BreezeTTS 2 too, by default since 2026-10-21: one stop names both.
-  expect(plan.problems).toEqual([{ step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2", uses: ["characters", "narrator"] }]);
+  expect(design.licences.map((l) => [l.model, l.name, l.commercial])).toEqual([["fish_drama3-fishdrama3", "Fish Audio Drama 3", "Conditional"]]);
+  expect(plan.problems).toEqual([{ step: "design", code: "terms", detail: null, engine: "fish_drama3", name: "Fish Audio Drama 3", uses: ["narrator"] }]);
   const r = await c.post("/v1/book_runs", { json: { project_id: pid } });
   expect(r.status).toBe(409);
-  expect(r.text).toContain("BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the character voices and the narrator's voice.");
+  expect(r.text).toContain("Fish Audio Drama 3's licence isn't accepted on this computer. Accept it to make the narrator's voice.");
   // Accepted once, the stop goes; the licence word stays on the card.
-  expect((await c.post("/v1/engines/breeze_tts/terms")).status).toBe(200);
+  expect((await c.post("/v1/engines/fish_drama3/terms")).status).toBe(200);
   const after = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
   expect(after.problems).toEqual([]);
   expect(after.steps.find((s) => s.key === "design").licences.length).toBe(1);
+});
+
+test("the_cards_voices_are_the_sets_in_settings_and_a_set_of_your_own_is_none_of_them", async () => {
+  const { c, pid } = await aliceVII();
+  // Picking the other set is setting its models (what the card's Voices does).
+  await c.patch("/v1/settings", { json: { book_voices: { clone_model: "breeze_tts", narrator_model: "breeze_tts" } } });
+  let plan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
+  expect(plan.voice_set).toBe("best");
+  expect(plan.steps.find((s) => s.key === "design").model).toBe("Qwen3-TTS VoiceDesign → BreezeTTS 2");
+  // Models no set names: your own.
+  await c.patch("/v1/settings", { json: { book_voices: { clone_model: "voxcpm2", narrator_model: "voxcpm2" } } });
+  plan = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
+  expect(plan.voice_set).toBeNull();
 });
 
 test("a_narrators_or_designers_licence_unaccepted_stops_the_run_naming_what_it_would_make", async () => {

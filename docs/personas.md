@@ -744,8 +744,10 @@ persona, in the list with the rest:
   (as every new speaker is — a persona you call exactly "Narrator" narrates every book), and no
   new persona is made.
 - **Its voice** is a design kept as a clip: the description designed once on Qwen3-TTS
-  VoiceDesign, speaking one of the speaker's own calm lines, and that take kept as a **BreezeTTS 2**
-  voice, the narrator's too (a **VoxCPM2** voice from 2026-10-18 to 2026-10-21) — the same as **📌 Keep take N**
+  VoiceDesign, speaking one of the speaker's own calm lines, and that take kept as a voice on the
+  run's **Voices**: a **VoxCPM2** voice for a character and a **Fish Audio Drama 3** voice for the
+  narrator by default — the models you can sell what you make with (since 2026-11-08; BreezeTTS 2
+  before, now the card's *Best acting — not for sale*) — the same as **📌 Keep take N**
   on [New design](#new-design). The voice keeps its
   description, and its gender when the description gives one. So it stays one person through
   the book and still takes written direction on each line.

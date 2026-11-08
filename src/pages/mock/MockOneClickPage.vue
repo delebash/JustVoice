@@ -8,7 +8,7 @@
   place of the server.
 
   States (?state=): new (the default) · price (the cloud route's question open) · blocked (no
-  language model, no Language, BreezeTTS 2's licence not accepted) · running (Direction, chapter VIII) · waiting (the cast is
+  language model, no Language, Fish Audio Drama 3's licence not accepted) · running (Direction, chapter VIII) · waiting (the cast is
   ready: stopped before the render, Continue goes on) · paused (Direction, chapter VIII, after a restart) · stopped (Stop pressed during the render) · failed (no ffmpeg at the M4B) · done (what
   to check) · rerun (↻ Run again on a finished book: every chapter already done, the book-wide steps
   "none needed", its M4B saved since — Export makes it again). Each on this computer's model, or with ?route=frontier on a cloud model — its
@@ -25,7 +25,7 @@ import { UiButton, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, UiTog
 import BookRunCard from "../../components/BookRunCard.vue";
 import { priceQuestion } from "../../services/bookRun.js";
 import { MASTER_TARGETS } from "../../services/masterTargets.js";
-import { PROJECT, RUNNING_SINCE, STATES, UNIT, mockOverviewState, mockPlan, mockRun } from "../../services/mock/bookRunMock.js";
+import { BREEZE_LICENCE, PROJECT, RUNNING_SINCE, STATES, UNIT, mockOverviewState, mockPlan, mockRun } from "../../services/mock/bookRunMock.js";
 import { bookLanguageOptions } from "../../services/personaFacts.js";
 import { kindLabel } from "../../services/projectKinds.js";
 import { stepStatus } from "../../services/studioStatus.js";
@@ -41,10 +41,16 @@ const frontier = computed(() => route.query.route === "frontier" || state.value 
 // The failed state is this machine without ffmpeg.
 // The stop when the cast is ready — the setting's checkbox, on as it ships.
 const stopForCast = ref(true);
-const plan = computed(() => ({
-  ...mockPlan({ frontier: frontier.value, blocked: state.value === "blocked", noFfmpeg: state.value === "failed" }),
-  stop_for_cast: stopForCast.value,
-}));
+// Voices — the set picked, the voices you can sell as it ships; the design step names its models.
+const voiceSet = ref("sell");
+const plan = computed(() => {
+  const p = mockPlan({ frontier: frontier.value, blocked: state.value === "blocked", noFfmpeg: state.value === "failed" });
+  const set = p.voice_sets.find((s) => s.key === voiceSet.value);
+  const steps = p.steps.map((s) => (s.key === "design"
+    ? { ...s, model: `Qwen3-TTS VoiceDesign → ${set.models}`, licences: set.key === "sell" ? s.licences : [BREEZE_LICENCE] }
+    : s));
+  return { ...p, steps, stop_for_cast: stopForCast.value, voice_set: voiceSet.value };
+});
 const run = computed(() => mockRun(state.value, { frontier: frontier.value }));
 const busy = ref(false);
 
@@ -71,7 +77,7 @@ function save() {
   pushToast({ kind: "success", message: "Saved Alice's Adventures in Wonderland.m4b to your Downloads folder." });
 }
 function goStep(step, arg) {
-  const where = { script: "Script", render: "Render", cast: "Cast", export: "Export", ai: "AI Settings", terms: "BreezeTTS 2's licence" }[step] ?? step;
+  const where = { script: "Script", render: "Render", cast: "Cast", export: "Export", ai: "AI Settings", terms: "Fish Audio Drama 3's licence" }[step] ?? step;
   const chapter = arg?.sceneId ? ` · ${arg.sceneId === "sc_vii" ? "CHAPTER VII" : "CHAPTER VIII"}` : "";
   pushToast({ kind: "info", message: `Opens ${where}${chapter}.` });
 }
@@ -131,7 +137,7 @@ const opens = (what) => pushToast({ kind: "info", message: `Opens ${what}.` });
     <section class="studio-overview">
       <BookRunCard class="studio-overview__wide" :unit="UNIT" :plan="plan" :run="run" :busy="busy" :elapsed="elapsed"
         @start="start" @stop="go('stopped')" @resume="go('running')" @save="save" @go="goStep" @routing="routing"
-        @stop-for-cast="stopForCast = $event" />
+        @stop-for-cast="stopForCast = $event" @voice-set="voiceSet = $event.key" />
       <div class="studio-overview__main">
         <div class="jv-card">
           <div class="jv-card__header"><h3 class="jv-card__title">Where it stands</h3></div>

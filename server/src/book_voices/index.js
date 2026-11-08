@@ -363,7 +363,8 @@ export async function makeVoices(h, projectId, descriptions, { signal = null } =
         { signal },
       );
       // Kept at once: a held audition lasts 10 minutes (the plan's §4).
-      // The narrator keeps its own model: VoxCPM2 read the narration better (round 5).
+      // The narrator keeps its own model (`book_voices.narrator_model`: Fish Audio Drama 3 by
+      // default since 2026-11-08 — the user picked its narration over BreezeTTS 2's, RESEARCH §10.36).
       const model = narrator ? cfg.narrator_model : cfg.clone_model;
       const saved = await vp.savePreview(heard.previewId, { name: personaName, gender: genderOf(d.gender), model });
       voiceId = saved.voice_id;

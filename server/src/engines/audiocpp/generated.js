@@ -152,6 +152,16 @@ export function generatedFamilyOf(model) {
   return _modelFamilies.get(model) ?? null;
 }
 
+/** The words a book line's feeling goes as on `model`, where its family's file names them
+ * (`FEELING_WORDS` — VoxCPM2's, as the user heard it act best) — then the book's cue words don't go
+ * (persona_render.planLine) — else null. A family the app builds itself (VoxCPM2) is its own model
+ * id. */
+export function feelingWords(model, emotion) {
+  if (!model || !emotion || emotion === "neutral") return null;
+  const family = generatedFamilyOf(model) ?? model;
+  return CURATED[family]?.FEELING_WORDS?.[emotion] ?? null;
+}
+
 /** Whether a generated model's spec takes `name` as a setting (a request option the app doesn't
  * set itself). */
 export function takesSetting(model, name) {

@@ -21,6 +21,22 @@ export const TESTED = {
 
 export const BEST_FOR = ["Cloning, designing and written direction together"];
 
+// A book line's feeling, the way the user heard VoxCPM2 act best (RESEARCH §10.39): its prefix the
+// feeling's word and the app's label, as round 4 sent it ("(frightened. fearful)…", the clip alone,
+// its default guidance) — full on 11 of 26 lines against 6 of 52 told the book's cue words
+// (rounds 5–7). So a VoxCPM2 line gets these words for its feeling and not the book's cue words
+// (persona_render.planLine); a line's own instruction, typed or sent, still goes as written.
+export const FEELING_WORDS = {
+  happy: "happy. happy",
+  sad: "sad. sad",
+  angry: "angry. angry",
+  fearful: "frightened. fearful",
+  whispered: "whispering. whispered",
+  shouted: "shouting. shouted",
+  contemptuous: "contemptuous. contemptuous",
+  sarcastic: "sarcastic. sarcastic",
+};
+
 // The engine (gap 9 of the switch plan, docs/plans/2026-10-02-gap-9-16bit-and-voxcpm2.md):
 // OpenBMB's 2B model, Apache-2.0, 48 kHz output, run on audio.cpp's plain speech task — a reference
 // clip clones the voice; a voice description, or a line's written direction on a clone, rides a

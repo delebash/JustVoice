@@ -72,9 +72,23 @@ WHY:    both one-click defaults are BreezeTTS 2, which can't be sold with (`serv
 NOT:    a non-commercial engine as a default or as the subject of a tuning round — only as a comparison arm.
 BUILT:  the stop sent to the family release session (2026-11-07); it cancelled the fork's release run 42444512703
         (v0.9.4-jv.7) before it published — checked: no v0.9.4 tag on the fork, no release there or in JustVoice;
-        the kit's audio.cpp pin still v0.9.2-jv.6. OPEN: the commercial test plan, for the
-        user's go; the item "JustVoice closed out for its release" below no longer stands until it's done.
-GO:     the stop given; the testing needs a go.
+        the kit's audio.cpp pin still v0.9.2-jv.6.
+        2026-11-08, under the go (the user: "use that big brain to think on this adverserily multiple times until
+        you have concenspous and take your own rec … do not stop for turns"; "i do not want to listen to any test
+        pages you do it all your self"): the job's doc docs/plans/2026-11-08-commercial-engine.md (every decision
+        there is mine, attacked; D1–D7), RESEARCH §10.39. The two picks — commercial: VoxCPM2 for the characters,
+        told the feeling's words (D5), Fish Audio Drama 3 for the narrator (D6, Conditional); non-commercial:
+        BreezeTTS 2. `book_voices` defaults `voxcpm2` / `fish_drama3-fishdrama3` and `sets` (models.js); the
+        card's **Voices** (BookRunCard.vue, bookRun.js `setVoiceSet`, book_run.js `voiceSets`, the mock);
+        VoxCPM2's FEELING_WORDS (persona_render.planLine), Ming 3.0 TTS's direction (curated/ming3_tts.js),
+        Drama 3's 8 GB load options (curated/fish_drama3.js LOAD_OPTIONS); docs ai-features, studio, personas,
+        settings-reference, engines, whats-new. Also the client API JustDirect asked for (docs/dev/client-api.md).
+OPEN:   the suites, the gate, e2e and the real window, once at the end; the dev database still holds `breeze_tts`
+        for both (saved 2026-10-19 and 2026-11-06), switched through the card's Voices in the window check.
+        For the release (the release session's): Drama 3 and Ming are not in the pinned v0.9.2-jv.6 — the release
+        must carry the fork's v0.9.4-jv.7 and the catalog at its tag (the fork item below already plans it), or a
+        packaged app's default narrator won't load.
+GO:     given 2026-11-08 (above); the release itself stays the user's.
 
 ### One-click stops once when the cast is ready, so you hear the voices before the render (decided 2026-11-07)
 STATE:  DECIDED 2026-11-07 — the user, on D1's two books: "so one click just does everythign automatically without
@@ -302,6 +316,9 @@ OPEN:   at the release (upstream merged again — 27f41cac, above): tag `v0.9.4-
 GO:     given for the release's timing; the merge given 2026-11-05.
 
 ### The character voices: BreezeTTS 2, with its licence on the run's card (decided 2026-10-16)
+NOTE:   SUPERSEDED 2026-11-08 by the top item ("The release is STOPPED…"): the defaults are the voices you can sell
+        (VoxCPM2, narrator Fish Audio Drama 3); BreezeTTS 2 is the card's other **Voices** set, *Best acting — not
+        for sale*. Kept for its record.
 STATE:  DECIDED 2026-10-16 — the user's ears on round 4's blind page (51 answers: plays like the
         book — BreezeTTS 2 13/13, IndexTTS 2.5 7/13, Higgs 6/12, VoxCPM2 3/13); shown: "My rec for
         the engine that plays the book's characters (`book_voices.clone_model`): BreezeTTS 2. It's

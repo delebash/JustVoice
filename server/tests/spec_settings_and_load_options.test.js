@@ -198,6 +198,14 @@ test("Chatterbox Multilingual's v3 checkpoint is its load option; set, it reache
   expect(r.languages).toEqual(generated.catalogFamily("chatterbox").languages);
 });
 
+test("Drama 3 loads with its experts from disk and none on the CPU, so it fits an 8 GB card", () => {
+  // Rounds 6–8's options, the app's own defaults since 2026-11-08 (curated/fish_drama3.js).
+  const r = row("fish_drama3", "fish_drama3-fishdrama3-q4k");
+  expect(option(r, "fish_drama3.disk_experts")).toMatchObject({ type: "switch", default: "true", runtime_default: "false", featured: true });
+  expect(option(r, "fish_drama3.cpu_expert_layers")).toMatchObject({ type: "number", default: "0", runtime_default: "4" });
+  expect(hooks.sessionOptions(kitRow(r.id))).toMatchObject({ "fish_drama3.disk_experts": "true", "fish_drama3.cpu_expert_layers": "0" });
+});
+
 test("Qwen3's decoder stays 16-bit by default; its two measured options stay on the row", () => {
   const r = row("qwen3", "qwen3-cv-1.7b-q8");
   const shown = runtimeOptions.describe("qwen3", r);

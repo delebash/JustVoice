@@ -16,7 +16,7 @@ import { useRouter } from "vue-router";
 import { confirmDialog, openPath, pushToast, reportError, saveBlob, useAiTasksStore } from "@delebash/ui";
 import BookRunCard from "./BookRunCard.vue";
 import {
-  LIVE, bookRunFor, followBookRun, followLive, loadBookRun, priceQuestion, resumeBookRun, runFollowed, setStopForCast, startBookRun,
+  LIVE, bookRunFor, followBookRun, followLive, loadBookRun, priceQuestion, resumeBookRun, runFollowed, setStopForCast, setVoiceSet, startBookRun,
   stopBookRun,
 } from "../services/bookRun.js";
 import { useCopy } from "../services/copy.js";
@@ -118,6 +118,16 @@ async function stopForCast(on) {
   load();
 }
 
+// Voices: a set of models for every book's run, saved at once; the plan reads it back.
+async function voiceSet(set) {
+  try {
+    await setVoiceSet(api, set);
+  } catch (e) {
+    reportError(e, { title: "Couldn't save the voices" });
+  }
+  load();
+}
+
 // ⬇ Save the M4B: the run's export job hands its file over once (as Export's does).
 async function save() {
   const m4b = run.value?.m4b;
@@ -151,5 +161,5 @@ function routing(row) {
 
 <template>
   <BookRunCard :unit="unit" :plan="plan" :run="run" :busy="busy" :elapsed="run?.totals.seconds || 0"
-    @start="start" @stop="stop" @resume="resume" @save="save" @go="go" @routing="routing" @stop-for-cast="stopForCast" />
+    @start="start" @stop="stop" @resume="resume" @save="save" @go="go" @routing="routing" @stop-for-cast="stopForCast" @voice-set="voiceSet" />
 </template>

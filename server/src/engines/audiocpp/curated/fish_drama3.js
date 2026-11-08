@@ -3,6 +3,25 @@
 // catalog.md §4). Its makers direct it with a free-text note in square brackets before the words,
 // point cues mid-line and paired tags (RESEARCH §10.33). Round 6 hears it (TASKS "Round 6").
 
+// Its load options, as rounds 6–8 ran it on the 8 GB card (RESEARCH §10.33): the routed experts read
+// from the file on demand into a bounded cache (`disk_experts`) and none of the 40 expert banks on
+// the CPU — the model then holds about 7.2 GB of the card and maps ~17 GB of the file in memory.
+// audio.cpp's own defaults (experts resident, 4 banks on the CPU) are its 24 GB profile and don't
+// fit an 8 GB card; a bigger card can switch disk experts off on the model's row (decided
+// 2026-11-08, docs/plans/2026-11-08-commercial-engine.md).
+export const LOAD_OPTIONS = {
+  disk_experts: {
+    label: "Experts from disk",
+    hint: "Reads the routed experts from the model file as they're needed, so it fits an 8 GB card; switch off on a 24 GB card for speed.",
+    default: true,
+  },
+  cpu_expert_layers: {
+    label: "Expert layers on the CPU",
+    hint: "How many of the 40 expert banks run on the processor. 0 with experts from disk on an 8 GB card.",
+    default: 0,
+  },
+};
+
 // Its direction, the way round 6 heard it (RESEARCH §10.33, the user's ears 2026-10-19: the best
 // model that can be sold with): one note in square brackets before the words — the line's
 // direction in words, else a word for its emotion — and a space, as its makers write it ("[choked

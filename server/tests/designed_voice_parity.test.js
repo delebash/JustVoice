@@ -165,9 +165,12 @@ test("both_render_doors_put_the_description_first", () => {
   expect(src("api/render_chapter_api.js")).toContain("planBlock(");
   expect(src("line_takes.js")).toContain("planLine(");
   const resolver = src("persona_render.js");
-  const composed = resolver.split("composed = composeInstruct(")[1];
-  // The description leads — a saved voice's, or an unsaved design's on the persona page.
-  expect(composed.trimStart().startsWith("design,")).toBe(true);
+  // The description leads every compose — a saved voice's, or an unsaved design's on the persona
+  // page; a model with its own feeling words (VoxCPM2's, since 2026-11-08) composes too.
+  const planned = resolver.split("export async function planLine(")[1].split("\n}\n")[0];
+  const calls = planned.split("composeInstruct(").slice(1);
+  expect(calls.length).toBeGreaterThanOrEqual(1);
+  for (const call of calls) expect(call.trimStart().startsWith("design,")).toBe(true);
   expect(resolver).toContain("design = renderCore.voiceDesignInstructForId(state, voiceId)");
   expect(resolver).toContain("design = candidate.designPrompt");
 

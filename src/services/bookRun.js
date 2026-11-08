@@ -329,6 +329,20 @@ export async function setStopForCast(api, on) {
   await api.request("/v1/settings", { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify({ book_run: { stop_for_cast: on } }) });
 }
 
+/** The card's **Voices** label, and the word for models no set names (decided 2026-11-08). */
+export const VOICES = "Voices";
+export const OWN_VOICES = "Your own models";
+
+/** Use one of the plan's `voice_sets` (`book_voices.sets`) for every book's run: its models become
+ * the characters' and the narrator's — the settings the run reads. */
+export async function setVoiceSet(api, set) {
+  await api.request("/v1/settings", {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ book_voices: { clone_model: set.clone_model, narrator_model: set.narrator_model } }),
+  });
+}
+
 const wait = (ms, signal) => new Promise((resolve, reject) => {
   if (signal?.aborted) return reject(signal.reason);
   const t = setTimeout(resolve, ms);

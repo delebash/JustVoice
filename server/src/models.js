@@ -507,18 +507,39 @@ export const TakeCheckSettings = T.Object({
  * 2026-10-11; slice 3, 2026-10-16). A speaker with at least `min_lines` lines in the whole book gets
  * a voice made from the book; the rest are matched from the library. Each voice is designed once on
  * `design_model` and its audition kept as the clip of a voice on `clone_model` — the narrator's on
- * `narrator_model` — each of which must clone and still take direction. BreezeTTS 2 plays the
- * characters (round 4's ears, TASKS "The character voices") and narrates too (round 7's narration
- * sample, picked on 10 passages of 10 against VoxCPM2 — RESEARCH §10.34, 2026-10-21); the narrator
- * keeps its own setting (docs/plans/2026-10-17-narrator-and-character-engines.md).
+ * `narrator_model` — each of which must clone and still take direction. By default the voices you
+ * can sell with (2026-11-08): VoxCPM2 plays the characters (the best acting of the sellable models
+ * by the user's ears, told the feeling's words — RESEARCH §10.39) and Fish Audio Drama 3 narrates
+ * (the user picked its narration over BreezeTTS 2's, §10.36). BreezeTTS 2 acts best of all but can't
+ * be sold with: the card's **Voices** offers it as the other set (`sets`). The narrator keeps its own
+ * setting (docs/plans/2026-10-17-narrator-and-character-engines.md).
  * The Local recipe reads up to `speaker_words` words of a speaker's paragraphs and `narrator_words`
  * of the book's opening; an audition speaks the speaker's calm line nearest `audition_words` words.
  */
+/** A choice of the one-click run's voice models — the card's **Voices** (decided 2026-11-08). */
+export const VoiceSet = T.Object({
+  key: T.String(),
+  label: T.String(),
+  clone_model: T.String(),
+  narrator_model: T.String(),
+});
+
+/** The two the card offers: the best a user can sell what they make with, and the best acting,
+ * not for sale (docs/plans/2026-11-08-commercial-engine.md D5, D6). Settings, so they change
+ * without a code change. */
+export const DEFAULT_VOICE_SETS = [
+  { key: "sell", label: "Voices you can sell", clone_model: "voxcpm2", narrator_model: "fish_drama3-fishdrama3" },
+  { key: "best", label: "Best acting — not for sale", clone_model: "breeze_tts", narrator_model: "breeze_tts" },
+];
+
 export const BookVoicesSettings = T.Object({
   min_lines: opt(T.Integer({ minimum: 1 }), 3),
   design_model: opt(T.String(), "qwen3-vd"),
-  clone_model: opt(T.String(), "breeze_tts"),
-  narrator_model: opt(T.String(), "breeze_tts"),
+  // The voices you can sell (D5, D6 — the user's "the point was the best for commercial",
+  // 2026-11-07): VoxCPM2 plays the characters, Fish Audio Drama 3 narrates.
+  clone_model: opt(T.String(), "voxcpm2"),
+  narrator_model: opt(T.String(), "fish_drama3-fishdrama3"),
+  sets: opt(T.Array(VoiceSet), DEFAULT_VOICE_SETS),
   speaker_words: opt(T.Integer({ minimum: 50 }), 2000),
   narrator_words: opt(T.Integer({ minimum: 50 }), 2000),
   audition_words: opt(T.Integer({ minimum: 2 }), 25),

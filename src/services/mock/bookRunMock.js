@@ -55,8 +55,21 @@ const FRONTIER_TOKENS = {
 const price = ([i, o]) => Math.round(((i / 1e6) * 4 + (o / 1e6) * 20) * 100) / 100;
 
 /** GET /v1/projects/{id}/book_run's plan — on this computer's model, or a cloud one. */
-// BreezeTTS 2's licence as the server gives it (curated/breeze_tts.js, audio.cpp's licence table).
-const BREEZE_LICENCE = {
+// The narrator's Fish Audio Drama 3 licence as the server gives it (curated/fish_drama3.js, audio.cpp's
+// licence table); the characters' VoxCPM2 is a plain Yes, so it has none.
+const DRAMA3_LICENCE = {
+  model: "fish_drama3-fishdrama3",
+  name: "Fish Audio Drama 3",
+  commercial: "Conditional",
+  licence: "Fish Audio Community License v1.0",
+  table: "Conditional",
+  summary: "Yes while you and your affiliates earn under USD 500,000 a year from all sources, if you show “Built with Fish Audio” on a related website or page. Above that, a separate written licence from Fish Audio. Not as a service that makes speech for other people.",
+  url: "https://huggingface.co/fishaudio/drama-3/blob/main/LICENSE",
+  checked: "2026-10-18",
+};
+// BreezeTTS 2's licence as the server gives it (curated/breeze_tts.js) — the design step's chip when
+// the other Voices set, the best acting not for sale, is picked.
+export const BREEZE_LICENCE = {
   model: "breeze_tts",
   name: "BreezeTTS 2",
   commercial: "Separate licence",
@@ -66,6 +79,11 @@ const BREEZE_LICENCE = {
   url: "https://huggingface.co/BreezeBlue/Breeze-TTS-2/blob/main/LICENSE",
   checked: "2026-10-11",
 };
+// The card's Voices (book_voices.sets, decided 2026-11-08), as the plan gives them.
+export const VOICE_SETS = [
+  { key: "sell", label: "Voices you can sell", models: "VoxCPM2 · narrator Fish Audio Drama 3", commercial: "Conditional", clone_model: "voxcpm2", narrator_model: "fish_drama3-fishdrama3" },
+  { key: "best", label: "Best acting — not for sale", models: "BreezeTTS 2", commercial: "Separate licence", clone_model: "breeze_tts", narrator_model: "breeze_tts" },
+];
 
 export function mockPlan({ frontier = false, blocked = false, noFfmpeg = false } = {}) {
   const route = frontier ? CLOUD : LOCAL;
@@ -85,9 +103,9 @@ export function mockPlan({ frontier = false, blocked = false, noFfmpeg = false }
         estimate: blocked ? null : t ? { tokens_in: t[0], tokens_out: t[1], price: frontier ? price(t) : 0 } : null,
       };
     }
-    const model = { design: "Qwen3-TTS VoiceDesign → BreezeTTS 2", check: "Qwen3-ASR 1.7B" }[key] ?? null;
+    const model = { design: "Qwen3-TTS VoiceDesign → VoxCPM2 · narrator Fish Audio Drama 3", check: "Qwen3-ASR 1.7B" }[key] ?? null;
     const kind = key === "design" || key === "render" ? "speech" : key === "check" ? "recognition" : key === "export" ? "file" : "book";
-    const licences = key === "design" ? [BREEZE_LICENCE] : [];
+    const licences = key === "design" ? [DRAMA3_LICENCE] : [];
     return { key, kind, model, provider: null, cloud: false, configured: true, recipe: null, feature: null, action: null, estimate: null, licences };
   });
   const totals = Object.values(FRONTIER_TOKENS).reduce((a, t) => [a[0] + t[0], a[1] + t[1]], [0, 0]);
@@ -105,11 +123,13 @@ export function mockPlan({ frontier = false, blocked = false, noFfmpeg = false }
       },
     ask_price: frontier && !blocked,
     stop_for_cast: true,
+    voice_sets: VOICE_SETS,
+    voice_set: "sell",
     problems: blocked
       ? [
         { step: "discover", code: "no_model", detail: null },
         { step: "design", code: "no_language", detail: null },
-        { step: "design", code: "terms", detail: null, engine: "breeze_tts", name: "BreezeTTS 2", uses: ["characters", "narrator"] },
+        { step: "design", code: "terms", detail: null, engine: "fish_drama3", name: "Fish Audio Drama 3", uses: ["narrator"] },
       ]
       : [],
     warnings: noFfmpeg ? [{ step: "export", code: "no_ffmpeg", detail: null }] : [],
@@ -137,7 +157,7 @@ const MODELS = {
   analyze: ["gemma-4-26b-a4b-qat", "local"],
   group_lines: ["gemma-4-26b-a4b-qat", null],
   describe: ["gemma-4-26b-a4b-qat", "local"],
-  design: ["Qwen3-TTS VoiceDesign → BreezeTTS 2", null],
+  design: ["Qwen3-TTS VoiceDesign → VoxCPM2 · narrator Fish Audio Drama 3", null],
   match: ["gemma-4-26b-a4b-qat", null],
   direction: ["gemma-4-26b-a4b-qat", "local"],
   check: ["qwen3-asr-1.7b-q8", null],

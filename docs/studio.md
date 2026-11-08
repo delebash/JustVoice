@@ -148,6 +148,26 @@ under the steps before you press **▶ Make audiobook**; the box is a setting
 (`book_run.stop_for_cast`, [Settings reference](settings-reference.md)) and
 stays as you leave it for every book.
 
+**Voices** — the models the voices are made on, picked above that box before a
+run (since 2026-11-08):
+
+- **Voices you can sell — VoxCPM2 · narrator Fish Audio Drama 3**, as it ships:
+  the models you may sell an audiobook made with. Of those, blind listening
+  liked them best — VoxCPM2 acting the characters' lines, Drama 3 reading the
+  narration (its narration was preferred even to BreezeTTS 2's). Drama 3's
+  licence is *Conditional*: free to sell with while you and your affiliates
+  earn under USD 500,000 a year, with "Built with Fish Audio" shown on a
+  related page ([Speech engines → Commercial use](engines.md#commercial-use-in-plain-words)).
+- **Best acting — not for sale — BreezeTTS 2**: it played every line like the
+  book in the same listening, the best of all — but its licence doesn't let you
+  sell what it makes without a separate licence from its makers. For a book you
+  keep, or share for free.
+
+The choice is a setting for every book's run (`book_voices.sets`,
+[AI features → Voices from the book](ai-features.md#voices-from-the-book));
+models set any other way show as *Your own models*. The voices already made
+keep their model — the choice is for the voices the next run makes.
+
 **Before you press it**, the card names the model each step will run on — the
 chip opens that step's card in AI Settings → Routing by feature, where you can
 change it — and its recipe (**Local** or **Frontier**,
@@ -155,14 +175,17 @@ change it — and its recipe (**Local** or **Frontier**,
 step on this computer: *Every AI step runs on this computer — nothing is sent
 anywhere, nothing to pay.* A speech model whose licence isn't a plain *yes* to
 selling what it makes carries its licence word beside its name, as the
-[Speech tab](engines.md) shows it: the characters' model, BreezeTTS 2,
-reads *Commercial use: Separate licence* — hover it for the licence's own
+[Speech tab](engines.md) shows it: the narrator's model, Fish Audio Drama 3,
+reads *Commercial use: Conditional* (BreezeTTS 2, picked under **Voices**,
+*Separate licence*) — hover it for the licence's own
 words (since 2026-10-18). What stops it starting is said on the card: no
 language model set up, the book's **Language** not set (its voices are made in
 it), a voice model's licence not yet accepted on this computer —
-*BreezeTTS 2's licence isn't accepted on this computer. Accept it to make the
-character voices and the narrator's voice.* with **BreezeTTS 2's licence ➜**,
+*Fish Audio Drama 3's licence isn't accepted on this computer. Accept it to make the
+narrator's voice.* with **Fish Audio Drama 3's licence ➜**,
 which opens it to accept once, as its first download asks (since 2026-10-18);
+one model for the characters and the narrator is one stop naming both (*…to make the
+character voices and the narrator's voice.*);
 the same stop names the model that designs the voices (*Accept it to design the
 voices.*), or only the narrator's (*Accept it to make the narrator's voice.*)
 when the narrator has a model of its own and its licence is the one waiting — no text yet, or every

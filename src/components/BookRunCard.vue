@@ -19,9 +19,9 @@
 <script setup>
 import { computed } from "vue";
 import { useQuasar } from "quasar";
-import { LuFeatureChip, UiButton, UiCheckbox, UiProgress, UiTable, UiTag } from "@delebash/ui";
+import { LuFeatureChip, UiButton, UiCheckbox, UiProgress, UiSelect, UiTable, UiTag } from "@delebash/ui";
 import {
-  LIVE, PROBLEMS, RECIPE_WORDS, RUN_TAGS, RUN_TITLE, RUNS_ON_SERVER, STEP_LABELS, STOP_FOR_CAST, planLine, planWords, priceText,
+  LIVE, OWN_VOICES, PROBLEMS, RECIPE_WORDS, RUN_TAGS, RUN_TITLE, RUNS_ON_SERVER, STEP_LABELS, STOP_FOR_CAST, VOICES, planLine, planWords, priceText,
   problemWords, reviewItems, runBanner, runningLine, stepStatusText, stepsDone,
 } from "../services/bookRun.js";
 import { licClass, licTitle } from "../services/engineFacts.js";
@@ -39,8 +39,9 @@ const props = defineProps({
   // Seconds the run has worked so far (its steps' time).
   elapsed: { type: Number, default: 0 },
 });
-// stop-for-cast: the setting's checkbox was ticked or cleared (its new value).
-const emit = defineEmits(["start", "stop", "resume", "save", "go", "routing", "stop-for-cast"]);
+// stop-for-cast: the setting's checkbox was ticked or cleared (its new value); voice-set: a set of
+// Voices was picked (the plan's set).
+const emit = defineEmits(["start", "stop", "resume", "save", "go", "routing", "stop-for-cast", "voice-set"]);
 
 // Below 600 px (Quasar's `sm`, the app's phone width) what a step runs on goes under its name,
 // so the table keeps two columns.
@@ -62,6 +63,14 @@ const waiting = computed(() => props.run?.status === "waiting");
 const resumable = computed(() => !!props.run && ["waiting", "paused", "cancelled", "failed"].includes(props.run.status));
 // The stop when the cast is ready is set before a run reaches it — not while one runs or waits there.
 const showStopForCast = computed(() => !!props.plan && !live.value && !waiting.value);
+// Voices: the voices you can sell, or the best acting not for sale (the plan's `voice_sets`,
+// decided 2026-11-08); set like the stop, before a run.
+const voiceOptions = computed(() => (props.plan?.voice_sets ?? []).map((s) => ({ value: s.key, label: `${s.label} — ${s.models}` })));
+const currentSet = computed(() => (props.plan?.voice_sets ?? []).find((s) => s.key === props.plan?.voice_set) ?? null);
+const pickVoices = (key) => {
+  const set = (props.plan?.voice_sets ?? []).find((s) => s.key === key);
+  if (set && key !== props.plan.voice_set) emit("voice-set", set);
+};
 
 const runStep = (key) => props.run?.steps.find((s) => s.key === key) ?? null;
 const rows = computed(() => (props.plan?.steps ?? []).map((s) => ({ ...s, label: STEP_LABELS[s.key], step: runStep(s.key) })));
@@ -187,6 +196,12 @@ const numbers = computed(() => (props.run?.steps ?? [])
 
       <p v-if="!run && planLine(plan)" class="jv-hint book-run__cost">{{ planLine(plan) }}</p>
 
+      <div v-if="showStopForCast && voiceOptions.length" class="book-run__voices">
+        <span class="jv-eyebrow">{{ VOICES }}</span>
+        <UiSelect :model-value="plan.voice_set || ''" :options="voiceOptions" width="path" :placeholder="OWN_VOICES"
+          @update:model-value="pickVoices" />
+        <span v-if="currentSet" class="ev-lic" :class="licClass(currentSet.commercial)">Commercial use: {{ currentSet.commercial }}</span>
+      </div>
       <div v-if="showStopForCast" class="book-run__option">
         <UiCheckbox :model-value="plan.stop_for_cast !== false" :label="STOP_FOR_CAST"
           @update:model-value="emit('stop-for-cast', $event)" />
@@ -254,6 +269,7 @@ const numbers = computed(() => (props.run?.steps ?? [])
 .book-run__steps--narrow :deep(.ui-table) { table-layout: fixed; width: 100%; }
 .book-run__cost { margin-top: 8px; }
 .book-run__option { margin-top: 10px; }
+.book-run__voices { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .book-run__actions { margin-top: 12px; gap: 10px; flex-wrap: wrap; align-items: center; }
 .book-run__subhead { font-size: 13px; font-weight: 600; color: var(--ink); margin: 16px 0 6px; }
 .book-run__numbers { margin-top: 12px; }
