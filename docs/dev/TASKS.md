@@ -363,7 +363,15 @@ OPEN:   at the release (upstream merged again — 27f41cac, above): tag `v0.9.4-
         changed), and 14 server tests fail with it. DECIDED 2026-11-07 (the close-out item above, "your recs
         go"): the release ships on 661a224e; the new packages come after it (the close-out item's "After the
         release").
-GO:     given for the release's timing; the merge given 2026-11-05.
+        2026-11-09 — shown: "What's left is the release, which is your call: 1. Push and tag our audio.cpp copy (the
+        release session's job). 2. Release JustVoice." The user: "1 go". So the fork's steps (1)–(2) above go to the
+        family release session. Item 2, JustVoice's own release, still waits for the user. Found at the go: upstream
+        main is 11 commits past our last merge (047fb424, 2026-11-09: Ming3 Audio on shared MoE, Qwen3-TTS opt-in BF16,
+        sense_asr word timestamps, Nemotron Transcribe and Audio8 touched, logging-only readbacks removed in the
+        framework, the SYCL backend); `git describe` still v0.9.4. Mine, attacked (the user's "always keep fork up to
+        date", and the 2026-11-07 and 2026-11-08 merges before the tag): merge once more first, then JustVoice tests what
+        the merge changes. One merge only: commits that land while it is being tested wait for the next release.
+GO:     given for the release's timing; the merge given 2026-11-05; the fork's push and tag 2026-11-09 ("1 go").
 
 ### The character voices: BreezeTTS 2, with its licence on the run's card (decided 2026-10-16)
 NOTE:   SUPERSEDED 2026-11-08 by the top item ("The release is STOPPED…"): the defaults are the voices you can sell
