@@ -21,12 +21,8 @@
 // Exits non-zero if any view throws a JS error or fails to render, so
 // it can gate CI / a pre-merge check.
 
-import { createRequire } from "node:module";
+import { chromium } from "playwright";
 import { SIDEBAR_TABS as TABS, findChrome, waitForServerReady } from "./lib/smoke-common.js";
-
-const require = createRequire(import.meta.url);
-// playwright is a CJS package; import via require to get { chromium }.
-const { chromium } = require("playwright");
 
 // 17494 is JV's real port (src-electron/electron-main.js `port`); this default said 8741 — a port
 // the app never listens on — until the 2026-08-04 docs campaign.

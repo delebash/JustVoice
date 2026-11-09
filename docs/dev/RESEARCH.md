@@ -4224,6 +4224,13 @@ IndexTTS2.5, the same clip, seed and lines sent straight to the runtime both way
   segments, turns or words (`session.cpp:589`) — so no field has the words without them, and
   audio.cpp's own page shows `text` as it is (`+page.svelte`, `nextText = result.text`). Not
   fixed here: it is the model's (or the port's) output.
+  Again 2026-11-09, at the fork's merge 9784e04c (`docs/plans/2026-11-09-fork-release-test.md`):
+  through the app, "That accounts for it<period> He won't stand beating<io Now, …<io> …<period>." On the
+  CLI, the pinned v0.9.2-jv.6 and 9784e04c give the same text from the same clip, so the merge didn't change
+  it. In Chinese it is clean: a Qwen3-TTS CustomVoice take (Vivian, seed 7) of
+  "今天下雨了，老房子在风中吱吱作响。我们坐在窗边，听着雨声。" read back as
+  "今天下雨了，老房子在风中吱吱作响，我们坐在窗边听着雨声。" on both builds, every character, only the
+  punctuation differing. — *measured, 2026-11-09*
 
 ### 10.18 The direction step as built — the one-click plan's slice 2 (2026-10-16)
 

@@ -15,14 +15,10 @@
 // on 2026-08-06 — so it timed out on every run.
 
 import { mkdirSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { chromium } from "playwright";
 import { SIDEBAR_TABS, findChrome, waitForServerReady } from "./lib/smoke-common.js";
-
-const require = createRequire(import.meta.url);
-// playwright is a CJS package; import via require to get { chromium }.
-const { chromium } = require("playwright");
 
 const BASE = process.env.JV_BASE || "http://127.0.0.1:17494/";
 const OUT = process.env.JV_SHOTS || join(dirname(fileURLToPath(import.meta.url)), "_shots");
