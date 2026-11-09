@@ -98,7 +98,11 @@ That was my miss: a new VoxCPM2 package is exactly a candidate for the best voic
     unmarked, as D12 decided), the persona page's filter and This model, Personas' filter, Voices'
     filter, ⧉ Copy to another model…, Studio → Cast's Models to choose from (screenshot) and its persona
     filter, AI Settings → Speech's heads and table, Quick setup's "The voices for books"; no page
-    overflow at 1280 or 390 px, no page error. It found D24 (a pick's row lost its mark when the list
+    overflow at 1280 or 390 px, no page error. (Every place passed at 1280 on the 18:26 build across
+    two runs: the last run's three persona steps passed, and its next three stopped at the app's own
+    "Leave without saving?" guard, because the script had switched Hatter's Type, which is the guard
+    working. Those three passed in the run before. Nothing was saved: Hatter's row is unchanged since
+    2026-10-16, checked read-only after.) It found D24 (a pick's row lost its mark when the list
     scrolled to the chosen model) — fixed; unit, lint, build:spa, smoke, build:unpacked and e2e run again
     after it, all green.
   - Committed: JustVoice 8905adda (pushed). The kit's 6e89c974 is on its origin (pushed with
