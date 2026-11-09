@@ -100,10 +100,22 @@ just-stage and just-direct-mocap.
 - [x] PASS to family-release at 17:2x, with "CPU free" for its ctest. "Card free" to just-stage and
   just-direct-mocap. Stopping the server's task left its two audiocpp_server processes on the card (5.7 GB). Found
   by GPU process memory, stopped by PID, and checked: the card back to 517 MiB, 17494 free.
-- [ ] The smoke gate for the smoke.js repair (build:spa, a server, `JV_BASE=…17494 npm run smoke`). It loads the
-  chat model, so it waits until the PC is free after family-release's ctest.
-- [ ] "JustVoice ready" to family-release, once the smoke gate passes. Nothing else of JustVoice's is open: no
-  curation is needed at 9784e04c.
+- family-release's ctest on 9784e04c: 103/104. lfm3_audio_assets_test failed only on Windows: it rewrote a GGUF
+  while its own assets still had it mapped. Fixed in the test alone (bae19b6b, checked: one test file), then
+  104/104. The engine code I tested is unchanged.
+- [x] The smoke gate for the smoke.js repair: build:spa 17:36 (exit 0, a fresh dist/spa), then
+  `JV_BASE=http://127.0.0.1:17494 npm run smoke` 17:37: every view, zero JS errors, "SMOKE PASSED", exit 0. It ran
+  against the 17:04 server (same server code, serving the fresh build), because that server was still up (below).
+- **My mistake: the server outlived its stop.** Stopping the background task killed the shell, not the server's
+  `node scripts/node24.js` (PID 7252) and its `electron.exe … serve.js` (PID 27268). I checked the port with netstat
+  and Get-NetTCPConnection `-State Listen`, both empty, and reported "17494 free" to the sessions; the listener showed
+  no state. The second server then failed with EADDRINUSE. Stopped at 17:38 with its llama-server children (the
+  smoke run's chat model). Checked by command line: nothing matching `serve.js`, audiocpp_server or llama-server;
+  card 517 MiB. The sessions were told. **From now on, a stop is checked by process command line, not by the port.**
+- [x] "JustVoice ready" to family-release, after this doc's commit. Nothing else of JustVoice's is open: no curation
+  is needed at 9784e04c, my commits are pushed, and the tree is clean. From here the release steps are
+  family-release's: the push, the v0.9.4-jv.7 dispatch, the kit's pin and rows, the catalog at the tag, What's
+  new, the full pass, and JustVoice v0.1.0.
 
 ## Mistakes to avoid
 
