@@ -255,9 +255,9 @@ CHECKED 2026-11-06, once at the end: lint; server 1298 (+1 skipped); unit 306; t
         Again 2026-11-08 after the cast stop, the kit fix and the comment repairs: lint (633 files); unit 310;
         server 1299 (+1 skipped); the guard (no violations); smoke every view, zero JS errors (8741, the
         user's data); e2e 10/10; the kit's core 1694 (+13 skipped), UI 94, both lints; the template's unit 141.
-OPEN:   B9's majors move with the family (Electron 45, jsdom 31, Biome, electron-builder): checked 2026-11-08,
-        JustVoice is on the family's versions today — the same as JustWrite's and the template's (Electron
-        44.10.0, electron-builder 26.15.3, Biome 2.5.15, jsdom ^30.1.2); B10's rest (the kit's pin — with the
+OPEN:   B9's majors moved with the family (f91833c7, the family release, 2026-11-07): JustVoice is on the
+        template's versions (Electron 45.2.3, electron-builder 26.18.0, Biome 2.6.6, jsdom ^31.0.0, checked at
+        both package.json files 2026-11-08), tested by the latest-models item's end run; B10's rest (the kit's pin — with the
         tag; the kit's 2026-10-20 changes 1, 3, 11 and the start checks are tested by the release run); D1–D3
         decided 2026-11-08 (the one-click item above: the user's listen skipped, Release enabled, JustVoice
         handed to the family release session); D4: no website for this release (decided 2026-11-07). The model revision past 661a224e with its new
