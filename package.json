@@ -45,14 +45,14 @@
     "dompurify": "^3.4.17",
     "front-matter": "^4.0.2",
     "github-slugger": "^2.0.0",
-    "quasar": "^2.35.2",
+    "quasar": "^2.35.3",
     "sortablejs": "^1.15.7"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.6",
     "@floating-ui/dom": "^1.8.0",
     "@playwright/test": "^1.65.0",
-    "@quasar/app-vite": "^3.10.3",
+    "@quasar/app-vite": "^3.10.4",
     "@vitejs/plugin-vue": "^6.0.10",
     "@vue/test-utils": "^2.5.1",
     "@vueuse/core": "^15.0.0",
