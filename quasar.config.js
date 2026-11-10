@@ -216,13 +216,19 @@ export default defineConfig(() => {
           target: [ { target: 'dmg', arch: [ 'universal' ] }, { target: 'zip', arch: [ 'universal' ] } ],
           extendInfo: { NSMicrophoneUsageDescription: 'JustVoice records your voice when you dictate or clone a voice.' },
           extraFiles: [ { from: dspStage, to: 'MacOS' } ],
-          // already universal (lipo'd when staged), so the same file in both builds is expected
-          x64ArchFiles: 'Contents/MacOS/audiocpp_dsp',
+          // the same file in both halves of the universal app, which @electron/universal joins only when named here:
+          // audiocpp_dsp, already universal (lipo'd when staged), and the native modules' binaries for every CPU —
+          // koffi's two macOS packages and better-sqlite3's prebuilds/ (JustWrite's rule; the release dry run stopped
+          // on koffi-darwin-arm64's koffi.node without it, 2026-11-10)
+          x64ArchFiles: '{Contents/MacOS/audiocpp_dsp,**/node_modules/{@koromix/koffi-darwin-*,better-sqlite3/prebuilds}/**}',
           extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '.', filter: [ '!*.cmd' ] }, ...notices('.') ]
         },
         linux: {
           target: [ 'AppImage', 'deb' ],
           category: 'AudioVideo',
+          // the .deb's maintainer field, published in the package (electron-builder refuses a .deb
+          // without one): the repository owner's GitHub no-reply address, never a real one (JustWrite's)
+          maintainer: 'delebash <delebash@users.noreply.github.com>',
           extraFiles: [ { from: dspStage, to: '.' } ],
           extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '..', filter: [ '!*.cmd' ] }, ...notices('..') ]
         },
