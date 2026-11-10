@@ -38,6 +38,19 @@ read back by Qwen3-ASR, or one transcription for a recogniser. Because the frame
 model, the two defaults, VoxCPM2 and Drama 3, also get one line each. RAM and the card are booked with
 just-stage and just-direct-mocap.
 
+## The standard each piece follows
+
+| Piece | Standard | Kit code |
+|---|---|---|
+| The dev build of the merged fork | the kit's dev-build reader, the build made by the app's script (Quasar's `beforeDev`) | `packages/core/src/runner/dev_build.js` |
+| The models' downloads for the tests | the kit's models cache (HF cache layout, a blob per SHA-256) | `packages/core/src/runner/models.js` |
+| Loading, placing and unloading each model | the kit's audio.cpp runtime and its routes | `packages/core/src/runner/runtime_service.js` |
+| The catalog preview at 9784e04c | audio.cpp's own spec files and web UI rule, read at our fork's ref | app — `scripts/audiocpp-catalog.js`, JustVoice's catalog of voices |
+| The lines spoken and read back | the app's own voice preview, generate and transcribe routes, as a user reaches them | app — JustVoice's voice making and transcription |
+| The server suite on the previewed catalog | vitest with the kit's temp folder; a Node `--import` preload redirects one file read | `packages/core/src/platform/vitest_tmp.js` |
+| The scripts' ES imports (node24.js, smoke.js, smoke_gui.js) | the family rule, ES modules only; Playwright's own ESM entry (`index.mjs`) | app — the repo's own scripts |
+| The smoke gate | the repo's Playwright gate, the browser found through the kit's one lookup | `scripts/lib/exec-resolve.js` |
+
 ## Where it stands
 
 - [x] Dev build at 9784e04c: 16:53–16:59, 395 s, exit 0 (`jv-dev-build.json`: 9784e04c, clean).
