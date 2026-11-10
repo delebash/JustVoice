@@ -34,6 +34,7 @@ test("turbo_clone_arrives_in_jv4", () => {
     ["v0.9.0-jv.3", false],
     ["v0.9.0-jv.4", true],
     ["v0.9.2-jv.6", true],
+    ["v0.9.4-jv.7", true],
   ]) {
     stores.getRunnerConfigStore().setSetting(pinKey("audiocpp"), tag);
     expect(kitSettings.runtimeHas("turbo_clone"), tag).toBe(expected);

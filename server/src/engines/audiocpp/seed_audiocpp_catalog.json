@@ -1,7 +1,7 @@
 {
   "generated_from": {
-    "audiocpp_ref": "jv",
-    "audiocpp_commit": "73a2b82e29691b209e7c09f16cb080c04643bb75",
+    "audiocpp_ref": "v0.9.4-jv.7",
+    "audiocpp_commit": "86d82b1f8d0d40075eb870e1050ac4962ab6bb4d",
     "model_repo": "audio-cpp/audio.cpp-gguf",
     "model_revision": "73ce4162f6cce370dd533c6782b772135c1b2a8e"
   },
@@ -45720,6 +45720,17 @@
             "default": "mixed"
           },
           {
+            "name": "activation_type",
+            "type": "enum",
+            "description": "Talker and code-predictor activation rounding: f32 preserves the default path; bf16 rounds at reference BF16 operation boundaries, including text projection. Independent of weight storage and perf_mode; changes generated audio and does not guarantee identical PyTorch tokens.",
+            "values": [
+              "f32",
+              "bf16"
+            ],
+            "required": false,
+            "default": "f32"
+          },
+          {
             "name": "packed_projections",
             "type": "bool",
             "description": "Pack QKV and gate/up projections in the talker and code predictor without changing weight dtype; default false, true with cuda_perf. Explicit values override the preset.",
@@ -49698,6 +49709,7 @@
       "capabilities": {
         "asr": [
           "vad_chunking",
+          "word_timestamps",
           "partial_results"
         ]
       },
@@ -49731,6 +49743,13 @@
             "name": "keep_tags",
             "type": "bool",
             "description": "Keep <|event|>/<|emotion|>/<|language|> tags inline in the output text.",
+            "required": false,
+            "default": false
+          },
+          {
+            "name": "return_timestamps",
+            "type": "bool",
+            "description": "Return word timestamps (single characters for Chinese, Japanese and Thai) derived from CTC token emission frames, 60 ms resolution.",
             "required": false,
             "default": false
           },
@@ -57507,7 +57526,7 @@
           "target_directory": "VoxCPM2",
           "source": {
             "repo": "OpenBMB/VoxCPM2",
-            "revision": "32279effe8c19989596f05d353d1447f51d9e915",
+            "revision": "7936080b41163874f38610f46f438e2c0757f9fd",
             "kind": "huggingface_snapshot",
             "gated": false,
             "files": [

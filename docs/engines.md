@@ -67,8 +67,8 @@ The top of **AI Settings → Speech** is the runtime itself, under the heading
   far along it is, with **Cancel**; a cancelled install changes nothing. Models
   download separately, per model. The Voice engine setup wizard runs the same
   install.
-- *Installed — build v0.9.2-jv.6.* once it is in place, or *Installed — build
-  v0.9.2-jv.6, running ‹model›* while it holds models (each loaded model by its
+- *Installed — build v0.9.4-jv.7.* once it is in place, or *Installed — build
+  v0.9.4-jv.7, running ‹model›* while it holds models (each loaded model by its
   id). Then **Reinstall** and **Remove**.
 - When this computer can't run the build — Microsoft's Visual C++ runtime is
   missing, macOS or Linux is older than the build needs, or a file of it is
@@ -92,9 +92,9 @@ The builds audio.cpp publishes, and what each costs to download:
 | macOS, Intel | Metal, the Intel build |
 | Any machine, no usable GPU | CPU |
 
-The Windows CUDA 12.4 build is a 467 MB download plus 607 MB of NVIDIA's CUDA
-runtime libraries (about 2 GB once unpacked), the CUDA 13.3 build 279 MB plus
-575 MB, and the Vulkan build 67 MB — the files of v0.9.2-jv.6. Vulkan also
+The Windows CUDA 12.4 build is a 472 MB download plus 607 MB of NVIDIA's CUDA
+runtime libraries (about 2 GB once unpacked), the CUDA 13.3 build 284 MB plus
+575 MB, and the Vulkan build 89 MB — the files of v0.9.4-jv.7. Vulkan also
 runs on NVIDIA cards, more slowly than CUDA. The CPU build is the portable one,
 which also runs on older processors (the other CPU build stops at start on a
 processor without the newest instructions). Which build runs is the **Build**
@@ -111,7 +111,10 @@ downloaded models stay. (Run from source with `npm run dev`, the app runs the
 build it made itself, and the line reads *Installed — build dev · ‹commit›*.)
 
 The runtime is pinned to one build of JustVoice's copy of audio.cpp — today
-**v0.9.2-jv.6** (since 2026-10-16), audio.cpp v0.9.2 with JustVoice's changes: the
+**v0.9.4-jv.7** (since 2026-11-10), audio.cpp v0.9.4 with JustVoice's changes: the
+models audio.cpp added since v0.9.2 — among them Fish Audio Drama 3, Ming 3.0 TTS, Pocket TTS
+Small, NVIDIA Nemotron 3.5 Transcribe, Haas (Japanese) and Underdog Bark 3 — and Drama 3 and
+Nemotron Transcribe reading their experts from disk. jv.6 (2026-10-16) brought the
 models and settings audio.cpp v0.9.2 brought (Kitten TTS 2 among them, and the
 settings it renamed), Silero VAD in the runtime, F5-TTS freeing its memory on
 **Unload**, and F5-TTS and KittenTTS giving the same take for the same seed. jv.5

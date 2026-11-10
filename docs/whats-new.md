@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **Speech runtime v0.9.4-jv.7 (2026-11-10)** — audio.cpp v0.9.4 with JustVoice's changes, so the installed
+  app runs the models added since v0.9.2 — Fish Audio Drama 3, Ming 3.0 TTS, NVIDIA Nemotron 3.5 Transcribe and the
+  newest ones — and reads Drama 3's and Nemotron Transcribe's experts from disk, as `npm run dev` already did. On a
+  computer with an older build, the runtime row offers **Update to v0.9.4-jv.7**
+  ([Engines → The speech runtime](engines.md#the-speech-runtime))
 - **Drama 3 and Nemotron Transcribe load on the graphics card by themselves (2026-11-08)** — with
   **Experts from disk** on, their files (22.9 and 22 GB) no longer count as what the card needs, so
   Auto tries the card and measures the first load instead of sending them to the CPU; Nemotron

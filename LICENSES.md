@@ -92,7 +92,7 @@ FFmpeg (AI Settings → FFmpeg).
 
 | Component | When it is fetched | SPDX license | Distributed by JustVoice |
 |---|---|---|---|
-| **audio.cpp** (the speech runtime: prebuilt release archives of JustVoice's copy, github.com/delebash/audio.cpp, at the kit's pinned build — `v0.9.2-jv.6` on 2026-11-05) | Install speech runtime | `Apache-2.0` (Copyright 2026 ShugoAI LLC; the archive ships no `NOTICE`) | no |
+| **audio.cpp** (the speech runtime: prebuilt release archives of JustVoice's copy, github.com/delebash/audio.cpp, at the kit's pinned build — `v0.9.4-jv.7` since 2026-11-10) | Install speech runtime | `Apache-2.0` (Copyright 2026 ShugoAI LLC; the archive ships no `NOTICE`) | no |
 | **MeCab** 0.996 (`libmecab`, Japanese readings — inside the runtime archive, with its `libmecab.LICENSE.txt`) | Install speech runtime | `BSD-3-Clause` | no |
 | **cppjieba's dictionaries** (`jieba/`, Chinese word breaks — inside the runtime archive, with its `LICENSE`) | Install speech runtime | `MIT` | no |
 | **NVIDIA CUDA runtime libraries** (`cudart`, `cuBLAS`, `cuFFT` — inside the CUDA archive) and the **Microsoft Visual C++ runtime** (Windows archives) | Install speech runtime | NVIDIA's CUDA EULA (redistributable components) · Microsoft's redistributable terms | no |
@@ -102,7 +102,8 @@ FFmpeg (AI Settings → FFmpeg).
 | **Speech models** — GGUF files, each under its original model's licence | Download / first load | Each model's own: the app shows JustVoice's reading of it on the model's row and in the opened engine (*Commercial use, in plain words*, `docs/engines.md`), and a model whose commercial use isn't a plain *Yes* asks you to accept its licence before its first download. Some are non-commercial. | no |
 
 Licences verified: audio.cpp, MeCab and cppjieba against the `LICENSE`, `libmecab.LICENSE.txt` and
-`jieba/LICENSE` in the installed `v0.9.2-jv.6` CUDA archive (2026-11-05; no `NOTICE` file in it);
+`jieba/LICENSE` in the installed `v0.9.2-jv.6` CUDA archive (2026-11-05; no `NOTICE` file in it) — the same files
+in `v0.9.4-jv.7`'s CUDA 12.4 archive (its file list, 2026-11-10; the files' sources unchanged between the tags);
 the loader and eSpeak NG against their GitHub repositories (2026-10-01); unidic-lite and UniDic
 against their licence files (2026-10-04; Copyright 2020 Paul McCann, MIT; Copyright 2011-2017 The
 UniDic Consortium, BSD-3-Clause); MeCab Copyright 2001-2008 Taku Kudo and 2004-2008 Nippon Telegraph

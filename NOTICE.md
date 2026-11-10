@@ -152,13 +152,15 @@ Chromium's and Node's own notices ship beside it, as `LICENSES.chromium.html`, i
 
 - Upstream: https://github.com/0xShug0/audio.cpp. JustVoice runs its own build, from JustVoice's
   copy https://github.com/delebash/audio.cpp (a public fork, branch `jv`) — prebuilt release
-  archives made by the fork's release workflow, at the kit's pinned build (`v0.9.2-jv.6` on
-  2026-11-05: upstream v0.9.2 plus JustVoice's changes). Every file the copy changes says so in a
+  archives made by the fork's release workflow, at the kit's pinned build (`v0.9.4-jv.7` since
+  2026-11-10: upstream v0.9.4 plus JustVoice's changes). Every file the copy changes says so in a
   first-line comment, with the date and what changed (Apache-2.0 §4(b)).
 - License: Apache-2.0, Copyright 2026 ShugoAI LLC
 - Downloaded onto the user's machine when they install the speech runtime; never bundled with or
   redistributed by JustVoice. Its release archive carries a `LICENSE` and no `NOTICE` file
-  (checked 2026-11-05 on the installed `v0.9.2-jv.6` CUDA archive), so there is no §4(d) content to
+  (checked 2026-11-05 on the installed `v0.9.2-jv.6` CUDA archive; again 2026-11-10 for `v0.9.4-jv.7`, its
+  CUDA 12.4 archive's file list read from GitHub — the same licence files, and their sources unchanged
+  between the two tags), so there is no §4(d) content to
   propagate. Re-check on every pin bump. The archive also carries MeCab's library and cppjieba's
   dictionaries, each with its own licence file (below), and — the CUDA and Windows archives — NVIDIA's
   CUDA runtime libraries and Microsoft's Visual C++ runtime, under their redistributable terms.
