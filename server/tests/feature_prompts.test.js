@@ -3,10 +3,12 @@
 // editor died; the kit's prompt router serves this path), the endpoints read their prompt from
 // the DB, and tunables live on presets (the port of tests/test_feature_prompts.py).
 import { render } from "@delebash/core/llm/prompts";
+import { fingerprint } from "@delebash/core/platform";
 import { afterEach, expect, test } from "vitest";
 import * as projectsApi from "../src/api/projects_api.js";
 import * as smartAssignApi from "../src/api/smart_assign_api.js";
-import { DEFAULT_FEATURE_PROMPTS as D } from "../src/seed_feature_prompts.js";
+import { seedWorkspace } from "../src/database/seed.js";
+import { DEFAULT_FEATURE_PROMPTS as D, FEATURE_PROMPT_HEALS } from "../src/seed_feature_prompts.js";
 import { appClient, closeApps } from "./app_helpers.js";
 
 afterEach(closeApps);
@@ -100,4 +102,64 @@ test("renamed_placeholders_keep_every_word_the_model_reads", () => {
   expect(render(D.smart_assign.user_template, { speakers: cast, personas: '- id="p1", name="Slate"' })).toBe(
     `Characters:\n${cast}\n\nAvailable voices:\n- id="p1", name="Slate"\n\nReturn only the JSON object.`,
   );
+});
+
+// A revised prompt reaches a database seeded before it; one its owner edited is never touched — and a prompt can't
+// change without its old text kept (seed_feature_prompts.js FEATURE_PROMPT_HEALS, the kit's featurePromptHeals; the
+// template's test, since 2026-11-10). Today's system text of EVERY prompt row: a change here means a prompt changed —
+// add its OLD text, byte for byte, to FEATURE_PROMPT_HEALS, then update this line.
+const TODAY = {
+  "speaker_attribution.guided": "61523bc62987837e",
+  "speaker_attribution.direct": "d81dca18b4e3b37d",
+  "speaker_attribution.identify": "87cb36031e7999f0",
+  "speaker_merge.local": "a5314f02fa826c3a",
+  "speaker_merge.frontier": "08a8f87e3943abae",
+  "smart_assign": "37675b06834ac8be",
+  "show_notes": "0cfa2b11eab5b2d7",
+  "compose": "0e4f08f42546f250",
+  "persona_rewrite": "14eb8776221363b4",
+  "refine.base": "f372963cebf73df4",
+  "refine.smart_cleanup": "eb753be2228f4f45",
+  "refine.self_correction": "cd93f84911d5f646",
+  "refine.preserve_technical": "c2ca7fddd7f67d46",
+  "speaker_second_look": "e1e4e43c675e58b8",
+  "direction.local": "ae19475791c43a92",
+  "direction.frontier": "e372dbc252b68f35",
+  "speaker_group": "ab6213db04afe3be",
+  "voice_gender": "41943ffe9d5f6045",
+  "book_voices.speaker": "444a5419da0dbfb0",
+  "book_voices.narrator": "19b17372d15ce2c1",
+  "book_voices.cast": "2c35b2bed17e0626",
+};
+
+test("todays_prompts_are_the_ones_this_test_knows_and_none_is_listed_as_an_earlier_text", () => {
+  expect(Object.fromEntries(Object.entries(D).map(([k, v]) => [k, fingerprint(v.system)]))).toEqual(TODAY);
+  for (const [key, olds] of Object.entries(FEATURE_PROMPT_HEALS)) {
+    expect(D[key], key).toBeTruthy();
+    expect(olds, key).not.toContain(D[key].system);
+  }
+});
+
+// The app hands its heals to the kit: an earlier text listed for a key (made up here — no prompt is revised yet) is
+// replaced at the next seed, and an edited prompt is left alone. The rows are set as the AI Lab sets them.
+const HEAL_KEY = "smart_assign";
+const EARLIER = "You are a casting director. (an earlier text, for this test)";
+afterEach(() => {
+  delete FEATURE_PROMPT_HEALS[HEAL_KEY];
+});
+
+test("a_prompt_still_at_an_earlier_text_takes_todays_at_the_next_seed_and_an_edited_one_is_left_alone", async () => {
+  FEATURE_PROMPT_HEALS[HEAL_KEY] = [EARLIER];
+  const { c } = await appClient(undefined, { seed: true });
+  const today = D[HEAL_KEY];
+  const system = async () => (await c.get(`/v1/ai/prompts/${HEAL_KEY}`)).json().system;
+  const set = (text) => c.put(`/v1/ai/prompts/${HEAL_KEY}`, { json: { feature: today.feature, system: text, userTemplate: today.user_template } });
+  expect(await system()).toBe(today.system); // a fresh install holds today's
+  await set(EARLIER); // as a database seeded before the revision
+  await seedWorkspace();
+  expect(await system()).toBe(today.system);
+  const edited = `${EARLIER} Keep it short.`; // the owner's own words, never touched
+  await set(edited);
+  await seedWorkspace();
+  expect(await system()).toBe(edited);
 });

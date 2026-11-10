@@ -11,6 +11,12 @@
 // (engines/llm/migrate_prompts) so edits win over these defaults. Placeholder style is the
 // shared renderer's `{{var}}` (fail-loud on absence).
 //
+// A revised prompt reaches a database seeded before it through FEATURE_PROMPT_HEALS (the kit's featurePromptHeals,
+// seed.js configureAppSeed): seeding is insert-if-missing, so each key lists the system texts it had, byte for byte, and
+// a row still holding one of them — never edited — takes today's; an edited prompt is never touched. A system text can't
+// change without its old text added there: tests/feature_prompts.test.js holds today's fingerprints (the template's,
+// since 2026-11-10). v0.1.0 (2026-11-10) is the first release — before it the user reset (AGENTS.md) — so none yet.
+//
 // System texts import from their measured homes (extraction/prompts, extraction/identify,
 // extraction/second_look, refinement) — one source, no text forks. Those modules are other
 // slices' ports: this file loads once they exist, under exactly these export names.
@@ -107,6 +113,9 @@ const VOICE_GENDER_SYSTEM = `You label voice names by apparent gender for a text
 Given voice names (each with any description the catalog carries), return a JSON object mapping each EXACT input name to "male", "female", or "unknown". Use widely known name conventions; when a name is ambiguous, invented, or not a personal name, return "unknown" — never guess from how a word sounds.
 
 Return only the JSON object. No prose, no preamble.`;
+
+/** {action id: [earlier system texts, byte for byte]} — empty until a prompt is revised. */
+export const FEATURE_PROMPT_HEALS = {};
 
 export const DEFAULT_FEATURE_PROMPTS = {
   // ── speaker_attribution — TWO ROUTED FEATURES (the attribution restore, approved

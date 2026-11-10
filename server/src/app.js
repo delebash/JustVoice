@@ -95,7 +95,7 @@ import { clientIdStamp } from "./mcp/context.js";
 import { mountInto as mountMcp } from "./mcp/index.js";
 import { cacheRoot, defaultDataDir, SOURCE_ROOT } from "./paths.js";
 import * as renderJobs from "./render_jobs.js";
-import { DEFAULT_FEATURE_PROMPTS } from "./seed_feature_prompts.js";
+import { DEFAULT_FEATURE_PROMPTS, FEATURE_PROMPT_HEALS } from "./seed_feature_prompts.js";
 import {
   DEFAULT_ENGINE_PRESETS,
   DEFAULT_FEATURE_PRESETS,
@@ -345,6 +345,8 @@ export async function createApp(dataDir = null) {
     // Every JV action as a template row + the preset library the rows run on (one-source:
     // presets own every tunable) + per-row Lab samples. Insert-if-missing.
     featurePrompts: DEFAULT_FEATURE_PROMPTS,
+    // a revised prompt reaches a database seeded before it (seed_feature_prompts.js)
+    featurePromptHeals: FEATURE_PROMPT_HEALS,
     enginePresets: DEFAULT_ENGINE_PRESETS,
     featurePresets: DEFAULT_FEATURE_PRESETS,
     defaultPresetId: DEFAULT_PRESET_ID,
