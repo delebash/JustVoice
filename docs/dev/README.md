@@ -14,7 +14,8 @@ FEATURES roots — lives in `../plans/archive/`):
 1. **`../../AGENTS.md`** — the working rules and pointers (`../../CLAUDE.md` imports it).
 2. **`TASKS.md`** — the live tracker (the F-arc convergence sequence, the open
    product questions extracted from the freeze, repo hygiene). **`IDEAS.md`** —
-   the backlog (empty for the release since 2026-11-06; git keeps what it held, and
+   the backlog (cut for the release on 2026-11-06; its five "later" ideas and the
+   dictation hotkey came back after v0.1.0; git keeps the rest, and
    `ideas-release-review.md` why each entry went). **`RESEARCH.md`** — what is already
    known, by subject, with the proof (the speech runtime and its memory so far);
    read its section before researching anything (the family rule, 2026-10-04).

@@ -187,6 +187,10 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
   session's staged deletions under its own message and turned main red. The `--` pathspec limits
   the commit to your files whatever else is staged.
 - **Settings live in SQLite via `SettingsStore`**, reachable through `PATCH /v1/settings`; the database runs on the kit's `platform/sql.js` (better-sqlite3). `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite; `SettingsStore` imports a legacy `settings.json` once). The tables are `server/src/database/models_schema.js`. Per-artifact JSON sidecars on disk are the exception and still live: `storage/atomic.js`'s `atomicWriteJson` (tmp + rename + fsync) writes voice manifests (`storage/voices.js`).
+- **Since v0.1.0 (2026-11-10) a user never resets.** A seeded prompt whose text is revised lists its
+  old text in `featurePromptHeals` (the kit's `llm/install.js` and seed heals, as JustWrite's
+  `FEATURE_PROMPT_HEALS`), so an installed app's row moves to the new text (decided 2026-11-08).
+  Before the release the user reset instead (the no-migrations rule, 2026-08-07).
 - **`server/src/models.js` is the source of truth for the wire shapes.** The Vue client fetches directly against those shapes; the JustWrite-facing boundary rules are `docs/dev/design-decisions.md` §3.
 - **A mock is production minus the plumbing.** When a mock is asked for, the only thing it may omit is the wiring — no server, no real audio, no persistence. Everything else is the deliverable: **production copy only** (never design commentary, "still a proposal", or notes on what changed), **nav and controls that actually work**, **real enum values and labels verified in the code** (an invented-but-plausible option is worse than a missing one), **real states** — empty, blocked, stale, error — not just the happy path, **counts and names consistent across every screen**, **no leftovers from earlier drafts**, and the app's own tokens and density. Audit the whole file before publishing, not just the screen last edited.
 
